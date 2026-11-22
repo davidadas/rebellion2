@@ -36,9 +36,9 @@ namespace Rebellion.Gameplay
             );
             if (
                 outcome.Ships.Length
-                    != units.Values.Count(unit => unit.Combatant.GetUnit() is CapitalShip)
+                    != units.Values.Count(unit => unit.Combatant.Unit is CapitalShip)
                 || outcome.Fighters.Length
-                    != units.Values.Count(unit => unit.Combatant.GetUnit() is Starfighter)
+                    != units.Values.Count(unit => unit.Combatant.Unit is Starfighter)
             )
                 throw new InvalidDataException(
                     "The tactical outcome does not cover the captured roster."

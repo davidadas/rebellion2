@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -32,12 +34,15 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested += AddSector;
         view.AddPlanetRequested += AddPlanet;
         view.AddMessageRequested += AddMessage;
+        view.AddMissionArticleRequested += AddMissionArticle;
+        view.MissionReportOverrideRequested += SetMissionReportOverride;
         view.AddNamePoolRequested += AddNamePool;
         view.RemoveMessageRequested += RemoveMessage;
         view.ClearFieldsRequested += ClearFields;
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
+        view.ArtworkPlacementSubmitted += ApplyArtworkPlacement;
         view.FieldValidationRequested += ValidateField;
         view.SectionInheritanceResetRequested += ResetSectionInheritance;
         view.CollectionAddRequested += AddCollectionEntry;
@@ -48,6 +53,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.MapEditEnded += session.EndMapEdit;
         view.SelectionRequested += SelectRecord;
         view.SectionRequested += SelectSection;
+        view.ErrorFieldRequested += ShowField;
     }
 
     /// <summary>
@@ -166,6 +172,27 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Applies every coordinate changed by one artwork drag as a single reversible edit.
+    /// </summary>
+    /// <param name="changes">The distinct authored source-coordinate replacements.</param>
+    internal void ApplyArtworkPlacement(IReadOnlyList<ContentEditorArtworkPlacementChange> changes)
+    {
+        if (changes == null)
+            throw new ArgumentNullException(nameof(changes));
+        if (changes.Count == 0)
+            return;
+
+        ContentPackEditorProject current =
+            Project ?? throw new InvalidOperationException("Open a content pack first.");
+        using (current.BeginEdit("Move interface artwork"))
+        {
+            foreach (ContentEditorArtworkPlacementChange change in changes)
+                current.SetField(change.Field, change.Value.ToString(CultureInfo.InvariantCulture));
+        }
+        view.RefreshInspector();
+    }
+
+    /// <summary>
     /// Adds an independent setup entry through project history.
     /// </summary>
     /// <param name="collection">The destination collection.</param>
@@ -207,6 +234,36 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     private void ValidateField(ContentPackEditorField field) => Project.ValidateField(field);
 
     /// <summary>
+    /// Resolves a validation field against the current workspace before revealing it.
+    /// </summary>
+    /// <param name="source">The field reported by validation.</param>
+    /// <param name="validationError">The concise validation failure.</param>
+    private void ShowField(ContentPackEditorField source, string validationError)
+    {
+        ContentPackEditorField field = Project
+            ?.GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .SelectMany(record => new[] { record }.Concat(record.Planets))
+            .Where(record => record.Key == source.Record.Key)
+            .SelectMany(record => record.GetFields())
+            .FirstOrDefault(candidate =>
+                candidate.Name == source.Name
+                && candidate.MemberName == source.MemberName
+                && candidate.XmlAttributeName == source.XmlAttributeName
+                && candidate.SectionPath.SequenceEqual(source.SectionPath)
+            );
+        if (field == null)
+        {
+            view.RenderStatus(
+                "That field changed after validation. Validate the pack again.",
+                true
+            );
+            return;
+        }
+        view.ShowField(field, validationError);
+    }
+
+    /// <summary>
     /// Records a requested selection before rendering its derived inspector state.
     /// </summary>
     /// <param name="record">The requested definition.</param>
@@ -218,6 +275,21 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         ContentPackEditorRecord sector
     )
     {
+        string typeID =
+            (string)record?.Element.Element("TypeID")
+            ?? (string)record?.Element.Attribute("TypeID");
+        if (typeID != null)
+        {
+            try
+            {
+                record.Catalog.ValidateAuthoredTypeIDs(typeID);
+            }
+            catch (InvalidDataException exception)
+            {
+                view.RenderStatus(exception.Message, true);
+                return;
+            }
+        }
         session.Select(record, page, sector);
         view.RenderSelection(session.Selection);
     }
@@ -315,6 +387,39 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Adds a mission article and focuses its title in the current faction presentation.
+    /// </summary>
+    /// <param name="catalog">The linked faction encyclopedia.</param>
+    /// <param name="theme">The owning faction theme.</param>
+    /// <param name="missionID">The mission identifier.</param>
+    private void AddMissionArticle(
+        ContentPackEditorCatalog catalog,
+        ContentPackEditorRecord theme,
+        string missionID
+    )
+    {
+        ContentPackEditorField title = Project.AddMissionArticle(catalog, theme, missionID);
+        view.RenderProject(Project, assets);
+        view.FocusField(title);
+    }
+
+    /// <summary>
+    /// Changes the report used for a faction and refreshes the visible text editor.
+    /// </summary>
+    /// <param name="faction">The recipient faction.</param>
+    /// <param name="report">The selected authored report.</param>
+    /// <param name="customize">Whether to create a local copy or restore the shared report.</param>
+    private void SetMissionReportOverride(
+        ContentPackEditorRecord faction,
+        ContentEditorMissionReport report,
+        bool customize
+    )
+    {
+        Project.SetMissionReportOverride(faction, report, customize);
+        view.RenderProject(Project, assets);
+    }
+
+    /// <summary>
     /// Applies a grouped field clear before rebuilding the current inspector from its edited definitions.
     /// </summary>
     /// <param name="fields">The fields requested by the inspector.</param>
@@ -391,12 +496,15 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.AddSectorRequested -= AddSector;
         view.AddPlanetRequested -= AddPlanet;
         view.AddMessageRequested -= AddMessage;
+        view.AddMissionArticleRequested -= AddMissionArticle;
+        view.MissionReportOverrideRequested -= SetMissionReportOverride;
         view.AddNamePoolRequested -= AddNamePool;
         view.RemoveMessageRequested -= RemoveMessage;
         view.ClearFieldsRequested -= ClearFields;
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
+        view.ArtworkPlacementSubmitted -= ApplyArtworkPlacement;
         view.FieldValidationRequested -= ValidateField;
         view.SectionInheritanceResetRequested -= ResetSectionInheritance;
         view.CollectionAddRequested -= AddCollectionEntry;
@@ -407,6 +515,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.MapEditEnded -= session.EndMapEdit;
         view.SelectionRequested -= SelectRecord;
         view.SectionRequested -= SelectSection;
+        view.ErrorFieldRequested -= ShowField;
         session.Dispose();
         assets = null;
     }

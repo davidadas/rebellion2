@@ -6,10 +6,8 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Runtime.Audio;
+using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
@@ -20,16 +18,13 @@ namespace Rebellion.Architecture.Tests
     public sealed class TacticalAssemblyTests
     {
         [TestCase(
-            "^Rebellion\\.Tactical\\.Presentation(?:\\.|$)",
+            "^Rebellion\\.AI\\.Tactical(?:\\.|$)",
+            "^Rebellion\\.(?:Multiplayer|UI)(?:\\.|$)"
+        )]
+        [TestCase("^Rebellion\\.Multiplayer\\.Tactical(?:\\.|$)", "^Rebellion\\.UI(?:\\.|$)")]
+        [TestCase(
+            "^Rebellion\\.UI\\.SceneUI\\.TacticalCombat(?:\\.|$)",
             "^Rebellion\\.Multiplayer(?:\\.|$)"
-        )]
-        [TestCase(
-            "^Rebellion\\.Multiplayer\\.Tactical(?:\\.|$)",
-            "^Rebellion\\.(?:UI|Tactical\\.Presentation)(?:\\.|$)"
-        )]
-        [TestCase(
-            "^Rebellion\\.Tactical\\.Integration(?:\\.|$)",
-            "^Rebellion\\.(?:UI|Multiplayer|Tactical\\.Presentation)(?:\\.|$)"
         )]
         public void TacticalOwnership_ModeAreas_ExcludeAdjacentImplementations(
             string sourceNamespace,
@@ -37,8 +32,9 @@ namespace Rebellion.Architecture.Tests
         )
         {
             Assert.That(
-                typeof(GameRoot)
-                    .Assembly.GetTypes()
+                RuntimeAssemblyLoader
+                    .Load()
+                    .SelectMany(assembly => assembly.GetTypes())
                     .Any(type => Regex.IsMatch(type.Namespace ?? string.Empty, sourceNamespace)),
                 Is.True,
                 "The ownership rule must inspect actual production types."
@@ -57,23 +53,6 @@ namespace Rebellion.Architecture.Tests
             CreateUtilityRule(
                     "^Rebellion\\.Tactical(?:\\.|$)",
                     typeof(TacticalCombatSession).Assembly.FullName
-                )
-                .Check(ProductionArchitecture.Load());
-        }
-
-        [Test]
-        public void TacticalAutomation_Dependencies_ExcludeCampaignAndApplicationAdapters()
-        {
-            Types()
-                .That()
-                .ResideInNamespaceMatching("^Rebellion\\.Tactical\\.Automation(?:\\.|$)")
-                .Should()
-                .NotDependOnAny(
-                    Types()
-                        .That()
-                        .ResideInNamespaceMatching(
-                            "^Rebellion\\.(?:Campaign\\.AI|Multiplayer|Tactical\\.(?:Integration|Presentation))(?:\\.|$)"
-                        )
                 )
                 .Check(ProductionArchitecture.Load());
         }
@@ -103,27 +82,25 @@ namespace Rebellion.Architecture.Tests
         }
 
         [Test]
-        public void TacticalCore_Compilation_IsSeparateFromCampaignAndContracts()
+        public void TacticalCore_Compilation_IsSeparateFromCampaignAndApplication()
         {
             var core = typeof(TacticalCombatSession).Assembly;
             Assert.That(core, Is.Not.EqualTo(typeof(GameRoot).Assembly));
-            Assert.That(core, Is.Not.EqualTo(typeof(TacticalCombatOutcome).Assembly));
-            Assert.That(core, Is.Not.EqualTo(typeof(CombatSide).Assembly));
+            Assert.That(core, Is.Not.EqualTo(typeof(TacticalCombatController).Assembly));
             Assert.That(core.GetTypes().Contains(typeof(TacticalCombatUnit)), Is.True);
         }
 
         [Test]
-        public void TacticalCore_References_ExcludeCampaignEditorAndEngine()
+        public void TacticalCore_References_ExcludeApplicationEditorAndEngine()
         {
             string[] references = typeof(TacticalCombatSession)
                 .Assembly.GetReferencedAssemblies()
                 .Select(reference => reference.Name)
                 .ToArray();
 
-            Assert.That(references, Does.Not.Contain(typeof(GameRoot).Assembly.GetName().Name));
             Assert.That(
                 references,
-                Does.Not.Contain(typeof(TacticalCombatAudio).Assembly.GetName().Name)
+                Does.Not.Contain(typeof(TacticalCombatController).Assembly.GetName().Name)
             );
             Assert.That(
                 references,
@@ -137,49 +114,7 @@ namespace Rebellion.Architecture.Tests
                 references,
                 Does.Contain(typeof(IRandomNumberProvider).Assembly.GetName().Name)
             );
-            Assert.That(
-                references,
-                Does.Contain(typeof(TacticalCombatOutcome).Assembly.GetName().Name)
-            );
-        }
-
-        [TestCase(typeof(CombatSide))]
-        [TestCase(typeof(TacticalCombatOutcome))]
-        public void CombatContracts_References_ExcludeBothModeImplementations(System.Type contract)
-        {
-            string[] references = contract
-                .Assembly.GetReferencedAssemblies()
-                .Select(reference => reference.Name)
-                .ToArray();
-
-            Assert.That(references, Does.Not.Contain(typeof(GameRoot).Assembly.GetName().Name));
-            Assert.That(
-                references,
-                Does.Not.Contain(typeof(TacticalCombatSession).Assembly.GetName().Name)
-            );
-        }
-
-        [Test]
-        public void TacticalRuntime_Compilation_IsSeparateFromBattleAndApplication()
-        {
-            var runtime = typeof(TacticalCombatAudio).Assembly;
-            Assert.That(runtime, Is.Not.EqualTo(typeof(GameRoot).Assembly));
-            Assert.That(runtime, Is.Not.EqualTo(typeof(TacticalCombatSession).Assembly));
-        }
-
-        [Test]
-        public void TacticalRuntime_References_ExcludeCampaignAndEngine()
-        {
-            string[] references = typeof(TacticalCombatAudio)
-                .Assembly.GetReferencedAssemblies()
-                .Select(reference => reference.Name)
-                .ToArray();
-
-            Assert.That(references, Does.Not.Contain(typeof(GameRoot).Assembly.GetName().Name));
-            Assert.That(
-                references.Any(name => name.StartsWith("Unity", StringComparison.Ordinal)),
-                Is.False
-            );
+            Assert.That(references, Does.Contain(typeof(GameRoot).Assembly.GetName().Name));
         }
 
         /// <summary>

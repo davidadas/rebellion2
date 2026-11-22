@@ -12,31 +12,41 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class BattleParticipant
     {
-        [PersistableMember(Name = "Combatants")]
+        [PersistableMember(Name = nameof(Combatants))]
         private List<CombatUnit> _combatants = new List<CombatUnit>();
 
         public string FactionInstanceID { get; set; }
 
-        public List<CombatUnit> GetCombatants() => _combatants;
+        [PersistableIgnore]
+        public IReadOnlyList<CombatUnit> Combatants => _combatants;
+
+        /// <summary>
+        /// Adds a detached combat unit to this participant.
+        /// </summary>
+        /// <param name="combatant">The combat unit to add.</param>
+        internal void AddCombatant(CombatUnit combatant) => _combatants.Add(combatant);
     }
 
     /// <summary>
-    /// Persistent state of the tactical battle currently in progress.
+    /// Persistent state for a battle that can continue independently of the campaign scene graph.
     /// </summary>
     [PersistableObject]
     public sealed class ActiveBattle
     {
-        [PersistableMember(Name = "Participants")]
+        [PersistableMember(Name = nameof(Participants))]
         private List<BattleParticipant> _participants = new List<BattleParticipant>();
 
         public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
 
-        public List<BattleParticipant> GetParticipants() => _participants;
+        [PersistableIgnore]
+        public IReadOnlyList<BattleParticipant> Participants => _participants;
 
         /// <summary>
         /// Adds an independently mutable copy of a strategic unit under its current owner.
         /// </summary>
+        /// <param name="sourceUnit">The campaign unit entering battle.</param>
+        /// <returns>The detached combat unit, or null for a destroyed squadron.</returns>
         public CombatUnit AddCombatant(BaseSceneNode sourceUnit)
         {
             if (sourceUnit == null)
@@ -71,16 +81,21 @@ namespace Rebellion.Game.Combat
             }
 
             CombatUnit combatant = CombatUnit.Create(sourceUnit);
-            participant.GetCombatants().Add(combatant);
+            participant.AddCombatant(combatant);
             return combatant;
         }
 
+        /// <summary>
+        /// Finds a detached combatant by the stable campaign unit that produced it.
+        /// </summary>
+        /// <param name="sourceUnitInstanceID">The campaign unit identity.</param>
+        /// <returns>The matching combatant, or null when it is not in this battle.</returns>
         public CombatUnit GetCombatant(string sourceUnitInstanceID)
         {
             if (string.IsNullOrEmpty(sourceUnitInstanceID))
                 return null;
             foreach (BattleParticipant participant in _participants)
-            foreach (CombatUnit combatant in participant.GetCombatants())
+            foreach (CombatUnit combatant in participant.Combatants)
                 if (
                     string.Equals(
                         combatant.SourceUnitInstanceID,

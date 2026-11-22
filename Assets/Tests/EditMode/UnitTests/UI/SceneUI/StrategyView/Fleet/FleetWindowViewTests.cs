@@ -159,6 +159,31 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void Render_SelectedFleetAfterNoSelection_ShowsEveryTab()
+        {
+            _view.Render(
+                CreateRenderData(
+                    false,
+                    new[] { CreateFleetRow("First Fleet") },
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("First Fleet") },
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+
+            Assert.IsTrue(FindObject("CapitalShipsTabButtonImage").activeSelf);
+            Assert.IsTrue(FindObject("StarfightersTabButtonImage").activeSelf);
+            Assert.IsTrue(FindObject("RegimentsTabButtonImage").activeSelf);
+            Assert.IsTrue(FindObject("PersonnelTabButtonImage").activeSelf);
+        }
+
+        [Test]
         public void Render_SelectedFleetWithoutCapacity_HidesCapacityFields()
         {
             FleetWindowRenderData data = CreateRenderData(

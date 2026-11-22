@@ -55,9 +55,9 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 ## Tactical space combat
 
-The battle alert opens manual combat when the selected content pack
-supplies tactical definitions for both factions and every participating unit. The campaign stays
-suspended while the encounter runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
+The battle alert opens manual combat when the selected content pack supplies tactical definitions
+for both factions and every participating unit. The campaign stays suspended while the encounter
+runs. Closing a completed encounter applies its losses, component damage, fighter recovery, and
 withdrawals through the shared combat-result pipeline. Surviving fighters without a carrier may
 remain at the encounter planet without changing its surface ownership or colonization.
 
@@ -69,10 +69,10 @@ withdrawal path, and two automatic responses use the existing automatic resoluti
 The tactical frame uses a fixed 640x480 layout. Left-click to replace the current selection; hold
 Ctrl to extend or toggle it. Right-click addresses an object or visible navigation marker within
 the current command context. Use the category buttons or number keys 1-8 for object groups and
-Space for the nearest opposing object. The Pause button pauses and resumes the battle.
-Tab advances inspection once per press; Shift+Tab inspects the previous object.
-Orders and Tactics open with the addressed group's current settings. Confirming an unchanged
-panel preserves its order and engagement mode.
+Space for the nearest opposing object. The Pause button pauses and resumes the battle. Tab advances
+inspection once per press; Shift+Tab inspects the previous object. Orders and Tactics open with the
+addressed group's current settings. Confirming an unchanged panel preserves its order and engagement
+mode.
 
 The camera buttons and arrow keys rotate or tilt the view. Page Up and Page Down zoom; Home saves
 the primary camera and End restores it. Return focuses the current selection. F1-F12 open category
@@ -102,10 +102,10 @@ depleted batteries in queue order. Ion hits beyond shields accumulate the select
 movement delays and discharge the selected batteries. Damage control includes weapon damage
 already present when the encounter starts.
 
-In single-player, Get immediate result ends interactive combat and imports its losses before the existing automatic
-encounter resolver settles the surviving forces. The campaign receives one combined result and
-resumes after all pending encounters have been resolved.
-Immediate results are unavailable during multiplayer battles.
+In single-player, Get immediate result ends interactive combat and imports its losses before the
+existing automatic encounter resolver settles the surviving forces. The campaign receives one
+combined result and resumes after all pending encounters have been resolved. Immediate results are
+unavailable during multiplayer battles.
 
 Battle-station fighter attacks announce approach and attack entry. Alliance calls also reflect
 fighter category, outcome, and timed progress; Empire views use the approach and start cues.
@@ -127,3 +127,35 @@ authored metadata. See the media repository's README for the complete layout.
 
 Capital-ship component damage and its campaign repair timer are saved per ship. Shared tactical
 geometry and media references remain pack data. Older saves load with an undamaged component record.
+
+## Windows on Arm
+
+Windows x64 and ARM64 players share Unity's `StandaloneWindows64` build target and differ only in
+CPU architecture. `./build.sh build` builds for the host CPU, so a Windows on Arm machine produces
+a native ARM64 player by default. Set `BUILD_ARCHITECTURE` to choose explicitly:
+
+```bash
+BUILD_ARCHITECTURE=arm64 ./build.sh build   # native Windows on Arm player
+BUILD_ARCHITECTURE=x64 ./build.sh build     # Intel/AMD player
+```
+
+The **Rebellion > Build** menu items build for the architecture of the running editor. Scripted
+builds that call `StandalonePlayerBuild.Build` directly can pass `-buildArchitecture arm64` or
+`-buildArchitecture x64`; `Tools/package_desktop.py` takes the matching `--architecture` value.
+
+ARM64 builds add the `EOS_PLATFORM_WINDOWS_ARM64` scripting define so the Epic Online Services
+plugin binds its ARM64 library; the plugin only injects that symbol for builds started from Unity's
+Build window.
+
+Notes for a Windows on Arm development machine:
+
+- Install the Windows Arm64 build of the pinned Unity Editor; Unity Hub selects it on Arm hosts.
+  The Mono scripting backend used by this project needs no Visual Studio components.
+- Unity does not support Vulkan on Windows on Arm, so players use Direct3D 12 or Direct3D 11.
+  Qualcomm Adreno drivers have had Direct3D 12 crashes that can restart the whole machine (Unity
+  issue UUM-131104, resolved by a GPU driver update). Start the editor and a new player with
+  `-force-d3d11` first, and update the GPU driver before relying on Direct3D 12.
+- Run `build.sh` from Git Bash, not the WSL `bash.exe` that Windows puts first on `PATH`.
+- Set `PYTHON=python` when `python3` resolves to the Microsoft Store alias.
+- `Assets/Plugins/NativeFileDialog/win-arm64/nfd.dll` is the native dialog library for the ARM64
+  content-pack editor and Unity Editor. `NOTICE.txt` beside it records how it was built.

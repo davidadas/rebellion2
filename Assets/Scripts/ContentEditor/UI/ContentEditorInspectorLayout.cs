@@ -41,11 +41,9 @@ internal static class ContentEditorInspectorLayout
                     is nameof(Building.ProductionType)
                         or nameof(Building.WeaponStrength)
             );
-        if (
-            ContentEditorUnitFactory.CanCreate(record.Kind)
-            && !fields.Any(field => field.MemberName == "SmallDisplayImagePath")
-        )
-            fields.Add(record.GetField("SmallDisplayImagePath"));
+        foreach (string member in ContentEditorUnitArtworkLayout.GetMembers(record.Kind))
+            if (!fields.Any(field => field.MemberName == member))
+                fields.Add(record.GetField(member));
         if (record.Kind == "Faction" && record.Element.Element("FactionDataPath") == null)
             foreach (string member in new[] { "HQInstanceID", "DisallowedMissionTypeIDs" })
                 if (!fields.Any(field => field.MemberName == member))

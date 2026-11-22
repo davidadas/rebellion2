@@ -562,6 +562,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         private ContentPackEditorProject CreateThemeProject()
         {
             WriteFixtureFile("Data/theme.xml", ThemeXml(true));
+            UpdateBasePackDefinition(pack => pack.NeutralThemePath = "Data/theme.xml");
             return CreateWorkingProject();
         }
 

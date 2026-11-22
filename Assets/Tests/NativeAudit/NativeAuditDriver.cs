@@ -536,7 +536,7 @@ namespace Rebellion.Tests.NativeAudit
             response.width = Screen.width;
             response.height = Screen.height;
             response.status = multiplayer?.Status;
-            response.simulationBuild = typeof(GameRoot)
+            response.simulationBuild = typeof(AppBootstrap)
                 .Assembly.GetCustomAttributes<AssemblyMetadataAttribute>()
                 .Single(attribute => attribute.Key == "SimulationBuild")
                 .Value;

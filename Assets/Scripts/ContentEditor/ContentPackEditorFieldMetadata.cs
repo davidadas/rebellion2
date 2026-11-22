@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
+using UnityEngine;
 
 /// <summary>
 /// Supplies authoring guidance for serialized fields without changing their data names.
@@ -182,8 +183,17 @@ internal static class ContentPackEditorFieldMetadata
             "Checked missions can be performed by this special forces unit.",
         ["GarrisonTroopTypeID"] =
             "The regiment type used when this faction creates automatic garrisons.",
-        ["RecruitingFactionInstanceIDs"] =
-            "Factions allowed to recruit this officer. Battle loyalty favors a combatant only when its flag is set and the opposing flag is clear.",
+        ["RefinementMultiplier"] =
+            "Multiplies the raw and refined material supply available to this faction. A value of 1 leaves supply unchanged.",
+        ["ResourceProcessingPointsPerFacility"] =
+            "Base maintenance capacity from each operating mine and refinery pair. Difficulty can adjust the final capacity.",
+        ["GarrisonEfficiency"] =
+            "Retained for saved settings. Sector garrison reduction is controlled by each ship's sector suppression settings.",
+        ["TroopEffectiveness"] =
+            "Multiplies the weight of hostile troops when this faction evaluates popular support.",
+        ["UprisingResistance"] =
+            "Multiplies garrison strength during an uprising in sectors with an operational suppression ship.",
+        ["RecruitingFactionInstanceIDs"] = "Factions allowed to recruit this officer.",
         ["ManufacturingFactionInstanceIDs"] = "Factions allowed to build this unit or facility.",
         ["AllowedRanks"] = "Command assignments this officer is eligible to hold.",
         ["NamePoolID"] =
@@ -193,6 +203,33 @@ internal static class ContentPackEditorFieldMetadata
         ["NextNameIndex"] = "The next name to use from this list. Zero starts with the first name.",
         ["SmallDisplayImagePath"] =
             "Compact artwork used in unit lists and other small-card views.",
+        ["DisplayImagePath"] = "Primary illustration shown on the large unit card.",
+        ["MessageImagePath"] = "Illustration attached to reports about this unit.",
+        ["EncyclopediaImagePath"] = "Illustration shown when the unit's encyclopedia entry opens.",
+        ["BattleResultImagePath"] = "Unit artwork shown in battle results.",
+        ["InTransitSmallImagePath"] = "Travel artwork for the unit's compact gameplay card.",
+        ["InTransitImagePath"] = "Travel artwork for the large unit view.",
+        ["BattleResultInTransitImagePath"] = "Travel layer shown for this unit in battle results.",
+        ["DamagedSmallImagePath"] = "Damage overlay drawn on the compact unit card.",
+        ["DamagedImagePath"] = "Damage overlay drawn on the large unit card.",
+        ["BattleResultDamagedImagePath"] = "Damage overlay shown on this unit in battle results.",
+        ["BackgroundImagePath"] =
+            "Optional background override for this unit. Leave empty to retain the faction theme default.",
+        ["OfficerBackgroundImagePath"] =
+            "Optional theme background retained for officer artwork workflows.",
+        ["CapitalShipBackgroundImagePath"] =
+            "Optional theme background retained for capital-ship artwork workflows.",
+        ["StarfighterBackgroundImagePath"] =
+            "Optional theme background retained for starfighter artwork workflows.",
+        ["PrimaryColorHex"] = "Primary faction color used by strategy text and controls.",
+        ["SelectionColorHex"] = "Color applied to shared selection frames across faction windows.",
+        ["ActiveWindowTitleColorHex"] =
+            "Color applied to the shared title mask while a window has focus.",
+        ["InactiveWindowTitleColorHex"] =
+            "Color applied to the shared title mask while a window does not have focus.",
+        ["ActiveBuildingPaneColorHex"] = "Color applied to the active manufacturing-lane mask.",
+        ["InactiveBuildingPaneColorHex"] = "Color applied to inactive manufacturing-lane masks.",
+        ["PlanetMarkerColorHex"] = "Color applied to the faction's shared galaxy-map star masks.",
         ["FleetListIconImagePath"] =
             "The compact fleet image used in fleet lists and the idle bar.",
         ["FleetTileImagePath"] = "The larger fleet tile image.",
@@ -296,15 +333,44 @@ internal static class ContentPackEditorFieldMetadata
             return "Percentage of normal personnel travel time: 100 is unchanged; 50 halves the duration.";
         if (field.MemberName == "LeadershipBonusPercent")
             return "Percentage added to the officer's base leadership while the trait is active.";
+        if (field.Record.Kind == "Regiment" && field.MemberName == "InTransitSmallImagePath")
+            return "An optional effect drawn over this troop in the Defense window while it is in transit.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
-            return text;
+        {
+            string expected = GetExpectedImageDimensions(field);
+            return expected == null ? text : "Expected size: " + expected + ". " + text;
+        }
         if (field.MemberName.EndsWith("Variance", StringComparison.Ordinal))
             return "The random starting variation applied to this rating during world generation.";
-        if (field.IsMedia)
-            return field.IsMediaDirectory
-                ? "Select a content folder. Its supported files are discovered automatically, including inherited files."
-                : "A Pack/ or Application/ asset address. Use Import to copy a file into this pack.";
+        if (
+            field.Record.Kind == "FactionTheme"
+            && field.MediaType == ContentPackEditorMediaType.Image
+        )
+            return GetInterfaceImageDescription(field);
         return string.Empty;
+    }
+
+    /// <summary>
+    /// Describes the authored visual state when one image belongs to a named interface control.
+    /// </summary>
+    /// <param name="field">The faction image slot.</param>
+    /// <returns>Guidance for recognized control states.</returns>
+    private static string GetInterfaceImageDescription(ContentPackEditorField field)
+    {
+        string control = field.SectionPath.LastOrDefault();
+        if (string.IsNullOrWhiteSpace(control))
+            return string.Empty;
+        string state = field.MemberName switch
+        {
+            "UpImagePath" or "NormalImagePath" => "at rest",
+            "DownImagePath" or "PressedImagePath" => "while the control is pressed",
+            "HoverImagePath" => "while the pointer is over the control",
+            "ActiveImagePath" or "SelectedImagePath" => "when selected",
+            "InactiveImagePath" => "when unselected",
+            "DisabledImagePath" => "when the control is unavailable",
+            _ => null,
+        };
+        return state == null ? string.Empty : $"{control} artwork shown {state}.";
     }
 
     /// <summary>
@@ -318,7 +384,7 @@ internal static class ContentPackEditorFieldMetadata
         if (IsAIDecisionInterval(field))
             return "Decision interval (ticks)";
 
-        return field.MemberName switch
+        string caption = field.MemberName switch
         {
             "GalaxySizes" => "Galaxy sizes (all if empty)",
             "FacilityTypeIDs" => "Buildings",
@@ -333,6 +399,13 @@ internal static class ContentPackEditorFieldMetadata
             "RecruitingFactionInstanceIDs" => "Recruitable by",
             "ManufacturingFactionInstanceIDs" => "Buildable by",
             "GarrisonTroopTypeID" => "Garrison troop",
+            "ResourceProcessingPointsPerFacility" => "Maintenance per resource pair",
+            "UnattributedSubject" => "Subject without a reporter",
+            "UnattributedBody" => "Body without a reporter",
+            "PersonnelReturningTemplate" => "Personnel returning",
+            "PersonnelLostTemplate" => "Personnel lost",
+            "DetailListHeaderTemplate" => "Additional systems heading",
+            "DetailListItemTemplate" => "Additional system entry",
             "OfficerInstanceID" => "Officer",
             "PlanetTypeID" => "Planet",
             "DestinationTypeID" => "Destination",
@@ -351,8 +424,143 @@ internal static class ContentPackEditorFieldMetadata
             "NamePoolID" => "Pool ID",
             "FallbackNamePoolID" => "Fallback pool",
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
+            "BackgroundImagePath" => "Background override",
+            "PrimaryColorHex" => "Primary color",
+            "SelectionColorHex" => "Selection frames",
+            "ActiveWindowTitleColorHex" => "Window titles, active",
+            "InactiveWindowTitleColorHex" => "Window titles, inactive",
+            "ActiveBuildingPaneColorHex" => "Building pane, active",
+            "InactiveBuildingPaneColorHex" => "Building pane, inactive",
+            "PlanetMarkerColorHex" => "Galaxy star markers",
             _ => fallback,
         };
+        if (field.MediaType == ContentPackEditorMediaType.Image)
+        {
+            if (caption.EndsWith(" path", StringComparison.OrdinalIgnoreCase))
+                caption = caption[..^5];
+            string expected = GetExpectedImageDimensions(field);
+            if (expected != null)
+                caption += " (" + expected + ")";
+        }
+        return caption;
+    }
+
+    /// <summary>
+    /// Returns the established pixel dimensions for image fields with one fixed authored size.
+    /// </summary>
+    /// <param name="field">The image field being presented.</param>
+    /// <returns>The width and height label, or null when the layout intentionally accepts several sizes.</returns>
+    internal static string GetExpectedImageDimensions(ContentPackEditorField field)
+    {
+        if (field.MediaType != ContentPackEditorMediaType.Image)
+            return null;
+        string member = field.MemberName;
+        string kind = field.Record.Kind;
+        if (kind == "FactionTheme" && field.Group == nameof(FactionTheme.ArtworkDefaults))
+            return "1800 × 900";
+        if (ContentEditorUnitArtworkLayout.IsHeadquartersIcon(field.Record))
+            return
+                member is "DisplayImagePath" or "SmallDisplayImagePath" or "InTransitSmallImagePath"
+                ? "77 × 77"
+                : null;
+        if (member is "MessageImagePath" or "EncyclopediaImagePath")
+            return "1800 × 900";
+        if (member is "CapturedOverlayImagePath" or "InjuredImagePath")
+            return "275 × 113";
+        if (kind == "Officer")
+            return member switch
+            {
+                "BackgroundImagePath" => "1800 × 900",
+                "DisplayImagePath" => "360 × 360",
+                "SmallDisplayImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind == "SpecialForce")
+            return member switch
+            {
+                "DisplayImagePath" => "549 × 225",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
+                "InTransitImagePath" => "549 × 225",
+                _ => null,
+            };
+        if (kind == "Regiment")
+            return member switch
+            {
+                "DisplayImagePath" => "1373 × 563",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind == "Building")
+            return member switch
+            {
+                "DisplayImagePath" => "1373 × 563",
+                "SmallDisplayImagePath"
+                or "InTransitSmallImagePath"
+                    when field.Record.Element.Element("BuildingType")?.Value
+                        is "ConstructionFacility"
+                            or "TrainingFacility"
+                            or "Shipyard"
+                            or "Mine"
+                            or "Refinery" => "302 × 158",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" => "275 × 113",
+                _ => null,
+            };
+        if (kind is "CapitalShip" or "Starfighter")
+            return member switch
+            {
+                "BackgroundImagePath" => "1800 × 900",
+                "DisplayImagePath" => "1485 × 563",
+                "SmallDisplayImagePath" or "InTransitSmallImagePath" or "DamagedSmallImagePath" =>
+                    "297 × 113",
+                "BattleResultImagePath"
+                or "InTransitImagePath"
+                or "BattleResultInTransitImagePath"
+                or "DamagedImagePath"
+                or "BattleResultDamagedImagePath" => "549 × 225",
+                _ => null,
+            };
+        return member switch
+        {
+            "SavedGameSlotIconImagePath" => "117 × 86",
+            "FleetListIconImagePath" => "297 × 113",
+            "FleetListEnrouteIconImagePath" or "FleetListDamagedIconImagePath" => "275 × 113",
+            "FleetListSelectionImagePath" => "329 × 212",
+            "FleetDetailSelectionImagePath" => "513 × 167",
+            "FleetConstructionSmallImagePath" => "275 × 113",
+            "FleetConstructionLargeImagePath" => "545 × 221",
+            "FleetStarfightersBadgeImagePath"
+            or "FleetTroopsBadgeImagePath"
+            or "FleetPersonnelBadgeImagePath" => "68 × 50",
+            _ => null,
+        };
+    }
+
+    /// <summary>
+    /// Parses the established fixed output size for one image field.
+    /// </summary>
+    /// <param name="field">The image field whose authored output size is required.</param>
+    /// <param name="dimensions">Receives the parsed width and height.</param>
+    /// <returns>True when the field has one valid fixed output size.</returns>
+    internal static bool TryGetExpectedImageDimensions(
+        ContentPackEditorField field,
+        out Vector2Int dimensions
+    )
+    {
+        dimensions = default;
+        string expected = GetExpectedImageDimensions(field);
+        if (string.IsNullOrWhiteSpace(expected))
+            return false;
+        string[] values = expected.Split('×');
+        if (
+            values.Length != 2
+            || !int.TryParse(values[0].Trim(), out int width)
+            || !int.TryParse(values[1].Trim(), out int height)
+            || width <= 0
+            || height <= 0
+        )
+            return false;
+        dimensions = new Vector2Int(width, height);
+        return true;
     }
 
     /// <summary>

@@ -16,7 +16,6 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -363,6 +362,7 @@ public sealed class StrategyController
                 ?? Array.Empty<Planet>(),
             () => uiContext?.GetPlayerFactionInstanceID(),
             () => uiContext?.GetPlayerFactionTheme()?.StrategyMusic,
+            GetStrategyUIState,
             musicRandom.Next,
             audioManager.PlayDynamicPlaylist,
             audioManager.StopMusic
@@ -1721,21 +1721,23 @@ public sealed class StrategyController
                 gameManager.GetGameSpeed(),
                 StrategyHudController.GetUnacknowledgedMessageTypes(faction),
                 resourceBreakdown,
-                session
-                    .Game.GetPlayers()
-                    .Where(player => player.ControllerType == PlayerControllerType.Human)
-                    .Select(player => new StrategyHudPlayerSpeedSelection(
-                        player.DisplayName
-                            ?? session
-                                .Game.GetFactionByOwnerInstanceID(player.FactionID)
-                                ?.DisplayName
-                            ?? player.FactionID,
-                        player.RequestedGameSpeed ?? gameManager.GetGameSpeed(),
-                        player.FactionID,
-                        player.GameSpeedSelectionRevision,
-                        player.FactionID == faction.InstanceID,
-                        uiContext.GetTheme(player.FactionID).GetPrimaryColor()
-                    )),
+                session.Game.Metadata?.IsMultiplayer == true
+                    ? session
+                        .Game.GetPlayers()
+                        .Where(player => player.ControllerType == PlayerControllerType.Human)
+                        .Select(player => new StrategyHudPlayerSpeedSelection(
+                            player.DisplayName
+                                ?? session
+                                    .Game.GetFactionByOwnerInstanceID(player.FactionID)
+                                    ?.DisplayName
+                                ?? player.FactionID,
+                            player.RequestedGameSpeed ?? gameManager.GetGameSpeed(),
+                            player.FactionID,
+                            player.GameSpeedSelectionRevision,
+                            player.FactionID == faction.InstanceID,
+                            uiContext.GetTheme(player.FactionID).GetPrimaryColor()
+                        ))
+                    : null,
                 MultiplayerCoordinator.Instance?.IsMultiplayerGame == true
                 && !MultiplayerCoordinator.Instance.IsSynchronized
                     ? MultiplayerCoordinator.Instance.Status

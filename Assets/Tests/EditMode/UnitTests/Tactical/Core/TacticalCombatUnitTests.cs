@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Tactical
 
             Assert.AreEqual(100, second.Systems.Hull);
             Assert.AreEqual(0, second.Systems.GetDamage(TacticalShipSystem.Engines));
-            Assert.AreEqual(0, ((CapitalShip)combatant.GetUnit()).SystemDamage.Engines);
+            Assert.AreEqual(0, ((CapitalShip)combatant.Unit).SystemDamage.Engines);
             Assert.AreNotSame(first.Weapons, second.Weapons);
         }
 

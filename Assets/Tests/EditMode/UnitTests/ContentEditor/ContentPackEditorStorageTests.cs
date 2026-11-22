@@ -52,6 +52,11 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/theme.xml",
                 "<FactionTheme><StrategyAdvisor><AudioRoot>Pack/Advisor/Audio</AudioRoot><InvalidOrderRejected><AudioOptions><Path>existing</Path></AudioOptions></InvalidOrderRejected></StrategyAdvisor></FactionTheme>"
             );
+            string manifestPath = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifestPath);
+            definition.NeutralThemePath = "Data/theme.xml";
+            ContentDefinitionSerializer.Serialize(manifestPath, definition);
             WriteFixtureFile("Advisor/Audio/existing.wav", "fixture");
             string source = Path.Combine(
                 Directory.GetParent(contentRoot).FullName,
@@ -74,6 +79,197 @@ namespace Rebellion.Tests.ContentEditor
             Assert.DoesNotThrow(() => project.SetFieldValues(field, new[] { stored }));
         }
 
+        [TestCase("Pack/Assets/current.png")]
+        [TestCase("Pack/Assets/current")]
+        public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress(string address)
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, address);
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllText(source, "new image");
+
+            Assert.IsTrue(ContentPackEditorStorage.CanReplaceAsset(project, field));
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.AreEqual("new image", File.ReadAllText(target));
+            Assert.AreEqual(address, field.Value);
+        }
+
+        [Test]
+        public void ReadGeneratedLayers_ReplacedImage_IgnoresThePreviousRecipe()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 },
+                preservePrevious: true,
+                layerRecipe: "{}"
+            );
+            project.SetField(field, address);
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.png");
+            File.WriteAllBytes(source, new byte[] { 4, 5, 6 });
+
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.IsNull(ContentPackEditorStorage.ReadGeneratedLayers(project, field));
+        }
+
+        [Test]
+        public void ReplaceAsset_DifferentFileType_RejectsWithoutChangingCurrentFile()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            string target = Path.Combine(project.PackRootPath, "Assets", "current.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(target));
+            File.WriteAllText(target, "old image");
+            project.SetField(field, "Pack/Assets/current.png");
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "new.jpg");
+            File.WriteAllText(source, "new image");
+
+            Assert.Throws<ArgumentException>(() =>
+                ContentPackEditorStorage.ReplaceAsset(project, source, field)
+            );
+
+            Assert.AreEqual("old image", File.ReadAllText(target));
+        }
+
+        [Test]
+        public void WriteGeneratedPng_UnitOutput_UsesStablePackPathAndOverwritesIt()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1, 2, 3 }
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 4, 5 }
+            );
+
+            Assert.AreEqual(first, second);
+            StringAssert.StartsWith(
+                "Pack/Assets/Generated/starfighter/" + field.Record.ID.ToLowerInvariant() + "/",
+                first
+            );
+            StringAssert.EndsWith("/display.png", first);
+            CollectionAssert.AreEqual(
+                new byte[] { 4, 5 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+        }
+
+        [Test]
+        public void WriteGeneratedPng_LayerRecipe_ReopensWithTheSelectedArtworkVersion()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            const string firstRecipe = "{\"Version\":1,\"Seed\":8}";
+            const string nextRecipe = "{\"Version\":1,\"Seed\":9}";
+            byte[] image = { 1, 2, 3 };
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: firstRecipe
+            );
+            string next = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                image,
+                preservePrevious: true,
+                layerRecipe: nextRecipe
+            );
+            Assert.AreNotEqual(first, next);
+
+            project.SetField(field, first);
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            ContentPackEditorField saved = reopened
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "Starfighter" && record.ID == field.Record.ID)
+                .GetField("DamagedSmallImagePath");
+            Assert.AreEqual(
+                firstRecipe,
+                ContentPackEditorStorage.ReadGeneratedLayers(reopened, saved)
+            );
+        }
+
+        [Test]
+        public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
+            byte[] firstImage = { 1, 2, 3 };
+            byte[] nextImage = { 4, 5 };
+
+            string first = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                firstImage,
+                preservePrevious: true
+            );
+            string second = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                nextImage,
+                preservePrevious: true
+            );
+
+            Assert.AreNotEqual(first, second);
+            CollectionAssert.AreEqual(
+                firstImage,
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+            );
+            Assert.AreEqual(
+                first,
+                ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    firstImage,
+                    preservePrevious: true
+                )
+            );
+        }
+
         [Test]
         public void Create_DefaultLocation_UsesModsAndCanBeResolvedByTheGame()
         {
@@ -92,6 +288,117 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual(
                 Path.Combine(contentRoot, "Packs", "BasePack", "Data", "units.xml"),
                 resolver.ResolveFile("Pack/Data/units.xml")
+            );
+        }
+
+        [Test]
+        public void OpenFolder_UnreferencedSettingOverride_IgnoresAndPreservesTheFile()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            string unrelatedPath = Path.Combine(
+                project.PackRootPath,
+                "KelsFiles",
+                "Data",
+                "renamed.xml"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(unrelatedPath));
+            const string unrelated = "<Buildings Inherit=\"true\"><Building /></Buildings>";
+            File.WriteAllText(unrelatedPath, unrelated);
+
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            ContentPackEditorStorage.Save(reopened);
+
+            Assert.IsFalse(
+                reopened.Documents.Any(document =>
+                    string.Equals(
+                        document.TargetPath,
+                        unrelatedPath,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+                )
+            );
+            Assert.AreEqual(unrelated, File.ReadAllText(unrelatedPath));
+        }
+
+        [Test]
+        public void Create_ReferencedDefinitions_OpensTheirNestedDocuments()
+        {
+            string packRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            ContentPackDefinition definition =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(packRoot, "pack.xml")
+                );
+            definition.FactionPaths.Add("Definitions/faction.xml");
+            definition.ScenarioPaths.Add("Definitions/scenario.xml");
+            definition.Preloads.Add(
+                new ContentPreloadDefinition { ID = "strategy", Path = "Definitions/preload.xml" }
+            );
+            ContentDefinitionSerializer.Serialize(Path.Combine(packRoot, "pack.xml"), definition);
+            Directory.CreateDirectory(Path.Combine(packRoot, "Definitions"));
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "faction.xml"),
+                new ContentFactionDefinition
+                {
+                    ID = "faction",
+                    FactionDataPath = "Nested/faction-data.xml",
+                    CapitalShipsPath = "Nested/capital-ships.xml",
+                    StarfightersPath = "Nested/starfighters.xml",
+                    RegimentsPath = "Nested/regiments.xml",
+                    SpecialForcesPath = "Nested/special-forces.xml",
+                    OfficersPath = "Nested/officers.xml",
+                    EncyclopediaEntriesPath = "Nested/encyclopedia.xml",
+                    ThemePath = "Nested/theme.xml",
+                }
+            );
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "scenario.xml"),
+                new ContentScenarioDefinition
+                {
+                    ID = "standard",
+                    GenerationConfigPath = "Nested/generation.xml",
+                }
+            );
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(packRoot, "Definitions", "preload.xml"),
+                new ContentPreloadManifest()
+            );
+            string[] nestedPaths =
+            {
+                "faction-data.xml",
+                "capital-ships.xml",
+                "starfighters.xml",
+                "regiments.xml",
+                "special-forces.xml",
+                "officers.xml",
+                "encyclopedia.xml",
+                "theme.xml",
+                "generation.xml",
+            };
+            foreach (string path in nestedPaths)
+                WriteFixtureFile("Nested/" + path, "<Fixture />");
+
+            ContentPackEditorProject project = CreateWorkingProject();
+
+            CollectionAssert.IsSubsetOf(
+                new[]
+                {
+                    "Pack/Definitions/faction.xml",
+                    "Pack/Definitions/scenario.xml",
+                    "Pack/Definitions/preload.xml",
+                    "Pack/Nested/faction-data.xml",
+                    "Pack/Nested/capital-ships.xml",
+                    "Pack/Nested/starfighters.xml",
+                    "Pack/Nested/regiments.xml",
+                    "Pack/Nested/special-forces.xml",
+                    "Pack/Nested/officers.xml",
+                    "Pack/Nested/encyclopedia.xml",
+                    "Pack/Nested/theme.xml",
+                    "Pack/Nested/generation.xml",
+                },
+                project.Documents.Select(document => document.Address)
             );
         }
 
@@ -117,6 +424,8 @@ namespace Rebellion.Tests.ContentEditor
                     ID = "another-base",
                     Version = "1.0.0",
                     DisplayName = "Another base",
+                    PlanetSectorsPath = "Data/new.xml",
+                    BuildingsPath = "Data/units.xml",
                 }
             );
             File.WriteAllText(
@@ -129,10 +438,15 @@ namespace Rebellion.Tests.ContentEditor
             );
             project.SetDocumentText(
                 manifest,
-                manifest.Text.Replace(
-                    "<BasePackID>base-pack</BasePackID>",
-                    "<BasePackID>another-base</BasePackID>"
-                )
+                manifest
+                    .Text.Replace(
+                        "<BasePackID>base-pack</BasePackID>",
+                        "<BasePackID>another-base</BasePackID>"
+                    )
+                    .Replace(
+                        "<PlanetSectorsPath>Data/units.xml</PlanetSectorsPath>",
+                        "<PlanetSectorsPath>Data/new.xml</PlanetSectorsPath>"
+                    )
             );
 
             ContentPackEditorStorage.Save(project);

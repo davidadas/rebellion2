@@ -388,6 +388,29 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void AlignContentTop_ContentPositionWithinScrollRange_AlignsPositionWithViewportTop()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+
+            _scrollArea.AlignContentTop(100);
+
+            Assert.AreEqual(100f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(1f - 100f / 150f, _scrollbar.value, 0.01f);
+        }
+
+        [Test]
+        public void AlignContentTop_ContentPositionNearEnd_AddsEnoughTrailingScrollExtent()
+        {
+            _scrollArea.SetContentHeight(200, 10, true);
+
+            _scrollArea.AlignContentTop(180);
+
+            Assert.AreEqual(230f, _contentRoot.rect.height, 0.01f);
+            Assert.AreEqual(180f, _contentRoot.anchoredPosition.y, 0.01f);
+            Assert.AreEqual(0f, _scrollbar.value, 0.01f);
+        }
+
+        [Test]
         public void RelayDragEvents_SubscribedHandlers_ReceivePointerEvents()
         {
             PointerEventData eventData = new PointerEventData(null);

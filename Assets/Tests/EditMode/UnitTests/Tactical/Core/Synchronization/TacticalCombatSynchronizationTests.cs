@@ -13,6 +13,7 @@ using Rebellion.Tactical.Synchronization;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using JsonUtility = global::UnityEngine.JsonUtility;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -820,7 +821,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach
             );
         }
 
@@ -941,7 +942,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 random,
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach
             );
         }
 

@@ -2,7 +2,6 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical;
-using Rebellion.Tactical.Rendering;
 using UnityEngine;
 
 namespace Rebellion.UI.SceneUI.TacticalCombat

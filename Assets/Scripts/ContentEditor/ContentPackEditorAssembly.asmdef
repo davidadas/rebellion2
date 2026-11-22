@@ -8,8 +8,8 @@
         "Rebellion.Content",
         "Rebellion.Generation",
         "Rebellion.Sessions",
-        "Rebellion.Tactical.Core",
         "Rebellion.Gameplay",
+        "Rebellion.Tactical.Core",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Rebellion.Util"

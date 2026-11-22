@@ -11,7 +11,8 @@ public sealed class RawImagePressVisual
     : MonoBehaviour,
         IPointerDownHandler,
         IPointerUpHandler,
-        IPointerExitHandler
+        IPointerExitHandler,
+        IDragHandler
 {
     [SerializeField]
     private RawImage image;
@@ -26,6 +27,16 @@ public sealed class RawImagePressVisual
     private Texture downTexture;
 
     private bool pressed;
+
+    /// <summary>
+    /// Gets the texture displayed while the control is released.
+    /// </summary>
+    internal Texture ReleasedTexture => upTexture;
+
+    /// <summary>
+    /// Gets the texture displayed while the control is pressed.
+    /// </summary>
+    public Texture PressedTexture => downTexture;
 
     /// <summary>
     /// Raised when the control enters its pressed state.
@@ -119,6 +130,12 @@ public sealed class RawImagePressVisual
     {
         Release();
     }
+
+    /// <summary>
+    /// Keeps a held interactive control responsible for pointer movement over its parent surface.
+    /// </summary>
+    /// <param name="eventData">The pointer event.</param>
+    public void OnDrag(PointerEventData eventData) { }
 
     /// <summary>
     /// Determines whether the current control can display a pressed state.

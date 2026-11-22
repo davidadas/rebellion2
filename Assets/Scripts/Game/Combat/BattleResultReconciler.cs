@@ -5,11 +5,15 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.Combat
 {
     /// <summary>
-    /// Copies the campaign-relevant result of a detached battle unit back to its stable source.
-    /// Scene placement, orders, and other campaign relationships remain owned by the source graph.
+    /// Copies campaign-relevant results from a detached battle unit back to its stable source.
     /// </summary>
     public static class BattleResultReconciler
     {
+        /// <summary>
+        /// Applies damage and recovery results without replacing the campaign scene node.
+        /// </summary>
+        /// <param name="combatant">The independently simulated battle unit.</param>
+        /// <param name="sourceUnit">The stable campaign unit that produced it.</param>
         public static void Apply(CombatUnit combatant, BaseSceneNode sourceUnit)
         {
             if (combatant == null)
@@ -28,7 +32,7 @@ namespace Rebellion.Game.Combat
                     nameof(sourceUnit)
                 );
 
-            switch (combatant.GetUnit(), sourceUnit)
+            switch (combatant.Unit, sourceUnit)
             {
                 case (CapitalShip battleShip, CapitalShip sourceShip):
                     int repairDueTick = sourceShip.SystemDamage?.RepairDueTick ?? 0;

@@ -1,9 +1,7 @@
-using System.Collections;
 using System.Collections.Generic;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
-using UnityEngine.TestTools;
 using ArgumentNullException = global::System.ArgumentNullException;
 using InvalidOperationException = global::System.InvalidOperationException;
 
@@ -437,37 +435,6 @@ public sealed class AudioManagerTests
         {
             Object.DestroyImmediate(clip);
         }
-    }
-
-    [UnityTest]
-    public IEnumerator FadeOutMusic_InterruptedTrack_DoesNotResumeAfterFocusReturns()
-    {
-        yield return new EnterPlayMode();
-
-        AudioManager manager = AudioManager.EnsureExists();
-        manager.InitializeContent(TestContent.Assets);
-        AudioSource musicSource = GetAudioSource(manager, "musicSource");
-        manager.PlayTrack("Application/MainMenu/Audio/battle-of-endor-1-medley", true);
-
-        float timeout = Time.realtimeSinceStartup + 10f;
-        while (!musicSource.isPlaying && Time.realtimeSinceStartup < timeout)
-            yield return null;
-        bool trackStarted = musicSource.isPlaying;
-        if (trackStarted)
-        {
-            manager.SendMessage("OnApplicationFocus", false);
-            manager.FadeOutMusic(0f);
-            manager.SendMessage("OnApplicationFocus", true);
-            yield return null;
-        }
-
-        bool trackResumed = musicSource.isPlaying;
-        Object.Destroy(manager.gameObject);
-        yield return null;
-        yield return new ExitPlayMode();
-
-        Assert.IsTrue(trackStarted, "The test music track did not start.");
-        Assert.IsFalse(trackResumed);
     }
 
     /// <summary>

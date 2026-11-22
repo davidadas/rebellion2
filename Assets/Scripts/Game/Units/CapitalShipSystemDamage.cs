@@ -1,10 +1,10 @@
+using System;
 using Rebellion.Util.Serialization;
-using ArgumentOutOfRangeException = global::System.ArgumentOutOfRangeException;
 
 namespace Rebellion.Game.Units
 {
     /// <summary>
-    /// Stores the damaged components that remain on a capital ship between battles.
+    /// Stores damaged capital-ship components that persist between battles.
     /// </summary>
     [PersistableObject]
     public sealed class CapitalShipSystemDamage
@@ -23,14 +23,9 @@ namespace Rebellion.Game.Units
             Shields + Weapons + TractorBeam + Engines + PrimaryHyperdrive + BackupHyperdrive;
 
         /// <summary>
-        /// Creates an undamaged component state for a newly manufactured or loaded ship.
-        /// </summary>
-        public CapitalShipSystemDamage() { }
-
-        /// <summary>
         /// Copies the component levels without sharing mutable campaign state.
         /// </summary>
-        /// <returns>An independent component damage record.</returns>
+        /// <returns>An independent component-damage record.</returns>
         public CapitalShipSystemDamage CreateCopy()
         {
             return new CapitalShipSystemDamage
@@ -49,7 +44,7 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Repairs one component selected in proportion to its remaining damage levels.
         /// </summary>
-        /// <param name="index">A zero-based selection below the total number of damage levels.</param>
+        /// <param name="index">A zero-based selection below the total damage level.</param>
         internal void RepairComponent(int index)
         {
             if (index < 0 || index >= Total)

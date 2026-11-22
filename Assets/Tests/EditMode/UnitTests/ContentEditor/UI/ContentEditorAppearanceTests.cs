@@ -131,7 +131,10 @@ namespace Rebellion.Tests.ContentEditor.UI
         )
         {
             appearance.SetMode(mode);
-            Scrollbar[] bars = appearance.GetComponentsInChildren<Scrollbar>(true);
+            Scrollbar[] bars = appearance
+                .GetComponentsInChildren<Scrollbar>(true)
+                .Where(IsOutsideArtworkPreview)
+                .ToArray();
             Assert.IsNotEmpty(bars);
             foreach (Scrollbar bar in bars)
             {
@@ -179,10 +182,20 @@ namespace Rebellion.Tests.ContentEditor.UI
         [Test]
         public void AuthoredTextInputs_FirstPointerFocus_PlacesTheCaretWithoutSelectingAll()
         {
-            TMP_InputField[] inputs = view.GetComponentsInChildren<TMP_InputField>(true);
+            TMP_InputField[] inputs = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Where(IsOutsideArtworkPreview)
+                .ToArray();
 
             Assert.IsNotEmpty(inputs);
             Assert.IsTrue(inputs.All(input => !input.onFocusSelectAll));
         }
+
+        /// <summary>
+        /// Checks whether the component belongs to the editor chrome.
+        /// </summary>
+        /// <param name="component">The component to inspect.</param>
+        /// <returns>True when the component is outside the artwork preview.</returns>
+        private static bool IsOutsideArtworkPreview(Component component) =>
+            component.GetComponentInParent<ContentEditorArtworkWindowPreview>(true) == null;
     }
 }

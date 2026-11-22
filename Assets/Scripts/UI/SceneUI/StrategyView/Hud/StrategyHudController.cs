@@ -32,7 +32,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
     private IStrategyHudActions actions;
     private StrategyHudView view;
     private StrategyHudPlayerSpeedSelection pendingSpeedRequest;
-    private TickSpeed localSpeedSelection;
+    private TickSpeed? localSpeedSelection;
     private IReadOnlyList<StrategyHudPlayerSpeedSelection> playerSpeedSelections =
         Array.Empty<StrategyHudPlayerSpeedSelection>();
 
@@ -138,8 +138,7 @@ public sealed class StrategyHudController : IContextMenuReceiver
             selection.Value.SetColors(
                 GetSpeedSelectionColors(selection.Key, playerSpeedSelections)
             );
-        localSpeedSelection =
-            data.PlayerSpeeds.FirstOrDefault(player => player.IsLocal)?.Speed ?? data.Speed;
+        localSpeedSelection = data.PlayerSpeeds.FirstOrDefault(player => player.IsLocal)?.Speed;
         StrategyHudViewData viewData = CreateViewData(data, theme);
         targetView.Render(viewData);
         advisorController.Render(theme?.StrategyAdvisor);

@@ -33,7 +33,7 @@ namespace Rebellion.Gameplay
             _fighterDestinations;
 
         /// <summary>
-        /// Gets the withdrawing carrier reserved for each dependent fighter.
+        /// Gets the withdrawing carrier reserved for each recovered fighter.
         /// </summary>
         internal IReadOnlyDictionary<Starfighter, CapitalShip> FighterRecoveryAssignments =>
             _fighterRecoveryAssignments;
@@ -85,7 +85,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Adds a dependent fighter and the withdrawing carrier reserved for it.
+        /// Adds a recovered fighter and the withdrawing carrier reserved for it.
         /// </summary>
         /// <param name="fighter">The fighter travelling aboard a carrier.</param>
         /// <param name="carrier">The carrier receiving the fighter.</param>
@@ -171,7 +171,13 @@ namespace Rebellion.Gameplay
             );
 
             AddFleetDestinations(plan, fleets, planet, eligibleShips);
-            AddFighterDestinations(plan, planet, participatingFighters, eligibleFighters);
+            AddFighterDestinations(
+                plan,
+                planet,
+                eligibleShips,
+                participatingFighters,
+                eligibleFighters
+            );
             return plan;
         }
 
@@ -212,7 +218,13 @@ namespace Rebellion.Gameplay
                 else
                     independent.Add(recovery.Fighter);
             }
-            AddFighterDestinations(plan, planet, independent, independent);
+            AddFighterDestinations(
+                plan,
+                planet,
+                Array.Empty<CapitalShip>(),
+                independent,
+                independent
+            );
             return plan;
         }
 
@@ -263,21 +275,34 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Reserves independent fighter destinations and remaining carrier bays.
+        /// Recovers fighters into withdrawing carrier bays before reserving independent travel.
         /// </summary>
         /// <param name="plan">The plan receiving fighter assignments.</param>
         /// <param name="planet">The combat planet.</param>
+        /// <param name="eligibleShips">The eligible carriers in stable participation order.</param>
         /// <param name="participatingFighters">Every active fighter participating in combat.</param>
         /// <param name="eligibleFighters">The fighters eligible to complete withdrawal.</param>
         private void AddFighterDestinations(
             SpaceCombatWithdrawalPlan plan,
             Planet planet,
+            IReadOnlyList<CapitalShip> eligibleShips,
             IReadOnlyList<Starfighter> participatingFighters,
             IReadOnlyList<Starfighter> eligibleFighters
         )
         {
+            List<Starfighter> recoveryOrder = (participatingFighters ?? Array.Empty<Starfighter>())
+                .OrderBy(fighter => fighter.Hyperdrive > 0 ? 1 : 0)
+                .ToList();
+            Dictionary<Starfighter, CapitalShip> recoveryAssignments = GetRecoveryAssignments(
+                eligibleShips.Where(plan.Contains),
+                recoveryOrder,
+                (eligibleFighters ?? Array.Empty<Starfighter>()).ToHashSet()
+            );
+            foreach (KeyValuePair<Starfighter, CapitalShip> assignment in recoveryAssignments)
+                plan.AddFighterRecovery(assignment.Key, assignment.Value);
+
             List<Starfighter> mobileFighters = (eligibleFighters ?? Array.Empty<Starfighter>())
-                .Where(fighter => fighter.Hyperdrive > 0)
+                .Where(fighter => fighter.Hyperdrive > 0 && !plan.Contains(fighter))
                 .ToList();
             IReadOnlyList<ContainerNode> destinations =
                 mobileFighters.Count == 0
@@ -301,22 +326,6 @@ namespace Rebellion.Gameplay
                 Reserve(destination, fighter, reservations);
                 plan.AddFighterDestination(fighter, destination);
             }
-
-            HashSet<Starfighter> carrierDependentFighters = (
-                eligibleFighters ?? Array.Empty<Starfighter>()
-            )
-                .Where(fighter => !plan.Contains(fighter))
-                .ToHashSet();
-            List<Starfighter> recoveryOrder = (participatingFighters ?? Array.Empty<Starfighter>())
-                .OrderBy(fighter => fighter.Hyperdrive > 0 ? 1 : 0)
-                .ToList();
-            Dictionary<Starfighter, CapitalShip> recoveryAssignments = GetRecoveryAssignments(
-                plan.WithdrawnUnits.OfType<CapitalShip>(),
-                recoveryOrder,
-                carrierDependentFighters
-            );
-            foreach (KeyValuePair<Starfighter, CapitalShip> assignment in recoveryAssignments)
-                plan.AddFighterRecovery(assignment.Key, assignment.Value);
         }
 
         /// <summary>
@@ -355,16 +364,16 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Assigns surviving carrier-dependent fighters to withdrawing carriers.
+        /// Reserves existing dependent squadrons, then assigns remaining fighters to available bays.
         /// </summary>
-        /// <param name="carriers">The capital ships that successfully withdraw.</param>
-        /// <param name="participatingFighters">Every active fighter that entered combat.</param>
-        /// <param name="carrierDependentFighters">Fighters eligible to leave aboard a carrier.</param>
-        /// <returns>Carrier assignments for every recoverable dependent fighter.</returns>
+        /// <param name="carriers">The surviving carriers eligible to receive fighters.</param>
+        /// <param name="participatingFighters">The fighters whose carrier assignments are being resolved.</param>
+        /// <param name="recoverableFighters">Fighters eligible for carrier recovery.</param>
+        /// <returns>Carrier assignments for every fighter that fits in the reserved bays.</returns>
         internal static Dictionary<Starfighter, CapitalShip> GetRecoveryAssignments(
             IEnumerable<CapitalShip> carriers,
             IReadOnlyList<Starfighter> participatingFighters,
-            ISet<Starfighter> carrierDependentFighters
+            ISet<Starfighter> recoverableFighters
         )
         {
             List<CapitalShip> availableCarriers = (carriers ?? Enumerable.Empty<CapitalShip>())
@@ -377,7 +386,7 @@ namespace Rebellion.Gameplay
                     GetAvailableRecoveryCapacity(
                         carrier,
                         participatingFighters,
-                        carrierDependentFighters
+                        recoverableFighters
                     )
             );
             Dictionary<Starfighter, CapitalShip> assignments =
@@ -388,7 +397,10 @@ namespace Rebellion.Gameplay
                 foreach (
                     Starfighter fighter in carrier
                         .GetChildren<Starfighter>()
-                        .Where(fighter => carrierDependentFighters?.Contains(fighter) == true)
+                        .Where(fighter =>
+                            fighter.Hyperdrive <= 0
+                            && recoverableFighters?.Contains(fighter) == true
+                        )
                 )
                     assignments[fighter] = carrier;
             }
@@ -397,7 +409,7 @@ namespace Rebellion.Gameplay
                 Starfighter fighter in (participatingFighters ?? Array.Empty<Starfighter>()).Where(
                     fighter =>
                         fighter != null
-                        && carrierDependentFighters?.Contains(fighter) == true
+                        && recoverableFighters?.Contains(fighter) == true
                         && !assignments.ContainsKey(fighter)
                 )
             )
@@ -479,22 +491,24 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Calculates bays available after non-travelling participants are removed.
+        /// Calculates free bays after mobile and lost participants release their previous slots.
         /// </summary>
         /// <param name="carrier">The carrier receiving displaced fighters.</param>
-        /// <param name="participatingFighters">Every active fighter that entered combat.</param>
-        /// <param name="carrierDependentFighters">Fighters resolved to remain aboard a carrier.</param>
+        /// <param name="participatingFighters">The fighters whose previous carrier bays may be released.</param>
+        /// <param name="recoverableFighters">Fighters eligible for carrier recovery.</param>
         /// <returns>The number of bays available for displaced fighters.</returns>
         private static int GetAvailableRecoveryCapacity(
             CapitalShip carrier,
             IReadOnlyList<Starfighter> participatingFighters,
-            ISet<Starfighter> carrierDependentFighters
+            ISet<Starfighter> recoverableFighters
         )
         {
             int releasedCapacity = (participatingFighters ?? Array.Empty<Starfighter>()).Count(
                 fighter =>
                     ReferenceEquals(fighter?.GetParentOfType<CapitalShip>(), carrier)
-                    && !(carrierDependentFighters?.Contains(fighter) ?? false)
+                    && (
+                        fighter.Hyperdrive > 0 || !(recoverableFighters?.Contains(fighter) ?? false)
+                    )
             );
             return Math.Max(carrier.GetExcessStarfighterCapacity() + releasedCapacity, 0);
         }

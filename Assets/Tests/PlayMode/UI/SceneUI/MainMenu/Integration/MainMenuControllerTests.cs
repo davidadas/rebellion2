@@ -95,6 +95,39 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
         }
 
         [Test]
+        public void MultiplayerRequested_SignedOut_ShowsSignInPromptAndBrowserGuidance()
+        {
+            _settings.AcceptAgreement(_documents.Agreement);
+            _settings.Load();
+
+            _multiplayer.onClick.Invoke();
+
+            MultiplayerMenuOverlay overlay = GetMultiplayerOverlay();
+            ConfirmationDialogView confirmation = _view
+                .OptionsWindowManager.Windows.Select(window =>
+                    window.GetComponentInChildren<ConfirmationDialogView>(true)
+                )
+                .Single(dialog => dialog != null);
+            Assert.AreEqual(
+                "You are not signed in. Sign in now to play online?",
+                confirmation
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Single(text => text.name == "MessageTextField")
+                    .text
+            );
+            Assert.IsTrue(
+                overlay
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Any(text => text.text == "Sign in to play online.")
+            );
+            Assert.IsFalse(
+                overlay
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Any(text => text.text == "No games found.")
+            );
+        }
+
+        [Test]
         public void MultiplayerRequested_ChangedAgreement_RequiresAcceptanceAgain()
         {
             _settings.AcceptAgreement(
@@ -119,7 +152,15 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
             _multiplayer.onClick.Invoke();
             AssertMultiplayerOpen();
 
-            Assert.IsTrue(_gameObject.GetComponentInChildren<MainMenuController>().TryCancel());
+            MainMenuController controller =
+                _gameObject.GetComponentInChildren<MainMenuController>();
+            if (
+                _view.OptionsWindowManager.Windows.Any(window =>
+                    window.GetComponentInChildren<ConfirmationDialogView>(true) != null
+                )
+            )
+                Assert.IsTrue(controller.TryCancel());
+            Assert.IsTrue(controller.TryCancel());
             Assert.DoesNotThrow(MultiplayerCoordinator.Instance.Disconnect);
             yield return null;
 
@@ -251,12 +292,20 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
         /// </summary>
         private void AssertMultiplayerOpen()
         {
-            Assert.AreEqual(1, _view.OptionsWindowManager.Windows.Count);
-            Assert.IsNotNull(
-                _view
-                    .OptionsWindowManager.Windows[0]
-                    .GetComponentInChildren<MultiplayerMenuOverlay>(true)
-            );
+            Assert.IsNotNull(GetMultiplayerOverlay());
+        }
+
+        /// <summary>
+        /// Returns the multiplayer overlay hosted by the menu's current window stack.
+        /// </summary>
+        /// <returns>The open multiplayer overlay.</returns>
+        private MultiplayerMenuOverlay GetMultiplayerOverlay()
+        {
+            return _view
+                .OptionsWindowManager.Windows.Select(window =>
+                    window.GetComponentInChildren<MultiplayerMenuOverlay>(true)
+                )
+                .Single(overlay => overlay != null);
         }
 
         /// <summary>

@@ -420,7 +420,7 @@ namespace Rebellion.Gameplay
                     ? CombatSide.Attacker
                     : CombatSide.Defender
             );
-            _game.SetActiveBattle(battle);
+            _game.ActiveBattle = battle;
             return session;
         }
 
@@ -466,6 +466,9 @@ namespace Rebellion.Gameplay
         /// Preserves the tactical entry rule that any completed local generator protecting the
         /// station type shields the planet destroyer, independently of campaign blockade ownership.
         /// </summary>
+        /// <param name="ship">The planet-destroying ship entering combat.</param>
+        /// <param name="planet">The encounter planet whose protection is inspected.</param>
+        /// <returns>Whether a completed local generator protects the ship type.</returns>
         private static bool HasPlanetaryProtection(CapitalShip ship, Planet planet)
         {
             if (ship?.CanDestroyPlanets != true)

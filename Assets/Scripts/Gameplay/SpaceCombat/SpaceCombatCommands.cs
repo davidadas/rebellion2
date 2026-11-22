@@ -173,7 +173,7 @@ namespace Rebellion.Gameplay
                     "Only an unstarted tactical encounter can be released."
                 );
             _tacticalCombat = null;
-            _game.SetActiveBattle(null);
+            _game.ActiveBattle = null;
             _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;
@@ -340,7 +340,7 @@ namespace Rebellion.Gameplay
             ClearCombatFlags(decision);
             _pendingDecision = null;
             _tacticalCombat = null;
-            _game.SetActiveBattle(null);
+            _game.ActiveBattle = null;
             _tacticalBattleID = null;
             _tacticalAttackingUnits = null;
             _tacticalDefendingUnits = null;
@@ -1063,7 +1063,7 @@ namespace Rebellion.Gameplay
                 _movement.TryRequestMove(assignment.Key, assignment.Value);
             }
 
-            _withdrawalResolver.ApplyFighterRecovery(plan);
+            _withdrawalResolver.ApplyFighterRecovery(plan.FighterRecoveryAssignments);
         }
 
         /// <summary>
@@ -1207,11 +1207,11 @@ namespace Rebellion.Gameplay
                     > _game
                         .GetFactions()
                         .FindIndex(faction => faction.InstanceID == defenderOwnerInstanceId),
-                attackerRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                attackerUsesRetreatThreshold: ShouldUseRetreatThreshold(
                     attackerOwnerInstanceId,
                     defenderOwnerInstanceId
                 ),
-                defenderRetreatStrengthRatio: GetAutomaticRetreatStrengthRatio(
+                defenderUsesRetreatThreshold: ShouldUseRetreatThreshold(
                     defenderOwnerInstanceId,
                     attackerOwnerInstanceId
                 )
@@ -1252,23 +1252,19 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects the automatic retreat threshold for a battle participant.
+        /// Determines whether relative combat strength may trigger a participant's retreat.
         /// </summary>
         /// <param name="ownerInstanceID">The participant's faction.</param>
         /// <param name="opponentInstanceID">The opposing faction.</param>
-        /// <returns>Zero for a human facing AI, or null to use the configured threshold.</returns>
-        private double? GetAutomaticRetreatStrengthRatio(
-            string ownerInstanceID,
-            string opponentInstanceID
-        )
+        /// <returns>False for a human facing AI; true otherwise.</returns>
+        private bool ShouldUseRetreatThreshold(string ownerInstanceID, string opponentInstanceID)
         {
-            return
+            return !(
                 _game.GetFactionPlayer(ownerInstanceID)?.ControllerType
                     == PlayerControllerType.Human
                 && _game.GetFactionPlayer(opponentInstanceID)?.ControllerType
                     != PlayerControllerType.Human
-                ? 0
-                : null;
+            );
         }
 
         /// <summary>
@@ -1683,33 +1679,18 @@ namespace Rebellion.Gameplay
             List<CapitalShip> survivingCarriers = participatingShips
                 .Where(ship => !destroyedCarriers.Contains(ship) && ship.StarfighterCapacity > 0)
                 .ToList();
-            List<Starfighter> existingFighters = survivingCarriers
-                .SelectMany(ship => ship.GetChildren<Starfighter>())
-                .Where(SpaceCombatQueries.IsActiveStarfighter)
-                .Distinct()
-                .ToList();
-            List<Starfighter> recoveryOrder = existingFighters
-                .Concat(displacedFighters)
-                .Distinct()
-                .ToList();
-            HashSet<Starfighter> fightersRequiringCapacity = recoveryOrder.ToHashSet();
             Dictionary<Starfighter, CapitalShip> recoveryAssignments =
                 SpaceCombatWithdrawalPlanner.GetRecoveryAssignments(
                     survivingCarriers,
-                    recoveryOrder,
-                    fightersRequiringCapacity
+                    displacedFighters,
+                    displacedFighters.ToHashSet()
                 );
 
+            _withdrawalResolver.ApplyFighterRecovery(recoveryAssignments);
             foreach (Starfighter fighter in displacedFighters)
             {
-                if (
-                    recoveryAssignments.TryGetValue(fighter, out CapitalShip recoveryCarrier)
-                    && recoveryCarrier != null
-                )
-                {
-                    _game.MoveNode(fighter, recoveryCarrier);
+                if (recoveryAssignments.ContainsKey(fighter))
                     continue;
-                }
 
                 if (
                     fighter.Hyperdrive > 0

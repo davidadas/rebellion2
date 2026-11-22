@@ -130,7 +130,7 @@ namespace Rebellion.Tactical
         )
         {
             Combatant = combatant ?? throw new ArgumentNullException(nameof(combatant));
-            BaseSceneNode battleUnit = combatant.GetUnit();
+            BaseSceneNode battleUnit = combatant.Unit;
             if (battleUnit is not CapitalShip && battleUnit is not Starfighter)
                 throw new ArgumentException(
                     "The combatant must contain a capital ship or starfighter copy.",

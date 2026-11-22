@@ -595,6 +595,51 @@ public static class MenuControlPrefabBuilder
         viewportImage.raycastTarget = true;
         viewportObject.GetComponent<Mask>().showMaskGraphic = false;
 
+        GameObject scrollbarObject = new GameObject(
+            "Scrollbar",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image),
+            typeof(Scrollbar)
+        );
+        scrollbarObject.transform.SetParent(template, false);
+        RectTransform scrollbarRect = (RectTransform)scrollbarObject.transform;
+        scrollbarRect.anchorMin = Vector2.right;
+        scrollbarRect.anchorMax = Vector2.one;
+        scrollbarRect.pivot = Vector2.one;
+        scrollbarRect.offsetMin = new Vector2(-14, 2);
+        scrollbarRect.offsetMax = new Vector2(-2, -2);
+        Image scrollbarTrack = scrollbarObject.GetComponent<Image>();
+        scrollbarTrack.color = new Color(0.075f, 0.102f, 0.145f, 1);
+        scrollbarTrack.raycastTarget = true;
+
+        GameObject slidingAreaObject = new GameObject("Sliding Area", typeof(RectTransform));
+        slidingAreaObject.transform.SetParent(scrollbarRect, false);
+        RectTransform slidingArea = (RectTransform)slidingAreaObject.transform;
+        slidingArea.anchorMin = Vector2.zero;
+        slidingArea.anchorMax = Vector2.one;
+        slidingArea.offsetMin = new Vector2(2, 2);
+        slidingArea.offsetMax = new Vector2(-2, -2);
+
+        Image scrollbarHandle = new GameObject(
+            "Handle",
+            typeof(RectTransform),
+            typeof(CanvasRenderer),
+            typeof(Image)
+        ).GetComponent<Image>();
+        scrollbarHandle.transform.SetParent(slidingArea, false);
+        scrollbarHandle.rectTransform.anchorMin = Vector2.zero;
+        scrollbarHandle.rectTransform.anchorMax = Vector2.one;
+        scrollbarHandle.rectTransform.offsetMin = Vector2.zero;
+        scrollbarHandle.rectTransform.offsetMax = Vector2.zero;
+        scrollbarHandle.color = accent;
+        scrollbarHandle.raycastTarget = true;
+
+        Scrollbar scrollbar = scrollbarObject.GetComponent<Scrollbar>();
+        scrollbar.handleRect = scrollbarHandle.rectTransform;
+        scrollbar.targetGraphic = scrollbarHandle;
+        scrollbar.direction = Scrollbar.Direction.BottomToTop;
+
         GameObject contentObject = new GameObject("Content", typeof(RectTransform));
         contentObject.transform.SetParent(viewport, false);
         RectTransform content = contentObject.GetComponent<RectTransform>();
@@ -665,6 +710,9 @@ public static class MenuControlPrefabBuilder
 
         scrollRect.viewport = viewport;
         scrollRect.content = content;
+        scrollRect.verticalScrollbar = scrollbar;
+        scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+        scrollbarObject.SetActive(false);
         dropdown.template = template;
         dropdown.itemText = itemLabel;
         dropdown.options.Clear();

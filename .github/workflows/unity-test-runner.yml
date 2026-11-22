@@ -246,7 +246,7 @@ jobs:
           customImage: rebellion2-unity-test:vulkan
           customParameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
           coverageEnabled: true
-          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.Util,+Rebellion.Combat.Contracts,+Rebellion.Tactical.Contracts,+Rebellion.Tactical.Core,+Rebellion.Tactical.Runtime,+Rebellion.Networking.Transport"
+          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
           checkName: Test results
           cliVersion: v0.1.65
 
@@ -310,7 +310,29 @@ jobs:
       - name: Check compiled architecture
         run: |
           set -euo pipefail
-          test -f Library/ScriptAssemblies/GameAssembly.dll
+          if [ -f Assets/Scripts/Rebellion.App.asmdef ]; then
+            runtime_assemblies=(
+              Rebellion.AI
+              Rebellion.Analytics
+              Rebellion.App
+              Rebellion.Content
+              Rebellion.Game
+              Rebellion.Gameplay
+              Rebellion.Generation
+              Rebellion.Multiplayer
+              Rebellion.Networking.Transport
+              Rebellion.Saves
+              Rebellion.SceneGraph
+              Rebellion.Sessions
+              Rebellion.UserSettings
+              Rebellion.Util
+            )
+          else
+            runtime_assemblies=(GameAssembly)
+          fi
+          for assembly in "${runtime_assemblies[@]}"; do
+            test -f "Library/ScriptAssemblies/$assembly.dll"
+          done
           test -f Library/ScriptAssemblies/ContentPackEditorAssembly.dll
           architecture_runtime="$RUNNER_TEMP/architecture-unity-runtime"
           mkdir -p "$architecture_runtime"

@@ -12,7 +12,7 @@ namespace Rebellion.Tests.Game.Combat
     public sealed class ActiveBattleTests
     {
         [Test]
-        public void AddCombatant_CreatesIndependentCopyForOwningFaction()
+        public void AddCombatant_SingleUnit_CreatesIndependentCopyForOwningFaction()
         {
             CapitalShip source = new CapitalShip
             {
@@ -24,10 +24,10 @@ namespace Rebellion.Tests.Game.Combat
 
             CombatUnit combatant = battle.AddCombatant(source);
 
-            Assert.AreEqual("faction", battle.GetParticipants().Single().FactionInstanceID);
-            Assert.AreSame(combatant, battle.GetParticipants().Single().GetCombatants().Single());
-            Assert.AreNotSame(source, combatant.GetUnit());
-            ((CapitalShip)combatant.GetUnit()).CurrentHullStrength = 10;
+            Assert.AreEqual("faction", battle.Participants.Single().FactionInstanceID);
+            Assert.AreSame(combatant, battle.Participants.Single().Combatants.Single());
+            Assert.AreNotSame(source, combatant.Unit);
+            ((CapitalShip)combatant.Unit).CurrentHullStrength = 10;
             Assert.AreEqual(75, source.CurrentHullStrength);
         }
 
@@ -41,7 +41,7 @@ namespace Rebellion.Tests.Game.Combat
 
             CollectionAssert.AreEquivalent(
                 new[] { "first", "second" },
-                battle.GetParticipants().Select(participant => participant.FactionInstanceID)
+                battle.Participants.Select(participant => participant.FactionInstanceID)
             );
         }
 
@@ -55,7 +55,7 @@ namespace Rebellion.Tests.Game.Combat
             );
 
             Assert.IsNull(combatant);
-            Assert.IsEmpty(battle.GetParticipants());
+            Assert.IsEmpty(battle.Participants);
         }
 
         [Test]
@@ -66,15 +66,25 @@ namespace Rebellion.Tests.Game.Combat
             Assert.Throws<ArgumentException>(() =>
                 battle.AddCombatant(new Regiment { OwnerInstanceID = "faction" })
             );
-            Assert.IsEmpty(battle.GetParticipants());
+            Assert.IsEmpty(battle.Participants);
         }
 
         [Test]
-        public void Serialize_RoundTripsBattleCopyAndSourceIdentity()
+        public void AddCombatant_GroundBattle_RejectsSpaceUnit()
+        {
+            ActiveBattle battle = new ActiveBattle { Kind = BattleKind.Ground };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                battle.AddCombatant(new CapitalShip { OwnerInstanceID = "faction" })
+            );
+        }
+
+        [Test]
+        public void Serialize_ActiveBattle_RoundTripsBattleCopyAndSourceIdentity()
         {
             ActiveBattle battle = CreateBattle();
             battle.PlanetInstanceID = "planet";
-            CombatUnit combatant = battle.AddCombatant(
+            battle.AddCombatant(
                 new CapitalShip
                 {
                     InstanceID = "ship",
@@ -82,6 +92,7 @@ namespace Rebellion.Tests.Game.Combat
                     CurrentHullStrength = 75,
                 }
             );
+
             ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
                 SerializationHelper.Serialize(battle)
             );
@@ -89,26 +100,34 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.IsNotNull(restoredCombatant);
             Assert.AreEqual("planet", restored.PlanetInstanceID);
-            Assert.AreEqual(75, ((CapitalShip)restoredCombatant.GetUnit()).CurrentHullStrength);
+            Assert.AreEqual(75, ((CapitalShip)restoredCombatant.Unit).CurrentHullStrength);
         }
 
         [Test]
-        public void GameRootSerialization_RoundTripsActiveBattle()
+        public void GameRootSerialization_ActiveBattle_RoundTripsForResume()
         {
-            GameRoot game = new GameRoot();
-            ActiveBattle battle = CreateBattle();
-            battle.PlanetInstanceID = "planet";
-            game.SetActiveBattle(battle);
+            GameRoot game = new GameRoot
+            {
+                ActiveBattle = new ActiveBattle
+                {
+                    Kind = BattleKind.Space,
+                    PlanetInstanceID = "planet",
+                },
+            };
 
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
                 SerializationHelper.Serialize(game)
             );
 
-            Assert.IsNotNull(restored.GetActiveBattle());
-            Assert.AreEqual("planet", restored.GetActiveBattle().PlanetInstanceID);
-            Assert.AreEqual(BattleKind.Space, restored.GetActiveBattle().Kind);
+            Assert.IsNotNull(restored.ActiveBattle);
+            Assert.AreEqual("planet", restored.ActiveBattle.PlanetInstanceID);
+            Assert.AreEqual(BattleKind.Space, restored.ActiveBattle.Kind);
         }
 
+        /// <summary>
+        /// Creates an empty space battle for a test.
+        /// </summary>
+        /// <returns>The new battle.</returns>
         private static ActiveBattle CreateBattle() => new ActiveBattle { Kind = BattleKind.Space };
     }
 }

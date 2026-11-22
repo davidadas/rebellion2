@@ -11,6 +11,7 @@ using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -845,7 +846,7 @@ namespace Rebellion.Tests.Tactical
                     100,
                     Random,
                     TacticalCombatAudio.Create,
-                    Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                    TacticalCombatPlanner.Attach,
                     definition,
                     presentationClock: () => 0
                 );

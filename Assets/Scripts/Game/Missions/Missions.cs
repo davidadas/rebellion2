@@ -2292,13 +2292,20 @@ namespace Rebellion.Game.Missions
         /// Returns whether the selected officer can still be rescued.
         /// </summary>
         /// <param name="game">The current game state.</param>
-        /// <returns>True when the target remains captured at the mission planet.</returns>
+        /// <returns>True when the target remains captured, or is awaiting completed rescue cleanup, at the mission planet.</returns>
         private bool HasValidTarget(GameRoot game)
         {
             Officer captive = game.GetSceneNodeByInstanceID<Officer>(TargetOfficerInstanceID);
-            return captive?.IsCaptured == true
-                && IsOperationalTarget(captive)
-                && captive.GetParentOfType<Planet>() == GetParent() as Planet;
+            if (captive == null || captive.GetParentOfType<Planet>() != GetParent() as Planet)
+                return false;
+
+            bool isAwaitingCompletedReturn =
+                IsComplete()
+                && !captive.IsCaptured
+                && captive.GetParent() is CapitalShip carrier
+                && carrier.GetOwnerInstanceID() != captive.GetOwnerInstanceID();
+            return isAwaitingCompletedReturn
+                || (captive.IsCaptured && IsOperationalTarget(captive));
         }
 
         /// <summary>

@@ -29,6 +29,7 @@ using UnityEngine.UI;
 using Array = global::System.Array;
 using GraphicsDeviceType = global::UnityEngine.Rendering.GraphicsDeviceType;
 using Object = global::UnityEngine.Object;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 using TextMeshProUGUI = global::TMPro.TextMeshProUGUI;
 using Vector3N = System.Numerics.Vector3;
 
@@ -2404,7 +2405,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 100,
                 random,
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
                 new TacticalCombatSceneryRandom(random, () => 1),
@@ -2498,7 +2499,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 100,
                 random,
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
                 new TacticalCombatSceneryRandom(random, () => 1),

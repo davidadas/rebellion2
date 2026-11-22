@@ -13,6 +13,7 @@ using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
 namespace Rebellion.Tests.Multiplayer.Tactical
 {
@@ -329,7 +330,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 100,
                 random,
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach
             );
         }
 

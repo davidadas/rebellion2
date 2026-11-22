@@ -363,18 +363,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Returns the in-transit units assigned to a fleet, grouped exactly as retarget execution
+        /// Returns the in-transit units assigned to a ship or fleet, grouped exactly as retarget execution
         /// will move them.
         /// </summary>
-        /// <param name="fleet">The fleet receiving a new destination.</param>
+        /// <param name="transport">The ship or fleet receiving a new destination.</param>
         /// <returns>Movement groups with each ungrouped unit represented independently.</returns>
-        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitFleetJoinerGroups(Fleet fleet)
+        internal IReadOnlyList<IReadOnlyList<IMovable>> GetInTransitJoinerGroups(
+            ContainerNode transport
+        )
         {
-            Fleet liveFleet = ResolveLiveNode(fleet) as Fleet;
-            if (liveFleet == null)
+            ContainerNode liveTransport = ResolveLiveNode(transport) as ContainerNode;
+            if (liveTransport == null)
                 return Array.Empty<IReadOnlyList<IMovable>>();
 
-            List<IMovable> joiners = liveFleet
+            List<IMovable> joiners = liveTransport
                 .GetChildren<IMovable>(recursive: true)
                 .Where(movable => movable.Movement != null)
                 .ToList();
@@ -432,6 +434,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns whether a completed mission group can depart together, allowing explicit
+        /// passengers to leave movement inherited from their current carrier.
+        /// </summary>
+        /// <param name="units">The mission participants and passengers being moved together.</param>
+        /// <param name="destination">The shared destination.</param>
+        /// <param name="passengers">Passengers extracted from their current container by the mission.</param>
+        /// <returns>True when the complete return group can move.</returns>
+        internal bool CanMoveMissionReturnGroup(
+            List<IMovable> units,
+            ContainerNode destination,
+            IReadOnlyCollection<IMovable> passengers
+        )
+        {
+            return TryResolveMoveGroupDestinations(units, destination, passengers, out _, out _);
+        }
+
+        /// <summary>
         /// Resolves destinations for a movement group without mutating scene state.
         /// </summary>
         /// <param name="units">The units being validated together.</param>
@@ -442,6 +461,33 @@ namespace Rebellion.Gameplay
         internal bool TryResolveMoveGroupDestinations(
             List<IMovable> units,
             ContainerNode destination,
+            out List<ContainerNode> resolvedDestinations,
+            out string rejectionReason
+        )
+        {
+            return TryResolveMoveGroupDestinations(
+                units,
+                destination,
+                null,
+                out resolvedDestinations,
+                out rejectionReason
+            );
+        }
+
+        /// <summary>
+        /// Resolves destinations for a movement group with an optional set of mission passengers
+        /// that may leave transit inherited from a carrier.
+        /// </summary>
+        /// <param name="units">The units being validated together.</param>
+        /// <param name="destination">The shared requested destination.</param>
+        /// <param name="extractedPassengers">Mission passengers allowed to leave inherited carrier transit.</param>
+        /// <param name="resolvedDestinations">The accepted destination for each unit in order.</param>
+        /// <param name="rejectionReason">The reason the group cannot move, or null when accepted.</param>
+        /// <returns>True when every unit has an accepted destination.</returns>
+        private bool TryResolveMoveGroupDestinations(
+            List<IMovable> units,
+            ContainerNode destination,
+            IReadOnlyCollection<IMovable> extractedPassengers,
             out List<ContainerNode> resolvedDestinations,
             out string rejectionReason
         )
@@ -459,7 +505,11 @@ namespace Rebellion.Gameplay
                     return false;
                 }
 
-                if (!CanReceiveMoveOrder(unit, out rejectionReason))
+                bool leavesMovingCarrier =
+                    unit.Movement == null
+                    && unit.GetTransitMovement() != null
+                    && extractedPassengers?.Contains(unit) == true;
+                if (!leavesMovingCarrier && !CanReceiveMoveOrder(unit, out rejectionReason))
                     return false;
 
                 Planet unitOrigin = unit.GetParentOfType<Planet>();
@@ -1222,13 +1272,17 @@ namespace Rebellion.Gameplay
         /// Whether the origin planet itself may receive the unit without interplanetary travel.
         /// </param>
         /// <param name="leaveOriginPlanet">Whether every destination at the origin is excluded.</param>
-        /// <returns>The valid relocation destinations, nearest first.</returns>
+        /// <param name="preferFriendlyPlanets">
+        /// Whether local carriers take precedence, followed by friendly planets and then remote carriers.
+        /// </param>
+        /// <returns>The valid relocation destinations, ordered by preference and proximity.</returns>
         internal IReadOnlyList<ContainerNode> FindSafeRelocationDestinations(
             IMovable unit,
             Planet originPlanet,
             bool forceInterplanetaryTravel = false,
             bool allowOriginPlanet = false,
-            bool leaveOriginPlanet = false
+            bool leaveOriginPlanet = false,
+            bool preferFriendlyPlanets = false
         )
         {
             if (unit == null)
@@ -1270,7 +1324,9 @@ namespace Rebellion.Gameplay
                     Destination = destination,
                     Planet = RequireDestinationPlanet(destination),
                 })
-                .OrderBy(candidate => candidate.Planet.GetRawDistanceTo(originPosition))
+                .OrderBy(candidate => preferFriendlyPlanets && candidate.Planet != originPlanet)
+                .ThenBy(candidate => preferFriendlyPlanets && candidate.Destination is CapitalShip)
+                .ThenBy(candidate => candidate.Planet.GetRawDistanceTo(originPosition))
                 .ThenBy(candidate => candidate.Destination is CapitalShip ? 0 : 1)
                 .ThenBy(candidate => candidate.Destination.InstanceID, StringComparer.Ordinal)
                 .Select(candidate => candidate.Destination)

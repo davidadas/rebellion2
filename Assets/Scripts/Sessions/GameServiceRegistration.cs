@@ -4,7 +4,6 @@ using Rebellion.AI.Tactical;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
 using Rebellion.Tactical;
@@ -45,6 +44,7 @@ namespace Rebellion.Gameplay
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
         /// <param name="results">The bus delivering completed game changes.</param>
+        /// <param name="createTacticalAudio">Creates encounter audio from the active content catalog.</param>
         /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,

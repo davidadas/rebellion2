@@ -49,6 +49,23 @@ internal static class ContentEditorPresentation
     }
 
     /// <summary>
+    /// Reads one effective theme record without constructing a game session.
+    /// </summary>
+    /// <param name="record">The effective faction-theme record.</param>
+    /// <returns>The current authored presentation.</returns>
+    internal static FactionTheme GetFactionTheme(ContentPackEditorRecord record)
+    {
+        if (record == null)
+            throw new ArgumentNullException(nameof(record));
+        using StringReader reader = new(record.Element.ToString());
+        return (FactionTheme)
+            new GameSerializer(
+                typeof(FactionTheme),
+                new GameSerializerSettings { RootName = "FactionTheme" }
+            ).Deserialize(reader);
+    }
+
+    /// <summary>
     /// Reads one theme from the effective authored document without opening a game session.
     /// </summary>
     /// <param name="project">The working pack.</param>
@@ -63,11 +80,6 @@ internal static class ContentEditorPresentation
                 string.Equals(catalog.Document.Address, address, StringComparison.Ordinal)
             )
             .Records.First();
-        using StringReader reader = new(record.Element.ToString());
-        return (FactionTheme)
-            new GameSerializer(
-                typeof(FactionTheme),
-                new GameSerializerSettings { RootName = "FactionTheme" }
-            ).Deserialize(reader);
+        return GetFactionTheme(record);
     }
 }

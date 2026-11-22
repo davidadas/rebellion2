@@ -2490,6 +2490,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("missing-body:Sabotage:Yavin", message.Body);
         }
 
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void CreateMessages_EspionageReport_UsesOverrideOnlyForItsRecipient(
+            bool sendToOverrideRecipient,
+            bool sharedFirst
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Faction recipient = sendToOverrideRecipient ? alliance : empire;
+            Mission mission = new EspionageMission
+            {
+                ConfigKey = EspionageMission.MissionTypeID,
+                DisplayName = "Espionage",
+                OwnerInstanceID = recipient.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            MessageDefinition shared = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "Espionage",
+                "Shared report for {system}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: EspionageMission.MissionTypeID
+            );
+            MessageDefinition custom = Definition(
+                MessageResultType.MissionReport,
+                MessageType.Mission,
+                "Espionage",
+                "Faction report for {system}",
+                outcome: MessageResultOutcome.Success,
+                missionTypeId: EspionageMission.MissionTypeID
+            );
+            custom.FactionInstanceID = alliance.InstanceID;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    sharedFirst ? new[] { shared, custom } : new[] { custom, shared },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        Outcome = MissionOutcome.Success,
+                    }
+                ),
+                recipient
+            );
+
+            Assert.AreEqual(
+                sendToOverrideRecipient ? "Faction report for Yavin" : "Shared report for Yavin",
+                message.Body
+            );
+        }
+
         [Test]
         public void CreateMessages_MissionReportWithReturningPersonnel_AppendsDestinationStatus()
         {
@@ -3073,6 +3129,62 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
+        }
+
+        [TestCase(MissionOutcome.Failed)]
+        [TestCase(MissionOutcome.Foiled)]
+        public void CreateMessages_UnsuccessfulReconnaissanceMission_NavigatesToMissionPlanet(
+            MissionOutcome outcome
+        )
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            Mission mission = new ReconnaissanceMission
+            {
+                ConfigKey = ReconnaissanceMission.MissionTypeID,
+                DisplayName = "Reconnaissance",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            SpecialForces reconUnit = new SpecialForces
+            {
+                InstanceID = "RECON-UNIT",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            game.AttachNode(reconUnit, origin);
+            MessageResultOutcome messageOutcome =
+                outcome == MissionOutcome.Foiled
+                    ? MessageResultOutcome.Foiled
+                    : MessageResultOutcome.Failed;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "body",
+                            outcome: messageOutcome,
+                            missionTypeId: ReconnaissanceMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Reconnaissance",
+                        MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                        Outcome = outcome,
+                        Participants = new List<IMissionParticipant> { reconUnit },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, message.NavigationTargetInstanceID);
         }
 
         [Test]

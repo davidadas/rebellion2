@@ -13,6 +13,47 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentEditorPackValidatorTests : ContentPackEditorTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ValidateFields_DuplicateAuthoredTypeID_ReportsIdentifierAndFile(
+            bool attributeIdentity
+        )
+        {
+            var overlay = CreateShipOverlay(true, attributeIdentity);
+            Assert.AreEqual(
+                1,
+                XElement
+                    .Parse(
+                        overlay
+                            .Project.Documents.Single(document =>
+                                document.Address == overlay.Address
+                            )
+                            .Text
+                    )
+                    .Elements("CapitalShip")
+                    .Count(record =>
+                        ((string)record.Element("TypeID") ?? (string)record.Attribute("TypeID"))
+                        == overlay.TypeID
+                    )
+            );
+
+            InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
+                ContentEditorPackValidator.ValidateFields(overlay.Project)
+            );
+
+            StringAssert.Contains("Duplicate TypeID", error.Message);
+            StringAssert.Contains(overlay.TypeID, error.Message);
+            StringAssert.Contains(overlay.Address, error.Message);
+        }
+
+        [Test]
+        public void ValidateFields_SingleOverrideOfInheritedTypeID_Passes()
+        {
+            var overlay = CreateShipOverlay(false, false);
+
+            Assert.DoesNotThrow(() => ContentEditorPackValidator.ValidateFields(overlay.Project));
+        }
+
         [Test]
         public async Task ValidateAsync_UnknownFactionInSavedXml_RejectsThePackAsync()
         {
@@ -20,11 +61,76 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/officers.xml",
                 "<Officers><Officer><TypeID>one</TypeID><RecruitingFactionInstanceIDs><string>missing</string></RecruitingFactionInstanceIDs></Officer></Officers>"
             );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
             ContentPackEditorProject project = CreateWorkingProject();
             ArgumentException error = await ExpectFailureAsync<ArgumentException>(() =>
                 ContentEditorPackValidator.ValidateAsync(project)
             );
-            Assert.AreEqual("Choose a listed faction.", error.Message);
+            ContentPackEditorRecord record = Records(project).Single(item => item.ID == "one");
+            ContentPackEditorField field = record.GetField("RecruitingFactionInstanceIDs");
+            ContentPackEditorField errorField = ContentEditorPackValidator.GetValidationField(
+                error
+            );
+            Assert.AreEqual(field.Record.Key, errorField.Record.Key);
+            Assert.AreEqual(field.Name, errorField.Name);
+            StringAssert.Contains(record.Catalog.Document.Address, error.Message);
+            StringAssert.Contains(record.ID, error.Message);
+            StringAssert.Contains(field.Caption, error.Message);
+            StringAssert.Contains("Choose a listed faction.", error.Message);
+            StringAssert.DoesNotContain("Parameter name", error.Message);
+        }
+
+        [Test]
+        public async Task ValidateAsync_InvalidSavedEnum_ReportsFieldAndValueAsync()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord record = Records(project).First(item => item.Kind == "Officer");
+            RewriteField(project, record, "CurrentRank", "UnknownRank");
+            ContentPackEditorStorage.Save(project);
+
+            Exception error = await GetValidationErrorAsync(project);
+
+            StringAssert.Contains(record.Catalog.Document.Address, error.Message);
+            StringAssert.Contains(record.ID, error.Message);
+            StringAssert.Contains("Current rank", error.Message);
+            StringAssert.Contains("'UnknownRank' is not an available option", error.Message);
+            StringAssert.DoesNotContain("Parameter name", error.Message);
+        }
+
+        [Test]
+        public void GetFieldErrors_MultipleInvalidSavedFields_ReturnsEveryFailure()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord[] officers = Records(project)
+                .Where(item => item.Kind == "Officer")
+                .Take(2)
+                .ToArray();
+            RewriteField(project, officers[0], "CurrentRank", "UnknownRankOne");
+            RewriteField(project, officers[1], "CurrentRank", "UnknownRankTwo");
+            ContentPackEditorStorage.Save(project);
+
+            IReadOnlyList<ContentEditorValidationIssue> issues =
+                ContentEditorPackValidator.GetFieldErrors(project);
+
+            Assert.AreEqual(2, issues.Count);
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnknownRankOne"));
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnknownRankTwo"));
+            Assert.That(issues.All(issue => issue.Field.MemberName == "CurrentRank"), Is.True);
+        }
+
+        [Test]
+        public void GetFieldErrors_UnsavedField_ReportsTheWorkingValueWithoutSaving()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord officer = Records(project)
+                .First(item => item.Kind == "Officer");
+            RewriteField(project, officer, "CurrentRank", "UnsavedUnknownRank");
+
+            IReadOnlyList<ContentEditorValidationIssue> issues =
+                ContentEditorPackValidator.GetFieldErrors(project);
+
+            Assert.That(issues, Has.Some.Property("Message").Contains("UnsavedUnknownRank"));
+            Assert.IsTrue(project.IsDirty);
         }
 
         [Test]
@@ -402,6 +508,50 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         /// <summary>
+        /// Writes a saved ship overlay independently of the editor's effective XML.
+        /// </summary>
+        /// <param name="duplicate">Whether to split the edits into two records with the same identity.</param>
+        /// <param name="attributeIdentity">Whether the authored records use attribute identities.</param>
+        /// <returns>The reopened project and the authored identity and address.</returns>
+        private (ContentPackEditorProject Project, string TypeID, string Address) CreateShipOverlay(
+            bool duplicate,
+            bool attributeIdentity
+        )
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorRecord ship = Records(project)
+                .First(record => record.Kind == "CapitalShip");
+            XElement first = new XElement(
+                "CapitalShip",
+                new XElement("TypeID", ship.ID),
+                new XElement("DisplayName", "Edited ship")
+            );
+            XElement second = new XElement(
+                "CapitalShip",
+                new XElement("TypeID", ship.ID),
+                new XElement("ResearchOrder", 10)
+            );
+            if (attributeIdentity)
+                foreach (XElement record in new[] { first, second })
+                {
+                    record.Element("TypeID").Remove();
+                    record.SetAttributeValue("TypeID", ship.ID);
+                }
+            XElement xml = new XElement("CapitalShips", new XAttribute("Inherit", true), first);
+            if (duplicate)
+                xml.Add(second);
+            else
+                first.Add(second.Element("ResearchOrder"));
+            Directory.CreateDirectory(Path.GetDirectoryName(ship.Catalog.Document.TargetPath));
+            File.WriteAllText(ship.Catalog.Document.TargetPath, xml.ToString());
+            return (
+                ContentPackEditorStorage.OpenFolder(project.ContentRootPath, project.PackRootPath),
+                ship.ID,
+                ship.Catalog.Document.Address
+            );
+        }
+
+        /// <summary>
         /// Enumerates records from the effective inherited project.
         /// </summary>
         /// <param name="project">The independent editable project.</param>
@@ -422,6 +572,20 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorRecord record,
             string member,
             int value
+        ) => RewriteField(project, record, member, value.ToString(CultureInfo.InvariantCulture));
+
+        /// <summary>
+        /// Writes a raw scalar to exercise validation of saved XML independently of form guards.
+        /// </summary>
+        /// <param name="project">The independent editable project.</param>
+        /// <param name="record">The owning definition.</param>
+        /// <param name="member">The serialized member to replace.</param>
+        /// <param name="value">The authored value.</param>
+        private static void RewriteField(
+            ContentPackEditorProject project,
+            ContentPackEditorRecord record,
+            string member,
+            string value
         )
         {
             XDocument xml = XDocument.Parse(record.Catalog.Document.Text);

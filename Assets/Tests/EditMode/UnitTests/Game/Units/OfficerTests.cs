@@ -760,6 +760,16 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void CreateCopy_BackgroundImagePath_PreservesOverride()
+        {
+            Officer officer = new Officer { BackgroundImagePath = "Pack/Art/officer-background" };
+
+            Officer copy = (Officer)officer.CreateCopy();
+
+            Assert.AreEqual(officer.BackgroundImagePath, copy.BackgroundImagePath);
+        }
+
+        [Test]
         public void SerializeDeserialize_Officer_PreservesAllData()
         {
             Officer originalOfficer = EntityFactory.CreateOfficer(

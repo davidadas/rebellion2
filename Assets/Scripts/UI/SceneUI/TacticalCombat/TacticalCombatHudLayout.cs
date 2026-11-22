@@ -1,6 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Tactical;
-using Rebellion.Tactical.Rendering;
 using UnityEngine;
 using Array = global::System.Array;
 

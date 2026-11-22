@@ -1,7 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
+using Rebellion.Game;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /// <summary>
 /// Presents authored sectors through the gameplay sector window with neutral preview statistics.
@@ -9,6 +13,8 @@ using UnityEngine.EventSystems;
 [ExecuteAlways]
 public sealed class ContentEditorSectorPreview : UIBehaviour
 {
+    private readonly List<ContentPackEditorField> renderedFields = new();
+
     [SerializeField]
     private PlanetSectorWindowView window;
     public float AspectRatio =>
@@ -19,24 +25,36 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     public event Action<ContentPackEditorRecord> Selected;
     public event Action<ContentPackEditorRecord> DragStarted;
     public event Action<ContentPackEditorRecord, Vector2Int> Moved;
+    public event Action<ContentPackEditorField> ArtworkOpened;
 
     /// <summary>
-    /// Renders exact authored planet positions using maximum authored resource capacities.
+    /// Gets the faction-theme fields currently represented by literal editable images.
+    /// </summary>
+    internal IReadOnlyList<ContentPackEditorField> RenderedFields => renderedFields;
+
+    /// <summary>
+    /// Renders exact authored planet positions using the default resource profile.
     /// </summary>
     /// <param name="project">The working pack.</param>
     /// <param name="sector">The authored sector.</param>
     /// <param name="assets">The working pack's resolved artwork.</param>
     /// <param name="theme">The optional faction whose overlay icons and colors are previewed.</param>
+    /// <param name="editableFields">The optional faction-interface fields rendered in the preview.</param>
     public void Render(
         ContentPackEditorProject project,
         ContentPackEditorRecord sector,
         ContentAssets assets,
-        FactionTheme theme = null
+        FactionTheme theme = null,
+        IReadOnlyList<ContentPackEditorField> editableFields = null
     )
     {
         ContentPackEditorRecord[] planets = sector.Planets.ToArray();
-        int energy = MaximumCapacity(project, "EnergyMax");
-        int materials = MaximumCapacity(project, "RawMaterialsMax");
+        int energy = DefaultCapacity(project, nameof(PlanetResourceProfile.EnergyMax));
+        int materials = DefaultCapacity(project, nameof(PlanetResourceProfile.RawMaterialsMax));
+        ContentPackEditorField destroyedPlanetField = editableFields?.FirstOrDefault(field =>
+            field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
+        );
+        Texture2D destroyedPlanetTexture = ResolveFieldTexture(destroyedPlanetField, assets);
         Color neutral = (
             theme ?? ContentEditorPresentation.GetNeutralTheme(project)
         ).GetPrimaryColor();
@@ -54,7 +72,8 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                                 energy,
                                 materials,
                                 neutral,
-                                theme?.PlanetOverlayTheme
+                                theme?.PlanetOverlayTheme,
+                                index == planets.Length - 1 ? destroyedPlanetTexture : null
                             )
                     )
                     .ToArray()
@@ -76,6 +95,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                 () => DragEnded?.Invoke()
             );
         }
+        AttachEditCommands(editableFields ?? Array.Empty<ContentPackEditorField>(), assets);
         Fit();
     }
 
@@ -89,13 +109,169 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// </summary>
     public void Clear()
     {
+        renderedFields.Clear();
         foreach (
             ContentEditorPlanetDrag drag in window.GetComponentsInChildren<ContentEditorPlanetDrag>(
                 true
             )
         )
             drag.Clear();
+        foreach (
+            ContentEditorArtworkEditTarget target in GetComponentsInChildren<ContentEditorArtworkEditTarget>(
+                true
+            )
+        )
+            target.Clear();
         Hide();
+    }
+
+    /// <summary>
+    /// Adds hover-outline and double-click editing to each displayed image with an exact field.
+    /// </summary>
+    /// <param name="editableFields">The faction-interface fields available on the selected page.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    private void AttachEditCommands(
+        IReadOnlyList<ContentPackEditorField> editableFields,
+        ContentAssets assets
+    )
+    {
+        renderedFields.Clear();
+        foreach (
+            ContentEditorArtworkEditTarget target in GetComponentsInChildren<ContentEditorArtworkEditTarget>(
+                true
+            )
+        )
+            target.Clear();
+
+        Dictionary<string, ContentPackEditorField> fieldsByAddress = new(StringComparer.Ordinal);
+        foreach (ContentPackEditorField field in editableFields)
+            RegisterFieldAddress(field, assets, fieldsByAddress);
+
+        foreach (RawImage image in GetComponentsInChildren<RawImage>(true))
+        {
+            ContentPackEditorField releasedField = ResolvePlanetOverlayField(
+                image,
+                editableFields,
+                "NormalImagePath"
+            );
+            if (!image.gameObject.activeInHierarchy || !image.enabled || image.texture == null)
+                continue;
+            if (
+                releasedField == null
+                && (
+                    !assets.TryGetTextureAddress(image.texture as Texture2D, out string address)
+                    || !fieldsByAddress.TryGetValue(address, out releasedField)
+                )
+            )
+                continue;
+            ContentPackEditorField hoverField = ResolvePlanetOverlayField(
+                image,
+                editableFields,
+                "HoverImagePath"
+            );
+            hoverField ??= releasedField;
+            Texture2D hoverTexture =
+                ResolveFieldTexture(hoverField, assets) ?? image.texture as Texture2D;
+            ContentEditorArtworkEditTarget target =
+                image.GetComponent<ContentEditorArtworkEditTarget>()
+                ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+            target.Bind(
+                releasedField,
+                hoverField,
+                opened => ArtworkOpened?.Invoke(opened),
+                assets.GetTextureContentBounds(image.texture as Texture2D),
+                assets.GetTextureContentBounds(hoverTexture),
+                hoverTexture == image.texture ? null : hoverTexture
+            );
+            foreach (ContentPackEditorField field in target.Fields)
+                if (!renderedFields.Contains(field))
+                    renderedFields.Add(field);
+        }
+    }
+
+    /// <summary>
+    /// Resolves a planet-overlay image by the gameplay control it decorates instead of by a
+    /// potentially shared texture address.
+    /// </summary>
+    /// <param name="image">The rendered planet control image.</param>
+    /// <param name="fields">The selected planet-sector fields.</param>
+    /// <param name="memberName">The requested normal or hover member.</param>
+    /// <returns>The exact overlay field, or null for a non-overlay image.</returns>
+    private static ContentPackEditorField ResolvePlanetOverlayField(
+        RawImage image,
+        IReadOnlyList<ContentPackEditorField> fields,
+        string memberName
+    )
+    {
+        string owner = image.name switch
+        {
+            "FacilityImage" => nameof(PlanetOverlayIcons.Buildings),
+            "DefenseImage" => nameof(PlanetOverlayIcons.Defenses),
+            "FleetImage" => nameof(PlanetOverlayIcons.Fleets),
+            "MissionImage" => nameof(PlanetOverlayIcons.Missions),
+            _ => null,
+        };
+        if (owner == null)
+            return null;
+        return fields.FirstOrDefault(field =>
+            field.MemberName == memberName
+            && field.XmlElement.Parent?.Name.LocalName == owner
+            && field
+                .XmlElement.Ancestors()
+                .Any(element =>
+                    element.Name.LocalName == nameof(PlanetOverlayTheme.PlanetOverlayIcons)
+                )
+        );
+    }
+
+    /// <summary>
+    /// Loads a selected editable field without treating an empty optional path as an error.
+    /// </summary>
+    /// <param name="field">The image field.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <returns>The resolved texture, or null when the field is empty or invalid.</returns>
+    private static Texture2D ResolveFieldTexture(ContentPackEditorField field, ContentAssets assets)
+    {
+        if (field == null || string.IsNullOrWhiteSpace(field.Value))
+            return null;
+        try
+        {
+            return assets.GetTexture(field.GetMediaAddress(field.Value));
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Indexes one authored image field by the normalized address used by loaded textures.
+    /// </summary>
+    /// <param name="field">The exact authored image field.</param>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="fieldsByAddress">The address-to-field index to populate.</param>
+    private static void RegisterFieldAddress(
+        ContentPackEditorField field,
+        ContentAssets assets,
+        IDictionary<string, ContentPackEditorField> fieldsByAddress
+    )
+    {
+        if (
+            field.MediaType != ContentPackEditorMediaType.Image
+            || string.IsNullOrWhiteSpace(field.Value)
+        )
+            return;
+        string address = field.GetMediaAddress(field.Value);
+        try
+        {
+            address = assets.GetNormalizedTextureAddress(address);
+        }
+        catch (ArgumentException)
+        {
+            return;
+        }
+        if (!string.IsNullOrEmpty(address) && !fieldsByAddress.ContainsKey(address))
+            fieldsByAddress.Add(address, field);
     }
 
     /// <summary>
@@ -185,21 +361,25 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     }
 
     /// <summary>
-    /// Reads the greatest capacity allowed by the authored generation presets.
+    /// Reads a capacity from the normal resource profile, falling back to the first profile.
     /// </summary>
     /// <param name="project">The working pack.</param>
     /// <param name="member">The capacity limit.</param>
-    /// <returns>The greatest authored limit, or zero when no limit is defined.</returns>
-    private static int MaximumCapacity(ContentPackEditorProject project, string member)
+    /// <returns>The default authored limit, or zero when no limit is defined.</returns>
+    private static int DefaultCapacity(ContentPackEditorProject project, string member)
     {
-        return project
+        XElement[] profiles = project
             .GetCatalogs()
             .SelectMany(catalog => catalog.Records)
             .Where(record => record.Kind == "GameGenerationConfig")
-            .SelectMany(record => record.Element.Descendants(member))
-            .Select(element => int.TryParse(element.Value, out int value) ? value : 0)
-            .DefaultIfEmpty(0)
-            .Max();
+            .SelectMany(record => record.Element.Descendants(nameof(PlanetResourceProfile)))
+            .ToArray();
+        XElement profile =
+            profiles.FirstOrDefault(candidate =>
+                candidate.Element(nameof(PlanetResourceProfile.Availability))?.Value
+                == GameResourceAvailability.Normal.ToString()
+            ) ?? profiles.FirstOrDefault();
+        return int.TryParse(profile?.Element(member)?.Value, out int value) ? value : 0;
     }
 
     /// <summary>
@@ -213,6 +393,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// <param name="materials">The maximum available raw materials.</param>
     /// <param name="neutral">The pack's neutral support color.</param>
     /// <param name="overlays">The optional faction overlay artwork.</param>
+    /// <param name="destroyedPlanetTexture">The optional destroyed state shown on the representative final planet.</param>
     /// <returns>The gameplay renderer's planet presentation.</returns>
     private static PlanetSectorPlanetRenderData CreatePlanet(
         ContentPackEditorRecord planet,
@@ -222,14 +403,16 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
         int energy,
         int materials,
         Color neutral,
-        PlanetOverlayTheme overlays
+        PlanetOverlayTheme overlays,
+        Texture2D destroyedPlanetTexture
     )
     {
         string image = planet.Element.Element("PlanetIconPath")?.Value ?? planet.ImageAddress;
         return new PlanetSectorPlanetRenderData(
             planetIndex: index,
             galaxyOffset: new Vector2Int(planet.X - sector.X, planet.Y - sector.Y),
-            planetTexture: string.IsNullOrEmpty(image) ? null : assets.GetTexture(image),
+            planetTexture: destroyedPlanetTexture
+                ?? (string.IsNullOrEmpty(image) ? null : assets.GetTexture(image)),
             uprisingTexture: LoadTexture(assets, overlays?.PlanetSectorUprisingImagePath),
             facilityTexture: LoadSmoothTexture(
                 assets,

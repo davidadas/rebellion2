@@ -33,7 +33,7 @@ namespace Rebellion.Tests.ContentEditor
             Directory.CreateDirectory(Path.Combine(installed, "Data"));
             File.WriteAllText(
                 Path.Combine(installed, "pack.xml"),
-                "<ContentPack><ID>installed</ID><Version>1.0.0</Version><DisplayName>Installed</DisplayName></ContentPack>"
+                "<ContentPack><ID>installed</ID><Version>1.0.0</Version><DisplayName>Installed</DisplayName><PlanetSectorsPath>Data/units.xml</PlanetSectorsPath></ContentPack>"
             );
             File.WriteAllText(Path.Combine(installed, "Data", "units.xml"), "<Units/>");
             Directory.CreateDirectory(Path.Combine(directory, "Working"));

@@ -55,6 +55,7 @@ namespace Rebellion.Game.Units
         public string BattleResultImagePath { get; set; }
         public string BattleResultInTransitImagePath { get; set; }
         public string BattleResultDamagedImagePath { get; set; }
+        public string BackgroundImagePath { get; set; }
 
         // Naming Info.
         public string ShipNamePoolID { get; set; }
@@ -466,6 +467,7 @@ namespace Rebellion.Game.Units
             copy.BattleResultImagePath = BattleResultImagePath;
             copy.BattleResultInTransitImagePath = BattleResultInTransitImagePath;
             copy.BattleResultDamagedImagePath = BattleResultDamagedImagePath;
+            copy.BackgroundImagePath = BackgroundImagePath;
             copy.ShipNamePoolID = ShipNamePoolID;
             copy._hasAssignedName = _hasAssignedName;
             copy.ProducerOwnerID = ProducerOwnerID;
@@ -880,8 +882,8 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns true if this ship has hull or component damage that can be repaired.
         /// </summary>
-        /// <returns>True when hull strength is reduced or at least one installed system is damaged.</returns>
-        public bool IsDamaged() => CurrentHullStrength < MaxHullStrength || SystemDamage.Total > 0;
+        /// <returns>True if current hull strength is below maximum hull strength.</returns>
+        public bool IsDamaged() => CurrentHullStrength < MaxHullStrength;
 
         /// <summary>
         /// Repairs hull damage by the specified amount, capped at MaxHullStrength.

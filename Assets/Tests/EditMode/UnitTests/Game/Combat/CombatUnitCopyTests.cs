@@ -78,7 +78,7 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void Reconcile_CopiesBattleDamageWithoutReplacingSourceObject()
+        public void Reconcile_BattleDamage_CopiesWithoutReplacingSourceObject()
         {
             CapitalShip source = new CapitalShip { InstanceID = "ship", CurrentHullStrength = 100 };
             CombatUnit combatant = CombatUnit.Create(source);
@@ -88,7 +88,7 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.AreEqual(35, source.CurrentHullStrength);
             Assert.AreEqual(2, source.SystemDamage.Engines);
-            Assert.AreNotSame(source, combatant.GetUnit());
+            Assert.AreNotSame(source, combatant.Unit);
         }
     }
 }

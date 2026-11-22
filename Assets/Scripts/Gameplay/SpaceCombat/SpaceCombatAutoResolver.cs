@@ -97,8 +97,8 @@ namespace Rebellion.Gameplay
         /// from fighter attack, or null when none is.
         /// </param>
         /// <param name="attackerHasInitiative">Whether the attacker performs the first side update.</param>
-        /// <param name="attackerRetreatStrengthRatio">The attacker's retreat threshold, or null for the content setting.</param>
-        /// <param name="defenderRetreatStrengthRatio">The defender's retreat threshold, or null for the content setting.</param>
+        /// <param name="attackerUsesRetreatThreshold">Whether relative combat strength can trigger the attacker's retreat.</param>
+        /// <param name="defenderUsesRetreatThreshold">Whether relative combat strength can trigger the defender's retreat.</param>
         /// <returns>The resolved tactical state for both forces.</returns>
         public SpaceCombatResult Resolve(
             IReadOnlyList<CapitalShip> attackerShips,
@@ -111,8 +111,8 @@ namespace Rebellion.Gameplay
             SpaceCombatCommandModifiers defenderCommand = default,
             IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers = null,
             bool attackerHasInitiative = false,
-            double? attackerRetreatStrengthRatio = null,
-            double? defenderRetreatStrengthRatio = null
+            bool attackerUsesRetreatThreshold = true,
+            bool defenderUsesRetreatThreshold = true
         )
         {
             CombatForce attacker = new CombatForce(
@@ -123,7 +123,7 @@ namespace Rebellion.Gameplay
                 attackerCommand,
                 shieldedPlanetDestroyers,
                 _random,
-                attackerRetreatStrengthRatio
+                attackerUsesRetreatThreshold
             );
             CombatForce defender = new CombatForce(
                 defenderShips,
@@ -133,7 +133,7 @@ namespace Rebellion.Gameplay
                 defenderCommand,
                 shieldedPlanetDestroyers,
                 _random,
-                defenderRetreatStrengthRatio
+                defenderUsesRetreatThreshold
             );
             attacker.InitializeGroups(_starfighterTypes, attackerHasInitiative);
             defender.InitializeGroups(_starfighterTypes, !attackerHasInitiative);
@@ -259,6 +259,7 @@ namespace Rebellion.Gameplay
         {
             if (
                 !force.WithdrawalOrdered
+                && force.UsesRetreatThreshold
                 && force.HasCombatants
                 && !force.HasAttackRunUnderWay
                 && CanWithdraw(force, opponent)
@@ -602,7 +603,13 @@ namespace Rebellion.Gameplay
                 return true;
             double own = GetTacticalStrength(force, opposingForce);
             if (own == 0)
-                return true;
+            {
+                // Suppression can erase the score while armed units can still fight.
+                return force.UsesRetreatThreshold
+                    || !force.Units.Any(unit => unit.IsTargetable && unit.GetEffectiveness() > 0);
+            }
+            if (!force.UsesRetreatThreshold)
+                return false;
             double opposing = GetTacticalStrength(opposingForce, force);
             return opposing > 0 && own / opposing < (float)force.RetreatStrengthRatio;
         }
@@ -927,6 +934,7 @@ namespace Rebellion.Gameplay
 
             internal bool HasInitiative { get; private set; }
             internal bool ForcedWithdrawal { get; set; }
+            internal bool UsesRetreatThreshold { get; }
             internal double RetreatStrengthRatio { get; }
             internal double CapitalCommandBonus =>
                 !_requiresAdmiralCarrier
@@ -971,7 +979,7 @@ namespace Rebellion.Gameplay
             /// The planet destroyers a planetary shield generator protects, or null.
             /// </param>
             /// <param name="random">The battle's random stream.</param>
-            /// <param name="retreatStrengthRatio">The side's retreat threshold, or null for the content setting.</param>
+            /// <param name="usesRetreatThreshold">Whether relative combat strength can trigger retreat.</param>
             internal CombatForce(
                 IReadOnlyList<CapitalShip> ships,
                 IReadOnlyList<Starfighter> fighters,
@@ -980,12 +988,12 @@ namespace Rebellion.Gameplay
                 SpaceCombatCommandModifiers command,
                 IReadOnlyCollection<CapitalShip> shieldedPlanetDestroyers,
                 IRandomNumberProvider random,
-                double? retreatStrengthRatio
+                bool usesRetreatThreshold
             )
             {
                 _random = random;
-                RetreatStrengthRatio =
-                    retreatStrengthRatio ?? config.AutoResolveRetreatStrengthRatio;
+                UsesRetreatThreshold = usesRetreatThreshold;
+                RetreatStrengthRatio = config.AutoResolveRetreatStrengthRatio;
                 float scaledLeadership = (float)GetCommandBonus(
                     command.AdmiralLeadership,
                     config.AdmiralLeadershipDivisor
@@ -993,7 +1001,7 @@ namespace Rebellion.Gameplay
                 _capitalCommandBonus =
                     config.AdmiralLeadershipDivisor > 0
                     && (command.AdmiralShip != null || command.AdmiralLeadership > 0)
-                        ? Math.Clamp(9.0 - scaledLeadership, 1, 9)
+                        ? Math.Clamp(1.0 + scaledLeadership, 1, 9)
                         : 1;
                 _requiresAdmiralCarrier = command.AdmiralShip != null;
                 PlanetDestroyers = (ships ?? Array.Empty<CapitalShip>())

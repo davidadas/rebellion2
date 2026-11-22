@@ -45,6 +45,7 @@ namespace Rebellion.Game.Encyclopedia
         public string VisibleFactionInstanceID { get; set; }
         public string OwnerInstanceID { get; set; }
         public string ImagePath { get; set; }
+        public string BackgroundImagePath { get; set; }
         public List<EncyclopediaEntryStat> Stats { get; set; } = new List<EncyclopediaEntryStat>();
         public string Description { get; set; }
 

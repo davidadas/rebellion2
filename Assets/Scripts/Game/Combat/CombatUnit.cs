@@ -12,7 +12,7 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class CombatUnit : BaseGameEntity
     {
-        [PersistableMember(Name = "Unit")]
+        [PersistableMember(Name = nameof(Unit))]
         [PersistableInclude(typeof(CapitalShip))]
         [PersistableInclude(typeof(Starfighter))]
         private BaseSceneNode _unit;
@@ -23,8 +23,14 @@ namespace Rebellion.Game.Combat
         public int PayloadCount { get; set; }
         public int FighterCapacity { get; set; }
 
-        public BaseSceneNode GetUnit() => _unit;
+        [PersistableIgnore]
+        public BaseSceneNode Unit => _unit;
 
+        /// <summary>
+        /// Captures the campaign unit state used for the duration of one battle.
+        /// </summary>
+        /// <param name="sourceUnit">The strategic capital ship or starfighter.</param>
+        /// <returns>An independently mutable combat copy.</returns>
         public static CombatUnit Create(BaseSceneNode sourceUnit)
         {
             if (sourceUnit == null)
@@ -66,6 +72,11 @@ namespace Rebellion.Game.Combat
             return combatUnit;
         }
 
+        /// <summary>
+        /// Replaces the battle copy's mutable capital-ship result state.
+        /// </summary>
+        /// <param name="hull">The surviving hull strength.</param>
+        /// <param name="systemDamage">The surviving component damage.</param>
         public void ApplyCapitalShipState(int hull, CapitalShipSystemDamage systemDamage)
         {
             if (_unit is not CapitalShip ship)
@@ -74,6 +85,11 @@ namespace Rebellion.Game.Combat
             ship.SystemDamage = systemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
         }
 
+        /// <summary>
+        /// Replaces the battle copy's mutable starfighter result state.
+        /// </summary>
+        /// <param name="squadronSize">The surviving fighter count.</param>
+        /// <param name="carrierSourceUnitInstanceID">The campaign carrier identity after recovery.</param>
         public void ApplyStarfighterState(int squadronSize, string carrierSourceUnitInstanceID)
         {
             if (_unit is not Starfighter fighter)

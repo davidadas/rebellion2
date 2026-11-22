@@ -382,7 +382,7 @@ namespace Rebellion.Gameplay
                 foreach (CapitalShip ship in ships)
                 {
                     ship.ClearRepairSchedule();
-                    if (ship.IsDamaged())
+                    if (HasRepairableDamage(ship))
                     {
                         ship.SystemDamage.RepairDueTick = 0;
                         ship.SystemDamage.RepairInterval = 0;
@@ -397,7 +397,7 @@ namespace Rebellion.Gameplay
                 if (!CanRepairShip(ship))
                 {
                     ship.ClearRepairSchedule();
-                    if (ship.IsDamaged())
+                    if (HasRepairableDamage(ship))
                     {
                         ship.SystemDamage.RepairDueTick = 0;
                         ship.SystemDamage.RepairInterval = 0;
@@ -434,7 +434,7 @@ namespace Rebellion.Gameplay
                 else
                     ship.ClearRepairSchedule();
 
-                if (!ship.IsDamaged())
+                if (!HasRepairableDamage(ship))
                 {
                     ship.ClearRepairSchedule();
                     results.Add(
@@ -457,10 +457,19 @@ namespace Rebellion.Gameplay
         /// <returns>Whether hull or component repairs can advance this tick.</returns>
         private static bool CanRepairShip(CapitalShip ship)
         {
-            return ship.IsDamaged()
+            return HasRepairableDamage(ship)
                 && ship.ManufacturingStatus == ManufacturingStatus.Complete
                 && ((IMovable)ship).GetTransitMovement() == null;
         }
+
+        /// <summary>
+        /// Checks hull and tactical component damage without changing the campaign meaning of
+        /// <see cref="CapitalShip.IsDamaged"/>, which intentionally reports hull damage only.
+        /// </summary>
+        /// <param name="ship">The ship being assessed.</param>
+        /// <returns>Whether any damage can be repaired by the recovery processor.</returns>
+        private static bool HasRepairableDamage(CapitalShip ship) =>
+            ship.IsDamaged() || ship.SystemDamage.Total > 0;
 
         /// <summary>
         /// Advances the ship's persistent repair timer and attempts one weighted component repair.

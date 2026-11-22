@@ -1,5 +1,3 @@
-using Rebellion.Tactical;
-using Rebellion.Tactical.Rendering;
 using UnityEngine;
 using UnityEngine.InputSystem;
 

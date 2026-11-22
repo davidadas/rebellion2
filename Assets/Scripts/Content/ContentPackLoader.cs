@@ -24,6 +24,9 @@ public static class ContentPackLoader
     private const string _catalogFileName = "catalog.xml";
     private const string _contentDirectoryName = "Content";
     private const string _contentPathArgument = "-contentPath";
+    private const string _macApplicationDataDirectoryName = "Rebellion 2";
+    private const string _macApplicationSupportDirectoryName = "Application Support";
+    private const string _macLibraryDirectoryName = "Library";
     private const string _applicationGameConfigRelativePath = "Application/Rules/game.xml";
     private const string _gameConfigSchemaRelativePath = "Application/Schemas/game-config.xsd";
     private const string _generationConfigSchemaRelativePath =
@@ -457,6 +460,23 @@ public static class ContentPackLoader
     /// <returns>The absolute external content root.</returns>
     internal static string ResolvePlayerContentRootPath(string dataPath, RuntimePlatform platform)
     {
+        return ResolvePlayerContentRootPath(dataPath, platform, null);
+    }
+
+    /// <summary>
+    /// Resolves the external content directory for a desktop player, including the shared macOS
+    /// application-data location used by a player nested inside its launcher bundle.
+    /// </summary>
+    /// <param name="dataPath">The platform-specific Unity player data path.</param>
+    /// <param name="platform">The current runtime platform.</param>
+    /// <param name="macUserProfilePath">The macOS user profile root, when available.</param>
+    /// <returns>The absolute external content root.</returns>
+    internal static string ResolvePlayerContentRootPath(
+        string dataPath,
+        RuntimePlatform platform,
+        string macUserProfilePath
+    )
+    {
         if (string.IsNullOrWhiteSpace(dataPath))
             throw new ArgumentException("A player data path is required.", nameof(dataPath));
 
@@ -467,7 +487,38 @@ public static class ContentPackLoader
                 "The player content directory could not be resolved."
             );
 
+        if (
+            IsNestedMacBundleResourcesDirectory(playerDirectory)
+            && !string.IsNullOrWhiteSpace(macUserProfilePath)
+        )
+        {
+            return Path.Combine(
+                Path.GetFullPath(macUserProfilePath),
+                _macLibraryDirectoryName,
+                _macApplicationSupportDirectoryName,
+                _macApplicationDataDirectoryName,
+                _contentDirectoryName
+            );
+        }
+
         return Path.Combine(playerDirectory.FullName, _contentDirectoryName);
+    }
+
+    /// <summary>
+    /// Returns whether a resolved player directory belongs to the Resources directory of a host
+    /// application bundle.
+    /// </summary>
+    /// <param name="directory">The resolved player directory.</param>
+    /// <returns>True when a nested macOS player shares its host application's resources.</returns>
+    private static bool IsNestedMacBundleResourcesDirectory(DirectoryInfo directory)
+    {
+        return string.Equals(directory?.Name, "Resources", StringComparison.Ordinal)
+            && string.Equals(directory.Parent?.Name, "Contents", StringComparison.Ordinal)
+            && string.Equals(
+                directory.Parent.Parent?.Extension,
+                ".app",
+                StringComparison.OrdinalIgnoreCase
+            );
     }
 
     /// <summary>
@@ -1257,7 +1308,15 @@ public static class ContentPackLoader
 #if UNITY_EDITOR
         return Path.Combine(Application.dataPath, _contentDirectoryName);
 #else
+#if UNITY_STANDALONE_OSX
+        return ResolvePlayerContentRootPath(
+            Application.dataPath,
+            Application.platform,
+            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+        );
+#else
         return ResolvePlayerContentRootPath(Application.dataPath, Application.platform);
+#endif
 #endif
     }
 

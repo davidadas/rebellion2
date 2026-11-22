@@ -1,6 +1,4 @@
 using System;
-using Rebellion.Tactical;
-using Rebellion.Tactical.Rendering;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;

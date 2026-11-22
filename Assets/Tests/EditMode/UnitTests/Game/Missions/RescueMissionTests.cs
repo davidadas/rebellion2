@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
@@ -596,6 +597,137 @@ namespace Rebellion.Tests.Game.Missions
                 captive.GetParent(),
                 "Rescued officer should return to the rescuer's origin"
             );
+        }
+
+        [Test]
+        public void ProcessTick_ReleasedTargetStillInHostileShip_CompletesPendingReturn()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", "rebels");
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(hostileFleet, enemyPlanet);
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(captive, hostileShip);
+
+            Mission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            mission.DetectionResolved = true;
+            mission.PreObjectiveEncounterResolved = true;
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            captive.ReleaseFromCaptivity();
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                new MovementCommands(
+                    game,
+                    fog,
+                    new FleetCommands(game),
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
+            );
+
+            Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
+            Assert.AreEqual(empirePlanet, captive.GetParent());
+            PlanetSnapshot snapshot = game.GetFactionByOwnerInstanceID("empire")
+                .Fog.Snapshots[enemyPlanet.GetParentOfType<PlanetSector>().InstanceID]
+                .Planets[enemyPlanet.InstanceID];
+            Fleet observedHostileFleet = snapshot.Fleets.Single(fleet =>
+                fleet.InstanceID == hostileFleet.InstanceID
+            );
+            Assert.That(
+                observedHostileFleet
+                    .GetChildren<Officer>(recursive: true)
+                    .Select(observedOfficer => observedOfficer.InstanceID),
+                Does.Not.Contain(captive.InstanceID)
+            );
+        }
+
+        [Test]
+        public void ProcessTick_ReleasedTargetInMovingHostileShip_CompletesPendingReturn()
+        {
+            (
+                GameRoot game,
+                Planet empirePlanet,
+                Planet enemyPlanet,
+                Officer officer,
+                FogOfWarCommands fog
+            ) = MissionSceneBuilder.Build();
+            Fleet hostileFleet = EntityFactory.CreateFleet("hostile-fleet", "rebels");
+            CapitalShip hostileShip = new CapitalShip
+            {
+                InstanceID = "hostile-ship",
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            Officer captive = EntityFactory.CreateOfficer("captive", "empire");
+            captive.IsCaptured = true;
+            captive.CaptorInstanceID = "rebels";
+            game.AttachNode(hostileFleet, enemyPlanet);
+            game.AttachNode(hostileShip, hostileFleet);
+            game.AttachNode(captive, hostileShip);
+
+            Mission mission = CreateRescueMission(
+                game,
+                "empire",
+                enemyPlanet,
+                new List<IMissionParticipant> { officer },
+                new List<IMissionParticipant>(),
+                captive
+            );
+            game.AttachNode(mission, enemyPlanet);
+            game.MoveNode(officer, mission);
+            mission.Initiate(0);
+            mission.DetectionResolved = true;
+            mission.PreObjectiveEncounterResolved = true;
+            hostileShip.Movement = new MovementState(
+                new MovementLeg(10, enemyPlanet.GetPosition(), enemyPlanet.InstanceID),
+                enemyPlanet.InstanceID,
+                "hostile-transit"
+            );
+            while (!mission.IsComplete())
+                mission.IncrementProgress();
+            captive.ReleaseFromCaptivity();
+            MissionCommands missionSystem = TestSystems.CreateMissionCommands(
+                game,
+                new FixedRNG(0.0),
+                new MovementCommands(
+                    game,
+                    fog,
+                    new FleetCommands(game),
+                    new FogOfWarQueries(game),
+                    new MovementQueries(game)
+                )
+            );
+
+            Assert.DoesNotThrow(() => missionSystem.ProcessMissionTick(game));
+            Assert.AreEqual(empirePlanet, captive.GetParent());
+            Assert.NotNull(captive.Movement);
+            Assert.False(captive.IsCaptured);
         }
 
         [Test]

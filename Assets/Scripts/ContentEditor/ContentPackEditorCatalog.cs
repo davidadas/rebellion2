@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
@@ -55,6 +56,28 @@ public sealed class ContentPackEditorCatalog
         string[] parts = document.Address.Split('/');
         Faction = parts.Length > 3 && parts[1] == "Factions" ? parts[2] : "Shared";
         RefreshRecords();
+    }
+
+    /// <summary>
+    /// Rejects repeated TypeID selectors in authored XML rather than its merged effective values.
+    /// </summary>
+    /// <param name="typeID">The selected identity, or null to validate the entire catalog.</param>
+    internal void ValidateAuthoredTypeIDs(string typeID = null)
+    {
+        if (recordName == null || Document.AuthoredText == null)
+            return;
+        HashSet<string> identifiers = new HashSet<string>(StringComparer.Ordinal);
+        foreach (XElement record in XElement.Parse(Document.AuthoredText).Elements(recordName))
+        {
+            string identifier =
+                (string)record.Element("TypeID") ?? (string)record.Attribute("TypeID");
+            if (identifier == null || typeID != null && identifier != typeID)
+                continue;
+            if (!identifiers.Add(identifier))
+                throw new InvalidDataException(
+                    $"Duplicate TypeID '{identifier}' in {Document.Address}. Combine the records into one entry."
+                );
+        }
     }
 
     /// <summary>
@@ -543,6 +566,54 @@ public sealed class ContentPackEditorCatalog
     internal void Commit()
     {
         Document.SetText(xml.ToString());
+    }
+
+    /// <summary>
+    /// Adds a scoped mission article to the faction's encyclopedia.
+    /// </summary>
+    /// <param name="missionID">The mission associated with the article.</param>
+    /// <param name="factionID">The faction allowed to see the article.</param>
+    /// <returns>The title field of the new entry.</returns>
+    internal ContentPackEditorField AddMissionArticle(string missionID, string factionID)
+    {
+        if (recordName != "EncyclopediaEntry" || Records.Any(record => record.ID == missionID))
+            throw new InvalidOperationException(
+                "The encyclopedia already has an entry for this mission or is unavailable."
+            );
+
+        XElement article = new(
+            recordName,
+            new XElement("TypeID", missionID),
+            new XElement("DisplayName", ContentPackEditorField.FormatName(missionID)),
+            new XElement("Category", "Mission"),
+            new XElement("VisibleFactionInstanceID", factionID),
+            new XElement("ImagePath"),
+            new XElement("Description")
+        );
+        xml.Root.Add(article);
+        Commit();
+        RefreshRecords();
+        return Records.Single(record => record.Element == article).GetField("DisplayName");
+    }
+
+    /// <summary>
+    /// Copies an authored report, keeping its existing presentation and runtime selectors.
+    /// </summary>
+    /// <param name="shared">The shared definition to customize.</param>
+    /// <param name="faction">The recipient faction.</param>
+    internal void AddMissionReportOverride(
+        ContentPackEditorRecord shared,
+        ContentPackEditorRecord faction
+    )
+    {
+        RequireAttachedRecord(shared);
+        XElement report = new(shared.Element);
+        report.Element("InstanceID")?.Remove();
+        report.SetElementValue("DisplayName", shared.Name + " (" + faction.Name + ")");
+        report.SetElementValue("FactionInstanceID", faction.ID);
+        shared.Element.AddAfterSelf(report);
+        Commit();
+        RefreshRecords();
     }
 
     /// <summary>

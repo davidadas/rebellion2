@@ -255,6 +255,8 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             Render();
             if (_coordinator.PlayerSession != null)
                 Run(RefreshBrowserAsync);
+            else if (!_coordinator.IsSigningIn)
+                RequestConfirmation("You are not signed in. Sign in now to play online?", SignIn);
         }
 
         /// <summary>
@@ -309,7 +311,10 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 passwordDialog.SetActive(false);
                 saveDialog.SetActive(false);
                 if (!dialog && !joining)
+                {
                     CloseRequested?.Invoke();
+                    return true;
+                }
                 Render();
                 return true;
             }
@@ -377,7 +382,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         /// </summary>
         private void Render()
         {
-            if (_coordinator == null)
+            if (!isActiveAndEnabled || _coordinator == null)
                 return;
             bool signedIn = _coordinator.PlayerSession != null;
             bool inLobby = _coordinator.Lobby != null && !_coordinator.IsConnecting;
@@ -440,7 +445,9 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             else
             {
                 string signature =
-                    _coordinator.IsSearchingGames
+                    signedIn
+                    + ":"
+                    + _coordinator.IsSearchingGames
                     + ":"
                     + string.Join(
                         ";",
@@ -594,8 +601,9 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             }
             gameScrollArea.SetContentHeight(_gameRows.Count * 38, 38, true);
             emptyBrowserText.gameObject.SetActive(_gameRows.Count == 0);
-            emptyBrowserText.text = _coordinator.IsSearchingGames
-                ? "Searching for games..."
+            emptyBrowserText.text =
+                _coordinator.PlayerSession == null ? "Sign in to play online."
+                : _coordinator.IsSearchingGames ? "Searching for games..."
                 : "No games found.";
             browserCountText.text =
                 _coordinator.IsSearchingGames && _gameRows.Count > 0 ? "Searching..."

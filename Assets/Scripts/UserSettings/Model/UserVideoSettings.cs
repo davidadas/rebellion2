@@ -112,6 +112,9 @@ public sealed class UserVideoSettings
     /// <summary>
     /// Gets whether a positive resolution is within the accepted tolerance of sixteen by nine.
     /// </summary>
+    /// <param name="width">The horizontal pixel count.</param>
+    /// <param name="height">The vertical pixel count.</param>
+    /// <returns>True when the resolution is approximately 16:9.</returns>
     public static bool IsSixteenByNine(int width, int height) =>
         width > 0 && height > 0 && Math.Abs((long)width * 9L - (long)height * 16L) <= 8L;
 

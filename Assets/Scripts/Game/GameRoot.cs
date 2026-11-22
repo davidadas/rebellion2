@@ -161,18 +161,18 @@ namespace Rebellion.Game
             set => _gameSpeed = value;
         }
 
-        [PersistableMember(Name = "ActiveBattle")]
+        [PersistableMember(Name = nameof(ActiveBattle))]
         private ActiveBattle _activeBattle;
 
         /// <summary>
-        /// Returns the independently persisted tactical battle, if one is in progress.
+        /// Gets the independently persisted battle currently in progress.
         /// </summary>
-        public ActiveBattle GetActiveBattle() => _activeBattle;
-
-        /// <summary>
-        /// Replaces or clears the independently persisted tactical battle.
-        /// </summary>
-        public void SetActiveBattle(ActiveBattle activeBattle) => _activeBattle = activeBattle;
+        [PersistableIgnore]
+        public ActiveBattle ActiveBattle
+        {
+            get => _activeBattle;
+            set => _activeBattle = value;
+        }
 
         // Game events.
         [PersistableMember(Name = "EventPool")]

@@ -4,9 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -15,6 +17,174 @@ namespace Rebellion.Tests.ContentEditor.UI
     [TestFixture]
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void SelectRecord_DuplicateAuthoredTypeID_PreservesFormAndShowsValidationError()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            XElement overlay = new XElement(
+                "CapitalShips",
+                new XAttribute("Inherit", true),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("DisplayName", "Edited ship")
+                ),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("ResearchOrder", 10)
+                )
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(ship.Catalog.Document.TargetPath));
+            File.WriteAllText(ship.Catalog.Document.TargetPath, overlay.ToString());
+            project = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            workspace.RenderProject(project, assets);
+            ContentPackEditorRecord previous = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip" && record.ID != ship.ID);
+            SelectRecord(previous);
+            ContentPackEditorRecord duplicate = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == ship.ID);
+
+            Assert.DoesNotThrow(() => SelectRecord(duplicate));
+
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == previous.ID)
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == duplicate.ID)
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(text =>
+                        text.text.Contains("Duplicate TypeID")
+                        && text.text.Contains(ship.ID)
+                        && text.text.Contains(ship.Catalog.Document.Address)
+                    )
+            );
+        }
+
+        [Test]
+        public void RenderFieldError_SnapshotInvalidChoice_RevealsAndFocusesItsDropdown()
+        {
+            GameObject eventSystem = new GameObject("EventSystem");
+            eventSystem.AddComponent<EditModeEventSystem>();
+            try
+            {
+                ContentPackEditorRecord officer = project
+                    .GetCatalogs()
+                    .First(catalog => catalog.Name == "Officers")
+                    .Records.Last();
+                ContentPackEditorRecord snapshot = new ContentPackEditorRecord(
+                    officer.Catalog,
+                    new XElement(officer.Element)
+                );
+                ContentPackEditorField rank = snapshot.GetField("CurrentRank");
+                view.RenderFieldError(
+                    "Officers/OFAL005/Current rank: Choose a listed value.",
+                    rank,
+                    "Choose a listed value."
+                );
+                Button link = view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "OpenInvalidField");
+                RawImage linkIcon = link.GetComponentInChildren<RawImage>(true);
+
+                Assert.IsTrue(link.gameObject.activeSelf);
+                Assert.AreEqual(new Vector2(16, 16), linkIcon.rectTransform.sizeDelta);
+                Assert.AreEqual(
+                    "Application/Strategy/UI/Windows/ui_strategyview_open_location_button",
+                    linkIcon.GetComponent<ContentTextureBinding>().Address
+                );
+                link.onClick.Invoke();
+
+                ContentEditorFieldView field =
+                    view.GetComponentsInChildren<ContentEditorFieldView>()
+                        .Single(item => item.Field?.MemberName == "CurrentRank");
+                TMP_Dropdown dropdown = field.GetComponentInChildren<TMP_Dropdown>();
+                Assert.AreSame(dropdown.gameObject, EventSystem.current.currentSelectedGameObject);
+                Assert.IsTrue(field.HasError);
+                Assert.AreEqual(
+                    "Choose a listed value.",
+                    field
+                        .GetComponentsInChildren<TextMeshProUGUI>(true)
+                        .Single(text => text.name == "Error")
+                        .text
+                );
+                Assert.IsFalse(
+                    field
+                        .GetComponentsInChildren<Button>(true)
+                        .Single(button => button.name == "Revert")
+                        .gameObject.activeSelf
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(eventSystem);
+            }
+        }
+
+        [Test]
+        public void RenderStatus_AfterFieldError_HidesTheValidationLink()
+        {
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First()
+                .GetField("CurrentRank");
+            view.RenderFieldError(
+                "Officers/OFAL001/Current rank: Choose a listed value.",
+                field,
+                "Choose a listed value."
+            );
+            Button link = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "OpenInvalidField");
+
+            view.RenderStatus("Content pack saved.", false);
+
+            Assert.IsFalse(link.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void ApplyArtworkPlacement_GalaxyBackgroundMove_ChangesBothCoordinatesAsOneEdit()
+        {
+            ContentPackEditorRecord theme = GetAllianceTheme();
+            ContentPackEditorField[] fields = theme.GetFields().ToArray();
+            ContentPackEditorField xField = GetGalaxyPositionField(fields, "X");
+            ContentPackEditorField yField = GetGalaxyPositionField(fields, "Y");
+            int originalX = int.Parse(xField.Value);
+            int originalY = int.Parse(yField.Value);
+
+            workspace.ApplyArtworkPlacement(
+                new[]
+                {
+                    new ContentEditorArtworkPlacementChange(xField, originalX + 11),
+                    new ContentEditorArtworkPlacementChange(yField, originalY + 7),
+                }
+            );
+
+            Assert.AreEqual((originalX + 11).ToString(), xField.Value);
+            Assert.AreEqual((originalY + 7).ToString(), yField.Value);
+            Assert.AreEqual("Move interface artwork", project.UndoDescription);
+            Assert.IsTrue(project.Undo());
+            ContentPackEditorField[] restored = GetAllianceTheme().GetFields().ToArray();
+            Assert.AreEqual(originalX.ToString(), GetGalaxyPositionField(restored, "X").Value);
+            Assert.AreEqual(originalY.ToString(), GetGalaxyPositionField(restored, "Y").Value);
+        }
+
         [Test]
         public void ResetSection_VisibleButton_ResetsOnlyTheCurrentSectionAndSupportsUndo()
         {
@@ -227,6 +397,41 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(
                 before,
                 string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
+        /// <summary>
+        /// Finds the Alliance theme in the fixture-owned project.
+        /// </summary>
+        /// <returns>The editable Alliance theme record.</returns>
+        private ContentPackEditorRecord GetAllianceTheme()
+        {
+            return project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+        }
+
+        /// <summary>
+        /// Finds one coordinate beneath the Galaxy background's source position.
+        /// </summary>
+        /// <param name="fields">The theme fields to search.</param>
+        /// <param name="member">The X or Y coordinate member.</param>
+        /// <returns>The matching authored coordinate field.</returns>
+        private static ContentPackEditorField GetGalaxyPositionField(
+            ContentPackEditorField[] fields,
+            string member
+        )
+        {
+            return fields.Single(field =>
+                field.MemberName == member
+                && field.XmlElement.Parent?.Name.LocalName == "SourcePosition"
+                && field
+                    .XmlElement.Ancestors()
+                    .Any(element => element.Name.LocalName == "GalaxyBackground")
             );
         }
     }

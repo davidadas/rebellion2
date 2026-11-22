@@ -232,7 +232,39 @@ public static class ContentPackEditorBuild
                     StringComparison.Ordinal
                 )
             )
-                plugin.SetIncludeInBuildDelegate(_ => include);
+            {
+                PluginImporter dialogPlugin = plugin;
+                plugin.SetIncludeInBuildDelegate(_ =>
+                    include && MatchesWindowsPlayerArchitecture(dialogPlugin)
+                );
+            }
+    }
+
+    /// <summary>
+    /// Keeps only the dialog library built for the CPU of a 64-bit Windows player. Unity copies
+    /// both the x64 and ARM64 libraries into either player because they share one build target.
+    /// </summary>
+    /// <param name="plugin">The native dialog library being considered for the build.</param>
+    /// <returns>True when the library is not a 64-bit Windows one or matches the player CPU.</returns>
+    private static bool MatchesWindowsPlayerArchitecture(PluginImporter plugin)
+    {
+        if (!plugin.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64))
+            return true;
+
+        bool arm64Library = string.Equals(
+            plugin.GetPlatformData(BuildTarget.StandaloneWindows64, "CPU"),
+            "ARM64",
+            StringComparison.OrdinalIgnoreCase
+        );
+        bool arm64Player = string.Equals(
+            EditorUserBuildSettings.GetPlatformSettings(
+                BuildPipeline.GetBuildTargetName(BuildTarget.StandaloneWindows64),
+                "Architecture"
+            ),
+            "ARM64",
+            StringComparison.OrdinalIgnoreCase
+        );
+        return arm64Library == arm64Player;
     }
 
     /// <summary>

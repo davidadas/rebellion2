@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -10,7 +11,9 @@ using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -444,6 +447,245 @@ namespace Rebellion.Tests.Gameplay
                 _game.GetSceneNodeByInstanceID<Starfighter>(starfighter.InstanceID, true)
             );
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_LastGarrisonRemovedWithoutDestination_DestroysStationedFighter(
+            bool becomesNeutral
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                1
+            );
+            _game.DeleteNode(_empirePlanet);
+
+            List<GameResult> results = RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreEqual(
+                becomesNeutral ? null : _rebels.InstanceID,
+                _targetPlanet.OwnerInstanceID
+            );
+            Assert.AreEqual(
+                1,
+                results
+                    .OfType<GameObjectDestroyedResult>()
+                    .Count(result => result.DestroyedObject == fighter)
+            );
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true));
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_LastGarrisonRemovedWithoutHyperdrive_DestroysStationedFighter(
+            bool becomesNeutral
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                0
+            );
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.IsNull(_game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true));
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+        }
+
+        [TestCase(false, 0)]
+        [TestCase(false, 1)]
+        [TestCase(true, 0)]
+        [TestCase(true, 1)]
+        public void HandleResults_LastGarrisonRemovedWithLocalCarrier_BoardsStationedFighter(
+            bool becomesNeutral,
+            int hyperdrive
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                hyperdrive
+            );
+            (_, Fleet fleet, CapitalShip carrier) = AddNearbyCarrier("local", 35, 1, 0);
+            _game.MoveNode(fleet, _targetPlanet);
+            _commands.OwnershipChanging += _observer.ObserveOwnershipChange;
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.AreSame(_targetPlanet, fighter.GetParentOfType<Planet>());
+            Assert.IsNull(fighter.Movement);
+            Assert.IsTrue(fighter.IsActive());
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_ManufacturedDeliveryDisplacedToLocalCarrier_KeepsFighterOperational(
+            bool reload
+        )
+        {
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            (_, Fleet fleet, CapitalShip carrier) = AddNearbyCarrier("local", 0, 1, 0);
+            _game.MoveNode(fleet, _targetPlanet);
+            Starfighter fighter = EntityFactory.CreateStarfighter("delivering", _empire.InstanceID);
+            fighter.MaxSquadronSize = 12;
+            fighter.CurrentSquadronSize = 12;
+            fighter.ManufacturingStatus = ManufacturingStatus.Delivering;
+            _game.AttachNode(fighter, _targetPlanet);
+            _movementSystem.RequestMove(fighter, _targetPlanet, _empirePlanet);
+            Assert.IsNotNull(fighter.Movement);
+            fighter.Movement.SetPosition(new Point(1, 0));
+            _commands.OwnershipChanging += _observer.ObserveOwnershipChange;
+
+            PlanetOwnershipChangedResult change = _commands.TransferPlanet(_targetPlanet, _rebels);
+            List<GameResult> results = _observer.HandleResults(new[] { change });
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            GameObjectDeployedResult deployment = results
+                .OfType<GameObjectDeployedResult>()
+                .Single();
+            Assert.AreSame(fighter, deployment.GameObject);
+            Assert.AreEqual(_game.CurrentTick, deployment.Tick);
+            if (reload)
+            {
+                GameSerializer serializer = new GameSerializer(typeof(GameRoot));
+                using StringWriter output = new StringWriter();
+                serializer.Serialize(output, _game);
+                using StringReader input = new StringReader(output.ToString());
+                GameRoot restored = (GameRoot)serializer.Deserialize(input);
+                fighter = restored.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID);
+            }
+
+            Assert.IsTrue(SpaceCombatQueries.IsActiveStarfighter(fighter));
+            Assert.IsTrue(new CombatUnitSnapshot(fighter).WasOperational);
+        }
+
+        [Test]
+        public void HandleResults_DelayedNeutralizationWithLocalCarrier_BoardsDespiteBlockade()
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(true, 0);
+            (_, Fleet fleet, CapitalShip carrier) = AddNearbyCarrier("local", 35, 1, 0);
+            _game.MoveNode(fleet, _targetPlanet);
+            AddBlockadingFleet(_targetPlanet, "blockading");
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.IsTrue(_targetPlanet.IsBlockadedFor(_empire.InstanceID));
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [Test]
+        public void HandleResults_LastGarrisonRemovedOnNeutralPlanet_RetainsUnfinishedFighter()
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(true, 0);
+            fighter.ManufacturingStatus = ManufacturingStatus.Building;
+            _game.DeleteNode(_empirePlanet);
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreSame(_targetPlanet, fighter.GetParent());
+            Assert.AreSame(
+                fighter,
+                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID)
+            );
+            Assert.IsNull(fighter.Movement);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_LastGarrisonRemovedWithRemoteDestinations_PrefersFriendlyPlanet(
+            bool becomesNeutral
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                1
+            );
+            AddNearbyCarrier("nearer", 35, 1, 0);
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreSame(_empirePlanet, fighter.GetParent());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreEqual(_targetPlanet.PositionX, fighter.Movement.CurrentPosition.X);
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+            Assert.IsTrue(fighter.IsActive());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void HandleResults_LastGarrisonRemovedWithOnlyRemoteCarrier_EvacuatesStationedFighter(
+            bool becomesNeutral
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                1
+            );
+            (_, _, CapitalShip carrier) = AddNearbyCarrier("remote", 35, 1, 0);
+            _game.DeleteNode(_empirePlanet);
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreSame(carrier, fighter.GetParent());
+            Assert.IsNotNull(fighter.Movement);
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ProcessTick_EvacuatedStationedFighter_CompletesArrival(bool useCarrier)
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(true, 1);
+            ContainerNode destination = _empirePlanet;
+            if (useCarrier)
+            {
+                (_, _, CapitalShip carrier) = AddNearbyCarrier("remote", 35, 1, 0);
+                _game.DeleteNode(_empirePlanet);
+                destination = carrier;
+            }
+            RemoveGarrisonAndReconcile(garrison);
+            Assert.IsNotNull(fighter.Movement);
+            MovementTickProcessor processor = new MovementTickProcessor(_movementSystem);
+            int remainingTicks = fighter.Movement.TicksRemaining();
+
+            for (int tick = 0; tick <= remainingTicks; tick++)
+                processor.ProcessTick(_game);
+
+            Assert.AreSame(destination, fighter.GetParent());
+            Assert.IsNull(fighter.Movement);
+            Assert.IsTrue(fighter.IsActive());
+            Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
+        }
+
+        [TestCase(false, 0)]
+        [TestCase(false, 1)]
+        [TestCase(true, 0)]
+        [TestCase(true, 1)]
+        public void HandleResults_LastGarrisonRemovedWithFullLocalCarrier_RequiresHyperdriveToEscape(
+            bool becomesNeutral,
+            int hyperdrive
+        )
+        {
+            (Regiment garrison, Starfighter fighter) = BuildStationedFighterScene(
+                becomesNeutral,
+                hyperdrive
+            );
+            (_, Fleet fleet, _) = AddNearbyCarrier("full", 35, 0, 0);
+            _game.MoveNode(fleet, _targetPlanet);
+
+            RemoveGarrisonAndReconcile(garrison);
+
+            Assert.AreSame(hyperdrive == 0 ? null : _empirePlanet, fighter.GetParent());
+            Assert.AreEqual(hyperdrive != 0, fighter.Movement != null);
         }
 
         [Test]
@@ -1138,6 +1380,28 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Builds a planet whose last garrison is holding control over a stationary fighter.
+        /// </summary>
+        /// <param name="becomesNeutral">Whether support leaves the planet neutral after garrison loss.</param>
+        /// <param name="hyperdrive">The fighter's interplanetary travel capability.</param>
+        /// <returns>The last garrison and the completed stationary fighter.</returns>
+        private (Regiment garrison, Starfighter fighter) BuildStationedFighterScene(
+            bool becomesNeutral,
+            int hyperdrive
+        )
+        {
+            (Regiment garrison, _) = BuildOuterRimGarrisonRemovalScene(0);
+            _game.Config.SupportShift.OwnershipTransferThreshold = becomesNeutral ? 70 : 60;
+            _targetPlanet.PopularSupport[_rebels.InstanceID] = becomesNeutral ? 50 : 60;
+            _targetPlanet.PopularSupport[_empire.InstanceID] = becomesNeutral ? 50 : 40;
+            Starfighter fighter = EntityFactory.CreateStarfighter("stationed", _empire.InstanceID);
+            fighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            fighter.Hyperdrive = hyperdrive;
+            _game.AttachNode(fighter, _targetPlanet);
+            return (garrison, fighter);
+        }
+
+        /// <summary>
         /// Builds an outer-rim planet with one stationed regiment and equal groups of inbound
         /// starfighters, officers, and regiments owned by the planet's current faction.
         /// </summary>
@@ -1284,7 +1548,8 @@ namespace Rebellion.Tests.Gameplay
         /// change to planetary control reconciliation.
         /// </summary>
         /// <param name="garrison">The last stationed regiment to remove.</param>
-        private void RemoveGarrisonAndReconcile(Regiment garrison)
+        /// <returns>The garrison and ownership reactions, including any unit losses.</returns>
+        private List<GameResult> RemoveGarrisonAndReconcile(Regiment garrison)
         {
             _game.DeleteNode(garrison);
             List<GameResult> results = _observer.HandleResults(
@@ -1297,7 +1562,10 @@ namespace Rebellion.Tests.Gameplay
                     },
                 }
             );
-            _observer.HandleResults(results.OfType<PlanetOwnershipChangedResult>().ToList());
+            results.AddRange(
+                _observer.HandleResults(results.OfType<PlanetOwnershipChangedResult>().ToList())
+            );
+            return results;
         }
     }
 }

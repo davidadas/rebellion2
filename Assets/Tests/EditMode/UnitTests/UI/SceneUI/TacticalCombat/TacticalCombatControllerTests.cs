@@ -15,6 +15,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 using Vector3N = System.Numerics.Vector3;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
@@ -127,7 +128,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 100,
                 new LinearCongruentialRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 new TacticalCombatDefinition
                 {
                     Sounds = new()

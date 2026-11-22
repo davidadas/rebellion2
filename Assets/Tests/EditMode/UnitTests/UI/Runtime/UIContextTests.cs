@@ -151,6 +151,87 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.AreEqual(TextureWrapMode.Clamp, first.wrapMode);
         }
 
+        [TestCase("FNALL1", false)]
+        [TestCase("FNEMP1", true)]
+        public void GetMissionIconTexture_FacilityResearch_SelectsTheNeutralTheme(
+            string faction,
+            bool small
+        )
+        {
+            const string key = MissionIconKeys.ResearchFacilityDesign;
+            string expected = _themeLibrary.GetTheme(null).MissionIcons.GetImagePath(key, small);
+            Texture2D icon = _context.GetMissionIconTexture(faction, key, small);
+
+            Assert.IsNotNull(icon);
+            Assert.AreSame(_context.GetTexture(expected), icon);
+        }
+
+        [TestCase(null)]
+        [TestCase("Pack/missing-shared-icon")]
+        public void GetMissionIconTexture_UnavailableSharedResearchIcon_ReturnsFactionIcon(
+            string sharedPath
+        )
+        {
+            const string factionPath = "Pack/faction-research";
+            FactionThemeLibrary themes = new(
+                new FactionThemes
+                {
+                    new FactionTheme
+                    {
+                        MissionIcons = new MissionIconSetTheme
+                        {
+                            Icons =
+                            {
+                                new MissionIconTheme
+                                {
+                                    Key = MissionIconKeys.ResearchFacilityDesign,
+                                    SmallImagePath = sharedPath,
+                                },
+                            },
+                        },
+                    },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = _playerFactionId,
+                        MissionIcons = new MissionIconSetTheme
+                        {
+                            Icons =
+                            {
+                                new MissionIconTheme
+                                {
+                                    Key = MissionIconKeys.ResearchFacilityDesign,
+                                    SmallImagePath = factionPath,
+                                },
+                            },
+                        },
+                    },
+                }
+            );
+            Texture2D factionIcon = new(2, 2);
+            try
+            {
+                UIContext context = new(
+                    _game,
+                    themes,
+                    _encyclopediaCatalog,
+                    path => path == factionPath ? factionIcon : null
+                );
+
+                Assert.AreSame(
+                    factionIcon,
+                    context.GetMissionIconTexture(
+                        _playerFactionId,
+                        MissionIconKeys.ResearchFacilityDesign,
+                        true
+                    )
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(factionIcon);
+            }
+        }
+
         [Test]
         public void GetSmoothTexture_ConfiguredPath_ReturnsSmoothContentTexture()
         {
@@ -161,6 +242,72 @@ namespace Rebellion.Tests.UI.Runtime
             Assert.IsNotNull(texture);
             Assert.AreEqual(FilterMode.Trilinear, texture.filterMode);
             Assert.Greater(texture.mipmapCount, 1);
+        }
+
+        [Test]
+        public void GetAlphaTintedTexture_ConfiguredResolver_ForwardsPathAndColor()
+        {
+            Texture2D expected = new Texture2D(1, 1);
+            string requestedPath = null;
+            Color32 requestedColor = default;
+            UIContext context = new UIContext(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                TestContent.Assets.GetTexture,
+                null,
+                TestContent.Assets.GetSmoothTexture,
+                (path, color) =>
+                {
+                    requestedPath = path;
+                    requestedColor = color;
+                    return expected;
+                }
+            );
+            try
+            {
+                Texture2D actual = context.GetAlphaTintedTexture(
+                    "Pack/Shared/mask",
+                    new Color32(1, 2, 3, 4)
+                );
+
+                Assert.AreSame(expected, actual);
+                Assert.AreEqual("Pack/Shared/mask", requestedPath);
+                Assert.AreEqual(new Color32(1, 2, 3, 4), requestedColor);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(expected);
+            }
+        }
+
+        [Test]
+        public void GetFactionMask_ThemeWithoutColorScheme_ReturnsAuthoredTexture()
+        {
+            Texture2D authored = new(1, 1);
+            UIContext context = new(
+                _game,
+                _themeLibrary,
+                _encyclopediaCatalog,
+                _ => authored,
+                loadAlphaTintedTexture: (_, _) =>
+                    throw new AssertionException("Legacy artwork was tinted.")
+            );
+            try
+            {
+                Assert.That(
+                    context.GetFactionMask(
+                        "Pack/Shared/selection",
+                        new FactionTheme { FactionPrimaryColorHex = "FF0000" },
+                        FactionMaskColor.SelectionColorHex
+                    ),
+                    Is.SameAs(authored)
+                );
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(authored);
+            }
         }
 
         [Test]

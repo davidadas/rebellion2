@@ -483,6 +483,7 @@ namespace Rebellion.Game.Units
         public bool IsRetired { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
+        public string BackgroundImagePath { get; set; }
         public OfficerVoiceSet VoiceSet { get; set; }
         public OfficerImageSet ImageSet { get; set; }
 
@@ -723,6 +724,7 @@ namespace Rebellion.Game.Units
             copy.IsRetired = IsRetired;
             copy.MissionReturnParentInstanceID = MissionReturnParentInstanceID;
             copy.MissionReturnLocationInstanceID = MissionReturnLocationInstanceID;
+            copy.BackgroundImagePath = BackgroundImagePath;
             copy.VoiceSet = VoiceSet?.CreateCopy();
             copy.ImageSet = ImageSet?.CreateCopy();
             copy.Traits = new List<string>(Traits);

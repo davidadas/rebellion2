@@ -9,7 +9,7 @@ MEMBER_ORDER_ANALYZER="${MEMBER_ORDER_ANALYZER:-Tools/Rebellion.Analyzers/bin/Re
 MEMBER_ORDER_ANALYZER_TEST_PROJECT="${MEMBER_ORDER_ANALYZER_TEST_PROJECT:-Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj}"
 ARCHITECTURE_TEST_PROJECT="${ARCHITECTURE_TEST_PROJECT:-Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj}"
 MEMBER_ORDER_LINT_PROJECT="${MEMBER_ORDER_LINT_PROJECT:-MemberOrder.Lint.csproj}"
-GAME_LINT_PROJECT="${GAME_LINT_PROJECT:-GameAssembly.Lint.csproj}"
+RUNTIME_LINT_PROJECT="${RUNTIME_LINT_PROJECT:-RuntimeAssemblies.Lint.csproj}"
 EDITOR_LINT_PROJECT="${EDITOR_LINT_PROJECT:-EditorAssembly.Lint.csproj}"
 UNITY_TEST_REFERENCES="${UNITY_TEST_REFERENCES:-$(cd "$PROJECT_PATH" && pwd)/Tools/UnityTestReferences.targets}"
 
@@ -170,7 +170,7 @@ do_lint() {
 
     # Full compilation check — only runs locally where Unity has generated the project files.
     # In CI the Unity test runner already proves compilation, so this is skipped.
-    if [ -f GameAssembly.csproj ]; then
+    if [ -f Rebellion.App.csproj ]; then
         # Unity-generated projects reference package assemblies through Temp/bin. Populate that
         # directory from Unity's successful compilation before asking dotnet to compile only the
         # repository-owned assemblies; some Unity packages require Unity's compiler toolchain.
@@ -179,34 +179,42 @@ do_lint() {
             cp Library/ScriptAssemblies/*.dll Temp/bin/Debug/
         fi
 
-        echo "=== GameAssembly ==="
         # Unity-generated projects share output/intermediate directories, so parallel MSBuild can
         # race dependencies and report missing metadata from another project still being compiled.
         dotnet build Rebellion.InputActions.csproj \
             -maxcpucount:1 \
             -verbosity:normal \
             "${extra_args[@]}"
-        if [ -f Rebellion.Util.csproj ]; then
-            dotnet build Rebellion.Util.csproj \
+        local runtime_projects=(
+            Rebellion.Util
+            Rebellion.SceneGraph
+            Rebellion.Game
+            Rebellion.UserSettings
+            Rebellion.Saves
+            Rebellion.Content
+            Rebellion.Generation
+            Rebellion.Analytics
+            Rebellion.Tactical.Core
+            Rebellion.Gameplay
+            Rebellion.AI
+            Rebellion.Sessions
+            Rebellion.Networking.Transport
+            Rebellion.Multiplayer
+            Rebellion.App
+        )
+        for runtime_project in "${runtime_projects[@]}"; do
+            if [ ! -f "$runtime_project.csproj" ]; then
+                echo "Missing Unity-generated runtime project: $runtime_project.csproj" >&2
+                exit 1
+            fi
+
+            echo "=== $runtime_project ==="
+            dotnet build "$runtime_project.csproj" \
                 --no-dependencies \
                 -maxcpucount:1 \
                 -verbosity:normal \
                 "${extra_args[@]}"
-        fi
-        for assembly in Rebellion.Networking.Transport Rebellion.Combat.Contracts Rebellion.Tactical.Contracts Rebellion.Tactical.Core Rebellion.Tactical.Runtime; do
-            if [ -f "$assembly.csproj" ]; then
-                dotnet build "$assembly.csproj" \
-                    --no-dependencies \
-                    -maxcpucount:1 \
-                    -verbosity:normal \
-                    "${extra_args[@]}"
-            fi
         done
-        dotnet build GameAssembly.csproj \
-            --no-dependencies \
-            -maxcpucount:1 \
-            -verbosity:normal \
-            "${extra_args[@]}"
         echo ""
         if [ -f ContentPackEditorAssembly.csproj ]; then
             echo "=== ContentPackEditorAssembly ==="
@@ -276,11 +284,11 @@ do_lint() {
     # Roslynator uses a committed portable project file so it works in CI without Unity.
     # Two passes: warnings are displayed but don't fail; errors do fail.
     echo "=== Roslynator ==="
-    run_roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$RUNTIME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level warning || true
-    run_roslynator analyze "$GAME_LINT_PROJECT" \
+    run_roslynator analyze "$RUNTIME_LINT_PROJECT" \
         --analyzer-assemblies "$ROSLYNATOR_ANALYZERS" \
         --ignored-diagnostics CS0103 CS0234 CS0246 \
         --severity-level error
@@ -319,7 +327,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.Util,+Rebellion.Combat.Contracts,+Rebellion.Tactical.Contracts,+Rebellion.Tactical.Core,+Rebellion.Tactical.Runtime,+Rebellion.Networking.Transport"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml
@@ -393,11 +401,44 @@ default_build_player_path() {
     esac
 }
 
+default_build_architecture() {
+    # Windows x64 and ARM64 players share the StandaloneWindows64 target. Build for the host CPU
+    # so the result runs natively on the machine that produced it. Git Bash is an emulated x64
+    # process on Windows on Arm, so PROCESSOR_ARCHITECTURE reports AMD64 there; MSYS2 marks the
+    # real host by appending -ARM64 to the kernel name.
+    case "$(uname -s):${PROCESSOR_ARCHITEW6432:-${PROCESSOR_ARCHITECTURE:-}}" in
+        *-ARM64:*|*:ARM64|*:arm64)
+            echo "arm64"
+            ;;
+        *)
+            echo "x64"
+            ;;
+    esac
+}
+
 do_build() {
     prepare_native_math
     local build_target="${BUILD_TARGET:-$(default_build_target)}"
     local build_player_path="${BUILD_PLAYER_PATH:-$(default_build_player_path)}"
     local resolved_player_path
+    local build_architecture="x64"
+    local architecture_args=()
+
+    if [ "$build_target" = "StandaloneWindows64" ]; then
+        build_architecture="${BUILD_ARCHITECTURE:-$(default_build_architecture)}"
+        case "$build_architecture" in
+            x64|arm64)
+                ;;
+            *)
+                echo "FAIL: BUILD_ARCHITECTURE must be x64 or arm64 (got '$build_architecture')."
+                exit 1
+                ;;
+        esac
+        architecture_args=(-buildArchitecture "$build_architecture")
+    elif [ -n "${BUILD_ARCHITECTURE:-}" ] && [ "$BUILD_ARCHITECTURE" != "x64" ]; then
+        echo "FAIL: BUILD_ARCHITECTURE=$BUILD_ARCHITECTURE is only supported for StandaloneWindows64."
+        exit 1
+    fi
 
     case "$build_player_path" in
         /*|[A-Za-z]:/*)
@@ -415,6 +456,7 @@ do_build() {
         -buildTarget "$build_target" \
         -executeMethod StandalonePlayerBuild.Build \
         -buildPlayerPath "$build_player_path" \
+        "${architecture_args[@]}" \
         -quit
 
     if [ ! -e "$resolved_player_path" ]; then
@@ -427,7 +469,7 @@ do_build() {
     game_artifact_name="$(basename "$resolved_player_path")"
     "${PYTHON:-python3}" "$PROJECT_PATH/Tools/package_desktop.py" \
         --platform "$build_target" --build-dir "$(dirname "$resolved_player_path")" \
-        --game-name "${game_artifact_name%.*}"
+        --game-name "${game_artifact_name%.*}" --architecture "$build_architecture"
 
     echo "Build complete: $resolved_player_path"
 }

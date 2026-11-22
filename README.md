@@ -55,7 +55,8 @@ The installer verifies ownership automatically. You must own either *Star Wars: 
 
 ## Project status
 
-The game currently has a 100% playable campaign. Only multiplayer, modding tools, and a completely replacement for the original's 3D space combat remain.
+The single-player and multiplayer campaigns are fully playable. Modding tools and 3D tactical
+combat, including multiplayer combat, remain in development.
 
 | Capability | Status |
 | --- | ---: |
@@ -68,7 +69,8 @@ The game currently has a 100% playable campaign. Only multiplayer, modding tools
 | 3D tactical combat | 0% |
 | 3D tactical combat UI | 0% |
 | 3D tactical combat AI | 0% |
-| Multiplayer | 0% |
+| Multiplayer campaign | 100% |
+| 3D tactical combat multiplayer | 0% |
 | Modding tools | 70% |
 
 ## Documentation

@@ -86,6 +86,8 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Resolves a battle copy's stable source identity only when campaign results are committed.
         /// </summary>
+        /// <param name="unit">The tactical unit whose campaign source is required.</param>
+        /// <returns>The original campaign scene node.</returns>
         private ISceneNode ResolveTacticalSource(TacticalCombatUnit unit)
         {
             string sourceID = unit?.Combatant?.SourceUnitInstanceID;
@@ -104,6 +106,7 @@ namespace Rebellion.Gameplay
         /// Commits only battle-owned damage and survivor counts after the campaign result pipeline
         /// has performed its destruction, recovery, and event work.
         /// </summary>
+        /// <param name="result">The completed combat result containing surviving campaign units.</param>
         private void ReconcileBattleCopies(SpaceCombatResult result)
         {
             Dictionary<string, CapitalShip> ships = result.ShipDamage.ToDictionary(

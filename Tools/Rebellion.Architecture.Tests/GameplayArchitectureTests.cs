@@ -7,7 +7,8 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
-using Rebellion.Tactical.Presentation;
+using Rebellion.Tactical.Rendering;
+using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
@@ -18,7 +19,7 @@ namespace Rebellion.Architecture.Tests
     {
         private const string _runtimePattern = "^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)";
         private const string _presentationPattern =
-            "^(?:Rebellion\\.(?:UI|Multiplayer|Tactical\\.Presentation)(?:\\..*)?|[^.<][^.]*)$";
+            "^(?:Rebellion\\.(?:UI|Multiplayer)(?:\\..*)?|Rebellion\\.Tactical\\.Rendering(?:\\..*)?|[^.<][^.]*)$";
         private static readonly ArchUnitNET.Domain.Architecture _architecture =
             ProductionArchitecture.Load();
 
@@ -50,7 +51,11 @@ namespace Rebellion.Architecture.Tests
         public void GameplayBoundary_GlobalUiDependency_RejectsArchitecture()
         {
             var architecture = new ArchLoader()
-                .LoadAssemblies(typeof(GameRoot).Assembly, typeof(GameplayUiDependency).Assembly)
+                .LoadAssemblies(
+                    typeof(GameRoot).Assembly,
+                    typeof(TacticalCombatHudState).Assembly,
+                    typeof(GameplayUiDependency).Assembly
+                )
                 .Build();
             string sourcePattern = "^" + Regex.Escape(typeof(GameplayUiDependency).FullName) + "$";
 
@@ -68,6 +73,7 @@ namespace Rebellion.Architecture.Tests
             var architecture = new ArchLoader()
                 .LoadAssemblies(
                     typeof(GameRoot).Assembly,
+                    typeof(TacticalCombatReplicaPlayback).Assembly,
                     typeof(GameplayTransportDependency).Assembly
                 )
                 .Build();

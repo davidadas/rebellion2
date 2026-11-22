@@ -266,6 +266,41 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reconciles a mission after its directly contained special-forces participants have
+        /// been removed from the scene and interrupts it when the remaining primary team is invalid.
+        /// </summary>
+        /// <param name="mission">The mission that directly contained the units before deletion.</param>
+        /// <param name="destroyedParticipants">The destroyed units attributed to the mission.</param>
+        /// <param name="results">The batch receiving interruption and teardown results.</param>
+        internal void ReconcileDestroyedSpecialForces(
+            Mission mission,
+            IReadOnlyCollection<SpecialForces> destroyedParticipants,
+            List<GameResult> results
+        )
+        {
+            if (mission == null)
+                throw new ArgumentNullException(nameof(mission));
+            if (destroyedParticipants == null)
+                throw new ArgumentNullException(nameof(destroyedParticipants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (destroyedParticipants.Count == 0 || mission.GetParent() == null)
+                return;
+
+            List<IMissionParticipant> removed = destroyedParticipants
+                .Where(participant => ReferenceEquals(participant.GetLastParent(), mission))
+                .Distinct()
+                .Cast<IMissionParticipant>()
+                .ToList();
+            if (removed.Count == 0)
+                return;
+
+            mission.AcceptCurrentParticipantRoster();
+            if (mission.GetAbortReason(_game).HasValue)
+                InterruptMission(mission, results, removed);
+        }
+
+        /// <summary>
         /// Withdraws injured officers from their recorded mission while preserving a valid remaining team.
         /// Officers on friendly ground remain there; others follow the shared mission return policy.
         /// </summary>
@@ -570,13 +605,28 @@ namespace Rebellion.Gameplay
             List<GameResult> results
         )
         {
-            RecordMissionIntelligence(mission, completedResult?.Participants);
             if (completedResult == null)
+            {
+                RecordMissionIntelligence(mission, null);
                 TearDownMission(mission, null, results);
+            }
             else if (completedResult.CanContinue)
+            {
+                RecordMissionIntelligence(mission, completedResult.Participants);
                 mission.Repeat(RollMissionDuration(mission));
+            }
             else
+            {
+                Planet intelligencePlanet = mission.GetParent() as Planet;
+                bool shouldRecordIntelligence = ShouldRecordMissionIntelligence(
+                    mission,
+                    intelligencePlanet,
+                    completedResult.Participants
+                );
                 TearDownMission(mission, completedResult, results);
+                if (shouldRecordIntelligence)
+                    RecordMissionIntelligence(mission.OwnerInstanceID, intelligencePlanet);
+            }
         }
 
         /// <summary>
@@ -590,8 +640,28 @@ namespace Rebellion.Gameplay
             IEnumerable<IMissionParticipant> departingParticipants = null
         )
         {
-            if (!mission.HasInitiated || mission.GetParent() is not Planet planet)
+            Planet planet = mission.GetParent() as Planet;
+            if (!ShouldRecordMissionIntelligence(mission, planet, departingParticipants))
                 return;
+
+            RecordMissionIntelligence(mission.OwnerInstanceID, planet);
+        }
+
+        /// <summary>
+        /// Determines whether participants reached the mission planet and can report its state.
+        /// </summary>
+        /// <param name="mission">The mission reaching a reporting boundary.</param>
+        /// <param name="planet">The mission planet before any teardown occurs.</param>
+        /// <param name="departingParticipants">Participants removed before the reporting boundary.</param>
+        /// <returns>True when the mission owner should receive a current planet snapshot.</returns>
+        private static bool ShouldRecordMissionIntelligence(
+            Mission mission,
+            Planet planet,
+            IEnumerable<IMissionParticipant> departingParticipants
+        )
+        {
+            if (!mission.HasInitiated || planet == null)
+                return false;
             if (
                 !mission.DetectionResolved
                 && !mission
@@ -601,10 +671,20 @@ namespace Rebellion.Gameplay
                         participant.MissionReturnLocationInstanceID == planet.InstanceID
                     )
             )
-                return;
+                return false;
 
+            return true;
+        }
+
+        /// <summary>
+        /// Records the current state of a mission planet for the owning faction.
+        /// </summary>
+        /// <param name="ownerInstanceId">The faction receiving the intelligence.</param>
+        /// <param name="planet">The mission planet to record.</param>
+        private void RecordMissionIntelligence(string ownerInstanceId, Planet planet)
+        {
             _intelligence.RecordMissionSnapshot(
-                _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID),
+                _game.GetFactionByOwnerInstanceID(ownerInstanceId),
                 planet,
                 planet.GetParentOfType<PlanetSector>(),
                 _game.CurrentTick

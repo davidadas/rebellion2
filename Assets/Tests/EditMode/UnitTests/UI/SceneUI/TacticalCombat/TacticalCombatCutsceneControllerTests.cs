@@ -12,6 +12,7 @@ using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 {
@@ -538,7 +539,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 new TacticalCombatDefinition
                 {
                     AttackRunSuccessMoviePath = "Pack/Videos/success",

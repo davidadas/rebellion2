@@ -17,6 +17,9 @@ PLATFORMS = {
     "StandaloneOSX": (".app", "libnfd.dylib"),
 }
 EDITOR_ASSEMBLY = "ContentPackEditorAssembly.dll"
+# Windows x64 and ARM64 players share the StandaloneWindows64 build target; the PE machine field
+# tells them apart.
+WINDOWS_MACHINES = {"x64": b"\x64\x86", "arm64": b"\x64\xaa"}
 
 
 MATH_LIBRARIES = {
@@ -65,7 +68,17 @@ def archive_permissions(info):
     return info
 
 
-def verify_native(path, platform):
+def require_architecture(platform, architecture):
+    require(
+        architecture in WINDOWS_MACHINES, f"Unsupported architecture: {architecture}"
+    )
+    require(
+        architecture == "x64" or platform == "StandaloneWindows64",
+        f"{platform} bundles support only x64",
+    )
+
+
+def verify_native(path, platform, architecture="x64"):
     binary = path.read_bytes()
     if platform == "StandaloneWindows64":
         require(
@@ -73,8 +86,8 @@ def verify_native(path, platform):
         )
         offset = int.from_bytes(binary[60:64], "little")
         require(
-            binary[offset : offset + 6] == b"PE\0\0\x64\x86",
-            "Dialog library must target Windows x64",
+            binary[offset : offset + 6] == b"PE\0\0" + WINDOWS_MACHINES[architecture],
+            f"Dialog library must target Windows {architecture}",
         )
     elif platform == "StandaloneLinux64":
         require(
@@ -100,9 +113,10 @@ def verify_native(path, platform):
         )
 
 
-def collect_files(root, platform, game_name="rebellion2"):
+def collect_files(root, platform, game_name="rebellion2", architecture="x64"):
     """Allow only Unity runtime artifacts and verify the companion's isolation and dependencies."""
     require(platform in PLATFORMS, f"Unsupported platform: {platform}")
+    require_architecture(platform, architecture)
     require(
         Path(game_name).name == game_name
         and game_name not in {".", "..", "rebellion2-editor"},
@@ -142,7 +156,7 @@ def collect_files(root, platform, game_name="rebellion2"):
         # Both players share UnityPlayer; Linux keeps a Mono runtime in each player's data.
         # IL2CPP companions cannot share a single native GameAssembly library.
         require(
-            (data / "Managed" / "GameAssembly.dll").is_file(),
+            (data / "Managed" / "Rebellion.App.dll").is_file(),
             "Shared desktop bundles require Mono builds",
         )
         if platform == "StandaloneLinux64":
@@ -165,7 +179,7 @@ def collect_files(root, platform, game_name="rebellion2"):
             f"Incorrect native dialog library inclusion: {name}",
         )
         if libraries:
-            verify_native(libraries[0], platform)
+            verify_native(libraries[0], platform, architecture)
         math_libraries = [
             path
             for path in (player if suffix == ".app" else data).rglob(
@@ -177,7 +191,7 @@ def collect_files(root, platform, game_name="rebellion2"):
             len(math_libraries) == 1,
             f"Incorrect native vector library inclusion: {name}",
         )
-        verify_native(math_libraries[0], platform)
+        verify_native(math_libraries[0], platform, architecture)
         if name == "rebellion2-editor":
             notice_root = data.parent if suffix == ".app" else data
             notice = notice_root / "ThirdPartyNotices" / "NativeFileDialog.txt"
@@ -232,7 +246,7 @@ def collect_files(root, platform, game_name="rebellion2"):
     return files
 
 
-def stage(root, platform, destination, game_name="rebellion2"):
+def stage(root, platform, destination, game_name="rebellion2", architecture="x64"):
     """Stage only verified runtime files into a new installer payload directory."""
     root, destination = Path(root).resolve(), Path(destination).resolve()
     require(
@@ -240,7 +254,7 @@ def stage(root, platform, destination, game_name="rebellion2"):
         "Staging output must be outside the build folder",
     )
     require(not destination.exists(), "Staging output already exists")
-    files = collect_files(root, platform, game_name)
+    files = collect_files(root, platform, game_name, architecture)
     destination.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(
         prefix=".rebellion2-stage-", dir=destination.parent
@@ -260,14 +274,14 @@ def stage(root, platform, destination, game_name="rebellion2"):
     return destination
 
 
-def package(root, platform, output, game_name="rebellion2"):
+def package(root, platform, output, game_name="rebellion2", architecture="x64"):
     """Produce a verified runtime archive and its checksum, preserving the previous output on failure."""
     root, output = Path(root).resolve(), Path(output).resolve()
     require(
         not output.is_relative_to(root),
         "Package output must be outside the build folder",
     )
-    files = collect_files(root, platform, game_name)
+    files = collect_files(root, platform, game_name, architecture)
     manifest = {
         "platform": platform,
         "externalContent": "Content/catalog.xml",
@@ -338,6 +352,12 @@ def main():
         default="rebellion2",
         help="Game executable base name without its platform extension",
     )
+    parser.add_argument(
+        "--architecture",
+        choices=WINDOWS_MACHINES,
+        default="x64",
+        help="CPU architecture of the built players; arm64 is Windows-only",
+    )
     outputs = parser.add_mutually_exclusive_group()
     outputs.add_argument("--output", type=Path)
     outputs.add_argument(
@@ -347,13 +367,30 @@ def main():
     )
     args = parser.parse_args()
     if args.output:
-        print(package(args.build_dir, args.platform, args.output, args.game_name))
-    elif args.stage_dir:
-        print(stage(args.build_dir, args.platform, args.stage_dir, args.game_name))
-    else:
         print(
-            f"Verified {len(collect_files(args.build_dir.resolve(), args.platform, args.game_name))} runtime files"
+            package(
+                args.build_dir,
+                args.platform,
+                args.output,
+                args.game_name,
+                args.architecture,
+            )
         )
+    elif args.stage_dir:
+        print(
+            stage(
+                args.build_dir,
+                args.platform,
+                args.stage_dir,
+                args.game_name,
+                args.architecture,
+            )
+        )
+    else:
+        files = collect_files(
+            args.build_dir.resolve(), args.platform, args.game_name, args.architecture
+        )
+        print(f"Verified {len(files)} runtime files")
 
 
 if __name__ == "__main__":

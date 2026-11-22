@@ -74,7 +74,7 @@ Assets/TextMesh Pro/
 **/*.sln
 **/*.slnx
 *.csproj
-!GameAssembly.Lint.csproj
+!RuntimeAssemblies.Lint.csproj
 !EditorAssembly.Lint.csproj
 !MemberOrder.Lint.csproj
 !Tools/Rebellion.Analyzers/Rebellion.Analyzers.csproj

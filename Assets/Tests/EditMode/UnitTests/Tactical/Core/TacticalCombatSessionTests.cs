@@ -11,6 +11,7 @@ using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
+using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -1132,7 +1133,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach
             );
 
             TacticalCombatGroup requested = session.CreateGroup(new[] { selected });
@@ -3077,7 +3078,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach
             );
         }
 
@@ -3152,7 +3153,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 presentationClock: () => 0
             );
         }
@@ -3344,7 +3345,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 definition,
                 presentationClock: () => 0,
                 personnelHostInstanceIDs: personnelHostInstanceIDs,
@@ -3416,7 +3417,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 definition
             );
         }
@@ -3615,7 +3616,7 @@ namespace Rebellion.Tests.Tactical
                 100,
                 new SystemRandomProvider(42),
                 TacticalCombatAudio.Create,
-                Rebellion.AI.Tactical.TacticalCombatPlanner.Attach,
+                TacticalCombatPlanner.Attach,
                 definition
             );
             session.SetOrder(group, TacticalCombatOrder.AttackBattleStation);
