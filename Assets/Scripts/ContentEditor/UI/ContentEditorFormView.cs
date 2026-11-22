@@ -3232,6 +3232,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         var category = categories.Single(category =>
             category.Name == selectedFactionArtworkCategory
         );
+        bool sector = category.Name == _defaultFactionArtworkCategory;
+        bool window = artworkWindowPreview.Supports(category.Name);
         y +=
             PlaceLabel(
                 ContentEditorContentSections.FactionArtworkCategoryDescription(category.Name),
@@ -3241,22 +3243,25 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 width - 8,
                 false
             ) + 12;
-        y +=
-            PlaceLabel(
-                "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
-                labelIndex++,
-                4,
-                y,
-                width - 8,
-                false
-            ) + 10;
+        if (sector || window)
+            y +=
+                PlaceLabel(
+                    neutral && sector
+                        ? "Double-click an outlined icon to open its image settings below."
+                        : "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
+                    labelIndex++,
+                    4,
+                    y,
+                    width - 8,
+                    false
+                ) + 10;
         IReadOnlyList<ContentPackEditorField> renderedFields;
-        if (category.Name == _defaultFactionArtworkCategory)
+        if (sector)
         {
-            y = PlaceStrategyArtworkPreview(category.Fields, y, width, ref labelIndex);
+            y = PlaceStrategyArtworkPreview(category.Fields, y, width, ref labelIndex, neutral);
             renderedFields = artworkSectorPreview.RenderedFields;
         }
-        else if (artworkWindowPreview.Supports(category.Name))
+        else if (window)
         {
             y = PlaceArtworkWindowPreview(category.Name, y, width, ref labelIndex);
             renderedFields = artworkWindowPreview
@@ -3291,11 +3296,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             if (
                 neutral
                 && index == visibleFields.Length
-                && artworkWindowPreview.Supports(category.Name)
+                && visibleFields.Length > 0
+                && (sector || window)
             )
             {
                 y +=
-                    PlaceLabel("Additional theme artwork", labelIndex++, 4, y, width - 8, true) + 8;
+                    PlaceLabel("More artwork for this view", labelIndex++, 4, y, width - 8, true)
+                    + 8;
                 previousSections = Array.Empty<string>();
             }
             ContentPackEditorField field = fields[index];
@@ -3385,12 +3392,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="y">The next browser position.</param>
     /// <param name="width">The available browser width.</param>
     /// <param name="labelIndex">The next reusable label.</param>
+    /// <param name="neutral">Whether the page already explains editing above the sector.</param>
     /// <returns>The first position below the composed preview and its instruction.</returns>
     private int PlaceStrategyArtworkPreview(
         IReadOnlyList<ContentPackEditorField> editableFields,
         int y,
         float width,
-        ref int labelIndex
+        ref int labelIndex,
+        bool neutral
     )
     {
         ContentPackEditorRecord sector = catalogs
@@ -3459,6 +3468,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 + 12;
         }
         y += previewHeight + 8;
+        if (neutral)
+            return y + 16;
         return y
             + PlaceLabel(
                 "Hover an image to outline it, then double-click to open the exact field supplying that planet, overlay, or background.",
@@ -3975,10 +3986,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 IReadOnlyList<string> sections = collection
                     ? Array.Empty<string>()
                     : field.SectionPath;
-                if (
-                    record.Kind == "FactionTheme"
-                    && selectedPage.Key != ContentEditorContentSections.NeutralThemePageKey
-                )
+                if (record.Kind == "FactionTheme")
                     sections = Array.Empty<string>();
                 if (
                     selectedPage.Key.StartsWith("factions/", StringComparison.Ordinal)

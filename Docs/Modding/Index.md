@@ -202,9 +202,9 @@ In the Content Pack Editor, open a faction's **Colors** tab to set its primary
 color, selected menu text color, and individual interface tints. **Reset colors**
 restores the inherited or default colors for that theme.
 
-Open **Factions > Neutral theme > Interfaces** to edit neutral interface artwork.
-The **Planet sector** preview shows neutral planetary icons alongside the
-faction artwork, including the text colors used in the game.
+Open **Factions > Neutral theme** to preview and edit shared interface artwork.
+Double-click an outlined icon to open its image settings. Use **Colors** for the
+neutral palette and **Advanced** for XML settings such as HUD coordinates.
 
 ## Sharing a mod
 

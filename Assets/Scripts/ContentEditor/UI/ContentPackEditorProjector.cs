@@ -33,6 +33,12 @@ internal static class ContentPackEditorProjector
             section = "General";
         if (page?.MissionID != null && page.RelatedRecords.Count == 0)
             section = "Rules";
+        if (page?.Key == ContentEditorContentSections.NeutralThemePageKey)
+            section = page.Fields.Any(field =>
+                ContentEditorContentSections.IsFactionInterfaceField(field, neutral: true)
+            )
+                ? "Interfaces"
+                : "Colors";
         if (record?.Catalog.IsMap == true)
             section = "General";
         return new ContentPackEditorSelection(record, visiblePage, sector, section);

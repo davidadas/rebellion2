@@ -74,11 +74,15 @@ internal static class ContentEditorContentSections
     /// Separates faction authoring tasks while retaining their existing XML documents.
     /// </summary>
     /// <param name="field">The faction field or associated reference article field.</param>
+    /// <param name="neutral">Whether the field belongs to the neutral theme.</param>
     /// <returns>The inspector tab containing the field.</returns>
-    internal static string FactionSection(ContentPackEditorField field) =>
+    internal static string FactionSection(ContentPackEditorField field, bool neutral = false) =>
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionBackgroundField(field) ? "Default backgrounds"
         : field.Group == nameof(FactionTheme.ColorScheme) ? "Colors"
+        : neutral
+            ? IsFactionInterfaceField(field, neutral: true) ? "Interfaces"
+                : "Advanced"
         : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
@@ -678,7 +682,7 @@ internal static class ContentEditorContentSections
                 "Faction-owned save-slot identity and confirmation-dialog artwork. Shared controls and color-driven masks are configured elsewhere.",
             "Default backgrounds" =>
                 "The default officer, capital-ship, and starfighter backgrounds used when a unit does not provide an override.",
-            _ => "Additional faction-specific images not owned by another interface surface.",
+            _ => "Interface artwork outside the previews.",
         };
 
     /// <summary>

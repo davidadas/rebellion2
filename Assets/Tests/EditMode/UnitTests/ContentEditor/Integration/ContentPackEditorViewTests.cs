@@ -1009,6 +1009,45 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void SelectPage_NeutralTheme_OpensTheEditableSectorPreview()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+
+            SelectPage(page);
+
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            Assert.IsNotNull(preview);
+            Assert.IsNotEmpty(preview.GetComponentsInChildren<ContentEditorArtworkEditTarget>());
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>().Any(button => button.name == "Tab0")
+            );
+        }
+
+        [Test]
+        public void ShowField_NeutralThemeCoordinate_OpensAdvancedXml()
+        {
+            ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(
+                project.GetCatalogs()
+            );
+            ContentPackEditorField coordinate = neutral
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == "X" && field.Group == nameof(FactionTheme.GalaxyBackground)
+                );
+
+            view.ShowField(coordinate, "Check this coordinate.");
+
+            ContentEditorXmlView xml = view.GetComponentInChildren<ContentEditorXmlView>();
+            Assert.IsNotNull(xml);
+            StringAssert.Contains("<SourcePosition>", xml.Text);
+        }
+
+        [Test]
         public void RenderProject_FactionTabs_SeparateAuthoringTasks()
         {
             foreach (
