@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
@@ -154,6 +155,19 @@ namespace Rebellion.Game
         {
             get => _gameSpeed;
             set => _gameSpeed = value;
+        }
+
+        [PersistableMember(Name = nameof(ActiveBattle))]
+        private ActiveBattle _activeBattle;
+
+        /// <summary>
+        /// Gets the independently persisted battle currently in progress.
+        /// </summary>
+        [PersistableIgnore]
+        public ActiveBattle ActiveBattle
+        {
+            get => _activeBattle;
+            set => _activeBattle = value;
         }
 
         // Game events.
