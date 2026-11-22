@@ -215,6 +215,13 @@ Double-click an outlined sector icon to open its image settings. Use
 facility research artwork. Player HUD artwork is under each faction's
 **Interfaces > Strategy view**.
 
+### Artwork layers
+
+In the travel or damage artwork editor, choose an output size and click **Add image…**.
+PNG and JPEG files become independent layers you can move, scale, hide, and reorder.
+When you save the artwork, the editor copies the source image into the pack and saves the layer
+with that output so you can edit it again later.
+
 ## Sharing a mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that

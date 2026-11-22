@@ -92,6 +92,48 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Bake_ImportedLayer_PreservesItsPositionAndTransparency()
+        {
+            Texture2D image = new(4, 4, TextureFormat.RGBA32, false);
+            Texture2D output = new(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Color32[] pixels = new Color32[16];
+                pixels[5] = new Color32(215, 32, 17, 128);
+                image.SetPixels32(pixels);
+                image.Apply(false);
+                byte[] png = image.EncodeToPNG();
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    null,
+                    loadLayerSource: _ => png
+                );
+                var layer = new ContentEditorArtworkLayer
+                {
+                    Source = -1,
+                    ImageSource = "Pack/Assets/ArtworkSources/layer.png",
+                    Offset = new Vector2(3f / _width, 0f),
+                };
+
+                Assert.IsTrue(output.LoadImage(frame.Bake(new[] { layer })));
+                Color32[] visible = output.GetPixels32();
+                int x = (_width - 4) / 2 + 1 + 3;
+                int y = (_height - 4) / 2 + 1;
+                Assert.AreEqual(128, visible[y * _width + x].a);
+                Assert.AreEqual(1, visible.Count(pixel => pixel.a != 0));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(image);
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
         public void CreateEditableFrame_AngledShip_PlacesTheWakePastTheDiagonalHull()
         {
             Texture2D angled = new(_width, _height, TextureFormat.RGBA32, false);

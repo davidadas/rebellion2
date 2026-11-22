@@ -93,6 +93,17 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ShowGeneratedArtwork_ImportLayer_RoutesToTheDraftCommand()
+        {
+            int requests = 0;
+            var workspace = ShowArtwork(new ArtworkEffectActions { Import = () => requests++ });
+
+            GetButton(workspace, "ImportArtworkLayer").onClick.Invoke();
+
+            Assert.That(requests, Is.EqualTo(1));
+        }
+
+        [Test]
         public void ShowGeneratedArtwork_WithoutWakeVariation_HidesTheSeparateAction()
         {
             var workspace = ShowArtwork();

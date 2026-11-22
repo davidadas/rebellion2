@@ -75,6 +75,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
 
         Assign(view, "layerCaption", Label("LayersHeading", sidebar, "Layers", 18));
         Assign(view, "add", Secondary("AddArtworkLayer", sidebar, "Add layer"));
+        Assign(view, "importLayer", Secondary("ImportArtworkLayer", sidebar, "Add image…"));
         ScrollAreaLayout scroll = Scroll("ArtworkLayers", sidebar);
         Assign(view, "layerScroll", scroll);
         Assign(view, "rowTemplate", BuildLayerRow(sidebar));

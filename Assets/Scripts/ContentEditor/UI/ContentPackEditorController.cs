@@ -796,6 +796,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             var frames = new ContentEditorArtworkEffectGenerator.EditableFrame[outputs.Length];
             ContentEditorArtworkEffectGenerator.EditableFrame[] currentFrames = null;
             ContentEditorTravelPattern[] travelPatterns = null;
+            Dictionary<string, byte[]> pendingLayerSources = new(StringComparer.Ordinal);
+            string layerPickerDirectory = null;
             Stack<(int Output, string Recipe)> undo = new();
             Stack<(int Output, string Recipe)> redo = new();
             int selected = -1;
@@ -979,6 +981,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return (travelPatterns ??= ResolveTravelPatterns())[index];
             }
 
+            byte[] LoadLayerSource(string address)
+            {
+                if (pendingLayerSources.TryGetValue(address, out byte[] image))
+                    return image;
+                string path = ResolveArtworkAddress(address);
+                return path == null ? null : File.ReadAllBytes(path);
+            }
+
             ContentEditorArtworkEffectGenerator.EditableFrame BuildFrame(
                 ContentEditorArtworkRecipe draft,
                 int index
@@ -1029,7 +1039,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         completeTravel: completeTravel,
                         travelPattern: pattern,
                         preserveRegisteredTravel: completeTravel && draft.Version >= 6,
-                        varyShipWakes: draft.VaryShipWakes
+                        varyShipWakes: draft.VaryShipWakes,
+                        loadLayerSource: LoadLayerSource
                     );
                 }
                 catch (InvalidDataException)
@@ -1064,7 +1075,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         legacyStreaks: draft.Version == 2,
                         facilityClearance: clearance,
                         completeTravel: completeTravel,
-                        travelPattern: fallback
+                        travelPattern: fallback,
+                        loadLayerSource: LoadLayerSource
                     );
                 }
                 if (draft.Version >= 4 && draft.FacilityClearance < 0)
@@ -1187,13 +1199,65 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     MeasuredStreaks = true,
                     VisibleStreakGroup = true,
                 };
+                layer.Name = LayerName(layer, recipe.Layers.Count, frames[activeOutput], recipe);
+                InsertLayer(layer);
+            }
+
+            int LayerInsertionIndex(ContentEditorArtworkRecipe recipe)
+            {
                 int facility = frames[activeOutput].FacilityLayerIndex;
                 int foreground =
                     facility < 0 ? -1 : recipe.Layers.FindIndex(item => item.Source == facility);
-                selected = foreground < 0 ? recipe.Layers.Count : foreground;
-                layer.Name = LayerName(layer, recipe.Layers.Count, frames[activeOutput], recipe);
+                return foreground < 0 ? recipe.Layers.Count : foreground;
+            }
+
+            void InsertLayer(ContentEditorArtworkLayer layer)
+            {
+                var recipe = drafts[activeOutput];
+                selected = LayerInsertionIndex(recipe);
                 recipe.Layers.Insert(selected, layer);
                 Refresh();
+            }
+
+            void ImportLayer()
+            {
+                ContentPackEditorField field = outputs[activeOutput].Field;
+                string[] extensions = field.MediaExtensions;
+                string path = ContentEditorFileDialog.OpenFile(
+                    layerPickerDirectory ?? GetAssetPickerDirectory(field),
+                    extensions
+                );
+                if (string.IsNullOrEmpty(path))
+                    return;
+                string extension = Path.GetExtension(path);
+                if (!extensions.Contains(extension, StringComparer.OrdinalIgnoreCase))
+                    throw new ArgumentException("Choose a PNG or JPEG image.");
+
+                byte[] image = File.ReadAllBytes(path);
+                string address = ContentPackEditorStorage.GetArtworkLayerSourceAddress(
+                    image,
+                    extension
+                );
+                var layer = new ContentEditorArtworkLayer
+                {
+                    Source = -1,
+                    ImageSource = address,
+                    Name = Path.GetFileNameWithoutExtension(path),
+                };
+                bool staged = pendingLayerSources.TryAdd(address, image);
+                try
+                {
+                    frames[activeOutput].GetLayer(layer);
+                }
+                catch
+                {
+                    if (staged)
+                        pendingLayerSources.Remove(address);
+                    throw;
+                }
+                layerPickerDirectory = Path.GetDirectoryName(path);
+                RememberEdit();
+                InsertLayer(layer);
             }
 
             void DuplicateLayer()
@@ -1272,6 +1336,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 frames[activeOutput] = frame;
                 drafts[activeOutput] = replacement;
                 CreateDefaultLayers(activeOutput);
+                replacement.Layers.InsertRange(
+                    LayerInsertionIndex(replacement),
+                    recipe.Layers.Where(layer => !string.IsNullOrEmpty(layer.ImageSource))
+                );
                 SelectDefaultLayer();
                 Refresh();
             }
@@ -1282,6 +1350,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             void Save()
             {
                 var images = new List<(ContentPackEditorField Field, byte[] Png, string Layers)>();
+                HashSet<string> layerSourcesToSave = new(StringComparer.Ordinal);
                 for (int index = 0; index < outputs.Length; index++)
                 {
                     var draft = drafts[index];
@@ -1310,8 +1379,20 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     images.Add(
                         (output.Field, frames[index].Bake(draft.Layers), JsonUtility.ToJson(draft))
                     );
+                    foreach (var layer in draft.Layers)
+                        if (
+                            layer.ImageSource != null
+                            && pendingLayerSources.ContainsKey(layer.ImageSource)
+                        )
+                            layerSourcesToSave.Add(layer.ImageSource);
                 }
 
+                foreach (string address in layerSourcesToSave)
+                    ContentPackEditorStorage.StoreArtworkLayerSource(
+                        project,
+                        address,
+                        pendingLayerSources[address]
+                    );
                 bool persist = !project.IsDirty;
                 ApplyGeneratedArtwork(
                     $"Save {effect.ToString().ToLowerInvariant()} artwork",
@@ -1489,6 +1570,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         Reorder = (index, target) =>
                             RunOperation(() => ReorderLayer(index, target)),
                         Add = () => RunOperation(AddLayer),
+                        Import = () => RunOperation(ImportLayer),
                         Duplicate = () => RunOperation(DuplicateLayer),
                         Remove = () => RunOperation(RemoveLayer),
                         Rebuild = () => RunOperation(() => Regenerate(false)),

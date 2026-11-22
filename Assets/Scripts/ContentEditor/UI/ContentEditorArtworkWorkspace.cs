@@ -108,6 +108,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private Button add;
 
     [SerializeField]
+    private Button importLayer;
+
+    [SerializeField]
     private Button duplicate;
 
     [SerializeField]
@@ -217,6 +220,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         fit.onClick.AddListener(artworkCanvas.Fit);
         actual.onClick.AddListener(artworkCanvas.ActualPixels);
         add.onClick.AddListener(() => actions?.Add());
+        importLayer.onClick.AddListener(() => actions?.Import?.Invoke());
         duplicate.onClick.AddListener(() => actions?.Duplicate());
         remove.onClick.AddListener(() => actions?.Remove());
         forward.onClick.AddListener(() => MoveOrder(1));
@@ -351,7 +355,6 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         for (int i = 0; i < frame.Layers.Count; i++)
             if (frame.Layers[i].Index == selectedIndex)
                 layerScroll.ScrollArea.RevealContentRect((frame.Layers.Count - i - 1) * 51, 46);
-        layerCaption.text = frame.Layers.Count == 0 ? "No layers" : "Layers";
     }
 
     /// <summary>
@@ -373,6 +376,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         forward.interactable = canEdit && GetReorderTarget(1) >= 0;
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
+        importLayer.interactable = !comparing && actions.Import != null;
         scope.text = selectedLayer?.Locked == true ? "Locked" : "Pixels";
         int? percent = selectedLayer?.ScalePercent;
         scaleControls.gameObject.SetActive(canEdit && percent.HasValue && actions.Resize != null);
@@ -558,8 +562,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             Mathf.Max(51, layerCount * 51),
             Mathf.Max(51, Mathf.Min(narrow ? 154 : 260, sideHeight - footer - 56))
         );
-        Place(layerCaption.transform, 16, 9, Mathf.Max(80, sideWidth - 158), 32);
-        Place(add.transform, sideWidth - 133, 9, 117, 32);
+        Place(layerCaption.transform, 16, 9, sideWidth - 246, 32);
+        Place(add.transform, sideWidth - 224, 9, 108, 32);
+        Place(importLayer.transform, sideWidth - 110, 9, 94, 32);
         Place(layerScroll.transform, 16, 50, sideWidth - 32, listHeight);
         float controlsY = 56 + listHeight;
         Place(layerActions, 0, controlsY, sideWidth, 37);
@@ -751,6 +756,7 @@ internal sealed class ArtworkEffectActions
     internal Action<int> Toggle;
     internal Action<int, int> Reorder;
     internal Action Add;
+    internal Action Import;
     internal Action Duplicate;
     internal Action Remove;
     internal Action Rebuild;
