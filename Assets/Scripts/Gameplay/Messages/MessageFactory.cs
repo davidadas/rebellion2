@@ -290,9 +290,22 @@ namespace Rebellion.Gameplay
                 reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
-            string abductionResult = GetAbductionResultText(result, killedOfficerIDs, officerName);
+            bool abductionTargetKilled =
+                result.Outcome == MissionOutcome.Success
+                && result.Mission?.ConfigKey == AbductionMission.MissionTypeID
+                && killedOfficerIDs.Contains(GetMissionTargetOfficerInstanceID(result.Mission));
+            string abductionResult = GetAbductionResultText(abductionTargetKilled, officerName);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
-            MessageDefinition definition = GetMissionDefinition(
+            MessageDefinition definition = abductionTargetKilled
+                ? GetMissionDefinition(
+                    MessageResultType.MissionReport,
+                    MessageResultOutcome.TargetKilled,
+                    GetMissionTypeID(result),
+                    completionReason,
+                    faction?.InstanceID
+                )
+                : null;
+            definition ??= GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
                 GetMissionTypeID(result),
@@ -1643,24 +1656,13 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets the target status for a successful abduction that killed its target.
         /// </summary>
-        /// <param name="result">The completed mission result.</param>
-        /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
+        /// <param name="targetKilled">Whether the successful abduction killed its target.</param>
         /// <param name="officerName">The resolved target officer display name.</param>
         /// <returns>The target-death status, or an empty string when the target survived.</returns>
-        private static string GetAbductionResultText(
-            MissionCompletedResult result,
-            HashSet<string> killedOfficerIDs,
-            string officerName
-        )
+        private static string GetAbductionResultText(bool targetKilled, string officerName)
         {
-            if (
-                result?.Outcome != MissionOutcome.Success
-                || result.Mission?.ConfigKey != AbductionMission.MissionTypeID
-                || !killedOfficerIDs.Contains(GetMissionTargetOfficerInstanceID(result.Mission))
-            )
-            {
+            if (!targetKilled)
                 return string.Empty;
-            }
 
             string targetName = string.IsNullOrEmpty(officerName) ? "The target" : officerName;
             return $"{targetName} was killed during the attempt.";
