@@ -32,11 +32,9 @@ internal static class ContentEditorArtworkWorkspaceBuilder
             panel,
             ContentEditorColorRole.Panel
         ).rectTransform;
-        RectTransform sidebar = Surface(
-            "LayerInspector",
-            panel,
-            ContentEditorColorRole.Panel
-        ).rectTransform;
+        Image inspector = Surface("LayerInspector", panel, ContentEditorColorRole.Panel);
+        inspector.raycastTarget = true;
+        RectTransform sidebar = inspector.rectTransform;
         RectTransform canvasBar = Surface(
             "CanvasBar",
             panel,

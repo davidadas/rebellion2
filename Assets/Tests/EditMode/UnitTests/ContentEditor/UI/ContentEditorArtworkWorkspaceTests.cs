@@ -104,6 +104,37 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(requests, Is.EqualTo(1));
         }
 
+        [TestCase("ArtworkCanvas")]
+        [TestCase("LayerInspector")]
+        public void TryImportDroppedImage_DraftSurface_ImportsLayer(string surface)
+        {
+            string imported = null;
+            var workspace = ShowArtwork(
+                new ArtworkEffectActions { ImportDroppedImage = path => imported = path }
+            );
+            var target = workspace.transform.Find("Workspace/" + surface).GetComponent<Image>();
+            Assert.That(target.raycastTarget, Is.True);
+
+            DropImageOn(target.gameObject, (_, _) => Assert.Fail("Imported into the unit form."));
+
+            Assert.That(imported, Is.EqualTo("dropped.png"));
+        }
+
+        [Test]
+        public void TryImportDroppedImage_ComparingCurrentArtwork_DoesNotImportLayer()
+        {
+            int imports = 0;
+            var workspace = ShowArtwork(
+                new ArtworkEffectActions { ImportDroppedImage = _ => imports++ }
+            );
+            GetButton(workspace, "CurrentPreview").onClick.Invoke();
+            var canvas = workspace.GetComponentInChildren<ContentEditorArtworkCanvas>();
+
+            DropImageOn(canvas.gameObject, (_, _) => Assert.Fail("Imported into the unit form."));
+
+            Assert.That(imports, Is.Zero);
+        }
+
         [Test]
         public void ShowGeneratedArtwork_WithoutWakeVariation_HidesTheSeparateAction()
         {
@@ -203,6 +234,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 new ArtworkEffectPreviewFrame("Large", large, null, largeLayers),
             };
             commands ??= new ArtworkEffectActions();
+            commands.ReadCurrent ??= () => frames;
             commands.AddLabel = "Add wake";
             commands.RebuildLabel = "Rebuild travel artwork";
             view.ShowGeneratedArtwork(
