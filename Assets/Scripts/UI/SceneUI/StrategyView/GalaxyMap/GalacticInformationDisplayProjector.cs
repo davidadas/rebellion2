@@ -41,7 +41,7 @@ public sealed class GalacticInformationDisplayProjector
         FactionTheme playerTheme = GetRequiredPlayerTheme(context);
         GalacticInformationDisplayTheme theme = GetRequiredDisplayTheme(playerTheme);
         SourceRectLayout selector = GetRequiredSelectorLayout(theme);
-        Color highlightColor = playerTheme.GetPrimaryColor();
+        Color highlightColor = playerTheme.GetHighlightTextColor();
         Texture2D checkMarkTexture = context.GetTexture(
             playerTheme.StrategyContextMenuTheme?.CheckMarkImagePath
         );

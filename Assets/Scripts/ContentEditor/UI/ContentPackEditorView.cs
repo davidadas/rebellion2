@@ -837,7 +837,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? "Starting setup"
                 : selectedPage?.Caption ?? selectedRecord.Name;
         string kind =
-            selectedPage?.IsMissionPresentation == true ? "Mission presentation"
+            selectedPage?.Key == ContentEditorContentSections.NeutralThemePageKey
+                ? "Shared interface artwork and colors"
+            : selectedPage?.IsMissionPresentation == true ? "Mission presentation"
             : selectedPage?.MissionID != null ? "Mission"
             : selectedRecord.Kind is "PlanetSector" or "PlanetSectors" ? "Galaxy"
             : selectedRecord.Kind == "GameConfig" ? "Game rules"
@@ -1756,6 +1758,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             audioTab.gameObject.SetActive(false);
         }
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
+        bool neutral = selectedPage?.Key == ContentEditorContentSections.NeutralThemePageKey;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
         bool missionRulesOnly =
             selectedPage?.MissionID != null
@@ -1767,10 +1770,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             : selectedPage?.IsMissionPresentation == true ? "Presentation"
             : "General";
         defaultBackgroundsTab.GetComponentInChildren<TMP_Text>().text = "Default backgrounds";
-        propertiesTab.gameObject.SetActive(!generation && !missionRulesOnly);
+        propertiesTab.gameObject.SetActive(!neutral && !generation && !missionRulesOnly);
         if (faction)
             artworkTab.gameObject.SetActive(
-                selectedPage.Fields.Any(ContentEditorContentSections.IsFactionInterfaceField)
+                selectedPage.Fields.Any(field =>
+                    ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
+                )
             );
         defaultBackgroundsTab.gameObject.SetActive(
             faction
@@ -1787,7 +1792,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             audioTab.gameObject.SetActive(false);
         }
         rulesTab.gameObject.SetActive(
-            faction
+            faction && !neutral
                 || selectedPage?.MissionID != null
                     && selectedPage.Fields.Any(field => field.Record.Kind == "GameConfig")
         );
@@ -1816,6 +1821,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             tab.gameObject.SetActive(generation);
         Button[] tabs =
             generation ? generationTabs.Concat(new[] { advancedTab }).ToArray()
+            : neutral ? new[] { artworkTab, colorsTab, defaultBackgroundsTab, advancedTab }
             : faction
                 ? new[]
                 {
@@ -1845,6 +1851,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? ContentEditorContentSections
                     .GenerationSections.Concat(new[] { "Advanced" })
                     .ToArray()
+            : neutral ? new[] { "Interfaces", "Colors", "Default backgrounds", "Advanced" }
             : faction
                 ? new[]
                 {
@@ -1874,7 +1881,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 .Range(0, tabs.Length)
                 .Any(index => tabs[index].gameObject.activeSelf && names[index] == section)
         )
-            SectionRequested?.Invoke(missionRulesOnly ? "Rules" : names[0]);
+            SectionRequested?.Invoke(
+                missionRulesOnly
+                    ? "Rules"
+                    : names[Array.FindIndex(tabs, tab => tab.gameObject.activeSelf)]
+            );
         List<(RectTransform Rect, float Width)> layout = new();
         for (int i = 0; i < tabs.Length; i++)
         {
@@ -2762,6 +2773,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ShowSection(targetSection);
         if (targetSection != "Advanced" && !form.FocusField(field, validationError))
             ShowSection("Advanced");
+        if (section == "Advanced" && page?.Key == ContentEditorContentSections.NeutralThemePageKey)
+            xml.SelectFieldScope(field);
     }
 
     /// <summary>
@@ -2782,7 +2795,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ? ContentEditorMissionReport.Section
                 : "General";
         if (page?.Key.StartsWith("factions/", StringComparison.Ordinal) == true)
-            return ContentEditorContentSections.FactionSection(field);
+            return ContentEditorContentSections.FactionSection(
+                field,
+                page.Key == ContentEditorContentSections.NeutralThemePageKey
+            );
         if (record.Kind == "GameGenerationConfig")
             return ContentEditorContentSections.GenerationSection(field);
         if (page?.MissionID != null)
@@ -2926,6 +2942,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             && form.GetOverriddenFields().Count > 0;
         resetSectionButton.gameObject.SetActive(canReset);
         resetSectionButton.interactable = canReset;
+        resetSectionButton.GetComponentInChildren<TMP_Text>(true).text =
+            section == "Colors" ? "Reset colors" : "Reset section";
     }
 
     /// <summary>

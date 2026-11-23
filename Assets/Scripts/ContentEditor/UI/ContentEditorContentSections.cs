@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game.Missions;
+using UnityEngine;
 
 /// <summary>
 /// Projects related authored content into task-oriented inspector and navigation sections.
@@ -31,6 +32,7 @@ internal static class ContentEditorContentSections
     private static readonly string[] _factionColorMembers =
     {
         nameof(FactionColorScheme.PrimaryColorHex),
+        nameof(FactionColorScheme.HighlightTextColorHex),
         nameof(FactionColorScheme.SelectionColorHex),
         nameof(FactionColorScheme.ActiveWindowTitleColorHex),
         nameof(FactionColorScheme.InactiveWindowTitleColorHex),
@@ -67,15 +69,21 @@ internal static class ContentEditorContentSections
         "Strategy view",
     };
 
+    internal const string NeutralThemePageKey = "factions/neutral-theme";
+
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
     /// </summary>
     /// <param name="field">The faction field or associated reference article field.</param>
+    /// <param name="neutral">Whether the field belongs to the neutral theme.</param>
     /// <returns>The inspector tab containing the field.</returns>
-    internal static string FactionSection(ContentPackEditorField field) =>
+    internal static string FactionSection(ContentPackEditorField field, bool neutral = false) =>
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionBackgroundField(field) ? "Default backgrounds"
         : field.Group == nameof(FactionTheme.ColorScheme) ? "Colors"
+        : neutral
+            ? IsFactionInterfaceField(field, neutral: true) ? "Interfaces"
+                : "Advanced"
         : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
@@ -92,20 +100,25 @@ internal static class ContentEditorContentSections
     /// Identifies discrete image artwork authored by a faction theme.
     /// </summary>
     /// <param name="field">A theme property.</param>
+    /// <param name="neutral">Whether the field belongs to the pack's neutral theme.</param>
     /// <returns>Whether the property is editable standalone faction artwork.</returns>
-    internal static bool IsFactionArtworkField(ContentPackEditorField field) =>
+    internal static bool IsFactionArtworkField(
+        ContentPackEditorField field,
+        bool neutral = false
+    ) =>
         field.Record.Kind == "FactionTheme"
         && field.MediaType == ContentPackEditorMediaType.Image
         && !field.IsMediaDirectory
         && (
             field.Group != nameof(FactionTheme.MissionIcons)
-            || !MissionIconKeys.UsesSharedArtwork(
-                field
-                    .XmlElement.Ancestors(nameof(MissionIconTheme))
-                    .FirstOrDefault()
-                    ?.Element(nameof(MissionIconTheme.Key))
-                    ?.Value
-            )
+            || neutral
+                == MissionIconKeys.UsesSharedArtwork(
+                    field
+                        .XmlElement.Ancestors(nameof(MissionIconTheme))
+                        .FirstOrDefault()
+                        ?.Element(nameof(MissionIconTheme.Key))
+                        ?.Value
+                )
         );
 
     /// <summary>
@@ -209,14 +222,42 @@ internal static class ContentEditorContentSections
     /// Identifies faction-theme images that are rendered by an interface surface.
     /// </summary>
     /// <param name="field">A faction-theme image field.</param>
+    /// <param name="neutral">Whether the fields belong to the neutral theme.</param>
     /// <returns>Whether the field belongs to the interface browser.</returns>
-    internal static bool IsFactionInterfaceField(ContentPackEditorField field) =>
-        IsAdvisorPlacementField(field)
-        || IsFactionArtworkField(field)
+    internal static bool IsFactionInterfaceField(
+        ContentPackEditorField field,
+        bool neutral = false
+    ) =>
+        !neutral && IsAdvisorPlacementField(field)
+        || IsFactionArtworkField(field, neutral)
             && !IsFactionBackgroundField(field)
             && !IsUnusedUnitTileField(field)
             && !IsRemovedMixedPlanetMarker(field)
-            && IsFactionOwnedArtworkAddress(field.Value);
+            && (
+                neutral
+                    ? IsNeutralInterfaceArtwork(field)
+                    : IsFactionOwnedArtworkAddress(field.Value)
+            );
+
+    /// <summary>
+    /// Selects the artwork for interfaces that use the neutral theme instead of the player's theme.
+    /// </summary>
+    /// <param name="field">A neutral-theme image field.</param>
+    /// <returns>Whether the field belongs to a neutral interface surface.</returns>
+    private static bool IsNeutralInterfaceArtwork(ContentPackEditorField field) =>
+        FactionArtworkCategory(field, neutral: true) switch
+        {
+            "Strategy view" or "Advisor" => false,
+            "Planet sector" => field.Group == nameof(FactionTheme.StrategyBookmarkIcons)
+                || (
+                    field.XmlElement.Parent?.Parent?.Name.LocalName
+                        == nameof(PlanetOverlayTheme.PlanetOverlayIcons)
+                    && field.XmlElement.Parent.Name.LocalName
+                        is nameof(PlanetOverlayIcons.Buildings)
+                            or nameof(PlanetOverlayIcons.Defenses)
+                ),
+            _ => true,
+        };
 
     /// <summary>
     /// Identifies a coordinate stored in one of the strategy advisor's placement rectangles.
@@ -277,24 +318,22 @@ internal static class ContentEditorContentSections
     /// Projects all faction image properties while retaining their authored hierarchy.
     /// </summary>
     /// <param name="theme">The effective faction theme.</param>
+    /// <param name="neutral">Whether this is the pack's neutral theme.</param>
     /// <returns>The icon fields backed by their existing XML elements.</returns>
     internal static IReadOnlyList<ContentPackEditorField> FactionArtworkFields(
-        ContentPackEditorRecord theme
+        ContentPackEditorRecord theme,
+        bool neutral = false
     )
     {
         if (theme == null)
             return Array.Empty<ContentPackEditorField>();
         List<ContentPackEditorField> fields = theme
             .GetFields()
-            .Where(field =>
-                IsFactionArtworkField(field)
-                || IsAdvisorPlacementField(field)
-                || field.Group == nameof(FactionTheme.ColorScheme)
-            )
+            .Where(field => IsFactionArtworkField(field, neutral) || IsAdvisorPlacementField(field))
             .ToList();
         XElement defaults = theme.Element.Element(nameof(FactionTheme.ArtworkDefaults));
         XElement owner = defaults ?? new XElement(nameof(FactionTheme.ArtworkDefaults));
-        foreach (string member in _factionArtworkDefaultMembers)
+        foreach (string member in neutral ? Array.Empty<string>() : _factionArtworkDefaultMembers)
         {
             if (
                 fields.Any(field =>
@@ -324,46 +363,124 @@ internal static class ContentEditorContentSections
                 )
             );
         }
-        XElement colors = theme.Element.Element(nameof(FactionTheme.ColorScheme));
-        XElement colorOwner = colors ?? new XElement(nameof(FactionTheme.ColorScheme));
-        foreach (string member in _factionColorMembers)
-        {
-            if (
-                fields.Any(field =>
-                    field.Group == nameof(FactionTheme.ColorScheme) && field.MemberName == member
-                )
-            )
-                continue;
-            XElement element = colors?.Element(member) ?? new XElement(member);
-            fields.Add(
-                new ContentPackEditorField(
-                    theme,
-                    element,
-                    nameof(FactionTheme.ColorScheme) + " / " + member,
-                    attach: () =>
-                    {
-                        if (colorOwner.Parent == null)
-                            theme.Element.Add(colorOwner);
-                        if (element.Parent == null)
-                            colorOwner.Add(element);
-                    },
-                    valueTypeOverride: typeof(string),
-                    groupOverride: nameof(FactionTheme.ColorScheme),
-                    caption: ContentPackEditorField.FormatName(member),
-                    sectionPath: new[] { "Color scheme" },
-                    parentOverride: colorOwner
-                )
-            );
-        }
+        fields.AddRange(FactionColorFields(theme));
         return fields;
     }
+
+    /// <summary>
+    /// Projects colors and their optional primary-color links from a common editable scheme.
+    /// </summary>
+    /// <param name="theme">The theme owning the scheme.</param>
+    /// <returns>The editable fields keyed by serialized member.</returns>
+    internal static IEnumerable<ContentPackEditorField> FactionColorFields(
+        ContentPackEditorRecord theme
+    )
+    {
+        XElement owner =
+            theme.Element.Element(nameof(FactionTheme.ColorScheme))
+            ?? new XElement(nameof(FactionTheme.ColorScheme));
+        foreach (
+            string member in _factionColorMembers.Concat(
+                _factionColorMembers.Select(FactionColorLinkMember).Where(name => name != null)
+            )
+        )
+        {
+            XElement element = owner.Element(member) ?? new XElement(member);
+            bool link = !_factionColorMembers.Contains(member);
+            yield return new ContentPackEditorField(
+                theme,
+                element,
+                nameof(FactionTheme.ColorScheme) + " / " + member,
+                attach: () =>
+                {
+                    if (owner.Parent == null)
+                        theme.Element.Add(owner);
+                    if (element.Parent == null)
+                        owner.Add(element);
+                },
+                detach: link ? () => element.Remove() : null,
+                valueTypeOverride: link ? typeof(bool) : typeof(string),
+                groupOverride: nameof(FactionTheme.ColorScheme),
+                caption: ContentPackEditorField.FormatName(member),
+                sectionPath: new[] { "Color scheme" },
+                parentOverride: owner
+            );
+        }
+    }
+
+    /// <summary>
+    /// Maps a secondary color field to its optional link setting.
+    /// </summary>
+    /// <param name="member">The serialized color field name.</param>
+    /// <returns>The corresponding link member, or null for a primary or unrelated field.</returns>
+    internal static string FactionColorLinkMember(string member) =>
+        member switch
+        {
+            nameof(FactionColorScheme.HighlightTextColorHex) => nameof(
+                FactionColorScheme.HighlightTextFollowsPrimary
+            ),
+            nameof(FactionColorScheme.SelectionColorHex) => nameof(
+                FactionColorScheme.SelectionFollowsPrimary
+            ),
+            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => nameof(
+                FactionColorScheme.ActiveWindowTitleFollowsPrimary
+            ),
+            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => nameof(
+                FactionColorScheme.InactiveWindowTitleFollowsPrimary
+            ),
+            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => nameof(
+                FactionColorScheme.ActiveBuildingPaneFollowsPrimary
+            ),
+            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => nameof(
+                FactionColorScheme.InactiveBuildingPaneFollowsPrimary
+            ),
+            nameof(FactionColorScheme.PlanetMarkerColorHex) => nameof(
+                FactionColorScheme.PlanetMarkerFollowsPrimary
+            ),
+            _ => null,
+        };
+
+    /// <summary>
+    /// Gets the effective color shown for a scheme member, including inherited defaults.
+    /// </summary>
+    /// <param name="theme">The effective theme.</param>
+    /// <param name="member">The serialized color field name.</param>
+    /// <returns>The rendered color, or null when the interface uses the authored image directly.</returns>
+    internal static Color? FactionColorValue(FactionTheme theme, string member) =>
+        member switch
+        {
+            nameof(FactionColorScheme.PrimaryColorHex) => theme.GetPrimaryColor(),
+            nameof(FactionColorScheme.HighlightTextColorHex) => theme.GetHighlightTextColor(),
+            _ => Enum.TryParse(member, out FactionMaskColor mask) ? theme.GetMaskTint(mask) : null,
+        };
+
+    /// <summary>
+    /// Defaults an unconfigured link to checked only when the rendered colors already match.
+    /// </summary>
+    /// <param name="theme">The effective theme.</param>
+    /// <param name="color">The secondary color field name.</param>
+    /// <param name="linkValue">The optional authored link setting.</param>
+    /// <returns>Whether the color is linked to primary.</returns>
+    internal static bool FactionColorFollowsPrimary(
+        FactionTheme theme,
+        string color,
+        string linkValue
+    ) =>
+        bool.TryParse(linkValue, out bool linked)
+            ? linked
+            : FactionColorValue(theme, color) is Color value
+                && ((Color32)value).Equals((Color32)theme.GetPrimaryColor());
 
     /// <summary>
     /// Assigns faction artwork to the game surface where the image is displayed.
     /// </summary>
     /// <param name="field">A faction-theme image field.</param>
+    /// <param name="neutral">Whether to group shared artwork independently of the player's strategy view.</param>
     /// <returns>The artwork browser category.</returns>
-    internal static string FactionArtworkCategory(ContentPackEditorField field)
+    internal static string FactionArtworkCategory(
+        ContentPackEditorField field,
+        bool neutral = false
+    )
     {
         if (field.Group == nameof(FactionTheme.ArtworkDefaults))
             return "Default backgrounds";
@@ -383,8 +500,11 @@ internal static class ContentEditorContentSections
         if (IsAdvisorPlacementField(field))
             return "Strategy view";
         if (root == nameof(FactionTheme.GalaxyBackground))
-            return field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
-                ? "Planet sector"
+            return neutral
+                && field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
+                    ? "Galaxy map icons"
+                : field.MemberName == nameof(GalaxyBackground.DestroyedPlanetIconPath)
+                    ? "Planet sector"
                 : "Strategy view";
         if (root == nameof(FactionTheme.PlanetOverlayTheme))
         {
@@ -408,7 +528,7 @@ internal static class ContentEditorContentSections
         if (root == nameof(FactionTheme.PlanetWindowTheme))
             return PlanetWindowArtworkCategory(field);
         if (root == nameof(FactionTheme.MissionIcons))
-            return "Missions";
+            return neutral ? "Shared mission icons" : "Missions";
         if (root == nameof(FactionTheme.GalacticInformationDisplay))
             return "Galactic information";
         if (root is nameof(FactionTheme.StrategyAdvisor) or nameof(FactionTheme.StrategyBriefing))
@@ -642,6 +762,8 @@ internal static class ContentEditorContentSections
         {
             "Planet sector" =>
                 "Destroyed planets, the composed planet-sector window, map overlays, and bookmarks.",
+            "Galaxy map icons" => "Star markers for neutral planets on the galaxy map.",
+            "Shared mission icons" => "Facility research artwork used by all factions.",
             "Strategy view" =>
                 "The complete strategy interface, including its frame, controls, speed indicators, message notifications, and context menus.",
             "Defense window" =>
@@ -664,7 +786,7 @@ internal static class ContentEditorContentSections
                 "Faction-owned save-slot identity and confirmation-dialog artwork. Shared controls and color-driven masks are configured elsewhere.",
             "Default backgrounds" =>
                 "The default officer, capital-ship, and starfighter backgrounds used when a unit does not provide an override.",
-            _ => "Additional faction-specific images not owned by another interface surface.",
+            _ => "Interface artwork outside the previews.",
         };
 
     /// <summary>

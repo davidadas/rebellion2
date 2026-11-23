@@ -125,7 +125,7 @@ internal sealed class FleetWindowProjector
                 selectedOwnerFactionId
             ),
             singleSelectedSource?.GetDisplayName(),
-            GetFactionColor(uiContext, selectedOwnerFactionId),
+            GetHighlightTextColor(uiContext, selectedOwnerFactionId),
             showCapacity,
             capacityLeft,
             capacityRight,
@@ -170,7 +170,7 @@ internal sealed class FleetWindowProjector
 
         Fleet fleet = session.SelectedFleet;
         return selected && fleet != null
-            ? GetFactionColor(GetUIContext(), fleet.OwnerInstanceID)
+            ? GetHighlightTextColor(GetUIContext(), fleet.OwnerInstanceID)
             : (Color32)Color.white;
     }
 
@@ -361,7 +361,7 @@ internal sealed class FleetWindowProjector
                 new StrategyUnitCardRenderData(
                     name: item.GetDisplayName(),
                     nameColor: selected
-                        ? GetFactionColor(uiContext, fleet.OwnerInstanceID)
+                        ? GetHighlightTextColor(uiContext, fleet.OwnerInstanceID)
                         : Color.white,
                     showName: true,
                     useAlternateNameLayout: session.ActiveTab == FleetWindowTab.Personnel,
@@ -702,10 +702,10 @@ internal sealed class FleetWindowProjector
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="ownerFactionId">The selected fleet owner.</param>
-    /// <returns>The configured faction color.</returns>
-    private static Color32 GetFactionColor(UIContext uiContext, string ownerFactionId)
+    /// <returns>The configured highlight text color.</returns>
+    private static Color32 GetHighlightTextColor(UIContext uiContext, string ownerFactionId)
     {
-        return uiContext.GetTheme(ownerFactionId)?.GetPrimaryColor() ?? Color.white;
+        return uiContext.GetTheme(ownerFactionId)?.GetHighlightTextColor() ?? Color.white;
     }
 
     /// <summary>

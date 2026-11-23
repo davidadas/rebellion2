@@ -196,6 +196,25 @@ in an existing replacement retains its other authored values. `pack.xml` and `mo
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
+### Faction and neutral themes
+
+In the Content Pack Editor, open a faction's **Colors** tab to set its primary
+color, selected menu text color, and individual interface tints. **Reset colors**
+restores the inherited or default colors for that theme.
+
+Check **Use primary color** to link a color to the primary palette. Matching
+colors start linked and existing custom colors start independent. In
+**Interfaces > Strategy view**, scroll over the preview, pinch on a Mac trackpad,
+or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
+movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
+galaxy background. **Fit to view** restores the full scene.
+
+Open **Factions > Neutral theme** to preview and edit shared interface artwork.
+Double-click an outlined sector icon to open its image settings. Use
+**Galaxy map icons** for neutral star markers and **Shared mission icons** for
+facility research artwork. Player HUD artwork is under each faction's
+**Interfaces > Strategy view**.
+
 ## Sharing a mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that

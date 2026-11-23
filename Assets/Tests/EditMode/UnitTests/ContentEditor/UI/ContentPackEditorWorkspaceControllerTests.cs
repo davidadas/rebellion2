@@ -239,6 +239,109 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ResetSection_HighlightOverrideWithoutInheritedColorScheme_RestoresBaseAndSupportsUndo()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord theme = GetAllianceTheme();
+            Assert.IsNull(theme.Element.Element(nameof(FactionTheme.ColorScheme)));
+            Color defaultHighlight = ContentEditorPresentation
+                .GetFactionTheme(theme)
+                .GetHighlightTextColor();
+            ContentPackEditorField highlight = ContentEditorContentSections
+                .FactionArtworkFields(theme)
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            project.SetField(highlight, "ABCDEF");
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.RenderSection("Colors");
+            Button reset = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetSection");
+            Assert.AreEqual("Reset colors", reset.GetComponentInChildren<TMP_Text>().text);
+
+            reset.onClick.Invoke();
+
+            Assert.AreEqual(
+                defaultHighlight,
+                ContentEditorPresentation
+                    .GetFactionTheme(GetAllianceTheme())
+                    .GetHighlightTextColor()
+            );
+            Assert.IsFalse(reset.gameObject.activeSelf);
+            Assert.IsTrue(project.Undo());
+            ContentPackEditorField restored = GetAllianceTheme()
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            Assert.AreEqual("ABCDEF", restored.Value);
+        }
+
+        [Test]
+        public void SetField_LegacyPrimaryColorChanges_PreservesWhichColorsFollowIt()
+        {
+            ContentPackEditorRecord record = GetAllianceTheme();
+            record.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.ColorScheme),
+                    new XElement(nameof(FactionColorScheme.PrimaryColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.SelectionColorHex), "223344")
+                )
+            );
+            ContentPackEditorField primary = ContentEditorContentSections
+                .FactionColorFields(record)
+                .Single(field => field.MemberName == nameof(FactionColorScheme.PrimaryColorHex));
+
+            project.SetField(primary, "223344");
+            project.SetField(primary, "334455");
+
+            FactionTheme edited = ContentEditorPresentation.GetFactionTheme(record);
+            Assert.AreEqual(
+                new Color32(0x33, 0x44, 0x55, 0xff),
+                (Color32)edited.GetHighlightTextColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x22, 0x33, 0x44, 0xff),
+                (Color32)edited.GetSelectionColor()
+            );
+        }
+
+        [Test]
+        public void SetField_TurningOffPrimaryLink_KeepsTheDisplayedColor()
+        {
+            ContentPackEditorRecord record = GetAllianceTheme();
+            record.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.ColorScheme),
+                    new XElement(nameof(FactionColorScheme.PrimaryColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextColorHex), "0000FF"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextFollowsPrimary), true)
+                )
+            );
+            var fields = ContentEditorContentSections
+                .FactionColorFields(record)
+                .ToDictionary(field => field.MemberName);
+
+            project.SetField(
+                fields[nameof(FactionColorScheme.HighlightTextFollowsPrimary)],
+                "false"
+            );
+            project.SetField(fields[nameof(FactionColorScheme.PrimaryColorHex)], "334455");
+
+            FactionTheme edited = ContentEditorPresentation.GetFactionTheme(record);
+            Assert.AreEqual(
+                new Color32(0x11, 0x22, 0x33, 0xff),
+                (Color32)edited.GetHighlightTextColor()
+            );
+        }
+
+        [Test]
         public void SelectGenerationTask_TaskWithOverride_ShowsSectionResetImmediately()
         {
             project = ContentEditorTestData.CreateLoadableProject(

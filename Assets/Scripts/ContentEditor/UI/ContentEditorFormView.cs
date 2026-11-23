@@ -403,7 +403,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
             fields = fields
                 .Where(field => !probabilityGrid.ContainsTableField(field))
                 .Concat(probabilityGrid.ResetFields);
-        return fields.Where(field => field.CanInherit && !field.IsInherited).Distinct().ToArray();
+        return fields
+            .Concat(
+                colorPickers
+                    .Where(picker => picker.gameObject.activeSelf)
+                    .SelectMany(picker => new[] { picker.Field, picker.LinkField })
+            )
+            .Where(field => field?.CanResetToDefault == true)
+            .Distinct()
+            .ToArray();
     }
 
     /// <summary>
@@ -2678,10 +2686,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         float width = fieldScroll.ScrollArea.ViewportWidth;
         int labelIndex = 0;
         int y = 4;
-        y += PlaceLabel("Faction colors", labelIndex++, 4, y, width - 8, true);
+        string heading =
+            selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
+                ? "Neutral colors"
+                : "Faction colors";
+        y += PlaceLabel(heading, labelIndex++, 4, y, width - 8, true);
         y +=
             PlaceLabel(
-                "Choose the colors applied to shared interface masks. Each card previews the shape used by the interface.",
+                "Set the faction color, menu text highlight, and individual interface tints.",
                 labelIndex++,
                 4,
                 y,
@@ -2707,14 +2719,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
 
         FactionTheme theme = ContentEditorPresentation.GetFactionTheme(themeRecord);
-        ContentPackEditorField[] fields = selectedPage
-            .Fields.Where(field => field.Group == nameof(FactionTheme.ColorScheme))
+        var scheme = ContentEditorContentSections
+            .FactionColorFields(themeRecord)
+            .ToDictionary(field => field.MemberName, StringComparer.Ordinal);
+        ContentPackEditorField[] fields = scheme
+            .Values.Where(field => !field.IsBoolean)
             .OrderBy(FactionColorOrder)
             .ThenBy(field => field.Caption, StringComparer.Ordinal)
             .ToArray();
         int columnCount = width >= 940 ? 2 : 1;
         const int gap = 16;
-        const int cardHeight = 264;
+        const int cardHeight = 296;
         float cardWidth = (width - 8 - gap * (columnCount - 1)) / columnCount;
         for (int index = 0; index < fields.Length; index++)
         {
@@ -2722,9 +2737,23 @@ public sealed class ContentEditorFormView : MonoBehaviour
             int row = index / columnCount;
             ContentEditorColorPickerView picker = GetColorPicker(index);
             ContentPackEditorField field = fields[index];
+            string linkName = ContentEditorContentSections.FactionColorLinkMember(field.MemberName);
+            ContentPackEditorField link = linkName == null ? null : scheme[linkName];
             picker.Render(
                 field,
                 ResolveFactionColorSample(field, theme),
+                ContentEditorContentSections.FactionColorValue(theme, field.MemberName)
+                    ?? Color.white,
+                (
+                    link,
+                    link != null
+                        && ContentEditorContentSections.FactionColorFollowsPrimary(
+                            theme,
+                            field.MemberName,
+                            link.Value
+                        ),
+                    theme.GetPrimaryColor()
+                ),
                 (submittedField, value) => SubmitField(submittedField, new[] { value }),
                 HandleFieldChanged,
                 ReportValidationError
@@ -2802,12 +2831,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         field.MemberName switch
         {
             nameof(FactionColorScheme.PrimaryColorHex) => 0,
-            nameof(FactionColorScheme.SelectionColorHex) => 1,
-            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => 2,
-            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => 3,
-            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => 4,
-            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => 5,
-            nameof(FactionColorScheme.PlanetMarkerColorHex) => 6,
+            nameof(FactionColorScheme.HighlightTextColorHex) => 1,
+            nameof(FactionColorScheme.SelectionColorHex) => 2,
+            nameof(FactionColorScheme.ActiveWindowTitleColorHex) => 3,
+            nameof(FactionColorScheme.InactiveWindowTitleColorHex) => 4,
+            nameof(FactionColorScheme.ActiveBuildingPaneColorHex) => 5,
+            nameof(FactionColorScheme.InactiveBuildingPaneColorHex) => 6,
+            nameof(FactionColorScheme.PlanetMarkerColorHex) => 7,
             _ => 100,
         };
 
@@ -3167,14 +3197,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         previewPane.SetActive(false);
         float width = fieldScroll.ScrollArea.ViewportWidth;
-        var categories = ContentEditorContentSections
-            .FactionArtworkCategories.Select(name => new
+        bool neutral = selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey;
+        IEnumerable<string> categoryNames = ContentEditorContentSections.FactionArtworkCategories;
+        if (neutral)
+            categoryNames = categoryNames
+                .Concat(new[] { "Galaxy map icons", "Other artwork", "Shared mission icons" })
+                .OrderBy(name => name, StringComparer.Ordinal);
+        var categories = categoryNames
+            .Select(name => new
             {
                 Name = name,
                 Fields = selectedPage
                     .Fields.Where(field =>
-                        ContentEditorContentSections.IsFactionInterfaceField(field)
-                        && ContentEditorContentSections.FactionArtworkCategory(field) == name
+                        ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
+                        && ContentEditorContentSections.FactionArtworkCategory(field, neutral)
+                            == name
                     )
                     .ToArray(),
             })
@@ -3199,7 +3236,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
 
         if (!categories.Any(category => category.Name == selectedFactionArtworkCategory))
-            selectedFactionArtworkCategory = categories[0].Name;
+            selectedFactionArtworkCategory =
+                neutral
+                && categories.Any(category => category.Name == _defaultFactionArtworkCategory)
+                    ? _defaultFactionArtworkCategory
+                    : categories[0].Name;
         y = PlaceFactionArtworkViewSelector(
             categories.Select(category => category.Name).ToArray(),
             y,
@@ -3208,31 +3249,40 @@ public sealed class ContentEditorFormView : MonoBehaviour
         var category = categories.Single(category =>
             category.Name == selectedFactionArtworkCategory
         );
+        bool sector = category.Name == _defaultFactionArtworkCategory;
+        bool window = artworkWindowPreview.Supports(category.Name);
         y +=
             PlaceLabel(
-                ContentEditorContentSections.FactionArtworkCategoryDescription(category.Name),
+                neutral && sector
+                    ? "Facility and defense icons for neutral planets, plus bookmark artwork."
+                    : ContentEditorContentSections.FactionArtworkCategoryDescription(category.Name),
                 labelIndex++,
                 4,
                 y,
                 width - 8,
                 false
             ) + 12;
-        y +=
-            PlaceLabel(
-                "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
-                labelIndex++,
-                4,
-                y,
-                width - 8,
-                false
-            ) + 10;
+        if (sector || window)
+            y +=
+                PlaceLabel(
+                    category.Name == "Strategy view"
+                            ? "Scroll to zoom. Drag to pan or move artwork. Alt/Option + drag moves a custom galaxy background."
+                        : neutral && sector
+                            ? "Double-click an outlined icon to open its image settings below."
+                        : "Double-click outlined artwork to edit it. Drag artwork with placement controls to move it. Press and hold a control to see its pressed artwork.",
+                    labelIndex++,
+                    4,
+                    y,
+                    width - 8,
+                    false
+                ) + 10;
         IReadOnlyList<ContentPackEditorField> renderedFields;
-        if (category.Name == _defaultFactionArtworkCategory)
+        if (sector)
         {
-            y = PlaceStrategyArtworkPreview(category.Fields, y, width, ref labelIndex);
+            y = PlaceStrategyArtworkPreview(category.Fields, y, width, ref labelIndex, neutral);
             renderedFields = artworkSectorPreview.RenderedFields;
         }
-        else if (artworkWindowPreview.Supports(category.Name))
+        else if (window)
         {
             y = PlaceArtworkWindowPreview(category.Name, y, width, ref labelIndex);
             renderedFields = artworkWindowPreview
@@ -3246,7 +3296,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField[] visibleFields = category
             .Fields.Where(field => renderedFields.Any(rendered => SameField(rendered, field)))
             .ToArray();
-        if (visibleFields.Length == 0)
+        if (visibleFields.Length == 0 && !neutral)
         {
             y += PlaceLabel(
                 "This preview does not contain a faction-owned editable image in its current state.",
@@ -3258,9 +3308,25 @@ public sealed class ContentEditorFormView : MonoBehaviour
             );
         }
 
+        ContentPackEditorField[] fields = neutral
+            ? visibleFields.Concat(category.Fields.Except(visibleFields)).ToArray()
+            : visibleFields;
         IReadOnlyList<string> previousSections = Array.Empty<string>();
-        foreach (ContentPackEditorField field in visibleFields)
+        for (int index = 0; index < fields.Length; index++)
         {
+            if (
+                neutral
+                && index == visibleFields.Length
+                && visibleFields.Length > 0
+                && (sector || window)
+            )
+            {
+                y +=
+                    PlaceLabel("More artwork for this view", labelIndex++, 4, y, width - 8, true)
+                    + 8;
+                previousSections = Array.Empty<string>();
+            }
+            ContentPackEditorField field = fields[index];
             IReadOnlyList<string> sections = ContentEditorContentSections.FactionArtworkSections(
                 field
             );
@@ -3347,12 +3413,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="y">The next browser position.</param>
     /// <param name="width">The available browser width.</param>
     /// <param name="labelIndex">The next reusable label.</param>
+    /// <param name="neutral">Whether the page already explains editing above the sector.</param>
     /// <returns>The first position below the composed preview and its instruction.</returns>
     private int PlaceStrategyArtworkPreview(
         IReadOnlyList<ContentPackEditorField> editableFields,
         int y,
         float width,
-        ref int labelIndex
+        ref int labelIndex,
+        bool neutral
     )
     {
         ContentPackEditorRecord sector = catalogs
@@ -3366,7 +3434,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         ?.Value.Contains("asteroid", StringComparison.OrdinalIgnoreCase) != true
                 )
             )
-            .OrderBy(record => record.Planets.Count)
+            .OrderBy(record => record.Planets.Count < 3)
+            .ThenBy(record => record.Planets.Count)
             .ThenBy(record => record.Name, StringComparer.Ordinal)
             .FirstOrDefault();
         ContentPackEditorRecord theme = selectedPage.RelatedRecords.FirstOrDefault(record =>
@@ -3401,7 +3470,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         try
         {
             FactionTheme factionTheme = ContentEditorPresentation.GetFactionTheme(theme);
-            PlaceStrategyBackdrop(factionTheme);
+            PlaceStrategyBackdrop(neutral ? null : factionTheme);
             artworkSectorPreview.Render(project, sector, assets, factionTheme, editableFields);
         }
         catch (ArgumentException)
@@ -3420,6 +3489,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 + 12;
         }
         y += previewHeight + 8;
+        if (neutral)
+            return y + 16;
         return y
             + PlaceLabel(
                 "Hover an image to outline it, then double-click to open the exact field supplying that planet, overlay, or background.",
@@ -3448,14 +3519,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (theme == null)
             return y;
 
+        int zoomToolbarTop = y;
+        if (category == "Strategy view")
+            y += 42;
+
         ContentPackEditorField[] themeFields = theme
             .GetFields()
             .Concat(selectedPage.Fields.Where(field => field.Record.Kind == "FactionTheme"))
             .ToArray();
+        bool neutral = selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey;
         ContentPackEditorField[] surfaceFields = themeFields
             .Where(field =>
-                ContentEditorContentSections.IsFactionInterfaceField(field)
-                && ContentEditorContentSections.FactionArtworkCategory(field) == category
+                ContentEditorContentSections.IsFactionInterfaceField(field, neutral)
+                && ContentEditorContentSections.FactionArtworkCategory(field, neutral) == category
             )
             .ToArray();
         bool hasConfiguredDisabledArtwork = surfaceFields.Any(field =>
@@ -3555,6 +3631,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 themeFields,
                 surfaceFields
             );
+            artworkWindowPreview.PlaceZoomControls(zoomToolbarTop, Mathf.FloorToInt(width));
             if (hasDisabledArtwork)
             {
                 UILayout.SetSourceRect(
@@ -3612,11 +3689,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Places the faction's galaxy artwork behind the translucent sector window without distortion.
     /// </summary>
-    /// <param name="theme">The selected faction presentation.</param>
+    /// <param name="theme">The selected faction presentation, when a player backdrop applies.</param>
     private void PlaceStrategyBackdrop(FactionTheme theme)
     {
         RawImage backdrop = artworkSectorPreview.GetComponent<RawImage>();
-        string address = theme.GalaxyBackground?.ImagePath;
+        string address = theme?.GalaxyBackground?.ImagePath;
         Texture2D texture = string.IsNullOrWhiteSpace(address) ? null : assets.GetTexture(address);
         backdrop.texture = texture;
         backdrop.color = texture == null ? Color.black : Color.white;
@@ -3682,7 +3759,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
             FocusColorPicker(current);
             return;
         }
-        string category = ContentEditorContentSections.FactionArtworkCategory(current);
+        string category = ContentEditorContentSections.FactionArtworkCategory(
+            current,
+            selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
+        );
         if (category != selectedFactionArtworkCategory)
         {
             selectedFactionArtworkCategory = category;

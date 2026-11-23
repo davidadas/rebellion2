@@ -85,6 +85,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                             (entity, index) =>
                                 CreateUnitCard(
                                     entity.Name,
+                                    index == 0 ? theme.GetHighlightTextColor() : Color.white,
                                     background,
                                     entity.SmallTexture,
                                     index == 0
@@ -161,7 +162,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                     null,
                     null,
                     "First fleet",
-                    theme.GetPrimaryColor(),
+                    theme.GetHighlightTextColor(),
                     true,
                     "8",
                     "12",
@@ -171,6 +172,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                             (ship, index) =>
                                 CreateUnitCard(
                                     ship.Name,
+                                    index == 0 ? theme.GetHighlightTextColor() : Color.white,
                                     index == 1 ? constructionBackground : null,
                                     ship.SmallTexture,
                                     index == 0 ? detailSelection : null
@@ -372,7 +374,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                     officers
                         .Select(officer => new MissionParticipantRowRenderData(
                             officer.Name,
-                            theme.GetPrimaryColor(),
+                            Color.white,
                             null,
                             officer.SmallTexture
                         ))
@@ -447,7 +449,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                         .Take(1)
                         .Select(officer => new MissionParticipantRowRenderData(
                             officer.Name,
-                            theme.GetPrimaryColor(),
+                            Color.white,
                             null,
                             officer.SmallTexture
                         ))
@@ -457,7 +459,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
                         .Take(1)
                         .Select(officer => new MissionParticipantRowRenderData(
                             officer.Name,
-                            theme.GetPrimaryColor(),
+                            Color.white,
                             null,
                             officer.SmallTexture
                         ))
@@ -860,7 +862,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
             },
             new ContextMenuView.ContextMenuVisuals(
                 Color.white,
-                theme.GetPrimaryColor(),
+                theme.GetHighlightTextColor(),
                 new Color32(128, 128, 128, 255)
             )
         );
@@ -1291,12 +1293,14 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     /// Creates a representative strategy unit card without adding gameplay state.
     /// </summary>
     /// <param name="name">The displayed card name.</param>
+    /// <param name="nameColor">The color of the representative card name.</param>
     /// <param name="background">The themed card background.</param>
     /// <param name="entity">The representative foreground artwork.</param>
     /// <param name="selection">The optional selected-card frame.</param>
     /// <returns>The complete card presentation.</returns>
     private static StrategyUnitCardRenderData CreateUnitCard(
         string name,
+        Color nameColor,
         Texture background,
         Texture entity,
         Texture selection
@@ -1304,7 +1308,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     {
         return new StrategyUnitCardRenderData(
             name,
-            Color.white,
+            nameColor,
             true,
             false,
             background,
