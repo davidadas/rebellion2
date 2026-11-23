@@ -10,7 +10,6 @@ using UnityEngine.Video;
 namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class CutscenePlayerTests
     {
         private const string _clipPath =
@@ -31,14 +30,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         [SetUp]
         public void SetUp()
         {
-            _rootObject = UIComponentTestHelper.InstantiatePrefab(_prefabPath);
-            _player = _rootObject.GetComponent<CutscenePlayer>();
-            _screen = GetField<RawImage>("screen");
-            _authoredScreenColor = _screen.color;
-            _videoPlayer = GetField<VideoPlayer>("videoPlayer");
-            _audioSource = GetField<AudioSource>("audioSource");
+            InitializePlayer(CutscenePlayerFixture.Create());
             _clip = AssetDatabase.LoadAssetAtPath<VideoClip>(_clipPath);
-            UIComponentTestHelper.InvokeLifecycle(_player, "Awake");
         }
 
         /// <summary>
@@ -52,8 +45,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Awake_AuthoredPrefab_ConfiguresPlaybackComponents()
         {
+            UnityEngine.Object.DestroyImmediate(_rootObject);
+            InitializePlayer(UIComponentTestHelper.InstantiatePrefab(_prefabPath));
             Image background = _rootObject.GetComponent<Image>();
 
             Assert.IsNotNull(background);
@@ -190,6 +186,21 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
                 typeof(CutscenePlayer)
                     .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                     .GetValue(_player);
+        }
+
+        /// <summary>
+        /// Initializes the playback components used by the test.
+        /// </summary>
+        /// <param name="root">The instantiated cutscene player object.</param>
+        private void InitializePlayer(GameObject root)
+        {
+            _rootObject = root;
+            _player = root.GetComponent<CutscenePlayer>();
+            _screen = GetField<RawImage>("screen");
+            _authoredScreenColor = _screen.color;
+            _videoPlayer = GetField<VideoPlayer>("videoPlayer");
+            _audioSource = GetField<AudioSource>("audioSource");
+            UIComponentTestHelper.InvokeLifecycle(_player, "Awake");
         }
 
         /// <summary>

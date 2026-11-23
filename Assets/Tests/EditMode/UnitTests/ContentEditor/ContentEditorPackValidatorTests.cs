@@ -11,7 +11,6 @@ using NUnit.Framework;
 namespace Rebellion.Tests.ContentEditor
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class ContentEditorPackValidatorTests : ContentPackEditorTestBase
     {
         [TestCase(false)]

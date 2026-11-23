@@ -26,7 +26,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void SetUp()
         {
             folder = Path.Combine(Path.GetTempPath(), "editor-map-" + Guid.NewGuid().ToString("N"));
-            project = ContentEditorTestData.CreateProject(folder);
+            project = ContentEditorTestData.CreateProject(folder, TestContent.Pack);
             assets = TestContent.Assets;
             canvas = new GameObject("Map test", typeof(RectTransform), typeof(Canvas));
             canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;

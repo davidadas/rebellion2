@@ -22,7 +22,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void SetUp()
         {
             folder = Path.Combine(Path.GetTempPath(), "editor-row-" + Guid.NewGuid().ToString("N"));
-            project = ContentEditorTestData.CreateProject(folder);
+            project = ContentEditorTestData.CreateProject(folder, TestContent.Pack);
             row = UIComponentTestHelper.InstantiatePrefabComponent<ContentEditorRecordRowView>(
                 "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab"
             );

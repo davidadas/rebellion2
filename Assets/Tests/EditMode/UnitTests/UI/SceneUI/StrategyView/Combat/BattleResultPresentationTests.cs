@@ -150,7 +150,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetSummaryImagePath_WithdrawnDefender_ReturnsDefenderDefeatArtwork()
         {
             BattleAlertWindowTheme theme = CreateTheme();
@@ -170,7 +169,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetSummaryImagePath_Draw_ReturnsDefaultSummaryArtwork()
         {
             BattleAlertWindowTheme theme = CreateTheme();
@@ -190,7 +188,6 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetSummaryImagePath_MissingPreferredArtwork_UsesOrderedFallback()
         {
             BattleAlertWindowTheme theme = CreateTheme();

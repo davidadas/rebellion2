@@ -10,12 +10,12 @@ using UnityEngine;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class ContentLoadOperationTests
     {
         private string _directory;
         private string _settingsPath;
         private string _modDirectory;
+        private ContentPack _fixturePack;
         private UserSettingsManager _settings;
         private SaveGameManager _saves;
         private ContentPack _previous;
@@ -37,7 +37,8 @@ namespace Rebellion.Tests.Content
             _settings.Settings.Content.DisabledModIDs = new[] { "other-pack-mod", "previous-mod" };
             _settings.Save();
             _saves = new SaveGameManager(Path.Combine(_directory, "saves"));
-            ContentPack source = TestContent.Pack;
+            ContentPack source = TestPackFixture.Install(Path.Combine(_directory, "Content"));
+            _fixturePack = source;
             _previous = new ContentPack(
                 source.ContentRootPath,
                 source.PackRootPath,
@@ -69,7 +70,7 @@ namespace Rebellion.Tests.Content
             ContentLoadOperation operation = CreateOperation();
 
             await operation.PrepareContentReloadAsync(
-                TestContent.Pack.Definition.ID,
+                _fixturePack.Definition.ID,
                 Array.Empty<string>()
             );
             _settings.Save();
@@ -144,7 +145,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public async Task BeginRecovery_PendingSavedGame_SelectsPreviousContentWithoutSaveRequestAsync()
         {
-            SaveGame(TestContent.Pack);
+            SaveGame(_fixturePack);
             ContentLoadOperation operation = CreateOperation();
             await operation.PrepareSavedGameAsync(_saves, "campaign");
 
@@ -202,9 +203,9 @@ namespace Rebellion.Tests.Content
         {
             string modID = CreateMod();
             ContentPack required = ContentPackLoader.OpenExact(
-                TestContent.Pack.ContentRootPath,
-                TestContent.Pack.Definition.ID,
-                TestContent.Pack.Scenario.ID,
+                _fixturePack.ContentRootPath,
+                _fixturePack.Definition.ID,
+                _fixturePack.Scenario.ID,
                 Array.Empty<string>()
             );
             SaveGame(required);
@@ -224,7 +225,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public async Task PrepareSavedGameAsync_MatchingContent_ReusesContentWithoutSavingPreferencesAsync()
         {
-            ContentPack current = TestContent.Pack;
+            ContentPack current = _fixturePack;
             SaveGame(current);
             ContentLoadOperation operation = new ContentLoadOperation(
                 current,
@@ -249,7 +250,7 @@ namespace Rebellion.Tests.Content
             ContentLoadOperation operation = CreateOperation();
             string[] disabled = { "selected-mod" };
             Task preparation = operation.PrepareContentReloadAsync(
-                TestContent.Pack.Definition.ID,
+                _fixturePack.Definition.ID,
                 disabled
             );
             disabled[0] = "changed-mod";
@@ -270,7 +271,7 @@ namespace Rebellion.Tests.Content
 
             Assert.ThrowsAsync<InvalidOperationException>(() =>
                 operation.PrepareContentReloadAsync(
-                    TestContent.Pack.Definition.ID,
+                    _fixturePack.Definition.ID,
                     Array.Empty<string>()
                 )
             );
@@ -310,7 +311,7 @@ namespace Rebellion.Tests.Content
         {
             ContentLoadOperation operation = CreateOperation();
             Task preparation = operation.PrepareContentReloadAsync(
-                TestContent.Pack.Definition.ID,
+                _fixturePack.Definition.ID,
                 Array.Empty<string>()
             );
 
@@ -325,7 +326,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public async Task BeginRecovery_SameContentSceneReady_ReturnsToMenuWithoutReconstructionAsync()
         {
-            ContentPack current = TestContent.Pack;
+            ContentPack current = _fixturePack;
             SaveGame(current);
             ContentLoadOperation operation = new ContentLoadOperation(
                 current,
@@ -347,7 +348,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void PrepareCustomGame_ValidSelection_PreservesDetachedConfigurationWithoutSaving()
         {
-            ContentPack selected = TestContent.Pack;
+            ContentPack selected = _fixturePack;
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(selected);
             summary.Difficulty = GameDifficulty.Hard;
             summary.CustomSettings = new CustomGameSettings
@@ -384,13 +385,13 @@ namespace Rebellion.Tests.Content
         [Test]
         public void PrepareCustomGame_MismatchedIdentity_RejectsLaunchWithoutSaving()
         {
-            GameSummary summary = GameLaunchContext.CreateDefaultSummary(TestContent.Pack);
+            GameSummary summary = GameLaunchContext.CreateDefaultSummary(_fixturePack);
             summary.PackID = "missing";
             byte[] before = File.ReadAllBytes(_settingsPath);
             ContentLoadOperation operation = CreateOperation();
 
             Assert.Throws<InvalidOperationException>(() =>
-                operation.PrepareCustomGame(TestContent.Pack, summary)
+                operation.PrepareCustomGame(_fixturePack, summary)
             );
 
             Assert.AreSame(_previous, operation.Pack);
@@ -403,8 +404,8 @@ namespace Rebellion.Tests.Content
         {
             ContentLoadOperation operation = CreateOperation();
             operation.PrepareCustomGame(
-                TestContent.Pack,
-                GameLaunchContext.CreateDefaultSummary(TestContent.Pack)
+                _fixturePack,
+                GameLaunchContext.CreateDefaultSummary(_fixturePack)
             );
             byte[] before = File.ReadAllBytes(_settingsPath);
 
@@ -422,9 +423,9 @@ namespace Rebellion.Tests.Content
         {
             string modID = CreateMod();
             ContentPack selected = ContentPackLoader.OpenExact(
-                TestContent.Pack.ContentRootPath,
-                TestContent.Pack.Definition.ID,
-                TestContent.Pack.Scenario.ID,
+                _fixturePack.ContentRootPath,
+                _fixturePack.Definition.ID,
+                _fixturePack.Scenario.ID,
                 new[] { modID }
             );
             ContentLoadOperation operation = CreateOperation();
@@ -433,8 +434,8 @@ namespace Rebellion.Tests.Content
             operation.Complete(operation.Pack, _settings);
 
             UserContentSettings content = CreateSettings(_settingsPath).Settings.Content;
-            Assert.AreEqual(TestContent.Pack.Definition.ID, content.ActivePackID);
-            Assert.AreEqual(TestContent.Pack.Scenario.ID, content.ActiveScenarioID);
+            Assert.AreEqual(_fixturePack.Definition.ID, content.ActivePackID);
+            Assert.AreEqual(_fixturePack.Scenario.ID, content.ActiveScenarioID);
             CollectionAssert.AreEquivalent(
                 new[] { "other-pack-mod", "previous-mod", modID },
                 content.DisabledModIDs
@@ -463,7 +464,7 @@ namespace Rebellion.Tests.Content
             ContentLoadOperation operation = CreateOperation();
             operation
                 .PrepareContentReloadAsync(
-                    TestContent.Pack.Definition.ID,
+                    _fixturePack.Definition.ID,
                     new[] { "other-pack-mod", "candidate-mod" }
                 )
                 .GetAwaiter()
@@ -499,7 +500,7 @@ namespace Rebellion.Tests.Content
         /// <returns>The mod identifier.</returns>
         private string CreateMod()
         {
-            ContentPack pack = TestContent.Pack;
+            ContentPack pack = _fixturePack;
             string modID = "content-load-test-" + Guid.NewGuid().ToString("N");
             _modDirectory = Path.Combine(
                 Directory.GetParent(pack.ContentRootPath).FullName,

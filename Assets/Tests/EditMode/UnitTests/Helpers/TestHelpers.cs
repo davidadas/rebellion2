@@ -483,13 +483,15 @@ public static class TestGameData
     /// <param name="officerTraits">The officer trait definitions.</param>
     /// <param name="officers">The content-authored officer templates.</param>
     /// <param name="gameEvents">The fixture's authored event definitions.</param>
+    /// <param name="capitalShips">The fixture's ship templates.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
         MessageDefinition[] messageDefinitions = null,
         OfficerTraitDefinition[] officerTraits = null,
         Officer[] officers = null,
-        GameEvent[] gameEvents = null
+        GameEvent[] gameEvents = null,
+        CapitalShip[] capitalShips = null
     )
     {
         return new GameDataCatalog(
@@ -498,7 +500,7 @@ public static class TestGameData
             Array.Empty<Faction>(),
             Array.Empty<PlanetSector>(),
             Array.Empty<Building>(),
-            Array.Empty<CapitalShip>(),
+            capitalShips ?? Array.Empty<CapitalShip>(),
             Array.Empty<Starfighter>(),
             Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
@@ -508,6 +510,27 @@ public static class TestGameData
             new EncyclopediaEntries(),
             new FactionThemes(),
             officerTraits
+        );
+    }
+
+    /// <summary>
+    /// Creates a session with the game's event definitions and fixture messages.
+    /// </summary>
+    /// <param name="game">The game state used by the session.</param>
+    /// <param name="messageDefinitions">The message definitions required by the test.</param>
+    /// <returns>The initialized game session.</returns>
+    public static GameSession CreateSession(
+        GameRoot game,
+        params MessageDefinition[] messageDefinitions
+    )
+    {
+        return new GameSession(
+            game,
+            Create(
+                game.Config ?? TestConfig.Create(),
+                messageDefinitions,
+                gameEvents: game.GetEventPool().ToArray()
+            )
         );
     }
 

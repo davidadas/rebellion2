@@ -36,7 +36,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetExpectedImageDimensions_UnitArtwork_ReturnsEstablishedSizes()
         {
             string folder = Path.Combine(

@@ -15,7 +15,6 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class MessageFactoryTests
     {
         private static readonly Dictionary<Message, MessageDelivery> _deliveriesByMessage =
@@ -602,6 +601,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(80)]
         [TestCase(100)]
+        [Category("RequiresMedia")]
         public void CreateMessages_LeiaDiscovery_UsesSingleAuthoredReport(int discovererRank)
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -2233,6 +2233,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("FNEMP1", MissionOutcome.Success, MissionCompletionReason.Success)]
         [TestCase("FNALL1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
         [TestCase("FNEMP1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
+        [Category("RequiresMedia")]
         public void CreateMessages_InciteReport_UsesRecipientThemeBackground(
             string owner,
             MissionOutcome outcome,
@@ -2263,6 +2264,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase("FNALL1", "Alliance")]
         [TestCase("FNEMP1", "Empire")]
+        [Category("RequiresMedia")]
         public void CreateMessages_SubdueSuccess_UsesRestoredOrderArtwork(
             string owner,
             string faction
@@ -2298,6 +2300,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetChangedSides)]
         [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
         [TestCase(SabotageMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
+        [Category("RequiresMedia")]
         public void CreateMessages_InterruptedMission_UsesRecipientThemeBackground(
             string missionType,
             MissionCompletionReason reason
@@ -2333,6 +2336,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateMessages_UprisingIncident_ReportsIntelligenceOnlyToTheRecipient()
         {
             var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
@@ -2757,6 +2761,7 @@ namespace Rebellion.Tests.Gameplay
             MissionOutcome.Failed,
             "has joined the Empire"
         )]
+        [Category("RequiresMedia")]
         public void CreateMessages_AuthoredCompletionReason_ReturnsExpectedReport(
             string missionTypeId,
             MissionCompletionReason completionReason,
@@ -2797,6 +2802,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateMessages_DiplomacyTargetDeclaredNeutrality_ReturnsNeutralityReport()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -6052,7 +6058,7 @@ namespace Rebellion.Tests.Gameplay
             Planet destination
         ) BuildMessageScene()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(alliance);
             PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
@@ -6091,7 +6097,7 @@ namespace Rebellion.Tests.Gameplay
             Planet target
         ) BuildTwoFactionMessageScene()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -7,10 +8,10 @@ using Rebellion.Game.Galaxy;
 
 namespace Rebellion.Tests.Content
 {
-    [Category("RequiresMedia")]
     public sealed class GameContentBindingTests
     {
         private ContentPack _contentPack;
+        private string _directory;
 
         /// <summary>
         /// Uses the installed fixture content for compatibility cases.
@@ -18,13 +19,24 @@ namespace Rebellion.Tests.Content
         [SetUp]
         public void SetUp()
         {
-            _contentPack = TestContent.Pack;
+            _directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            _contentPack = TestPackFixture.Install(Path.Combine(_directory, "Content"));
+        }
+
+        /// <summary>
+        /// Removes the fixture pack and its content directory.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(_directory))
+                Directory.Delete(_directory, true);
         }
 
         [Test]
         public void Prepare_DifferentContentIdentity_RejectsBeforeChangingFactionSettings()
         {
-            ContentPack pack = TestContent.Pack;
+            ContentPack pack = _contentPack;
             GameRoot game = new GameRoot { Summary = pack.CreateDefaultGameSummary() };
             game.Summary.PackVersion = "different";
             FactionSettings settings = new FactionSettings();
@@ -44,7 +56,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Prepare_LegacyFactionSettings_RestoresIndependentAuthoredSettings()
         {
-            ContentPack pack = TestContent.Pack;
+            ContentPack pack = _contentPack;
             Faction template = pack.GameData.Factions[0];
             GameRoot game = new GameRoot { Summary = pack.CreateDefaultGameSummary() };
             Faction faction = new Faction
@@ -92,7 +104,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Prepare_StaleGalaxyCoordinates_RestoresAuthoredLayout()
         {
-            ContentPack pack = TestContent.Pack;
+            ContentPack pack = _contentPack;
             PlanetSector template = pack.GameData.PlanetSectors[0];
             GameRoot game = new GameRoot { Summary = pack.CreateDefaultGameSummary() };
             PlanetSector sector = new PlanetSector

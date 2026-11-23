@@ -179,7 +179,10 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithoutOrbitalDefenders_UsesMinimumCombatStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1400;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -193,9 +196,13 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithStaleIntelligence_IncreasesCombatStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
+            game.Config.AI.MissionPlanning.HostileMissionMaximumIntelAgeTicks = 20;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Fleet defender = EntityFactory.CreateFleet("defender", rebels.InstanceID);
@@ -216,7 +223,10 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithExtremelyStaleIntelligence_CapsCombatStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.AI.FleetDeployment.StaleIntelMaximumAttackStrengthPercent = 250;
@@ -239,7 +249,10 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithHostileFleetElsewhereInSystem_UsesTargetDefense()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 150;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -269,7 +282,10 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithHostileFleetAtTarget_UsesLocalDefense()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 100;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 150;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
@@ -292,7 +308,10 @@ namespace Rebellion.Tests.AI.Demands
         [Test]
         public void BuildDemands_WithPlanetaryStarfighter_UsesAssaultCompositionTargets()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Starfighter fighter = AITestSceneBuilder.CreateStarfighter(
@@ -330,7 +349,10 @@ namespace Rebellion.Tests.AI.Demands
             out CapitalShip inbound
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.AI.FleetDeployment.AssaultFleetCompositionReservePercent = 100;

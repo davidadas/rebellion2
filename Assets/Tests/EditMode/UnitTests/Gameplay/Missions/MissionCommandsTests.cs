@@ -23,7 +23,6 @@ using Rebellion.Util.Random;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class MissionCommandsTests
     {
         [TestCase(true)]
@@ -3254,11 +3253,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.Config.DuelResolution.MinimumInjuryChance = injured ? 100 : 0;
             game.Config.DuelResolution.InjuryBase = 1;
-            game.Config.Recovery.MaxInjuryPoints = TestContent
-                .Data
-                .GameConfig
-                .Recovery
-                .MaxInjuryPoints;
+            game.Config.Recovery.MaxInjuryPoints = 100;
             game.Config.DuelResolution.CaptureEvasionInjuryBaseChance = 0;
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 0 } });
             target.AddVisitor("empire");

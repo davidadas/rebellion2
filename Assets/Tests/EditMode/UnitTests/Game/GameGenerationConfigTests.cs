@@ -9,10 +9,9 @@ namespace Rebellion.Tests.Game
     public class GameGenerationConfigTests
     {
         [Test]
-        [Category("RequiresMedia")]
         public void CreateCopy_ConfiguredGeneration_PreservesAllValues()
         {
-            GameGenerationConfig source = TestContent.Data.GenerationConfig;
+            GameGenerationConfig source = TestPackFixture.CreateGenerationConfig();
 
             GameGenerationConfig copy = source.CreateCopy();
 
@@ -59,10 +58,9 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CreateCopy_EditingFactionOverrides_DoesNotChangeSource()
         {
-            GameGenerationConfig source = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig source = TestPackFixture.CreateGenerationConfig();
             source.FactionModifiers.Add(new FactionModifierConfig { FactionID = "faction" });
             string before = SerializationHelper.Serialize(source);
             GameGenerationConfig copy = source.CreateCopy();

@@ -15,7 +15,6 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Fleets
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class AITransferUnitProposalTests
     {
         [Test]
@@ -25,7 +24,8 @@ namespace Rebellion.Tests.AI.Fleets
                 false,
                 5,
                 out Fleet receiver,
-                out CapitalShip donor
+                out CapitalShip donor,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
             );
             Fleet source = donor.GetParentOfType<Fleet>();
             Planet target = context.Assessment.GetKnownPlanet(receiver.Order.TargetPlanetId);
@@ -69,7 +69,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithSamePlanetCapitalShipTransfer_ReparentsUnitToTargetFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
@@ -118,7 +121,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithHeadquartersDefenseTransfer_ReparentsUnitToDefenseFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -169,7 +175,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithPlanetRegimentTransfer_LoadsRegimentIntoTargetFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet source = AITestSceneBuilder.AddPlanet(game, system, "source", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
@@ -207,7 +216,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void CanSelect_WithDeliveryOnlyTargetFleetAtBlockadedOwnedPlanet_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
@@ -279,7 +291,10 @@ namespace Rebellion.Tests.AI.Fleets
         /// <returns>The transfer of the defender's spare hull.</returns>
         private static AITransferUnitProposal CreateDefenseTransfer(out AITurnContext context)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "hq", faction.InstanceID);

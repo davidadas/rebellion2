@@ -28,12 +28,14 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="donorBombardment">The donor hull's bombardment rating.</param>
         /// <param name="receiver">Receives the fleet awaiting reinforcement.</param>
         /// <param name="donor">Receives the available donor hull.</param>
+        /// <param name="config">The optional rules for the test scenario.</param>
         /// <returns>The faction turn containing the fleets and their known targets.</returns>
         public static AITurnContext CreateBombardmentDonorContext(
             bool assaultBlocked,
             int donorBombardment,
             out Fleet receiver,
-            out CapitalShip donor
+            out CapitalShip donor,
+            GameConfig config = null
         )
         {
             AITurnContext context = CreateBombardmentReinforcementContext(
@@ -41,7 +43,8 @@ namespace Rebellion.Tests.AI.Helpers
                 true,
                 out receiver,
                 out Fleet other,
-                out _
+                out _,
+                config
             );
             context.Game.DeleteNode(other);
             Planet otherTarget = context.Game.GetSceneNodeByInstanceID<Planet>("other-target");
@@ -107,16 +110,18 @@ namespace Rebellion.Tests.AI.Helpers
         /// <param name="bombardFleet">Receives the fleet assigned to the bombardment target.</param>
         /// <param name="otherFleet">Receives the fleet assigned to the competing target.</param>
         /// <param name="source">Receives the planet supplying spare regiments.</param>
+        /// <param name="config">The optional rules for the test scenario.</param>
         /// <returns>The assessed faction turn for both targets.</returns>
         public static AITurnContext CreateBombardmentReinforcementContext(
             bool shielded,
             bool occupied,
             out Fleet bombardFleet,
             out Fleet otherFleet,
-            out Planet source
+            out Planet source,
+            GameConfig config = null
         )
         {
-            GameRoot game = CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = CreateGame(out Faction faction, out Faction enemy, config);
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfDefense = 100;
@@ -201,10 +206,11 @@ namespace Rebellion.Tests.AI.Helpers
         /// Creates a known empty destination and a separately observed defended reference world.
         /// </summary>
         /// <param name="age">The age of the recorded intelligence.</param>
+        /// <param name="config">The optional rules for the test scenario.</param>
         /// <returns>The faction turn used to evaluate mission risk.</returns>
-        public static AITurnContext CreateMissionDefenseContext(int age)
+        public static AITurnContext CreateMissionDefenseContext(int age, GameConfig config = null)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = CreateGame(out Faction empire, out Faction rebels, config);
             game.Config.AI.MissionPlanning.MissionDefenseIntelFullWeightTicks = 100;
             game.Config.AI.MissionPlanning.MissionDefenseFallbackGroundDetectorCount = 0;
             game.Config.AI.MissionPlanning.MissionDefenseFallbackOrbitalDetectorCount = 0;
@@ -387,6 +393,42 @@ namespace Rebellion.Tests.AI.Helpers
             game.GetFactions().Add(empire);
             game.GetFactions().Add(rebels);
             return game;
+        }
+
+        /// <summary>
+        /// Creates a two-faction game with independent fleet-planning rules.
+        /// </summary>
+        /// <param name="empire">The first test faction.</param>
+        /// <param name="rebels">The opposing test faction.</param>
+        /// <returns>The configured game.</returns>
+        public static GameRoot CreateFleetPlanningGame(out Faction empire, out Faction rebels)
+        {
+            return CreateGame(out empire, out rebels, CreateFleetPlanningConfig());
+        }
+
+        /// <summary>
+        /// Creates rules for fleet-planning scenarios.
+        /// </summary>
+        /// <returns>The test-owned configuration.</returns>
+        public static GameConfig CreateFleetPlanningConfig()
+        {
+            GameConfig config = TestConfig.Create();
+            config.AI.EnablePlanetaryAssaults = true;
+            GameConfig.AIFleetDeploymentConfig fleet = config.AI.FleetDeployment;
+            fleet.MinimumDefenseStrength = 1000;
+            fleet.HeadquartersDefenseCombatPercent = 35;
+            fleet.HeadquartersDefensePercentOfStrongestHostileFleet = 110;
+            fleet.AttackStrengthPercentOfStrongestHostileFleet = 175;
+            fleet.MinimumPlanetaryAssaultSuccessPercent = 55;
+            fleet.AssaultFleetCompositionReservePercent = 150;
+            fleet.LocalAttackMaximumTravelTicks = 60;
+            fleet.AttackIntelAgeGraceTicks = 40;
+            fleet.HeadquartersAttackMaximumIntelAgeTicks = 50;
+            fleet.StaleIntelReserveSaturationIntervals = 5;
+            fleet.StaleIntelMaximumAttackStrengthPercent = 250;
+            fleet.AttackUtility.Readiness.Weight = 1;
+            fleet.AttackUtility.Ready.Weight = 1;
+            return config;
         }
 
         /// <summary>

@@ -28,7 +28,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CreateCopy_EditingCustomRules_DoesNotChangeSource()
         {
             GameSummary source = new GameSummary
@@ -43,7 +42,7 @@ namespace Rebellion.Tests.Game
                     {
                         ManufacturingSpeedPercent = 120,
                     },
-                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
+                    GenerationConfig = TestPackFixture.CreateGenerationConfig(),
                     GarrisonRules = new GarrisonRuleSettings
                     {
                         SupportThreshold = 50,
@@ -151,10 +150,9 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void SerializeAndDeserialize_PopulatedSetup_MaintainsState()
         {
-            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig generationConfig = TestPackFixture.CreateGenerationConfig();
             generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             GameSummary summary = new GameSummary
             {

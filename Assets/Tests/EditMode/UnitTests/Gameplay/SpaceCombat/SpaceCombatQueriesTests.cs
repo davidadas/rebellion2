@@ -36,7 +36,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_NoFriendlyDestination_ReturnsFalse()
         {
             (_, Planet planet, Fleet fleet, SpaceCombatQueries queries) = CreateScenario();
@@ -52,7 +51,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_HyperdriveFighterWithOnlyLocalCarrier_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -84,7 +82,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_HostileGravityWell_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -104,7 +101,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_FleetWithPlanetaryNonHyperdriveFighter_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -134,7 +130,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_FleetWithMixedHyperdriveShips_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -164,7 +159,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_FleetWithoutAnyHyperdrive_ReturnsFalse()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -183,7 +177,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_NonHyperdriveFleetWithCarriedHyperdriveFighter_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -216,7 +209,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_HumanControlledOwnedHeadquarters_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -237,7 +229,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void CanRetreatForces_OpposingHeadquarters_ReturnsTrue()
         {
             (GameRoot game, Planet planet, Fleet fleet, SpaceCombatQueries queries) =
@@ -258,7 +249,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void TryFindContestedForces_PlanetOwner_DefendsAgainstOpposingFleet()
         {
             GameRoot game = CreateGame();

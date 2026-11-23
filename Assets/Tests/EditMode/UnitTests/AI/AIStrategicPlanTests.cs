@@ -110,7 +110,10 @@ namespace Rebellion.Tests.AI
             int expectedStrength
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.HeadquartersDefenseCombatPercent = 35;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 175;
@@ -433,7 +436,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void TryAllocateInfrastructureHub_ExactIndustrialAndShieldSpace_PreservesFinishedLayout()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -459,7 +465,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void TryAllocateInfrastructureHub_NoSpaceForShield_RejectsLayout()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -485,7 +494,10 @@ namespace Rebellion.Tests.AI
             ManufacturingStatus status
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -515,7 +527,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void TryAllocateInfrastructureHub_AnotherCategoryAlreadyPlanned_PreventsOverbooking()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -541,7 +556,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAvailableConstructionSpace_IndustryQueued_ReleasesOnlyItsSatisfiedReservation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -574,7 +592,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAvailableConstructionSpace_SelectedIndustry_DoesNotReserveItTwice()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -610,7 +631,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void FleetCountChange_Default_RedistributesIndependentMobileStrengthTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
             config.MinimumBattleFleetCount = 4;
             config.PlanetsPerBattleFleet = 8;
@@ -642,7 +666,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void MobileStrengthTarget_WithManyTargetFleets_CoversMinimumStrengthForEveryFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             GameConfig.AIFleetDeploymentConfig config = game.Config.AI.FleetDeployment;
             config.MinimumBattleFleetCount = 4;
             config.PlanetsPerBattleFleet = 8;
@@ -663,7 +690,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureTarget_WithTwoShipyardPlanets_ReturnsBothHubTargets()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -678,7 +708,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureTarget_WithOneConstructionPlanet_ReturnsPrimaryHubTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
             game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 4;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -692,7 +725,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureTarget_WithTwoPopulatedSectors_AddsTargetsForEachSector()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             for (int sectorIndex = 0; sectorIndex < 2; sectorIndex++)
@@ -718,7 +754,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureTarget_WithMultipleTrainingPlanets_UsesOneSectorHub()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 4;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             for (int index = 0; index < 3; index++)
@@ -733,7 +772,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureDeficit_WithCommittedFacility_CountsFacilityTowardTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.TrainingFacilityHubTargetCount = 4;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
@@ -755,7 +797,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetInfrastructureDeficit_WithScatteredShipyards_PreservesHubShortfall()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.ShipyardSecondaryHubTargetCount = 4;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -789,7 +834,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanReinforce_FriendlyShipUnderOpposingFleet_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
             Fleet receivingFleet = EntityFactory.CreateFleet("receiving-fleet", empire.InstanceID);
@@ -999,7 +1047,7 @@ namespace Rebellion.Tests.AI
             out Planet constructionHub
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction faction, out _);
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;
@@ -1058,7 +1106,10 @@ namespace Rebellion.Tests.AI
         /// <returns>The faction turn containing the political defense commitment.</returns>
         private static AITurnContext CreatePoliticalFleetHoldContext(out Fleet fleet)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             game.Config.SupportShift.OwnershipTransferThreshold = 50;
@@ -1101,7 +1152,10 @@ namespace Rebellion.Tests.AI
             out Planet candidate
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 3;
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 1;
             game.Config.AI.Infrastructure.ConstructionFacilitySecondaryHubTargetCount = 0;
@@ -1136,7 +1190,10 @@ namespace Rebellion.Tests.AI
         /// <returns>The faction turn context.</returns>
         private static AITurnContext CreateDefender(out Fleet fleet, out CapitalShip spare)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction _
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "hq", faction.InstanceID);

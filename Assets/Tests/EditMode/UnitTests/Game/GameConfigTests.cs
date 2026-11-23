@@ -42,7 +42,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Serialize_ConfiguredIncidentIntelligence_PreservesCombinedCategories()
         {
             GameConfig config = TestConfig.Create();
@@ -62,7 +61,6 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Serialize_ConfiguredSuppressionRegiments_PreservesMappings()
         {
             GameConfig config = TestConfig.Create();
@@ -214,13 +212,12 @@ namespace Rebellion.Tests.Game
         [TestCase(-1, ForceRankLabel.ForceMaster)]
         [TestCase(-32768, ForceRankLabel.ForceMaster)]
         [TestCase(65536, ForceRankLabel.None)]
-        [Category("RequiresMedia")]
         public void GetRankLabel_StoredRatingBoundary_UsesDisplayRepresentation(
             int forceRank,
             ForceRankLabel expected
         )
         {
-            Assert.AreEqual(expected, TestContent.Data.GameConfig.Jedi.GetRankLabel(forceRank));
+            Assert.AreEqual(expected, TestConfig.Create().Jedi.GetRankLabel(forceRank));
         }
 
         /// <summary>

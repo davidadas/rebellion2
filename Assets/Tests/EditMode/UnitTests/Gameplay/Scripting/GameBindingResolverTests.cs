@@ -42,7 +42,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Bind_NumericRanges_StoresRolledValues()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -71,7 +70,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Bind_TypedSources_StoresResolvedValues()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -173,7 +171,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Bind_TypedOfficerSourcesWithInactiveOfficer_StoresResolvedValues()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -237,7 +234,6 @@ namespace Rebellion.Tests.Gameplay.Scripting
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Bind_PlanetStatWithInactivePlanet_StoresResolvedValue()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());

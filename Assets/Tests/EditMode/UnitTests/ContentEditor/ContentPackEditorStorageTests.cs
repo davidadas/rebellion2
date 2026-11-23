@@ -11,7 +11,6 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
         [Test]
-        [Category("RequiresMedia")]
         public void Save_HeadquartersFacilityList_PreservesOrderedQuantitiesWhenLoaded()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -82,7 +81,6 @@ namespace Rebellion.Tests.ContentEditor
 
         [TestCase("Pack/Assets/current.png")]
         [TestCase("Pack/Assets/current")]
-        [Category("RequiresMedia")]
         public void ReplaceAsset_PackOwnedImage_OverwritesFileAndPreservesAddress(string address)
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -106,7 +104,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ReadGeneratedLayers_ReplacedImage_IgnoresThePreviousRecipe()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -132,7 +129,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ReplaceAsset_DifferentFileType_RejectsWithoutChangingCurrentFile()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -156,7 +152,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void WriteGeneratedPng_UnitOutput_UsesStablePackPathAndOverwritesIt()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -190,7 +185,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void WriteGeneratedPng_LayerRecipe_ReopensWithTheSelectedArtworkVersion()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -236,7 +230,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
         {
             ContentPackEditorProject project = CreateLoadableProject();

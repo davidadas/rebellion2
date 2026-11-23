@@ -66,32 +66,7 @@ namespace Rebellion.Tests.ContentEditor
                 xml.Save(target);
             }
             string application = Path.Combine(contentRoot, "Application");
-            foreach (string directory in new[] { "Schemas", "Rules" })
-            {
-                string sourceRoot = Path.Combine(
-                    TestContent.Pack.ContentRootPath,
-                    "Application",
-                    directory
-                );
-                foreach (
-                    string source in Directory.EnumerateFiles(
-                        sourceRoot,
-                        "*",
-                        SearchOption.AllDirectories
-                    )
-                )
-                {
-                    if (source.EndsWith(".meta", StringComparison.Ordinal))
-                        continue;
-                    string target = Path.Combine(
-                        application,
-                        directory,
-                        Path.GetRelativePath(sourceRoot, source)
-                    );
-                    Directory.CreateDirectory(Path.GetDirectoryName(target));
-                    File.Copy(source, target);
-                }
-            }
+            TestPackFixture.WriteApplicationFiles(contentRoot);
             string manifest = Path.Combine(basePack, "pack.xml");
             ContentPackDefinition definition =
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
@@ -120,8 +95,12 @@ namespace Rebellion.Tests.ContentEditor
         /// Creates independent editable records over read-only fixture documents.
         /// </summary>
         /// <param name="destination">The fixture-owned working directory.</param>
+        /// <param name="basePack">The installed base for cases exercising inherited pack assets.</param>
         /// <returns>The editable project.</returns>
-        internal static ContentPackEditorProject CreateProject(string destination)
+        internal static ContentPackEditorProject CreateProject(
+            string destination,
+            ContentPack basePack = null
+        )
         {
             string fixtures = Path.Combine(
                 Application.dataPath,
@@ -131,15 +110,17 @@ namespace Rebellion.Tests.ContentEditor
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
                     Path.Combine(fixtures, "pack.xml")
                 );
+            definition.BasePackID = basePack?.Definition.ID ?? definition.ID;
             definition.ID = "editor-test";
-            definition.BasePackID = TestContent.Pack.Definition.ID;
             Directory.CreateDirectory(destination);
             string manifest = Path.Combine(destination, "pack.xml");
             ContentDefinitionSerializer.Serialize(manifest, definition);
             ContentFileResolver resolver = new ContentFileResolver(
-                TestContent.Pack.ContentRootPath,
+                basePack?.ContentRootPath ?? Path.Combine(destination, "Content"),
                 destination,
-                fallbackPackRootPaths: new[] { fixtures, TestContent.Pack.PackRootPath }
+                fallbackPackRootPaths: basePack == null
+                    ? new[] { fixtures }
+                    : new[] { fixtures, basePack.PackRootPath }
             );
             var documents = Directory
                 .EnumerateFiles(fixtures, "*.xml", SearchOption.AllDirectories)

@@ -7,7 +7,6 @@ using NUnit.Framework;
 namespace Rebellion.Tests.ContentEditor
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public sealed class ContentEditorXmlScopeTests
     {
         private string folder;

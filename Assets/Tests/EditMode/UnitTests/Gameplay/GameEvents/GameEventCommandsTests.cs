@@ -24,7 +24,6 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.Gameplay.GameEvents
 {
     [TestFixture]
-    [Category("RequiresMedia")]
     public class GameEventCommandsTests
     {
         private GameRoot _game;
@@ -140,6 +139,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(1, 1)]
         [TestCase(-50, -80)]
         [TestCase(32767, -13109)]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_TrainingVisit_AppliesOneCompletedTrainingIncrease(
             int initialForce,
             int expectedForce
@@ -194,6 +194,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
 
         [TestCase(99, false)]
         [TestCase(100, true)]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_FinalBattle_DisablesEscapeForDefeatedOfficers(
             int forceRank,
             bool lukeWins
@@ -251,6 +252,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(true, false, true)]
         [TestCase(true, true, true)]
         [TestCase(true, true, false)]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_OrdinaryHanCapture_DoesNotStartPalaceVisits(
             bool previouslyCapturedByBountyHunters,
             bool previouslyRescued,
@@ -295,6 +297,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("LUKE", "LUKE_SKYWALKER")]
         [TestCase("LEIA", "LEIA_ORGANA")]
         [TestCase("CHEWBACCA", "CHEWBACCA")]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_PalaceRescue_ReturnsSuccessfulRescuerAndHan(
             string eventPrefix,
             string officerID
@@ -328,6 +331,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_FailedPalaceRescues_ReturnsVaderWithEscapablePrisoners()
         {
             Dictionary<string, Officer> officers = CreatePalaceScenario(0.9999);
@@ -375,6 +379,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(false, false)]
         [TestCase(true, false)]
         [TestCase(false, true)]
+        [Category("RequiresMedia")]
         public void InstallDefinitions_CompletedPalaceRescue_ReturnsStrandedOfficersWithoutReleasingOtherCaptives(
             bool lukeIsTraining,
             bool lukeIsKilled
@@ -1924,6 +1929,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [TestCaseSource(nameof(PlanetInformantOutcomeCases))]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_PlanetInformantsOutcome_RevealsExpectedIntelligenceAndMessage(
             string ownerInstanceID,
             string recipientInstanceID,
@@ -1994,6 +2000,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("FNEMP1", "FNALL1", 5)]
         [TestCase("FNEMP1", "FNALL1", 6)]
         [TestCase("FNEMP1", "FNALL1", 7)]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_InformantReport_UpdatesRecipientBeforeNotification(
             string ownerInstanceID,
             string recipientInstanceID,
@@ -2053,6 +2060,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("FNALL1", "FNEMP1", 100, false)]
         [TestCase("FNEMP1", "FNALL1", 0, true)]
         [TestCase("FNEMP1", "FNALL1", 100, false)]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_PlanetInformantsSupportBoundary_LeaksOnlyAtZeroSupport(
             string ownerInstanceID,
             string recipientInstanceID,
@@ -2093,6 +2101,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ProcessScheduledEvents_PlanetInformantsRecurringSchedule_RearmsTarget()
         {
             SequenceRNG random = new SequenceRNG(intValues: new[] { 30, 0, 0, 30, 0, 0, 30 });
@@ -2342,6 +2351,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", true, 56)]
         [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", false, 56)]
         [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", true, 56)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_RepeatedNamedConfrontations_AwardGrowthInEitherOrder(
             string eventID,
             string growingOfficerID,
@@ -2399,6 +2409,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE")]
         [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER")]
         [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE")]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_NamedEncounter_DeliversBothOfficersStatesToBothFactions(
             string eventID,
             string firstOfficerID,
@@ -2470,6 +2481,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("LUKE_ENCOUNTERS_PALPATINE", "LUKE_SKYWALKER", "EMPEROR_PALPATINE", 1, true)]
         [TestCase("LEIA_ENCOUNTERS_VADER", "LEIA_ORGANA", "DARTH_VADER", 1, false)]
         [TestCase("LEIA_ENCOUNTERS_PALPATINE", "LEIA_ORGANA", "EMPEROR_PALPATINE", 1, false)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_NamedEncounter_IdentifiesEachRecipientsOwnOfficer(
             string eventID,
             string firstOfficerID,
@@ -2530,6 +2542,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
 
         [TestCase(false, 1)]
         [TestCase(true, 0)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_LaterVaderEncounter_DoesNotRepeatFirstEncounterInjury(
             bool capturedOnFirstEncounter,
             int expectedInjury
@@ -2592,6 +2605,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(60, true)]
         [TestCase(100, false)]
         [TestCase(100, true)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_FirstVaderEncounter_ReportsHeritageAtAnyForceRank(
             int forceRank,
             bool reverseOrder
@@ -2660,6 +2674,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(true, true, "ground")]
         [TestCase(true, true, "ship")]
         [TestCase(true, true, "mission")]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_CapturedHeritage_RequiresSharedMissionToEmperorsPhysicalLocation(
             bool assigned,
             bool sameDestination,
@@ -2772,6 +2787,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase("LUKE_SKYWALKER", "DARTH_VADER", true, 0)]
         [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", false, 0)]
         [TestCase("LEIA_ORGANA", "EMPEROR_PALPATINE", true, 0)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_GenericEncounter_ReportsOnlyUnnamedPairsToBothOwners(
             string firstID,
             string secondID,
@@ -2838,6 +2854,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         [TestCase(79, false, 1)]
         [TestCase(80, false, 0)]
         [TestCase(79, true, 0)]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_FirstVaderEncounter_InjuresFreeOfficerBelowThreshold(
             int forceRank,
             bool captured,
@@ -2937,6 +2954,7 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             true,
             10
         )]
+        [Category("RequiresMedia")]
         public void ProcessTriggeredEvents_AuthoredLeiaEncounter_AppliesGrowthOnlyWhenEligibleAndFree(
             string effectID,
             string sourceID,

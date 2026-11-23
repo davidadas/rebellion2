@@ -68,7 +68,6 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        [Category("RequiresMedia")]
         public void GetCommandModifiers_ZeroLeadership_DistinguishesSelectedAdmiralFromNoAdmiral(
             bool hasAdmiral
         )
@@ -104,7 +103,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetCommandModifiers_SelectedCommanderOnPlanet_DoesNotUseLowerRatedShipCommander()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -166,7 +164,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void GetCommandModifiers_UnavailableAndNonparticipatingOfficers_IgnoresThem()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -237,7 +234,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_SystemCommander_IncludesSelectedOfficerInCombatReport()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -284,7 +280,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_CompletedEncounter_ReturnsAggregateDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -337,7 +332,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_NoHostileFleets_DoesNotRunCombat()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -364,7 +358,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_InTransitCapitalShipAttachedToFleet_DoesNotTakeCombatDamage()
         {
             GameRoot game = CreateGame();
@@ -408,7 +401,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_InTransitStarfighterAttachedToFleet_DoesNotTakeCombatLosses()
         {
             GameRoot game = CreateGame();
@@ -454,7 +446,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_SingleFactionFleets_DoesNotRunCombat()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -477,7 +468,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_MultipleAttackerFleets_IncludesEveryFleet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -514,7 +504,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_AttackerDestroysDefender_ReturnsAttackerVictory()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -542,7 +531,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_LastDefendingFleetDestroyed_ReportsBlockadeStart()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -573,7 +561,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_DefenderDestroysAttacker_ReturnsDefenderVictory()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -601,7 +588,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_MutualDestruction_RemovesBothFleets()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -649,7 +635,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_ShipTakesDamage_ReducesCurrentHullStrength()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -678,7 +663,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_ShipDestroyed_RemovedFromFleet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -706,7 +690,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_DestroyedCarrierWithEmbarkedUnits_RecordsDestroyedOutcomes()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -838,7 +821,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_EmptyFleet_RemovedFromScene()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -872,7 +854,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_BothSidesZeroWeapons_DestroysFleetsAndRecordsLosses()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -909,7 +890,6 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(true, CombatSide.Defender)]
         [TestCase(false, CombatSide.Attacker)]
-        [Category("RequiresMedia")]
         public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsStationarySideVictory(
             bool attackerCanEvacuate,
             CombatSide expectedWinner
@@ -1095,7 +1075,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_WeaponFire_DamagesTargets()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1123,7 +1102,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_MaxShieldStrength_AbsorbsDamageBeforeHull()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1169,7 +1147,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_ShieldRechargeRate_RestoresShieldStrengthBetweenRounds()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1219,7 +1196,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_DepletedShieldStrength_PersistsBetweenRounds()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1268,7 +1244,6 @@ namespace Rebellion.Tests.Gameplay
 
         [Test]
         [Timeout(5000)]
-        [Category("RequiresMedia")]
         public void Resolve_ShieldDamageFullyRecharged_DestroysStrandedFleetsAndRecordsLosses()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1346,7 +1321,6 @@ namespace Rebellion.Tests.Gameplay
 
         [Test]
         [Timeout(5000)]
-        [Category("RequiresMedia")]
         public void Resolve_PreDamagedShipWithStableShields_DoesNotReportExistingHullDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1398,7 +1372,6 @@ namespace Rebellion.Tests.Gameplay
 
         [Test]
         [Timeout(5000)]
-        [Category("RequiresMedia")]
         public void Resolve_DamagedHull_ReducesShieldRechargeRate()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1445,7 +1418,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_FighterDamage_IsAbsorbedByCapitalShipShields()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1486,7 +1458,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_FightersAttackCapitalShips_ReportsDamage()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1522,7 +1493,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_EmptyFleets_DoesNotRunCombat()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1550,7 +1520,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_CombatWithSurvivors_ClearsIsInCombatOnSurvivingFleets()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1586,7 +1555,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_DefenderWinsOnOwnPlanet_DoesNotChangeOwnership()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1621,7 +1589,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_WithInTransitFleet_IgnoresInTransitFleet()
         {
             GameRoot game = CreateGame();
@@ -1648,7 +1615,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_FleetsWithOnlyInTransitShips_DoesNotRunCombat()
         {
             GameRoot game = CreateGame();
@@ -1681,7 +1647,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_MultipleEncountersAllAI_ResolvesAll()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -1721,7 +1686,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_WeakerAIFleetCanRetreat_MovesToFriendlyPlanet()
         {
             GameRoot game = CreateGame();
@@ -1745,7 +1709,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_WeakerAIFleetDefendingHeadquarters_DoesNotRetreat()
         {
             GameRoot game = CreateGame();
@@ -1866,7 +1829,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_WeakerAIFleetDestroyedDuringWithdrawal_RemovesFleet()
         {
             GameRoot game = CreateGame();
@@ -1896,7 +1858,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_WeakerAIFleetBlockedByGravityWell_Fights()
         {
             GameRoot game = CreateGame();
@@ -1937,7 +1898,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_UnarmedAIFleets_RetreatsBoth()
         {
             GameRoot game = CreateGame();
@@ -1960,7 +1920,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_UnarmedFleetsWithoutRetreatDestinations_DestroysAndReportsBoth()
         {
             GameRoot game = CreateGame();
@@ -2011,7 +1970,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_MultipleUnarmedFleetsWithRetreatDestinations_RetreatsEveryFleet()
         {
             GameRoot game = CreateGame();
@@ -2041,7 +1999,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_MultipleUnarmedFleetsWithoutRetreatDestinations_DestroysEveryFleetAndReportsEveryShip()
         {
             GameRoot game = CreateGame();
@@ -2090,7 +2047,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_PlayerInvolvedEncounter_ReturnsPendingDecision()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2128,7 +2084,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_PlayerInvolvedEncounter_ClearsFleetWaypointRoutes()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2157,7 +2112,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_PlayerFleetAgainstPlanetaryStarfighters_ReturnsPendingDecision()
         {
             GameRoot game = CreateGame();
@@ -2190,7 +2144,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_UnfinishedPlanetaryStarfighters_DoNotTriggerCombat()
         {
             GameRoot game = CreateGame();
@@ -2219,7 +2172,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ProcessTick_PlayerInvolvedEncounter_SetsRetreatAvailability()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2260,7 +2212,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_MultipleColocatedFleets_IncludesEveryFleet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2312,7 +2263,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_MultipleColocatedFleets_DestroysEveryLosingFleetAndReportsEveryShip()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2376,7 +2326,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_MultipleColocatedFleets_ExcludesInTransitSiblingFleet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -2418,7 +2367,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_PlanetaryStarfighters_ParticipateInCombat()
         {
             GameRoot game = CreateGame();
@@ -3260,7 +3208,6 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(0)]
         [TestCase(60)]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_CarriedFighter_BoardsRetreatingCarrier(int hyperdrive)
         {
             (
@@ -3284,7 +3231,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_SurvivingCarrierWithHyperdriveFighter_PreservesOccupiedBay()
         {
             (
@@ -3329,7 +3275,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_HyperdriveFighter_UsesFirstCarrierWithSpace()
         {
             (
@@ -3351,7 +3296,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_LimitedCarrierSpace_OnlyOverflowTravelsIndependently()
         {
             (
@@ -3378,7 +3322,6 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("empire")]
         [TestCase("alliance")]
         [TestCase(null)]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_RedistributedFighters_RespectsOccupiedBays(
             string combatOwner
         )
@@ -3414,7 +3357,6 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(FleetOrderType.Attack)]
         [TestCase(FleetOrderType.Engage)]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_PlayerFleetWithTargetingOrder_MovesToFriendlyPlanetAndClearsOrder(
             FleetOrderType orderType
         )
@@ -3466,7 +3408,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_OwningFleetLeavesHostileFleet_ReportsBlockadeStart()
         {
             GameRoot game = CreateGame();
@@ -3497,7 +3438,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighter_MovesFighterAndDoesNotRestartCombat()
         {
             GameRoot game = CreateGame();
@@ -3547,7 +3487,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_PlanetaryHyperdriveFighterWithoutFleet_MovesFighterAndEndsCombat()
         {
             GameRoot game = CreateGame();
@@ -3593,7 +3532,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighterWithoutCarrierCapacity_DestroysStrandedFighter()
         {
             GameRoot game = CreateGame();
@@ -3639,7 +3577,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_PlanetaryNonHyperdriveFighterWithCarrierCapacity_BoardsWithdrawingCarrier()
         {
             GameRoot game = CreateGame();
@@ -3675,7 +3612,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_FleetWithoutHyperdrive_DoesNotMoveFleet()
         {
             GameRoot game = CreateGame();
@@ -3705,7 +3641,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_FleetWithoutHyperdriveAndCarriedHyperdriveFighter_EvacuatesFighterAndDestroysFleet()
         {
             GameRoot game = CreateGame();
@@ -3753,7 +3688,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_TwoFightersCompeteForOneRemoteCarrierBay_WithdrawsOnlyReservedFighter()
         {
             GameRoot game = CreateGame();
@@ -3830,7 +3764,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_OneFleetWithoutHyperdrive_DestroysStrandedFleet()
         {
             GameRoot game = CreateGame();
@@ -3876,7 +3809,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_StrandedFleetCarriesNonHyperdriveFighter_DestroysFighter()
         {
             GameRoot game = CreateGame();
@@ -3931,7 +3863,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_OtherFleetHasRecoveryCapacity_RecoversStrandedFighter()
         {
             GameRoot game = CreateGame();
@@ -3992,7 +3923,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_MultipleColocatedFleets_RetreatsEveryFleetAndReportsEveryShip()
         {
             GameRoot game = CreateGame();
@@ -4043,7 +3973,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_ShipDestroyedWithSurvivingShip_OfficerMovedToSurvivingShip()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -4116,7 +4045,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_LastShipDestroyed_OfficerEvacuatedToNearestFriendlyPlanet()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -4182,7 +4110,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void Resolve_LastShipDestroyedWithInactiveOfficer_EvacuatesWithoutActivating()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -4257,7 +4184,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_NoPendingEncounter_ThrowsInvalidOperationException()
         {
             SpaceCombatCommands commands = MakeSpaceCombat(CreateGame());
@@ -4266,7 +4192,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_NoPendingEncounter_ThrowsInvalidOperationException()
         {
             SpaceCombatCommands commands = MakeSpaceCombat(CreateGame());
@@ -4277,7 +4202,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_ResolverThrows_RetainsPendingDecision()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -4292,7 +4216,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePendingRetreat_UnrelatedFaction_KeepsPendingDecision()
         {
             (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -4309,7 +4232,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void ResolvePending_ManualResolution_ClearsPendingWithoutDamage()
         {
             (_, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -4408,7 +4330,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void TrySubmitResponse_UnarmedHumanSelectsAutomatic_WithdrawsHumanForce()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =
@@ -4437,7 +4358,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public void TryGetPendingCombat_GravityWellActivated_RefreshesRetreatAvailability()
         {
             (GameRoot game, SpaceCombatCommands commands, Fleet empireFleet, Fleet allianceFleet) =

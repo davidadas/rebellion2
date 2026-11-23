@@ -15,7 +15,6 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorExporterTests : ContentPackEditorTestBase
     {
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_InvalidRawCost_DoesNotReplaceAnExistingArchiveAsync()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -37,7 +36,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_LegalProductionRestriction_ExportsAndReturnsTheWarningAsync()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -102,7 +100,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_UnsavedEditsAndLocalMedia_IncludesOverridesWithoutCopyingBaseContentAsync()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
@@ -160,7 +157,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_UnsavedStartupFailure_PreservesTheExistingArchiveAndWorkingProjectAsync()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
@@ -187,7 +183,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_CorruptReferencedImage_PreservesTheArchiveAndUnsavedProjectAsync()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(
@@ -215,7 +210,6 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        [Category("RequiresMedia")]
         public async Task WriteArchiveAsync_CancelledAfterStarting_PreservesExistingOutputAndUnsavedEditsAsync()
         {
             ContentPackEditorProject project = ContentEditorTestData.CreateLoadableProject(

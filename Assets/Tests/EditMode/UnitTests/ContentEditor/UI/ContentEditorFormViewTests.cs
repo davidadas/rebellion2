@@ -36,7 +36,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Path.GetTempPath(),
                 "editor-form-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentEditorTestData.CreateProject(folder);
+            project = ContentEditorTestData.CreateProject(folder, TestContent.Pack);
             assets = TestContent.Assets;
             section = "General";
             selectedRecord = null;
