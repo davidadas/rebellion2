@@ -1310,37 +1310,40 @@ public sealed class ContentEditorFormView : MonoBehaviour
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         if (toggle == null)
             return y + PlaceLabel(caption, labelIndex++, contentLeft, y, contentWidth, true) + 6;
-        const int toggleWidth = 174;
         const int toggleHeight = 26;
-        int headingHeight;
-        if (contentWidth >= 400)
-        {
-            headingHeight = PlaceLabel(
-                caption,
-                labelIndex++,
-                contentLeft,
-                y,
-                contentWidth - toggleWidth - 12,
-                true
-            );
-            SetFormRect(
-                (RectTransform)toggle.transform,
-                contentLeft + contentWidth - toggleWidth,
-                y,
-                toggleWidth,
-                toggleHeight
-            );
-            toggle.SetIsCheckedWithoutNotify(isChecked);
-            toggle.gameObject.SetActive(true);
-            return y + Mathf.Max(headingHeight, toggleHeight) + 6;
-        }
-
-        headingHeight = PlaceLabel(caption, labelIndex++, contentLeft, y, contentWidth, true);
-        y += headingHeight + 4;
-        SetFormRect((RectTransform)toggle.transform, contentLeft, y, toggleWidth, toggleHeight);
+        TMP_Text toggleLabel = toggle.GetComponentInChildren<TMP_Text>(true);
+        RectInt labelBounds = UILayout.GetSourceRect(toggleLabel.rectTransform);
+        float toggleWidth = Mathf.Min(
+            contentWidth,
+            labelBounds.x + Mathf.CeilToInt(toggleLabel.GetPreferredValues(toggleLabel.text).x)
+        );
+        bool sharesHeadingRow = contentWidth >= 400;
+        int headingHeight = PlaceLabel(
+            caption,
+            labelIndex++,
+            contentLeft,
+            y,
+            sharesHeadingRow ? contentWidth - toggleWidth - 12 : contentWidth,
+            true
+        );
+        int toggleTop = sharesHeadingRow ? y : y + headingHeight + 4;
+        RectInt toggleBounds = SetFormRect(
+            (RectTransform)toggle.transform,
+            contentLeft + contentWidth - toggleWidth,
+            toggleTop,
+            toggleWidth,
+            toggleHeight
+        );
+        UILayout.SetSourceRect(
+            toggleLabel.rectTransform,
+            labelBounds.x,
+            labelBounds.y,
+            Mathf.Max(1, toggleBounds.width - labelBounds.x),
+            labelBounds.height
+        );
         toggle.SetIsCheckedWithoutNotify(isChecked);
         toggle.gameObject.SetActive(true);
-        return y + toggleHeight + 6;
+        return Mathf.Max(y + headingHeight, toggleTop + toggleHeight) + 6;
     }
 
     /// <summary>
@@ -2608,6 +2611,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 readable: true
             )
             : null;
+
+    /// <summary>
+    /// Resolves the same authored ship backdrop used by the unit artwork gallery.
+    /// </summary>
+    /// <param name="record">The ship whose encyclopedia art will be generated.</param>
+    /// <returns>The readable backdrop to include in the PNG, when configured.</returns>
+    internal Texture2D GetShipEncyclopediaCutBackground(ContentPackEditorRecord record) =>
+        ResolveEffectiveUnitBackground(
+            record.GetField(ContentEditorUnitArtworkLayout.BackgroundMember),
+            readable: true
+        );
 
     /// <summary>
     /// Resolves the card background used behind compact personnel and regiment artwork in gameplay.

@@ -1571,7 +1571,10 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase("CapitalShip", false)]
         [TestCase("Starfighter", false)]
         [TestCase("Starfighter", true)]
-        public void Render_ShipArtwork_OffersOnlyGameplayCuts(string kind, bool useLargeDisplay)
+        public void Render_ShipArtwork_OffersGameplayAndEncyclopediaCuts(
+            string kind,
+            bool useLargeDisplay
+        )
         {
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
@@ -1602,14 +1605,14 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
             Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
             CollectionAssert.AreEquivalent(
-                new[] { "SmallDisplayImagePath", "BattleResultImagePath" },
+                new[] { "SmallDisplayImagePath", "BattleResultImagePath", "EncyclopediaImagePath" },
                 requestedTargets.Select(field => field.MemberName).ToArray()
             );
         }
 
         [TestCase("CapitalShip", "MessageImagePath")]
         [TestCase("Starfighter", "EncyclopediaImagePath")]
-        public void Render_ShipWithOnlyAnIllustration_OffersGameplayCuts(
+        public void Render_ShipWithOnlyAnIllustration_OffersCutsForOtherSupportedSlots(
             string kind,
             string sourceMember
         )
@@ -1648,9 +1651,17 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .onClick.Invoke();
 
             Assert.AreEqual(sourceMember, requestedSource.MemberName);
+            var expected = new[]
+            {
+                "DisplayImagePath",
+                "SmallDisplayImagePath",
+                "BattleResultImagePath",
+            };
             CollectionAssert.AreEquivalent(
-                new[] { "DisplayImagePath", "SmallDisplayImagePath", "BattleResultImagePath" },
-                requestedTargets.Select(field => field.MemberName).ToArray()
+                sourceMember == "MessageImagePath"
+                    ? expected.Append("EncyclopediaImagePath")
+                    : expected,
+                requestedTargets.Select(field => field.MemberName)
             );
         }
 
@@ -1804,6 +1815,45 @@ namespace Rebellion.Tests.ContentEditor.UI
             RawImage stateBackground = view.GetComponentsInChildren<RawImage>()
                 .Single(image => image.name == "ArticleImageTemplate-State-Normal-Background");
             Assert.AreSame(assets.GetTexture(compactBackgroundAddress), stateBackground.texture);
+        }
+
+        [TestCase(800)]
+        [TestCase(340)]
+        public void Render_UnitArtworkBackgroundToggles_AlignCaptionToRightInset(int width)
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Starfighter" && record.Catalog.Faction == "Alliance"
+                );
+            SetFactionArtworkBackground(
+                "StarfighterBackgroundImagePath",
+                unit.GetField("EncyclopediaImagePath").Value
+            );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            Canvas.ForceUpdateCanvases();
+
+            UICheckboxView[] toggles = view.GetComponentsInChildren<ContentEditorCardView>()
+                .SelectMany(card => card.GetComponentsInChildren<UICheckboxView>())
+                .ToArray();
+            Assert.AreEqual(3, toggles.Length);
+            foreach (UICheckboxView toggle in toggles)
+            {
+                TMP_Text label = toggle.GetComponentInChildren<TMP_Text>();
+                RectInt labelBounds = UILayout.GetSourceRect(label.rectTransform);
+                RectInt toggleBounds = UILayout.GetSourceRect((RectTransform)toggle.transform);
+                float cardWidth = ((RectTransform)toggle.transform.parent).rect.width;
+                Assert.AreEqual(
+                    ContentEditorCardView.ContentInset,
+                    cardWidth - toggleBounds.xMin - labelBounds.xMax,
+                    1,
+                    toggle.name
+                );
+                Assert.AreEqual(label.GetPreferredValues(label.text).x, labelBounds.width, 1);
+            }
         }
 
         [Test]

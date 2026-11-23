@@ -142,10 +142,22 @@ internal static class ContentEditorUnitArtworkLayout
     /// Checks whether a field can receive generated artwork.
     /// </summary>
     /// <param name="field">The unit image field being evaluated.</param>
-    /// <returns>True for standard cut destinations, excluding ship illustrations.</returns>
+    /// <returns>True for standard cut destinations, excluding ship message images.</returns>
     internal static bool IsCutTarget(ContentPackEditorField field) =>
         IsCutSource(field)
-        && (field.Record.Kind is not ("CapitalShip" or "Starfighter") || !IsIllustration(field));
+        && (
+            field.Record.Kind is not ("CapitalShip" or "Starfighter")
+            || field.MemberName != "MessageImagePath"
+        );
+
+    /// <summary>
+    /// Identifies a ship illustration that is framed on its encyclopedia canvas.
+    /// </summary>
+    /// <param name="field">The artwork output being evaluated.</param>
+    /// <returns>True for the encyclopedia slot of a capital ship or starfighter.</returns>
+    internal static bool IsShipEncyclopediaCut(ContentPackEditorField field) =>
+        field.Record.Kind is "CapitalShip" or "Starfighter"
+        && field.MemberName == "EncyclopediaImagePath";
 
     /// <summary>
     /// Identifies the large report and encyclopedia illustrations for a unit.
@@ -176,7 +188,18 @@ internal static class ContentEditorUnitArtworkLayout
             && IsCutSource(source)
             && IsCutTarget(target)
             && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(target, out dimensions)
-            && ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, dimensions);
+            && (
+                ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, dimensions)
+                || (
+                    IsShipEncyclopediaCut(target)
+                    && source.MemberName == "DisplayImagePath"
+                    && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                        source,
+                        out Vector2Int displaySize
+                    )
+                    && ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, displaySize)
+                )
+            );
     }
 
     /// <summary>
