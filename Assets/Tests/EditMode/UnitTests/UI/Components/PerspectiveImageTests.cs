@@ -136,6 +136,7 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void AuthoredPrefab_MultiplayerButton_UsesProjectedImageAsTarget()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(

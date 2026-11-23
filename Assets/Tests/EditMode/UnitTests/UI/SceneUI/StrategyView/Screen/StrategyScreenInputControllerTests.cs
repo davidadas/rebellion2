@@ -10,6 +10,7 @@ using UnityEngine.EventSystems;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyScreenInputControllerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";

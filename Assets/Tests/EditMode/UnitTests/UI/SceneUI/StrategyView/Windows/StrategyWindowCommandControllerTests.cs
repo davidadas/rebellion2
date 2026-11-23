@@ -20,6 +20,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyWindowCommandControllerTests
     {
         private const string _playerFactionId = "FNALL1";

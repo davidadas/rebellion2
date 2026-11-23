@@ -17,6 +17,7 @@ using Object = UnityEngine.Object;
 namespace Rebellion.Tests.UI.SceneUI.MainMenu.Integration
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MainMenuControllerTests
     {
         private const string _settingsBackupKey = "MainMenuControllerAgreementTests.SettingsBackup";

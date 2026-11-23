@@ -19,6 +19,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.Systems
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIDirectorTests
     {
         [TestCase(false)]

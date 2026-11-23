@@ -8,6 +8,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorAppearanceTests
     {
         private ContentPackEditorView view;

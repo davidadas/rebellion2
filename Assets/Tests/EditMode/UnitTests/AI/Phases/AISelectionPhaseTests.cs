@@ -22,6 +22,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Phases
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AISelectionPhaseTests
     {
         [Test]

@@ -53,12 +53,21 @@ require_command() {
 }
 
 run_unity_tests() {
+    local suite="$1"
+    shift
+    local filter_args=()
+    case "$suite" in
+        core)  filter_args=(-testCategory '!^RequiresMedia$') ;;
+        media) filter_args=(-testCategory '^RequiresMedia$') ;;
+    esac
     local platform results
     for platform in EditMode PlayMode; do
         results="$TEST_RESULTS"
         local setup_args=()
         if [ "$platform" = EditMode ]; then
-            setup_args=(-executeMethod UIBuilderMenu.BuildAll)
+            if [ "$suite" != core ]; then
+                setup_args=(-executeMethod UIBuilderMenu.BuildAll)
+            fi
         else
             results="${TEST_RESULTS%.xml}-playmode.xml"
         fi
@@ -67,6 +76,7 @@ run_unity_tests() {
             -runTests \
             -testPlatform "$platform" \
             "${setup_args[@]}" \
+            "${filter_args[@]}" \
             -projectPath "$PROJECT_PATH" \
             -testResults "$results" \
             -batchmode \
@@ -125,6 +135,8 @@ usage() {
     echo "  format    Check formatting with CSharpier"
     echo "  lint      Run Roslynator static analysis"
     echo "  test      Run EditMode and PlayMode tests via Unity"
+    echo "  test-core Run EditMode and PlayMode tests without private media"
+    echo "  test-media Run the tests that require the shipped media or generated UI"
     echo "  coverage  Run EditMode and PlayMode tests with code coverage report"
     echo "  build     Build standalone player"
     echo "  clean     Remove build artifacts"
@@ -288,7 +300,7 @@ do_lint() {
 }
 
 do_test() {
-    run_unity_tests -releaseCodeOptimization
+    run_unity_tests "$1" -releaseCodeOptimization
     echo "Test results written to $TEST_RESULTS and ${TEST_RESULTS%.xml}-playmode.xml"
 }
 
@@ -296,7 +308,7 @@ do_coverage() {
     require_command awk
 
     local coverage_dir="${COVERAGE_DIR:-Coverage}"
-    run_unity_tests \
+    run_unity_tests all \
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
@@ -464,7 +476,9 @@ do_all() {
 case "${1:-}" in
     format)    do_format ;;
     lint)      do_lint ;;
-    test)     do_test ;;
+    test)     do_test all ;;
+    test-core) do_test core ;;
+    test-media) do_test media ;;
     coverage) do_coverage ;;
     build)    do_build ;;
     clean)    do_clean ;;

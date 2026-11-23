@@ -12,6 +12,7 @@ using UnityEngine.EventSystems;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FinderWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

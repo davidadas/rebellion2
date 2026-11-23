@@ -18,6 +18,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyBriefingControllerTests
     {
         private const string _opponentFactionID = "OPPONENT";

@@ -13,6 +13,7 @@ using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.Components
 {
+    [Category("RequiresMedia")]
     public sealed class MultiplayerSessionEndControllerTests
     {
         private GameObject root;

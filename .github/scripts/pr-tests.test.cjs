@@ -81,7 +81,6 @@ test('approval binds testing to the exact base and reviewed head repository', as
   await approve(f);
   assert.equal(f.outputs.base_sha, BASE);
   assert.equal(f.outputs.head_repository, 'contributor/game');
-  assert.equal(f.outputs.media_branch, 'contributor-feature');
   assert.equal(f.calls[0].check_run_id, 23);
   assert.equal(f.calls[0].status, 'in_progress');
   assert.equal(f.calls[0].output.title, 'Unity tests running');
@@ -102,16 +101,17 @@ test('approval rejects an invalid check before exposing revisions to downstream 
   assert.deepEqual(f.outputs, {});
 });
 
-for (const [testResult, mediaResult, approvalResult, conclusion] of [
-  ['success', 'success', 'success', 'success'],
-  ['skipped', 'failure', 'success', 'failure'],
-  ['skipped', 'skipped', 'failure', 'failure'],
-  ['failure', 'success', 'success', 'failure'],
-  ['cancelled', 'success', 'success', 'cancelled'],
+for (const [testResult, approvalResult, conclusion] of [
+  ['success', 'success', 'success'],
+  ['skipped', 'success', 'failure'],
+  ['skipped', 'failure', 'failure'],
+  ['failure', 'success', 'failure'],
+  ['cancelled', 'success', 'cancelled'],
+  ['skipped', 'cancelled', 'cancelled'],
 ]) {
-  test(`reporting ${testResult}/${mediaResult}/${approvalResult} yields ${conclusion}`, async () => {
+  test(`reporting ${testResult}/${approvalResult} yields ${conclusion}`, async () => {
     const f = fixture();
-    await report({ ...f, checkId: '23', testResult, mediaResult, approvalResult });
+    await report({ ...f, checkId: '23', testResult, approvalResult });
     assert.equal(f.calls[0].check_run_id, 23);
     assert.equal(f.calls[0].conclusion, conclusion);
     assert.equal(f.calls[0].status, 'completed');

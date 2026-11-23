@@ -231,6 +231,7 @@ namespace Rebellion.Tests.Game.Encyclopedia
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Build_FromActivePack_UsesPackEncyclopediaImages()
         {
             GameDataCatalog gameData = TestContent.Data;

@@ -16,6 +16,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyStatusInfoBuilderTests
     {
         private const string _ownerId = "owner";

@@ -18,6 +18,7 @@ using Rebellion.Tests.AI.Helpers;
 namespace Rebellion.Tests.AI.Planners
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class AIMissionCandidatePoolTests
     {
         /// <summary>

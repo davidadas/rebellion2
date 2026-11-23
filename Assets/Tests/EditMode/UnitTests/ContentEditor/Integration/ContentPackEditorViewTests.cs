@@ -20,6 +20,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
 {
     [TestFixture]
     [Category("Integration")]
+    [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
         [TestCase(false)]

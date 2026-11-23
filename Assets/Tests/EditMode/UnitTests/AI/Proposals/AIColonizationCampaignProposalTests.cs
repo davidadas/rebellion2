@@ -21,7 +21,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithUnexploredPlanets_StartsOnlyNearestSurveyLeg()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector core = AITestSceneBuilder.AddSector(game, "core");
             Planet origin = AITestSceneBuilder.AddPlanet(game, core, "origin", empire.InstanceID);
             PlanetSector outerRim = AITestSceneBuilder.AddSector(game, "outer-rim");
@@ -61,7 +65,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithCompletedSurvey_AssignsSelectedColony()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "outer-rim");
             system.SectorType = PlanetSectorType.OuterRim;
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);

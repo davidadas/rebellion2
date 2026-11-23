@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ConfirmationDialogViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";

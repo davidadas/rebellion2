@@ -5,6 +5,7 @@ using NUnit.Framework;
 namespace Rebellion.Tests.UI.Runtime.Themes
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FactionThemeLibraryTests
     {
         private FactionThemeLibrary _library;

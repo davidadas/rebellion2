@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema">
+  <xs:element name="GameEvents">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="GameEvent">
+          <xs:complexType>
+            <xs:sequence>
+              <xs:element name="InstanceID" type="xs:string"/>
+              <xs:element name="ForEach" type="xs:anyType" minOccurs="0"/>
+              <xs:element name="Schedule" type="xs:anyType"/>
+              <xs:element name="Conditionals" type="xs:anyType" minOccurs="0"/>
+              <xs:element name="Actions" minOccurs="0">
+                <xs:complexType>
+                  <xs:choice minOccurs="0" maxOccurs="unbounded">
+                    <xs:element name="SendMessage" type="xs:anyType"/>
+                    <xs:element name="SetNodeState" type="xs:anyType"/>
+                    <xs:element name="SetDisplayStatus" type="xs:anyType"/>
+                    <xs:element name="SetEventVariable">
+                      <xs:complexType>
+                        <xs:sequence>
+                          <xs:element name="Key" type="xs:string"/>
+                          <xs:element name="Operand" type="xs:double"/>
+                        </xs:sequence>
+                      </xs:complexType>
+                    </xs:element>
+                  </xs:choice>
+                </xs:complexType>
+              </xs:element>
+            </xs:sequence>
+            <xs:attribute name="Category" type="xs:string"/>
+            <xs:attribute name="MaximumActivations" type="xs:positiveInteger"/>
+          </xs:complexType>
+        </xs:element>
+      </xs:sequence>
+    </xs:complexType>
+  </xs:element>
+</xs:schema>
