@@ -80,6 +80,7 @@ Assets/TextMesh Pro/
 !Tools/Rebellion.Analyzers/Rebellion.Analyzers.csproj
 !Tools/Rebellion.Analyzers.Tests/Rebellion.Analyzers.Tests.csproj
 !Tools/Rebellion.Architecture.Tests/Rebellion.Architecture.Tests.csproj
+!/Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj
 
 # Misc
 *.md
@@ -111,5 +112,8 @@ Assets/Art/Models/MainMenu/
 /Assets/GameIcon/
 /Assets/GameIcon.meta
 
+# Native vector libraries and import metadata are generated together.
+/Assets/Plugins/TacticalMath/
+/Assets/Plugins/TacticalMath.meta
 # Workflow validation dependencies
 .github/scripts/node_modules/
