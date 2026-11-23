@@ -62,11 +62,7 @@ internal static class ContentEditorArtworkCutGenerator
         bool preventUpscaling = false
     )
     {
-        if (string.IsNullOrWhiteSpace(sourcePath))
-            throw new ArgumentException("Choose a source image.", nameof(sourcePath));
-        string source = Path.GetFullPath(sourcePath);
-        if (!File.Exists(source))
-            throw new FileNotFoundException("The source image does not exist.", source);
+        string source = ResolveSourcePath(sourcePath);
         if (placements == null)
             throw new ArgumentNullException(nameof(placements));
         var targets = placements.Distinct().ToArray();
@@ -76,15 +72,12 @@ internal static class ContentEditorArtworkCutGenerator
                 nameof(placements)
             );
 
-        Texture2D sourceTexture = new Texture2D(2, 2, TextureFormat.RGBA32, false);
+        Texture2D sourceTexture = ReadSourceTexture(source);
         try
         {
-            if (!ImageConversion.LoadImage(sourceTexture, File.ReadAllBytes(source), false))
-                throw new InvalidDataException("The source image could not be decoded.");
             Vector2Int sourceSize = new(sourceTexture.width, sourceTexture.height);
             if (preventUpscaling && targets.Any(target => !CanFitSource(sourceSize, target.Size)))
                 throw new ArgumentException("Choose source artwork large enough for every cut.");
-            sourceTexture.wrapMode = TextureWrapMode.Clamp;
             Color32[] sourcePixels = sourceTexture.GetPixels32();
             RectInt contentBounds = GetVisibleContentBounds(
                 sourceTexture.width,
@@ -115,6 +108,109 @@ internal static class ContentEditorArtworkCutGenerator
     }
 
     /// <summary>
+    /// Frames the complete source on an encyclopedia canvas at no more than native scale.
+    /// </summary>
+    /// <param name="sourcePath">The absolute source image path.</param>
+    /// <param name="size">The exact encyclopedia output dimensions.</param>
+    /// <param name="offset">The artwork displacement in output proportions.</param>
+    /// <returns>The transparent framed PNG bytes.</returns>
+    internal static byte[] GenerateFramedPngCut(string sourcePath, Vector2Int size, Vector2 offset)
+    {
+        Texture2D source = ReadSourceTexture(ResolveSourcePath(sourcePath));
+        try
+        {
+            return CreatePngCut(
+                source,
+                source.GetPixels32(),
+                new RectInt(0, 0, source.width, source.height),
+                size,
+                offset,
+                fitEntireSource: true,
+                preserveVisibleSubject: false,
+                fillFrame: false,
+                maximumScale: 1
+            );
+        }
+        finally
+        {
+            DestroyTexture(source);
+        }
+    }
+
+    /// <summary>
+    /// Bakes a starfield behind the already previewed encyclopedia PNG.
+    /// </summary>
+    /// <param name="foreground">The centered ship artwork encoded as PNG.</param>
+    /// <param name="background">The readable background displayed behind the preview.</param>
+    /// <returns>The finished encyclopedia PNG.</returns>
+    internal static byte[] AddBackground(byte[] foreground, Texture2D background)
+    {
+        Texture2D output = new(2, 2, TextureFormat.RGBA32, false);
+        try
+        {
+            if (!ImageConversion.LoadImage(output, foreground, false))
+                throw new InvalidDataException("The generated cut could not be decoded.");
+            Color[] subject = output.GetPixels();
+            Color[] pixels = new Color[subject.Length];
+            FillBackground(pixels, new Vector2Int(output.width, output.height), background);
+            for (int index = 0; index < subject.Length; index++)
+            {
+                Color pixel = subject[index];
+                float alpha = pixel.a;
+                pixel.a = 1;
+                pixels[index] = Color.Lerp(pixels[index], pixel, alpha);
+            }
+            output.SetPixels(pixels);
+            output.Apply(false, false);
+            return ImageConversion.EncodeToPNG(output);
+        }
+        finally
+        {
+            DestroyTexture(output);
+        }
+    }
+
+    /// <summary>
+    /// Resolves and checks the input file before allocating textures.
+    /// </summary>
+    /// <param name="sourcePath">The chosen input path.</param>
+    /// <returns>The absolute path of the existing image.</returns>
+    private static string ResolveSourcePath(string sourcePath)
+    {
+        if (string.IsNullOrWhiteSpace(sourcePath))
+            throw new ArgumentException("Choose a source image.", nameof(sourcePath));
+        string source = Path.GetFullPath(sourcePath);
+        if (!File.Exists(source))
+            throw new FileNotFoundException("The source image does not exist.", source);
+        return source;
+    }
+
+    /// <summary>
+    /// Loads a readable texture for sampling without wrapping across the edges.
+    /// </summary>
+    /// <param name="path">The existing source image.</param>
+    /// <returns>The decoded texture, owned by the caller.</returns>
+    private static Texture2D ReadSourceTexture(string path)
+    {
+        byte[] bytes = File.ReadAllBytes(path);
+        Texture2D source = new(2, 2, TextureFormat.RGBA32, false)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+        };
+        try
+        {
+            if (!ImageConversion.LoadImage(source, bytes, false))
+                throw new InvalidDataException("The source image could not be decoded.");
+            return source;
+        }
+        catch
+        {
+            DestroyTexture(source);
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Samples one centered cover crop into an exact output canvas and encodes it as PNG.
     /// </summary>
     /// <param name="source">The readable decoded source texture.</param>
@@ -125,6 +221,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="fitEntireSource">Whether the complete source canvas must remain visible.</param>
     /// <param name="preserveVisibleSubject">Whether to fit artwork that would be clipped by the cover crop.</param>
     /// <param name="fillFrame">Whether to constrain placement to a fully filled crop.</param>
+    /// <param name="maximumScale">The largest scale permitted for the source pixels.</param>
     /// <returns>The encoded PNG bytes.</returns>
     private static byte[] CreatePngCut(
         Texture2D source,
@@ -134,7 +231,8 @@ internal static class ContentEditorArtworkCutGenerator
         Vector2 offset,
         bool fitEntireSource,
         bool preserveVisibleSubject,
-        bool fillFrame
+        bool fillFrame,
+        float maximumScale = float.PositiveInfinity
     )
     {
         Rect crop = GetSubjectCenteredCrop(source, contentBounds, target);
@@ -158,9 +256,17 @@ internal static class ContentEditorArtworkCutGenerator
         {
             crop = new Rect(contentBounds.min, contentBounds.size);
         }
-        float scale = Mathf.Min(target.x / crop.width, target.y / crop.height);
+        float scale = Mathf.Min(
+            maximumScale,
+            Mathf.Min(target.x / crop.width, target.y / crop.height)
+        );
         float fittedX = (target.x - crop.width * scale) * 0.5f + target.x * offset.x;
         float fittedY = (target.y - crop.height * scale) * 0.5f + target.y * offset.y;
+        if (maximumScale == 1 && scale == 1)
+        {
+            fittedX = Mathf.Round(fittedX);
+            fittedY = Mathf.Round(fittedY);
+        }
         Texture2D output = new Texture2D(target.x, target.y, TextureFormat.RGBA32, false);
         try
         {
@@ -201,6 +307,34 @@ internal static class ContentEditorArtworkCutGenerator
         finally
         {
             DestroyTexture(output);
+        }
+    }
+
+    /// <summary>
+    /// Samples the centered starfield crop onto an opaque black canvas.
+    /// </summary>
+    /// <param name="pixels">The target canvas pixels.</param>
+    /// <param name="target">The canvas size.</param>
+    /// <param name="background">The readable background image.</param>
+    private static void FillBackground(Color[] pixels, Vector2Int target, Texture2D background)
+    {
+        Rect uv = ContentEditorArtworkCrop.GetCenteredUvRect(
+            new Vector2Int(background.width, background.height),
+            target
+        );
+        for (int y = 0; y < target.y; y++)
+        for (int x = 0; x < target.x; x++)
+        {
+            Color color = background.GetPixelBilinear(
+                uv.x + (x + 0.5f) * uv.width / target.x,
+                uv.y + (y + 0.5f) * uv.height / target.y
+            );
+            pixels[y * target.x + x] = new Color(
+                color.r * color.a,
+                color.g * color.a,
+                color.b * color.a,
+                1
+            );
         }
     }
 

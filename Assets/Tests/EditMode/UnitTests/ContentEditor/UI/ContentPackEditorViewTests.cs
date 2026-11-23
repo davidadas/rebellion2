@@ -13,6 +13,25 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [TestCase(EventModifiers.Control)]
+        [TestCase(EventModifiers.Command)]
+        public void HandleKeyboardShortcut_ValidatePackShortcut_RaisesValidateRequested(
+            EventModifiers modifier
+        )
+        {
+            int requests = 0;
+            view.ValidateRequested += () => requests++;
+            Event key = new Event
+            {
+                type = EventType.KeyDown,
+                keyCode = KeyCode.V,
+                modifiers = modifier | EventModifiers.Shift,
+            };
+
+            Assert.IsTrue(view.HandleKeyboardShortcut(key));
+            Assert.AreEqual(1, requests);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void TryImportDroppedImage_ArtworkSlot_RoutesToTheDisplayedField(bool empty)
@@ -65,20 +84,10 @@ namespace Rebellion.Tests.ContentEditor.UI
         [Test]
         public void ShowArtworkCuts_WithThreeOutputs_DisplaysEveryFullFrameBeforeApply()
         {
-            ContentPackEditorRecord officer = project
-                .GetCatalogs()
-                .SelectMany(catalog => catalog.Records)
-                .First(record => record.Kind == "Officer");
-            SelectRecord(officer);
-            var cuts = new[]
-            {
-                (officer.GetField("EncyclopediaImagePath"), new Texture2D(60, 30)),
-                (officer.GetField("DisplayImagePath"), new Texture2D(30, 30)),
-                (officer.GetField("SmallDisplayImagePath"), new Texture2D(40, 16)),
-            };
+            var cuts = CreateArtworkCuts();
             int applications = 0;
 
-            view.ShowArtworkCuts(cuts, () => applications++);
+            view.ShowArtworkCuts(cuts, new[] { true, true, true }, _ => applications++);
             Canvas.ForceUpdateCanvases();
 
             ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
@@ -97,6 +106,123 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(button => button.name == "UseArtwork")
                 .onClick.Invoke();
             Assert.AreEqual(1, applications);
+        }
+
+        [Test]
+        public void ShowArtworkCuts_UncheckedEncyclopedia_ExcludesItFromTheSave()
+        {
+            var cuts = CreateArtworkCuts();
+            string[] savedMembers = null;
+            view.ShowArtworkCuts(
+                cuts,
+                new[] { true, true, true },
+                indices =>
+                    savedMembers = indices.Select(index => cuts[index].Field.MemberName).ToArray()
+            );
+            ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
+            Toggle[] selections = preview.GetComponentsInChildren<Toggle>();
+
+            Assert.That(selections.Length, Is.EqualTo(3));
+            Assert.That(selections.All(toggle => toggle.isOn), Is.True);
+            selections[0].isOn = false;
+            preview
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UseArtwork")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(
+                new[] { "DisplayImagePath", "SmallDisplayImagePath" },
+                savedMembers
+            );
+        }
+
+        [Test]
+        public void ShowArtworkCuts_PreviousChoice_PersistsAfterRefreshingTheImages()
+        {
+            bool[] selected = { true, true, true };
+            view.ShowArtworkCuts(CreateArtworkCuts(), selected, _ => { });
+            ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
+            preview.GetComponentsInChildren<Toggle>()[1].isOn = false;
+
+            view.ShowArtworkCuts(CreateArtworkCuts(), selected, _ => { });
+
+            CollectionAssert.AreEqual(
+                new[] { true, false, true },
+                preview.GetComponentsInChildren<Toggle>().Select(toggle => toggle.isOn)
+            );
+        }
+
+        [Test]
+        public void ShowArtworkCuts_NoCheckedCuts_DisablesSave()
+        {
+            view.ShowArtworkCuts(
+                CreateArtworkCuts(),
+                new[] { true, true, true },
+                _ => Assert.Fail()
+            );
+            ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
+            foreach (Toggle choice in preview.GetComponentsInChildren<Toggle>())
+                choice.isOn = false;
+
+            Button save = preview
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UseArtwork");
+
+            Assert.IsFalse(save.interactable);
+            save.onClick.Invoke();
+        }
+
+        [Test]
+        public void ShowArtworkCuts_ShipEncyclopediaDrag_MovesArtworkOverAStationaryBackground()
+        {
+            var ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter");
+            SelectRecord(ship);
+            var background = new Texture2D(8, 4);
+            try
+            {
+                view.ShowArtworkCuts(
+                    new[] { (ship.GetField("EncyclopediaImagePath"), new Texture2D(8, 4)) },
+                    new[] { true },
+                    _ => { },
+                    (_, _) => { },
+                    encyclopediaBackground: background
+                );
+                Canvas.ForceUpdateCanvases();
+                ImagePreviewView preview = view.GetComponentInChildren<ImagePreviewView>();
+                RawImage[] layers = preview.GetComponentsInChildren<RawImage>();
+                var backdrop = layers.Single(layer => layer.name == "CutBackground");
+                var artwork = layers.Single(layer => layer.name == "CutArtwork");
+                Vector2 backdropOrigin = backdrop.rectTransform.anchoredPosition;
+                Vector2 artworkOrigin = artwork.rectTransform.anchoredPosition;
+                Vector2 start = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    artwork.rectTransform.TransformPoint(artwork.rectTransform.rect.center)
+                );
+                var drag = new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                    pressPosition = start,
+                    position = start + new Vector2(20, 0),
+                };
+
+                preview.OnBeginDrag(drag);
+                preview.OnDrag(drag);
+
+                Assert.That(backdrop.texture, Is.SameAs(background));
+                Assert.That(backdrop.rectTransform.anchoredPosition, Is.EqualTo(backdropOrigin));
+                Assert.That(
+                    artwork.rectTransform.anchoredPosition.x,
+                    Is.GreaterThan(artworkOrigin.x)
+                );
+            }
+            finally
+            {
+                view.GetComponentInChildren<ImagePreviewView>()?.TryCancel();
+                UnityEngine.Object.DestroyImmediate(background);
+            }
         }
 
         [Test]
@@ -390,6 +516,25 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(text => text.name == "Error")
                     .text
             );
+        }
+
+        /// <summary>
+        /// Creates the three common previews for an officer's artwork.
+        /// </summary>
+        /// <returns>The output fields and their temporary textures.</returns>
+        private (ContentPackEditorField Field, Texture2D Texture)[] CreateArtworkCuts()
+        {
+            var officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            SelectRecord(officer);
+            return new[]
+            {
+                (officer.GetField("EncyclopediaImagePath"), new Texture2D(60, 30)),
+                (officer.GetField("DisplayImagePath"), new Texture2D(30, 30)),
+                (officer.GetField("SmallDisplayImagePath"), new Texture2D(40, 16)),
+            };
         }
 
         /// <summary>

@@ -47,10 +47,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.ArtworkCutsRequested += PreviewArtworkCuts;
         view.ArtworkEffectRequested += PreviewArtworkEffect;
         view.SaveRequested += SavePack;
-        view.RestoreTravelArtworkRequested += RestoreTravelArtwork;
         view.ExportRequested += ExportPack;
         view.ValidateRequested += ValidatePack;
-        view.QuickValidationRequested += QuickValidatePack;
         view.MapLayoutRequested += ArrangeMap;
         view.UndoRequested += Undo;
         view.RedoRequested += Redo;
@@ -165,10 +163,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.ArtworkCutsRequested -= PreviewArtworkCuts;
             view.ArtworkEffectRequested -= PreviewArtworkEffect;
             view.SaveRequested -= SavePack;
-            view.RestoreTravelArtworkRequested -= RestoreTravelArtwork;
             view.ExportRequested -= ExportPack;
             view.ValidateRequested -= ValidatePack;
-            view.QuickValidationRequested -= QuickValidatePack;
             view.MapLayoutRequested -= ArrangeMap;
             view.UndoRequested -= Undo;
             view.RedoRequested -= Redo;
@@ -623,6 +619,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 })
                 .ToArray();
             Vector2[] offsets = new Vector2[outputs.Length];
+            bool[] selected = new bool[outputs.Length];
+            Array.Fill(selected, true);
+            var encyclopedia = outputs.SingleOrDefault(output =>
+                ContentEditorUnitArtworkLayout.IsShipEncyclopediaCut(output.Field)
+            );
+            Texture2D starfield =
+                encyclopedia == null
+                    ? null
+                    : view.GetShipEncyclopediaCutBackground(encyclopedia.Field);
             ShowCuts();
 
             void ShowCuts()
@@ -630,16 +635,34 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 var placements = outputs
                     .Select((output, index) => (output.Dimensions, offsets[index]))
                     .ToArray();
-                var cuts = ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
-                    sourcePath,
-                    placements,
-                    fitEntireSource: source.MemberName == "DisplayImagePath",
-                    preserveVisibleSubject: true,
-                    fillOpaqueSource: true,
-                    preventUpscaling: true
-                );
+                var gameplay = placements
+                    .Where((_, index) => outputs[index] != encyclopedia)
+                    .ToArray();
+                var cuts =
+                    gameplay.Length == 0
+                        ? null
+                        : ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                            sourcePath,
+                            gameplay,
+                            fitEntireSource: source.MemberName == "DisplayImagePath",
+                            preserveVisibleSubject: true,
+                            fillOpaqueSource: true,
+                            preventUpscaling: true
+                        );
                 var images = outputs
-                    .Select((output, index) => (output.Field, Png: cuts[placements[index]]))
+                    .Select(
+                        (output, index) =>
+                            (
+                                output.Field,
+                                Png: output == encyclopedia
+                                    ? ContentEditorArtworkCutGenerator.GenerateFramedPngCut(
+                                        sourcePath,
+                                        output.Dimensions,
+                                        offsets[index]
+                                    )
+                                    : cuts[placements[index]]
+                            )
+                    )
                     .ToArray();
                 List<(ContentPackEditorField Field, Texture2D Texture)> previews = new();
                 try
@@ -655,9 +678,28 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     }
                     view.ShowArtworkCuts(
                         previews,
-                        () =>
+                        selected,
+                        included =>
                             RunOperation(() =>
-                                ApplyGeneratedArtwork("Generate standard artwork cuts", images)
+                                ApplyGeneratedArtwork(
+                                    "Generate standard artwork cuts",
+                                    included
+                                        .Select(index =>
+                                        {
+                                            var image = images[index];
+                                            return
+                                                outputs[index] == encyclopedia && starfield != null
+                                                ? (
+                                                    image.Field,
+                                                    Png: ContentEditorArtworkCutGenerator.AddBackground(
+                                                        image.Png,
+                                                        starfield
+                                                    )
+                                                )
+                                                : image;
+                                        })
+                                        .ToArray()
+                                )
                             ),
                         (index, delta) =>
                             RunOperation(() =>
@@ -668,7 +710,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                                     Mathf.Clamp(offset.y, -0.5f, 0.5f)
                                 );
                                 ShowCuts();
-                            })
+                            }),
+                        encyclopediaBackground: starfield
                     );
                 }
                 catch
@@ -1004,7 +1047,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             output.SubjectMember
                         );
                         if (exact.Image == null)
-                            exact = ContentEditorTravelRestoration.ResolveUnitPattern(
+                            exact = ContentEditorTravelReference.ResolveUnitPattern(
                                 project,
                                 record,
                                 member,
@@ -1857,57 +1900,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
         else
             view.RefreshProjectState();
         view.RenderStatus("Content pack saved.", false);
-    }
-
-    /// <summary>
-    /// Restores an installed reference pack's missing transit artwork in one operation.
-    /// </summary>
-    private void RestoreTravelArtwork()
-    {
-        RunOperation(() =>
-        {
-            if (project == null || !view.CommitFields())
-                return;
-            bool clean = !project.IsDirty;
-            var restored = ContentEditorTravelRestoration.Restore(project);
-            if (restored.Files == 0 && restored.References == 0)
-            {
-                view.RenderStatus("Travel artwork is already present.", false);
-                return;
-            }
-            if (clean && restored.References > 0)
-                ContentPackEditorStorage.Save(project);
-            OpenProject(project);
-            string saveMessage =
-                !clean && restored.References > 0
-                    ? " Save pack to write the updated references."
-                    : string.Empty;
-            view.RenderStatus(
-                $"Restored {restored.Files} travel images and {restored.References} assignments."
-                    + saveMessage,
-                false
-            );
-        });
-    }
-
-    /// <summary>
-    /// Checks the current document fields and references without saving or loading gameplay.
-    /// </summary>
-    private void QuickValidatePack()
-    {
-        RunOperation(() =>
-        {
-            if (project == null || !view.CommitFields())
-                return;
-            var issues = ContentEditorPackValidator.GetFieldErrors(project);
-            if (issues.Count == 0)
-                view.RenderStatus(
-                    "Quick validation passed. Pack fields and references are valid.",
-                    false
-                );
-            else
-                view.RenderValidationErrors(issues);
-        });
     }
 
     /// <summary>
