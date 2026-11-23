@@ -1701,6 +1701,10 @@ namespace Rebellion.Gameplay
             if (
                 movable is not Building building
                 || building.OwnerInstanceID == destinationPlanet.OwnerInstanceID
+                || (
+                    string.IsNullOrEmpty(destinationPlanet.OwnerInstanceID)
+                    && _planetaryControlCommands.ShouldRetainOwnershipOnNeutralPlanet(building)
+                )
             )
                 return;
 
