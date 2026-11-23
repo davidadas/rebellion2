@@ -155,6 +155,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ContentEditorPublishingView publishing;
 
     [SerializeField]
+    private ContentEditorModManagerView modManager;
+
+    [SerializeField]
+    private Button modsButton;
+
+    [SerializeField]
     private GameObject notice;
 
     [SerializeField]
@@ -241,6 +247,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action RedoRequested;
     public event Action ExportRequested;
     internal event Action PublishingRequested;
+    internal event Action ModManagerRequested;
+    internal ContentEditorModManagerView ModManager => modManager;
     internal ContentEditorPublishingView Publishing => publishing;
     public event Action CloseRequested;
     public event Action ExitRequested;
@@ -429,6 +437,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || menu == null
             || packDialog == null
             || publishing == null
+            || modManager == null
+            || modsButton == null
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
@@ -451,6 +461,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.WidthChanged += HandleFieldAreaResize;
         workbenchLayout.Changed += HandleWorkbenchChanged;
         fileButton.onClick.AddListener(ShowFileMenu);
+        modsButton.onClick.AddListener(RequestModManager);
         editButton.onClick.AddListener(ShowEditMenu);
         viewButton.onClick.AddListener(ShowViewMenu);
         testButton.onClick.AddListener(ShowTestMenu);
@@ -598,6 +609,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.ValidationFailed -= ReportFieldError;
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
+            modsButton.onClick.RemoveListener(RequestModManager);
             map.BackRequested -= ReturnToGalaxy;
             map.ArrangeRequested -= ArrangeMap;
             map.Selected -= SelectMapRecord;
@@ -679,6 +691,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.TryCancel()
             || imagePreview.TryCancel()
             || confirmation.TryCancel()
+            || modManager.TryCancel()
             || publishing.TryCancel()
             || artworkWorkspace.TryCancel()
             || packDialog.TryCancel()
@@ -1343,6 +1356,23 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         LayoutChanged?.Invoke(workbenchLayout.Zoom, workbenchLayout.Split);
 
     /// <summary>
+    /// Requests community browsing independently of the current project.
+    /// </summary>
+    private void RequestModManager()
+    {
+        menu.TryCancel();
+        ModManagerRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Confirms removal using the toolkit's existing action dialog.
+    /// </summary>
+    /// <param name="message">The selected package and consequences.</param>
+    /// <param name="remove">The confirmed operation.</param>
+    internal void ConfirmModRemoval(string message, Action remove) =>
+        confirmation.Show(message, "Uninstall", remove);
+
+    /// <summary>
     /// Presents the one-time alpha compatibility notice with an explicit acknowledgement.
     /// </summary>
     /// <param name="confirmed">Persists the user's acknowledgement.</param>
@@ -1452,6 +1482,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !workbench.interactable
             || packDialog.IsOpen
             || publishing.IsOpen
+            || modManager.IsOpen
             || selectionDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf

@@ -175,6 +175,44 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
+    /// Updates only content selection from the companion toolkit without capturing runtime settings.
+    /// </summary>
+    /// <param name="packID">The selected pack, or null to retain the saved selection.</param>
+    /// <param name="scenarioID">The selected scenario when changing packs.</param>
+    /// <param name="modIDs">The add-ons whose enabled state is being changed.</param>
+    /// <param name="enabled">Whether those add-ons should be enabled.</param>
+    public static void UpdateContentSelection(
+        string packID,
+        string scenarioID,
+        string[] modIDs,
+        bool enabled
+    )
+    {
+        string path = Path.Combine(UserDataPaths.Root, _settingsFileName);
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
+            {
+                UserSettings settings = File.Exists(path)
+                    ? DeserializeSettings(AtomicTextFile.ReadAllText(path))
+                        ?? throw new InvalidDataException("The user settings could not be read.")
+                    : CreateDefaults();
+                settings.Normalize();
+                if (packID != null)
+                {
+                    settings.Content.ActivePackID = packID;
+                    settings.Content.ActiveScenarioID = scenarioID ?? string.Empty;
+                }
+                settings.Content.SetDisabledModsForPack(
+                    modIDs,
+                    enabled ? Array.Empty<string>() : modIDs
+                );
+                return JsonUtility.ToJson(settings, true);
+            }
+        );
+    }
+
+    /// <summary>
     /// Returns the path used for user settings persistence.
     /// </summary>
     /// <returns>The absolute user settings file path.</returns>

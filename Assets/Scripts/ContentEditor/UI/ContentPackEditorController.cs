@@ -18,6 +18,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private string contentRootPath;
     private ContentPackEditorProject project;
     private ContentPackEditorWorkspaceController workspace;
+    private ContentEditorModManagerController modManager;
     private ContentAssets assets;
     private ContentAssets applicationAssets;
     private bool quitApproved;
@@ -48,6 +49,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.SaveRequested += SavePack;
         view.RestoreTravelArtworkRequested += RestoreTravelArtwork;
         view.ExportRequested += ExportPack;
+        modManager = new ContentEditorModManagerController(
+            view.ModManager,
+            contentRootPath,
+            GetProtectedContentIDs,
+            view.ConfirmModRemoval,
+            () => view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath)
+        );
+        view.ModManagerRequested += ShowModManager;
         view.PublishingRequested += ShowPublishing;
         view.Publishing.SaveRequested += SavePublishing;
         view.Publishing.CloseRequested += ClosePublishing;
@@ -141,6 +150,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OnDestroy()
     {
         operationCancellation?.Cancel();
+        modManager?.Dispose();
         Application.wantsToQuit -= CanQuit;
         if (view != null)
         {
@@ -154,6 +164,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.SaveRequested -= SavePack;
             view.RestoreTravelArtworkRequested -= RestoreTravelArtwork;
             view.ExportRequested -= ExportPack;
+            view.ModManagerRequested -= ShowModManager;
             view.PublishingRequested -= ShowPublishing;
             view.Publishing.SaveRequested -= SavePublishing;
             view.Publishing.CloseRequested -= ClosePublishing;
@@ -1774,6 +1785,33 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Protects the open project's complete inheritance chain from package replacement.
+    /// </summary>
+    /// <returns>The native content identities whose files are in use.</returns>
+    private string[] GetProtectedContentIDs()
+    {
+        if (project == null)
+            return Array.Empty<string>();
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            contentRootPath,
+            project.PackRootPath,
+            project.Definition
+        );
+        return resolver
+            .PackRootPaths.Select(path =>
+                ContentDefinitionSerializer
+                    .Deserialize<ContentPackDefinition>(Path.Combine(path, "pack.xml"))
+                    .ID
+            )
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Opens community browsing without requiring an editable project.
+    /// </summary>
+    private void ShowModManager() => modManager.Show();
+
+    /// <summary>
     /// Opens the saved listing draft for the currently authored pack.
     /// </summary>
     private void ShowPublishing()
@@ -2009,6 +2047,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (quitApproved)
             return true;
+        if (modManager?.CanQuit() == false)
+            return false;
         if (operationCancellation != null)
         {
             quitAfterOperation = true;

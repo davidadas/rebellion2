@@ -97,6 +97,9 @@ public static class ContentPackEditorPrefabBuilder
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
+        Button mods = PlainButton("Mods", menuStrip.transform, "Mods");
+        Rect((RectTransform)mods.transform, 264, 0, 64, 34);
+        Assign(view, "modsButton", mods);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
         Stretch(projectWorkspace);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
@@ -107,7 +110,7 @@ public static class ContentPackEditorPrefabBuilder
             14,
             true
         );
-        Stretch(project.rectTransform, 284, 0, 24, 0);
+        Stretch(project.rectTransform, 348, 0, 24, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);
@@ -574,6 +577,7 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         Assign(view, "publishing", ContentEditorPublishingBuilder.Build(canvasRoot));
+        Assign(view, "modManager", ContentEditorModManagerBuilder.Build(canvasRoot));
         BuildSelectionDialog(canvasRoot, view);
         Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
         BuildConfirmation(canvasRoot, view);

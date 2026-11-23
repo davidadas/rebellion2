@@ -217,6 +217,25 @@ facility research artwork. Player HUD artwork is under each faction's
 
 ## Sharing a mod
 
+### Managing community mods
+
+Open **Mods** in the content pack editor's menu bar. A project does not need to be open.
+Use **Browse** to search the Rebellion 2 Thunderstore community, select a release, and install it
+with its declared package dependencies. The release selector also allows installing an older
+published version. **Import ZIP…** accepts native content archives from disk.
+
+**Installed** includes downloaded packages and manually installed content. Select a content pack
+with **Use content pack**, or enable and disable add-ons. This updates the game's existing content
+selection; the game uses it when content next loads. Close the game before changing installed
+files. Missing base packs and incompatible base versions appear in the package details. Official
+content packs remain managed by the launcher.
+
+Downloads go into the existing `Mods` directory beside `Content`. Updates refuse to overwrite
+local edits or content used by the open editor project. Uninstalling retains removed files under
+`.mod-manager/removed`, beside `Mods`. Package records, cached listings, and downloaded archives
+also live under `.mod-manager`. The manager keeps distribution versions separate from the
+versions authored in `pack.xml` or `mod.xml`; saves still require their recorded content versions.
+
 ### Exporting a content pack for Thunderstore
 
 In the content pack editor, open **File > Publishing...**. Enter a package name, short description,

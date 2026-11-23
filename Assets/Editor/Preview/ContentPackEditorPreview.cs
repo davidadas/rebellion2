@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Xml.Linq;
 using TMPro;
 using UnityEditor;
@@ -24,6 +25,79 @@ public static class ContentPackEditorPreview
     /// Renders the publishing workflow independently of the catalog-artwork previews.
     /// </summary>
     public static void ExportPublishing() => ExportWorkspace(true);
+
+    /// <summary>
+    /// Renders the live community browser using the same controller as the toolkit.
+    /// </summary>
+    [MenuItem("Rebellion/Preview/Mod manager")]
+    public static async void ExportModManagerAsync()
+    {
+        PreviewRenderUtility preview = new PreviewRenderUtility();
+        ContentEditorModManagerController manager = null;
+        int result = 1;
+        try
+        {
+            UIBuilderMenu.BuildContentPackEditor();
+            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+                ContentPackEditorPrefabBuilder.PrefabPath
+            );
+            Camera camera = preview.camera;
+            camera.cameraType = CameraType.Game;
+            camera.orthographic = true;
+            camera.orthographicSize = 450;
+            camera.nearClipPlane = 0.1f;
+            camera.farClipPlane = 2000;
+            camera.clearFlags = CameraClearFlags.SolidColor;
+            camera.backgroundColor = ContentEditorControlBuilder.Background;
+            camera.transform.position = new Vector3(800, -450, -1000);
+            camera.transform.rotation = Quaternion.identity;
+            HdrpRenderTargetBuilder.ConfigureCamera(camera);
+            GameObject root = Object.Instantiate(prefab.transform.Find("Canvas").gameObject);
+            preview.AddSingleGO(root);
+            Canvas canvas = root.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceCamera;
+            canvas.worldCamera = camera;
+            canvas.planeDistance = 100;
+            root.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1600, 900);
+            camera.aspect = 1600f / 900;
+            ContentPackEditorView view = root.GetComponent<ContentPackEditorView>();
+            string contentRoot = ContentPackLoader.ResolveContentRootPath();
+            view.Initialize(ContentPackLoader.DiscoverPacks(contentRoot), contentRoot);
+            view.SetColorMode(ContentEditorColorMode.Light);
+            manager = new ContentEditorModManagerController(
+                view.ModManager,
+                contentRoot,
+                () => Array.Empty<string>(),
+                view.ConfirmModRemoval,
+                () => { }
+            );
+            manager.Show();
+            while (manager.IsBusy)
+                await Task.Yield();
+            RawImage icon = view.ModManager.GetComponentInChildren<RawImage>(true);
+            DateTime iconDeadline = DateTime.UtcNow.AddSeconds(10);
+            while (!icon.enabled && DateTime.UtcNow < iconDeadline)
+                await Task.Yield();
+            Canvas.ForceUpdateCanvases();
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager.png");
+            Debug.Log(
+                "Mod manager preview: "
+                    + Path.GetFullPath("_screenshots/ContentEditor/Mod-manager.png")
+            );
+            result = 0;
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+        }
+        finally
+        {
+            manager?.Dispose();
+            preview.Cleanup();
+            if (Application.isBatchMode)
+                EditorApplication.Exit(result);
+        }
+    }
 
     /// <summary>
     /// Creates a temporary editable workspace and renders the requested editor surfaces.
