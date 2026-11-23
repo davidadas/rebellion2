@@ -2,7 +2,6 @@ using System.Collections;
 using System.Linq;
 using NUnit.Framework;
 using TMPro;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
@@ -26,11 +25,24 @@ namespace Rebellion.Tests.UI.Components
             _events = new GameObject("InputEvents", typeof(EventSystem));
             _canvas = new GameObject("InputCanvas", typeof(Canvas));
             _canvas.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/UI/Common/MenuChatPanel.prefab"
-            );
-            MenuInputField template = prefab.GetComponentInChildren<MenuInputField>(true);
-            _input = Object.Instantiate(template, _canvas.transform);
+            GameObject inputObject = new GameObject("Input", typeof(RectTransform), typeof(Image));
+            inputObject.SetActive(false);
+            inputObject.transform.SetParent(_canvas.transform, false);
+            RectTransform viewport = (RectTransform)
+                new GameObject(
+                    "Text viewport",
+                    typeof(RectTransform),
+                    typeof(RectMask2D)
+                ).transform;
+            viewport.SetParent(inputObject.transform, false);
+            viewport.sizeDelta = new Vector2(200, 30);
+            _input = inputObject.AddComponent<MenuInputField>();
+            _input.targetGraphic = inputObject.GetComponent<Image>();
+            _input.textViewport = viewport;
+            _input.textComponent = CreateLabel("Text", viewport);
+            TextMeshProUGUI placeholder = CreateLabel("Placeholder", viewport);
+            placeholder.text = "Type a message";
+            _input.placeholder = placeholder;
             _input.gameObject.SetActive(true);
             _input.caretBlinkRate = 0;
             Canvas.ForceUpdateCanvases();
@@ -120,6 +132,23 @@ namespace Rebellion.Tests.UI.Components
             ];
             Assert.AreEqual(character.descender, vertices.Min(vertex => vertex.y), 0.1f);
             Assert.AreEqual(character.ascender, vertices.Max(vertex => vertex.y), 0.1f);
+        }
+
+        /// <summary>
+        /// Creates a label that fills the input field's text viewport.
+        /// </summary>
+        /// <param name="name">The label object name.</param>
+        /// <param name="parent">The input field's text viewport.</param>
+        /// <returns>The configured label.</returns>
+        private static TextMeshProUGUI CreateLabel(string name, RectTransform parent)
+        {
+            TextMeshProUGUI label = new GameObject(name).AddComponent<TextMeshProUGUI>();
+            label.rectTransform.SetParent(parent, false);
+            label.rectTransform.anchorMin = Vector2.zero;
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMin = Vector2.zero;
+            label.rectTransform.offsetMax = Vector2.zero;
+            return label;
         }
     }
 }

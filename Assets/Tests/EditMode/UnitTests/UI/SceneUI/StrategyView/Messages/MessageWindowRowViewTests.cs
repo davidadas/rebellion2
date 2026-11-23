@@ -10,6 +10,7 @@ using GameMessageType = Rebellion.Game.Messages.MessageType;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MessageWindowRowViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab";

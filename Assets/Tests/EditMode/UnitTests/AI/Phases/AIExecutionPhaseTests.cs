@@ -27,7 +27,7 @@ namespace Rebellion.Tests.AI.Phases
         [Test]
         public void ExecuteIncrementally_FleetChangesBetweenProposals_ReadsCurrentStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction empire, out _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
             Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = empire.InstanceID };
@@ -60,7 +60,8 @@ namespace Rebellion.Tests.AI.Phases
                 false,
                 5,
                 out Fleet receiver,
-                out CapitalShip donor
+                out CapitalShip donor,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
             );
             context.AddProposals(new AIFleetPlanner().Plan(context));
             new AIProductionDemandGenerator().Generate(context);
@@ -110,7 +111,8 @@ namespace Rebellion.Tests.AI.Phases
                 false,
                 out Fleet bombardFleet,
                 out Fleet otherFleet,
-                out _
+                out _,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
             );
             AIAttackDemand[] demands = context.AttackDemands.ToArray();
             context.AddProposals(new AIFleetPlanner().Plan(context));
@@ -177,7 +179,7 @@ namespace Rebellion.Tests.AI.Phases
             bool samePlanet
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction faction, out _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet firstPlanet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -300,7 +302,10 @@ namespace Rebellion.Tests.AI.Phases
         [Test]
         public void ExecuteIncrementally_EconomyChangesBetweenManufacturingProposals_DoesNotOvercommitMaintenance()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.Selection.MaintenanceHeadroomReserve = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet resourcePlanet = AITestSceneBuilder.AddPlanet(

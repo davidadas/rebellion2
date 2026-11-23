@@ -418,7 +418,7 @@ namespace Rebellion.Tests.Managers
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "FACTION", DisplayName = "Faction" });
-            GameSession session = TestContent.CreateGameSession(game);
+            GameSession session = TestGameData.CreateSession(game);
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
             int completedTicks = 0;
@@ -436,7 +436,7 @@ namespace Rebellion.Tests.Managers
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
-            GameSession session = TestContent.CreateGameSession(game);
+            GameSession session = TestGameData.CreateSession(game);
             GameManager manager = new GameManager(() => session.Game, session.Tick);
             manager.SetGameSpeed(TickSpeed.Fast);
             int completedTicks = 0;

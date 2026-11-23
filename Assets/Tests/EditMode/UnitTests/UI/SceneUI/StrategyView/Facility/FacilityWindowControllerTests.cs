@@ -20,6 +20,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Facility
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FacilityWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

@@ -27,6 +27,9 @@ namespace Rebellion.Tests.UI.Input
         private ContentAssets _assets;
         private ushort _buttons;
 
+        private ContentAssets Assets =>
+            _assets ??= new ContentAssets(TestContent.Pack.FileResolver);
+
         /// <summary>
         /// Creates an isolated runtime input system and raycastable canvas.
         /// </summary>
@@ -50,7 +53,6 @@ namespace Rebellion.Tests.UI.Input
             _legacyInput = eventRoot.AddComponent<QueuedMouseTestInput>();
             StandaloneInputModule module = eventRoot.AddComponent<QueuedMouseInputModule>();
             module.inputOverride = _legacyInput;
-            _assets = new ContentAssets(TestContent.Pack.FileResolver);
             _events.SetFocus(true);
             ProcessFrame();
             ProcessFrame();
@@ -66,10 +68,12 @@ namespace Rebellion.Tests.UI.Input
             Object.Destroy(_root);
             yield return null;
             _assets?.Dispose();
+            _assets = null;
             _inputFixture?.TearDown();
         }
 
         [UnityTest]
+        [Category("RequiresMedia")]
         public IEnumerator Process_DefenseTabsWithOverlappingClickFrames_DeliversEveryClick()
         {
             GameObject window = Instantiate("DefenseWindow");
@@ -94,8 +98,8 @@ namespace Rebellion.Tests.UI.Input
                 shared + "defense-window-tab-shield-active-tab",
                 shared + "defense-window-tab-battery-active-tab",
             };
-            Texture[] normal = normalPaths.Select(_assets.GetTexture).ToArray();
-            Texture[] active = activePaths.Select(_assets.GetTexture).ToArray();
+            Texture[] normal = normalPaths.Select(Assets.GetTexture).ToArray();
+            Texture[] active = activePaths.Select(Assets.GetTexture).ToArray();
             List<DefenseWindowTab> actions = new List<DefenseWindowTab>();
             void Render(DefenseWindowTab selected)
             {
@@ -142,6 +146,7 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [UnityTest]
+        [Category("RequiresMedia")]
         public IEnumerator Process_MessageSelectionAndDeletionInOneFrame_PreservesActionOrder()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -153,10 +158,10 @@ namespace Rebellion.Tests.UI.Input
             );
             UILayout.SetSourcePosition((RectTransform)panel.transform, 10, 10);
             panel.SetActive(true);
-            ContentBindings.Apply(panel, _assets);
+            ContentBindings.Apply(panel, Assets);
             MessagesIndexPanelView view = panel.GetComponent<MessagesIndexPanelView>();
             view.Initialize(() => true, panel.transform);
-            Texture texture = _assets.GetTexture(
+            Texture texture = Assets.GetTexture(
                 "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_up"
             );
             MessagesIndexPanelRenderData data = new MessagesIndexPanelRenderData(
@@ -201,6 +206,7 @@ namespace Rebellion.Tests.UI.Input
         }
 
         [UnityTest]
+        [Category("RequiresMedia")]
         public IEnumerator Process_PressedMessageButtonMovesWithinBounds_PreservesClick()
         {
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -212,10 +218,10 @@ namespace Rebellion.Tests.UI.Input
             );
             UILayout.SetSourcePosition((RectTransform)panel.transform, 10, 10);
             panel.SetActive(true);
-            ContentBindings.Apply(panel, _assets);
+            ContentBindings.Apply(panel, Assets);
             MessagesIndexPanelView view = panel.GetComponent<MessagesIndexPanelView>();
             view.Initialize(() => true, panel.transform);
-            Texture texture = _assets.GetTexture(
+            Texture texture = Assets.GetTexture(
                 "Application/Strategy/UI/Windows/ui_strategyview_messages_window_select_all_button_up"
             );
             view.Render(
@@ -682,7 +688,7 @@ namespace Rebellion.Tests.UI.Input
             );
             GameObject window = Object.Instantiate(prefab, _root.transform);
             window.SetActive(true);
-            ContentBindings.Apply(window, _assets);
+            ContentBindings.Apply(window, Assets);
             return window;
         }
 

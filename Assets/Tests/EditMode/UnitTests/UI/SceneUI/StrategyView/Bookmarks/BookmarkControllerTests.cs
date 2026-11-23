@@ -11,6 +11,7 @@ using Rebellion.Game.UIState;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class BookmarkControllerTests
     {
         private const string _playerFactionId = "FNALL1";

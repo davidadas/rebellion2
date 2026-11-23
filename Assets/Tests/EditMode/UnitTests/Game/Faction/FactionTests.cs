@@ -484,6 +484,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ApplyResearchProgress_WithRealTemplates_UnlocksNextTechnology(
             [Values(
                 ResearchDiscipline.ShipDesign,
@@ -1503,6 +1504,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MaintenanceCapacity_FactionWithPlanets_CalculatesCorrectly()
         {
             GameRoot game = CreateGame();
@@ -1523,6 +1525,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MaintenanceCapacity_RefinementMultiplier_DoesNotChangeCapacity()
         {
             GameRoot game = CreateGame();
@@ -1541,6 +1544,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MaintenanceCapacity_MineAndRefineryOnDifferentPlanets_CalculatesGlobalPair()
         {
             GameRoot game = CreateGame();
@@ -1561,6 +1565,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MaintenanceCapacity_MaximumProcessingMultiplier_SaturatesAtIntegerMaximum()
         {
             GameRoot game = CreateGame();
@@ -1580,6 +1585,7 @@ namespace Rebellion.Tests.Game.Factions
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void RefinedMaterialSupply_MaximumRefinementMultiplier_SaturatesAtIntegerMaximum()
         {
             GameRoot game = CreateGame();

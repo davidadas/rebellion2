@@ -133,7 +133,11 @@ namespace Rebellion.Tests.AI.Selectors
             out Planet expansion
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction faction,
+                out _,
+                TestConfig.Create()
+            );
             game.Config.AI.Infrastructure.ConstructionFacilityPrimaryHubTargetCount = 5;
             game.Config.AI.Infrastructure.ShipyardPrimaryHubTargetCount = 6;
             game.Config.AI.Infrastructure.IndustrialShieldTargetCount = 0;

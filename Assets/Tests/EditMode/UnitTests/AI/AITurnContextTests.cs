@@ -47,7 +47,8 @@ namespace Rebellion.Tests.AI
         public void SetProductionDemands_DeferredCurrentBatch_PreservesInput()
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
-                out Building order
+                out Building order,
+                TestConfig.Create()
             );
             AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
                 context,
@@ -65,7 +66,8 @@ namespace Rebellion.Tests.AI
         public void SetProductionDemands_ReplacingBatch_PreservesPreviousSnapshot()
         {
             AITurnContext context = AITestSceneBuilder.CreateProductionComparison(
-                out Building order
+                out Building order,
+                TestConfig.Create()
             );
             AIManufactureProposal[] choices = AITestSceneBuilder.CreateProductionChoices(
                 context,
@@ -79,9 +81,14 @@ namespace Rebellion.Tests.AI
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetMissionOdds_ValidProposal_ReturnsObjectiveProbability()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);

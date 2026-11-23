@@ -16,6 +16,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Encyclopedia
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class EncyclopediaWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

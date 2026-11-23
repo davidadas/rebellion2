@@ -1,7 +1,9 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Xml.Schema;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -23,6 +25,19 @@ namespace Rebellion.Tests.ContentEditor
                 "editor-event-" + Guid.NewGuid().ToString("N")
             );
             project = ContentEditorTestData.CreateProject(folder);
+            string schemaDirectory = Path.Combine(
+                project.ContentRootPath,
+                "Application",
+                "Schemas"
+            );
+            Directory.CreateDirectory(schemaDirectory);
+            File.Copy(
+                Path.Combine(
+                    Application.dataPath,
+                    "Tests/EditMode/UnitTests/ContentEditor/Fixtures/editor-event-test.xsd"
+                ),
+                Path.Combine(schemaDirectory, "game-events.xsd")
+            );
             events = project.GetCatalogs().First(catalog => catalog.CanAddEvent);
         }
 
@@ -85,7 +100,7 @@ namespace Rebellion.Tests.ContentEditor
         )
         {
             string before = events.Document.Text;
-            Assert.Catch(() =>
+            Assert.Throws<XmlSchemaValidationException>(() =>
                 project.SetEventXml(events.Records.First(), EventXml("unique-event", actions))
             );
             Assert.AreEqual(before, events.Document.Text);

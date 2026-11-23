@@ -8,6 +8,7 @@ using Rebellion.Game.GameEvents;
 namespace Rebellion.Tests.Managers
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class CustomGamePresetManagerTests
     {
         private string directoryPath;

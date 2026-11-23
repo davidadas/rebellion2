@@ -20,6 +20,7 @@ using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Construction
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ConstructionWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

@@ -6,6 +6,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MainMenuControllerTests
     {
         private GameObject _gameObject;

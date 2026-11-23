@@ -83,6 +83,7 @@ namespace Rebellion.Tests.Content
         /// Verifies that stock ship suppression is loaded independently from destruction capability.
         /// </summary>
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_SectorSuppression_LoadsAuthoredShipValues()
         {
             CapitalShip suppressionShip = TestContent.Pack.GameData.CapitalShips.Single(ship =>
@@ -97,6 +98,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_DetectionBlockingFacilities_LoadExpectedFlags()
         {
             Building ionCannon = TestContent.Pack.GameData.Buildings.Single(building =>
@@ -112,6 +114,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
         {
             OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(
@@ -709,6 +712,7 @@ namespace Rebellion.Tests.Content
         [TestCase("Uprising", "MissionLeadershipDivisor", 0)]
         [TestCase("Uprising", "DiceRange", -2)]
         [TestCase("Research", "RefreshIntervalSpread", -2)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InvalidRuleOverride_RejectsDocument(
             string section,
             string member,
@@ -732,6 +736,7 @@ namespace Rebellion.Tests.Content
 
         [TestCase(10, 5)]
         [TestCase(0, int.MaxValue)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InvalidBombardmentRange_RejectsDocument(int minimum, int maximum)
         {
             InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
@@ -744,6 +749,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InheritedBombardmentBound_RejectsInvertedOverride()
         {
             Assert.Throws<InvalidDataException>(() =>
@@ -757,6 +763,7 @@ namespace Rebellion.Tests.Content
         [TestCase(5, 5)]
         [TestCase(1, 10)]
         [TestCase(int.MaxValue - 1, int.MaxValue - 1)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_ValidBombardmentRange_PreservesValues(int minimum, int maximum)
         {
             GameConfig config = LoadApplicationGameConfig(

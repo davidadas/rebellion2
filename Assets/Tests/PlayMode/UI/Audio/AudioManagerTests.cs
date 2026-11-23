@@ -1,4 +1,5 @@
 using System.Collections;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using UnityEngine;
@@ -9,7 +10,10 @@ namespace Rebellion.Tests.UI.Audio
     [TestFixture]
     public sealed class AudioManagerTests
     {
+        private const string _trackAddress = "Pack/tone";
+
         private AudioManager manager;
+        private ContentAssets assets;
 
         /// <summary>
         /// Releases the audio manager after the runtime test.
@@ -21,15 +25,22 @@ namespace Rebellion.Tests.UI.Audio
             if (manager != null)
                 Object.Destroy(manager.gameObject);
             yield return null;
+
+            assets?.Dispose();
         }
 
         [UnityTest]
         public IEnumerator FadeOutMusic_InterruptedTrack_DoesNotResumeAfterFocusReturns()
         {
+            string fixtureRoot = Path.Combine(
+                Application.dataPath,
+                "Tests/EditMode/UnitTests/Content/AudioFixtures"
+            );
+            assets = new ContentAssets(new ContentFileResolver(fixtureRoot, fixtureRoot));
             manager = AudioManager.EnsureExists();
-            manager.InitializeContent(TestContent.Assets);
+            manager.InitializeContent(assets);
             manager.SendMessage("OnApplicationFocus", true);
-            manager.PlayTrack("Application/MainMenu/Audio/battle-of-endor-1-medley", true);
+            manager.PlayTrack(_trackAddress, true);
 
             AudioSource[] sources = manager.GetComponents<AudioSource>();
             float timeout = Time.realtimeSinceStartup + 10f;

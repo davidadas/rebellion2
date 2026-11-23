@@ -10,6 +10,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.Components.ContextMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ContextMenuViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";

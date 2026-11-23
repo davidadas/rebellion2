@@ -7,6 +7,7 @@ using Rebellion.Multiplayer;
 namespace Rebellion.Tests.Multiplayer
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameplayContentIdentityTests
     {
         [Test]

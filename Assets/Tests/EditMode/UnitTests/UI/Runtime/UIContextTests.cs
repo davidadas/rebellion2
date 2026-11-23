@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
@@ -18,6 +19,8 @@ namespace Rebellion.Tests.UI.Runtime
         private EncyclopediaCatalog _encyclopediaCatalog;
         private GameRoot _game;
         private FactionThemeLibrary _themeLibrary;
+        private ContentAssets _assets;
+        private string _directory;
 
         /// <summary>
         /// Sets up.
@@ -26,34 +29,77 @@ namespace Rebellion.Tests.UI.Runtime
         public void SetUp()
         {
             _game = CreateGame(_playerFactionId);
-            _themeLibrary = TestContent.CreateThemeLibrary();
+            _directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(_directory);
+            WriteFixtureTextures();
+            _assets = new ContentAssets(new ContentFileResolver(_directory, _directory));
+            _themeLibrary = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme
+                    {
+                        MissionIcons = new MissionIconSetTheme
+                        {
+                            Icons =
+                            {
+                                new MissionIconTheme
+                                {
+                                    Key = MissionIconKeys.ResearchFacilityDesign,
+                                    LargeImagePath = "Pack/neutral-research",
+                                    SmallImagePath = "Pack/neutral-research-small",
+                                },
+                            },
+                        },
+                    },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = _playerFactionId,
+                        FactionPrimaryColorHex = "9B34B0",
+                        ConfirmDialogTheme = new ConfirmDialogTheme
+                        {
+                            BackgroundImagePath = "Pack/confirmation",
+                        },
+                        GalaxyBackground = new GalaxyBackground
+                        {
+                            DestroyedPlanetIconPath = "Pack/destroyed-planet",
+                        },
+                    },
+                    new FactionTheme { FactionInstanceID = "FNEMP1" },
+                }
+            );
             _encyclopediaCatalog = new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>());
             _context = new UIContext(
                 _game,
                 _themeLibrary,
                 _encyclopediaCatalog,
-                TestContent.Assets.GetTexture,
+                _assets.GetTexture,
                 null,
-                TestContent.Assets.GetSmoothTexture
+                _assets.GetSmoothTexture
             );
+        }
+
+        /// <summary>
+        /// Disposes the content assets and removes the fixture images.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            _assets?.Dispose();
+            if (Directory.Exists(_directory))
+                Directory.Delete(_directory, true);
         }
 
         [Test]
         public void Constructor_NullDependency_ThrowsArgumentNullException()
         {
             Assert.Throws<ArgumentNullException>(() =>
-                new UIContext(
-                    null,
-                    _themeLibrary,
-                    _encyclopediaCatalog,
-                    TestContent.Assets.GetTexture
-                )
+                new UIContext(null, _themeLibrary, _encyclopediaCatalog, _assets.GetTexture)
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new UIContext(_game, null, _encyclopediaCatalog, TestContent.Assets.GetTexture)
+                new UIContext(_game, null, _encyclopediaCatalog, _assets.GetTexture)
             );
             Assert.Throws<ArgumentNullException>(() =>
-                new UIContext(_game, _themeLibrary, null, TestContent.Assets.GetTexture)
+                new UIContext(_game, _themeLibrary, null, _assets.GetTexture)
             );
             Assert.Throws<ArgumentNullException>(() =>
                 new UIContext(_game, _themeLibrary, _encyclopediaCatalog, null)
@@ -93,7 +139,7 @@ namespace Rebellion.Tests.UI.Runtime
                 _game,
                 _themeLibrary,
                 _encyclopediaCatalog,
-                TestContent.Assets.GetTexture
+                _assets.GetTexture
             );
 
             Assert.AreEqual(_playerFactionId, context.GetPlayerFactionInstanceID());
@@ -108,7 +154,7 @@ namespace Rebellion.Tests.UI.Runtime
                 _game,
                 _themeLibrary,
                 _encyclopediaCatalog,
-                TestContent.Assets.GetTexture
+                _assets.GetTexture
             );
 
             Assert.AreEqual(_playerFactionId, context.GetPlayerFactionInstanceID());
@@ -254,9 +300,9 @@ namespace Rebellion.Tests.UI.Runtime
                 _game,
                 _themeLibrary,
                 _encyclopediaCatalog,
-                TestContent.Assets.GetTexture,
+                _assets.GetTexture,
                 null,
-                TestContent.Assets.GetSmoothTexture,
+                _assets.GetSmoothTexture,
                 (path, color) =>
                 {
                     requestedPath = path;
@@ -382,20 +428,27 @@ namespace Rebellion.Tests.UI.Runtime
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetEntityCapturedOverlayTexture_OfficerCatalog_ReturnsOverlayForEveryOfficer()
         {
             Officer[] officers = TestContent.Data.Officers;
+            UIContext installed = TestContent.CreateUIContext(
+                _game,
+                TestContent.CreateThemeLibrary(),
+                _encyclopediaCatalog
+            );
 
             Assert.IsNotEmpty(officers);
             foreach (Officer officer in officers)
             {
-                officer.IsCaptured = true;
+                Officer captured = (Officer)officer.CreateCopy();
+                captured.IsCaptured = true;
                 Assert.IsFalse(
                     string.IsNullOrEmpty(officer.CapturedOverlayImagePath),
                     $"{officer.DisplayName} is missing captured overlay data."
                 );
                 Assert.IsNotNull(
-                    _context.GetEntityCapturedOverlayTexture(officer),
+                    installed.GetEntityCapturedOverlayTexture(captured),
                     $"{officer.DisplayName} captured overlay could not be loaded."
                 );
             }
@@ -425,6 +478,33 @@ namespace Rebellion.Tests.UI.Runtime
             game.Summary.PlayerFactionID = playerFactionId;
             game.SetFactionController(playerFactionId, "PLAYER1", PlayerControllerType.Human);
             return game;
+        }
+
+        /// <summary>
+        /// Writes the image files used by the fixture's content resolver.
+        /// </summary>
+        private void WriteFixtureTextures()
+        {
+            Texture2D texture = new Texture2D(8, 8);
+            byte[] png;
+            try
+            {
+                png = texture.EncodeToPNG();
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+            foreach (
+                string name in new[]
+                {
+                    "neutral-research",
+                    "neutral-research-small",
+                    "confirmation",
+                    "destroyed-planet",
+                }
+            )
+                File.WriteAllBytes(Path.Combine(_directory, name + ".png"), png);
         }
     }
 }

@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StatusWindowViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StatusWindow.prefab";
