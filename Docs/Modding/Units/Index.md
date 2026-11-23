@@ -79,6 +79,26 @@ All unit entries may use the following presentation fields:
 Asset paths omit file extensions. Use `Pack/` for assets inside the active pack and `Application/`
 for shared application assets.
 
+### Artwork imports and older packs
+
+The content editor imports unit images into their faction and unit folders, using the image slot
+as the filename. For example, a starfighter's main image is stored at
+`Factions/Alliance/Units/Starfighters/<TypeID>/display.png`. The source image's filename does not
+become its content address. Imports are converted to PNG. Replacing an image and regenerating
+artwork keep its address; undo and redo restore both the image and its editable layers.
+Choosing **Import as new** deliberately creates a separate file beside the unit's other artwork.
+
+Saving or exporting a pack organizes unit artwork imported by older editor versions under
+`Assets/`. Conversion checks every destination before writing, retains the old image files, and
+backs up the affected XML under `.rebellion2-editor/Backups/`. Exported packs exclude these private
+backups and undo revisions. The included `artwork-aliases.xml` keeps older saved image addresses
+pointing at the current artwork; retain this file when distributing updates.
+
+Shared images with different unit destinations stay shared and are reported instead of being
+assigned to an arbitrary unit. Use **Replace file** to update every use, or explicitly import
+separate images for those slots. Missing images and differing files already occupying a destination
+stop conversion with an error so they can be repaired without losing artwork.
+
 Encyclopedia statistics preserve their authored order:
 
 ```xml

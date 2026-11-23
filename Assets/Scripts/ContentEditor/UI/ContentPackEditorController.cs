@@ -450,15 +450,18 @@ public sealed class ContentPackEditorController : MonoBehaviour
         }
 
         ContentPackEditorField[] emptyCuts = GetFirstArtworkCutTargets(field);
-        string address = ContentPackEditorStorage.ImportAsset(project, source, field);
-        if (field.IsList)
-            project.SetFieldValues(
-                field,
-                field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
-            );
-        else
-            project.SetField(field, address);
-        workspace.RenderProject(project, assets);
+        using (project.BeginEdit("Import artwork"))
+        {
+            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
+            if (field.IsList)
+                project.SetFieldValues(
+                    field,
+                    field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
+                );
+            else
+                project.SetField(field, address);
+        }
+        OpenProject(project);
         if (emptyCuts.Length > 0)
             view.ConfirmFirstArtworkCuts(
                 emptyCuts.Length,
@@ -1570,8 +1573,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
         bool persist
     )
     {
-        var references = images
-            .Select(image =>
+        using (project.BeginEdit(description))
+        {
+            foreach (var image in images)
             {
                 string value = ContentPackEditorStorage.WriteGeneratedPng(
                     project,
@@ -1580,13 +1584,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     preservePrevious: true,
                     layerRecipe: image.Layers
                 );
-                return (image.Field, Value: value);
-            })
-            .ToArray();
-        using (project.BeginEdit(description))
-        {
-            foreach (var reference in references)
-                project.SetField(reference.Field, reference.Value);
+                project.SetField(image.Field, value);
+            }
         }
         if (persist)
             ContentPackEditorStorage.Save(project);
@@ -1655,11 +1654,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         string previousBase = project.Definition.BasePackID;
         ContentPackEditorStorage.Save(project);
-        if (previousBase != project.Definition.BasePackID)
+        if (
+            previousBase != project.Definition.BasePackID
+            || !string.IsNullOrEmpty(project.ArtworkConversionReport)
+        )
             OpenProject(project);
         else
             view.RefreshProjectState();
-        view.RenderStatus("Content pack saved.", false);
+        view.RenderStatus("Content pack saved. " + project.ArtworkConversionReport, false);
     }
 
     /// <summary>
@@ -1801,7 +1803,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.UndoText())
                 return;
             if (project != null && view.CommitFields() && project.Undo())
-                workspace.RenderProject(project, assets);
+                OpenProject(project);
         });
     }
 
@@ -1815,7 +1817,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.RedoText())
                 return;
             if (project != null && view.CommitFields() && project.Redo())
-                workspace.RenderProject(project, assets);
+                OpenProject(project);
         });
     }
 
