@@ -397,6 +397,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
+        [Test]
+        public void CreateRenderData_HiddenAllocatedEnergy_ShowsTotalConsumption()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 2, 0);
+            planet.EnergyCapacity = 2;
+            planet.AllocatedEnergy = 2;
+            planet.AddTestChild(CreateBuilding(BuildingType.Defense));
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.AreEqual(2, data.Planets[0].EnergyBar.LitCells);
+            Assert.AreEqual("Energy Consumption 2/2", data.Planets[0].EnergyBar.TooltipText);
+        }
+
         [TestCase(53, 53, 11, 7)]
         [TestCase(1, 2, 16, 2)]
         [TestCase(0, 2, 16, 1)]

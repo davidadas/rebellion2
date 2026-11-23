@@ -206,21 +206,33 @@ namespace Rebellion.Gameplay
 
             foreach (ISceneNode unit in units)
             {
-                Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
-                if (previousOwner == newOwner)
-                    continue;
-                _game.ChangeOwnership(unit, newOwner.InstanceID);
-                results.Add(
-                    new UnitOwnershipChangedResult
-                    {
-                        Unit = unit,
-                        PreviousOwner = previousOwner,
-                        NewOwner = newOwner,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                UnitOwnershipChangedResult result = ChangeUnitOwnership(unit, newOwner);
+                if (result != null)
+                    results.Add(result);
             }
             return results;
+        }
+
+        /// <summary>
+        /// Changes one unit's owner and records the ownership transition.
+        /// </summary>
+        /// <param name="unit">The unit whose ownership changes.</param>
+        /// <param name="newOwner">The receiving faction, or null for neutral ownership.</param>
+        /// <returns>The ownership-change result, or null when the owner is unchanged.</returns>
+        internal UnitOwnershipChangedResult ChangeUnitOwnership(ISceneNode unit, Faction newOwner)
+        {
+            Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
+            if (previousOwner == newOwner)
+                return null;
+
+            _game.ChangeOwnership(unit, newOwner?.InstanceID);
+            return new UnitOwnershipChangedResult
+            {
+                Unit = unit,
+                PreviousOwner = previousOwner,
+                NewOwner = newOwner,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>

@@ -319,6 +319,34 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BuildFactionView_OwnedPlanetWithHiddenInboundBuilding_PreservesAllocatedEnergy()
+        {
+            _hoth.EnergyCapacity = 2;
+            Building stationedBuilding = CreateBuilding("STATIONED", _alliance);
+            Building inboundBuilding = CreateBuilding(
+                "INBOUND",
+                _empire,
+                ManufacturingStatus.Delivering
+            );
+            inboundBuilding.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
+            _hoth.AddTestChild(stationedBuilding);
+            _hoth.AddTestChild(inboundBuilding);
+
+            Planet viewHoth = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _hoth.InstanceID);
+
+            CollectionAssert.AreEqual(
+                new[] { stationedBuilding.InstanceID },
+                viewHoth.GetChildren<Building>().Select(building => building.InstanceID)
+            );
+            Assert.AreEqual(2, viewHoth.AllocatedEnergy);
+        }
+
+        [Test]
         public void BuildFactionView_NotVisibleWithSnapshot_UsesSnapshotData()
         {
             Officer vader = CreateOfficer("VADER", _empire);
