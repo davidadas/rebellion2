@@ -78,6 +78,17 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void SaveImageImportDirectory_AfterApplicationRestart_RemembersTheSourceFolder()
+        {
+            new ContentEditorSettingsManager(path).SaveImageImportDirectory(folder);
+
+            Assert.AreEqual(
+                folder,
+                new ContentEditorSettingsManager(path).Load().ImageImportDirectory
+            );
+        }
+
+        [Test]
         public async Task SaveColorMode_ConcurrentLayoutUpdates_PreservesBothChangesAsync()
         {
             ContentEditorSettingsManager first = new(path);

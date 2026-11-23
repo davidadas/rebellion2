@@ -10,6 +10,15 @@ using UnityEngine;
 internal static class ContentEditorArtworkCutGenerator
 {
     /// <summary>
+    /// Checks whether the output fits within the source resolution on both axes.
+    /// </summary>
+    /// <param name="source">The decoded source dimensions.</param>
+    /// <param name="target">The desired output dimensions.</param>
+    /// <returns>Whether the output can be cut without exceeding the source resolution.</returns>
+    internal static bool CanFitSource(Vector2Int source, Vector2Int target) =>
+        target.x <= source.x && target.y <= source.y;
+
+    /// <summary>
     /// Decodes one source image and creates every requested output size without stretching it.
     /// </summary>
     /// <param name="sourcePath">The absolute source image path.</param>
@@ -39,6 +48,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="fitEntireSource">Whether to fit the whole source before applying each offset.</param>
     /// <param name="preserveVisibleSubject">Whether to fit the visible subject before applying each offset.</param>
     /// <param name="fillOpaqueSource">Whether to crop opaque artwork so it fills the output at every placement.</param>
+    /// <param name="preventUpscaling">Whether to reject outputs larger than the source on either axis.</param>
     /// <returns>PNG bytes keyed by each distinct size and placement.</returns>
     internal static IReadOnlyDictionary<
         (Vector2Int Size, Vector2 Offset),
@@ -48,7 +58,8 @@ internal static class ContentEditorArtworkCutGenerator
         IEnumerable<(Vector2Int Size, Vector2 Offset)> placements,
         bool fitEntireSource,
         bool preserveVisibleSubject,
-        bool fillOpaqueSource = false
+        bool fillOpaqueSource = false,
+        bool preventUpscaling = false
     )
     {
         if (string.IsNullOrWhiteSpace(sourcePath))
@@ -70,6 +81,9 @@ internal static class ContentEditorArtworkCutGenerator
         {
             if (!ImageConversion.LoadImage(sourceTexture, File.ReadAllBytes(source), false))
                 throw new InvalidDataException("The source image could not be decoded.");
+            Vector2Int sourceSize = new(sourceTexture.width, sourceTexture.height);
+            if (preventUpscaling && targets.Any(target => !CanFitSource(sourceSize, target.Size)))
+                throw new ArgumentException("Choose source artwork large enough for every cut.");
             sourceTexture.wrapMode = TextureWrapMode.Clamp;
             Color32[] sourcePixels = sourceTexture.GetPixels32();
             RectInt contentBounds = GetVisibleContentBounds(
@@ -199,7 +213,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="x">The horizontal sample coordinate in source pixels.</param>
     /// <param name="y">The vertical sample coordinate in source pixels.</param>
     /// <returns>The filtered straight-alpha pixel.</returns>
-    private static Color SampleTransparentPixel(
+    internal static Color SampleTransparentPixel(
         Color32[] pixels,
         int width,
         int height,

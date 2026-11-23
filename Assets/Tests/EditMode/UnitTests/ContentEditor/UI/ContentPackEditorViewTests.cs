@@ -13,6 +13,55 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryImportDroppedImage_ArtworkSlot_RoutesToTheDisplayedField(bool empty)
+        {
+            var (field, slot) = ShowArtworkSlot(empty);
+            (string Record, string Member, string Path)? requested = null;
+
+            DropImageOn(
+                slot,
+                (target, path) => requested = (target.Record.ID, target.MemberName, path)
+            );
+
+            Assert.That(requested, Is.EqualTo((field.Record.ID, field.MemberName, "dropped.png")));
+        }
+
+        [Test]
+        public void TryImportDroppedImage_WithModalOpen_DoesNotRunImport()
+        {
+            var (_, slot) = ShowArtworkSlot(empty: true);
+            view.RenderValidationResult("Pack validation", new[] { "Validation warning." });
+
+            Assert.IsFalse(DropImageOn(slot, (_, _) => Assert.Fail("Imported through a modal.")));
+        }
+
+        [Test]
+        public void TryImportDroppedImage_WhenFieldCommitIsRejected_DoesNotRunImport()
+        {
+            var officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            var field = officer.GetField("EncyclopediaImagePath");
+            view.ShowField(field, null);
+            var description = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == "EncyclopediaDescription");
+            description.Submitted += (_, _) => throw new ArgumentException("Rejected draft.");
+            description
+                .GetComponentInChildren<TMP_InputField>()
+                .SetTextWithoutNotify("Pending edit.");
+            var image = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == field.MemberName);
+            int imports = 0;
+
+            DropImageOn(image.gameObject, (_, _) => imports++);
+
+            Assert.That(description.HasRejectedDraft, Is.True);
+            Assert.That(imports, Is.Zero);
+        }
+
         [Test]
         public void ShowArtworkCuts_WithThreeOutputs_DisplaysEveryFullFrameBeforeApply()
         {
@@ -341,6 +390,37 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(text => text.name == "Error")
                     .text
             );
+        }
+
+        /// <summary>
+        /// Opens the officer's message image slot with the requested assignment.
+        /// </summary>
+        /// <param name="empty">Whether to clear the slot before opening the artwork page.</param>
+        /// <returns>The image field and its drop surface.</returns>
+        private (ContentPackEditorField Field, GameObject Slot) ShowArtworkSlot(bool empty)
+        {
+            var officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            var field = officer.GetField("MessageImagePath");
+            if (empty)
+                project.SetField(field, string.Empty);
+            else
+                Assert.IsFalse(string.IsNullOrWhiteSpace(field.Value));
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Artwork")
+                .onClick.Invoke();
+            var slot = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name.EndsWith(
+                        "-Output-MessageImagePath-Backing",
+                        StringComparison.Ordinal
+                    )
+                )
+                .gameObject;
+            return (field, slot);
         }
 
         /// <summary>

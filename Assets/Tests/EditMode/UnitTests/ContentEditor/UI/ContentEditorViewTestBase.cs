@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -72,6 +73,30 @@ namespace Rebellion.Tests.ContentEditor.UI
         protected virtual ContentPackEditorProject CreateProject(string destination)
         {
             return ContentEditorTestData.CreateProject(destination, TestContent.Pack);
+        }
+
+        /// <summary>
+        /// Delivers a test image drop with the given object under the pointer.
+        /// </summary>
+        /// <param name="target">The object returned by the test raycaster.</param>
+        /// <param name="import">The callback for an image field import.</param>
+        /// <returns>Whether the view handled the drop.</returns>
+        protected bool DropImageOn(GameObject target, Action<ContentPackEditorField, string> import)
+        {
+            EventSystem previous = EventSystem.current;
+            var events = new GameObject("Artwork drop events", typeof(EditModeEventSystem));
+            try
+            {
+                events.AddComponent<ArtworkDropRaycaster>().Target = target;
+                EventSystem.current = events.GetComponent<EventSystem>();
+                return view.TryImportDroppedImage(Vector2.zero, new[] { "dropped.png" }, import);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(events);
+                if (previous != null)
+                    EventSystem.current = previous;
+            }
         }
 
         /// <summary>
@@ -205,5 +230,21 @@ namespace Rebellion.Tests.ContentEditor.UI
 
         [ExecuteAlways]
         protected sealed class EditModeEventSystem : EventSystem { }
+
+        [ExecuteAlways]
+        private sealed class ArtworkDropRaycaster : BaseRaycaster
+        {
+            internal GameObject Target { get; set; }
+            public override Camera eventCamera => null;
+            public override int sortOrderPriority => int.MaxValue;
+
+            /// <summary>
+            /// Reports the fixture's target as the pointer hit.
+            /// </summary>
+            /// <param name="pointer">The drop's pointer event.</param>
+            /// <param name="hits">The results consumed by the editor view.</param>
+            public override void Raycast(PointerEventData pointer, List<RaycastResult> hits) =>
+                hits.Add(new RaycastResult { gameObject = Target, module = this });
+        }
     }
 }
