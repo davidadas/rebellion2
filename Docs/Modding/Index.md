@@ -217,6 +217,30 @@ facility research artwork. Player HUD artwork is under each faction's
 
 ## Sharing a mod
 
+### Exporting a content pack for Thunderstore
+
+In the content pack editor, open **File > Publishing...**. Enter a package name, short description,
+readme, and an optional website. Choose a 256 × 256 PNG icon. The **Release** page uses the pack's
+version and accepts release notes and Thunderstore dependencies, one `Team-Package-1.2.0` reference
+per line. The required base content pack is still declared in `pack.xml`; it is not automatically
+distributed as a Thunderstore dependency.
+
+Select **Review release**, then **Export package...**. The editor validates the current project
+snapshot and writes the Thunderstore metadata alongside `Mods/<pack ID>/pack.xml` and the pack's
+local files. Unedited inherited content is excluded. Validation failure or cancellation preserves
+an existing archive. Exporting does not save pending game-definition edits to the working project.
+
+**Save draft** retains the listing and icon in the working project's `.publishing` folder. Closing
+the publishing dialog also saves the draft. Publishing drafts are excluded from ordinary pack
+exports, Thunderstore packages, and editor test-game snapshots.
+
+Upload the resulting archive at [the Rebellion 2 Thunderstore community](https://thunderstore.io/c/rebellion-2/).
+For manual installation, extract its `Mods` folder beside the installed `Content` folder. This
+workflow exports selectable content packs; add-on mods still use the separate `mod.xml` format
+described above. The editor does not upload releases or install community packages automatically.
+
+### Sharing an add-on mod
+
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that
 folder directly into `Mods`. The installer, launcher, and application and content updaters do not
 overwrite `Mods`.

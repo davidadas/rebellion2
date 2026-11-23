@@ -18,7 +18,18 @@ public static class ContentPackEditorPreview
     /// <summary>
     /// Rebuilds and renders the functional inspector without modifying its source content.
     /// </summary>
-    public static void Export()
+    public static void Export() => ExportWorkspace(false);
+
+    /// <summary>
+    /// Renders the publishing workflow independently of the catalog-artwork previews.
+    /// </summary>
+    public static void ExportPublishing() => ExportWorkspace(true);
+
+    /// <summary>
+    /// Creates a temporary editable workspace and renders the requested editor surfaces.
+    /// </summary>
+    /// <param name="publishingOnly">Whether to render only the publishing workflow.</param>
+    private static void ExportWorkspace(bool publishingOnly)
     {
         UIBuilderMenu.BuildContentPackEditor();
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
@@ -72,6 +83,12 @@ public static class ContentPackEditorPreview
                 new ContentPackEditorWorkspaceController(view);
             view.Initialize(new[] { project.Definition }, contentRoot);
             workspace.RenderProject(project, assets);
+            if (publishingOnly)
+            {
+                view.SetColorMode(ContentEditorColorMode.Light);
+                RenderPublishing(preview, root, view, project);
+                return;
+            }
             ContentPackEditorRecord officer = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
@@ -87,6 +104,7 @@ public static class ContentPackEditorPreview
             ExportOfficerAudio(preview, root, view, project);
             ExportFactionInterfaces(preview, root, view, project);
             ExportMapLayout(preview, root, view, workspace, project, assets);
+            RenderPublishing(preview, root, view, project);
         }
         finally
         {
@@ -94,6 +112,41 @@ public static class ContentPackEditorPreview
             if (Directory.Exists(workingFolder))
                 Directory.Delete(workingFolder, true);
         }
+    }
+
+    /// <summary>
+    /// Renders each publishing stage using the same authored dialog as the standalone editor.
+    /// </summary>
+    /// <param name="preview">The active preview renderer.</param>
+    /// <param name="root">The live workspace canvas.</param>
+    /// <param name="view">The workspace presentation.</param>
+    /// <param name="project">The temporary derived project.</param>
+    private static void RenderPublishing(
+        PreviewRenderUtility preview,
+        GameObject root,
+        ContentPackEditorView view,
+        ContentPackEditorProject project
+    )
+    {
+        view.Publishing.Show(
+            project.Definition,
+            new ContentEditorPublishingSettings
+            {
+                PackageName = "Frontier_Campaigns",
+                Description = "A campaign with regional objectives and updated faction artwork.",
+                Readme =
+                    "# Frontier campaigns\n\nA new strategic campaign with regional objectives.",
+                Changelog = "Added regional objectives and revised starting fleets.",
+            }
+        );
+        foreach (string stage in new[] { "Listing", "Release", "Review" })
+        {
+            view.Publishing.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == stage + "Step")
+                .onClick.Invoke();
+            SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-" + stage + ".png");
+        }
+        view.Publishing.Hide();
     }
 
     /// <summary>

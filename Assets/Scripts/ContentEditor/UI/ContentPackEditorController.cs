@@ -48,6 +48,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.SaveRequested += SavePack;
         view.RestoreTravelArtworkRequested += RestoreTravelArtwork;
         view.ExportRequested += ExportPack;
+        view.PublishingRequested += ShowPublishing;
+        view.Publishing.SaveRequested += SavePublishing;
+        view.Publishing.CloseRequested += ClosePublishing;
+        view.Publishing.BrowseIconRequested += BrowsePublishingIcon;
+        view.Publishing.ExportRequested += ExportThunderstorePackage;
+        view.Publishing.CommunityRequested += OpenThunderstore;
         view.ValidateRequested += ValidatePack;
         view.QuickValidationRequested += QuickValidatePack;
         view.MapLayoutRequested += ArrangeMap;
@@ -148,6 +154,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.SaveRequested -= SavePack;
             view.RestoreTravelArtworkRequested -= RestoreTravelArtwork;
             view.ExportRequested -= ExportPack;
+            view.PublishingRequested -= ShowPublishing;
+            view.Publishing.SaveRequested -= SavePublishing;
+            view.Publishing.CloseRequested -= ClosePublishing;
+            view.Publishing.BrowseIconRequested -= BrowsePublishingIcon;
+            view.Publishing.ExportRequested -= ExportThunderstorePackage;
+            view.Publishing.CommunityRequested -= OpenThunderstore;
             view.ValidateRequested -= ValidatePack;
             view.QuickValidationRequested -= QuickValidatePack;
             view.MapLayoutRequested -= ArrangeMap;
@@ -1762,6 +1774,125 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Opens the saved listing draft for the currently authored pack.
+    /// </summary>
+    private void ShowPublishing()
+    {
+        RunOperation(() =>
+        {
+            if (project?.IsInstalled != false || !view.CommitFields())
+                return;
+            ContentEditorPublishingSettings settings = ContentEditorPublishingStorage.Load(project);
+            view.Publishing.Show(project.Definition, settings);
+            RenderPublishingIcon(settings.IconPath);
+        });
+    }
+
+    /// <summary>
+    /// Opens the Rebellion 2 community page without uploading or changing any remote package.
+    /// </summary>
+    private void OpenThunderstore() =>
+        Application.OpenURL("https://thunderstore.io/c/rebellion-2/");
+
+    /// <summary>
+    /// Retains the listing draft independently of game-definition edits.
+    /// </summary>
+    private void SavePublishing()
+    {
+        RunOperation(() =>
+        {
+            PersistPublishingDraft();
+            view.Publishing.ShowStatus("Publishing draft saved.");
+        });
+    }
+
+    /// <summary>
+    /// Retains the current listing before returning to ordinary authoring.
+    /// </summary>
+    private void ClosePublishing()
+    {
+        try
+        {
+            PersistPublishingDraft();
+            view.Publishing.Hide();
+        }
+        catch (Exception exception)
+        {
+            ReportError(exception);
+            view.ConfirmDiscard(view.Publishing.Hide);
+        }
+    }
+
+    /// <summary>
+    /// Saves and returns the complete current listing draft.
+    /// </summary>
+    /// <returns>The saved publishing values, including the project-owned icon path.</returns>
+    private ContentEditorPublishingSettings PersistPublishingDraft()
+    {
+        ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
+        ContentEditorPublishingStorage.Save(project, settings);
+        RenderPublishingIcon(settings.IconPath);
+        return settings;
+    }
+
+    /// <summary>
+    /// Chooses a package icon without changing the pack's artwork assignments.
+    /// </summary>
+    private void BrowsePublishingIcon()
+    {
+        RunOperation(() =>
+        {
+            string path = ContentEditorFileDialog.OpenFile(project.PackRootPath, new[] { ".png" });
+            if (!string.IsNullOrEmpty(path))
+            {
+                RenderPublishingIcon(path);
+                view.Publishing.ShowStatus(string.Empty);
+            }
+        });
+    }
+
+    /// <summary>
+    /// Reads a validated package icon before handing its bytes to the publishing presentation.
+    /// </summary>
+    /// <param name="path">The selected or saved icon path.</param>
+    private void RenderPublishingIcon(string path)
+    {
+        view.Publishing.SetIcon(
+            path,
+            string.IsNullOrEmpty(path) ? null : ContentEditorPublishingStorage.ReadIcon(path)
+        );
+    }
+
+    /// <summary>
+    /// Exports a validated Thunderstore release using the current project snapshot and listing draft.
+    /// </summary>
+    private async void ExportThunderstorePackage()
+    {
+        await RunOperationAsync(async cancellationToken =>
+        {
+            ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
+            settings.Validate(project.Definition);
+            string destination = ContentEditorFileDialog.SaveFile(
+                Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                settings.PackageName + "-" + project.Definition.Version + ".zip",
+                new[] { ".zip" }
+            );
+            if (string.IsNullOrEmpty(destination))
+                return;
+            settings = PersistPublishingDraft();
+            view.RenderStatus("Validating and exporting release. Press Escape to cancel.", false);
+            IReadOnlyList<string> warnings = await ThunderstorePackageExporter.WriteArchiveAsync(
+                project,
+                settings,
+                destination,
+                ReportValidationProgress,
+                cancellationToken
+            );
+            view.RenderValidationResult("Package exported to " + destination, warnings);
+        });
+    }
+
+    /// <summary>
     /// Exports the working snapshot without silently saving it over the source project.
     /// </summary>
     private async void ExportPack()
@@ -1883,6 +2014,18 @@ public sealed class ContentPackEditorController : MonoBehaviour
             quitAfterOperation = true;
             operationCancellation.Cancel();
             return false;
+        }
+        if (view.Publishing.IsOpen)
+        {
+            try
+            {
+                PersistPublishingDraft();
+            }
+            catch (Exception exception)
+            {
+                ReportError(exception);
+                return false;
+            }
         }
         if (view.ConfirmPendingArtwork(RequestQuit))
             return false;

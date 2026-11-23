@@ -573,6 +573,7 @@ public static class ContentPackEditorPrefabBuilder
 
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
+        Assign(view, "publishing", ContentEditorPublishingBuilder.Build(canvasRoot));
         BuildSelectionDialog(canvasRoot, view);
         Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
         BuildConfirmation(canvasRoot, view);

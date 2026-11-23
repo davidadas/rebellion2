@@ -152,6 +152,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ContentEditorPackDialogView packDialog;
 
     [SerializeField]
+    private ContentEditorPublishingView publishing;
+
+    [SerializeField]
     private GameObject notice;
 
     [SerializeField]
@@ -237,6 +240,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action UndoRequested;
     public event Action RedoRequested;
     public event Action ExportRequested;
+    internal event Action PublishingRequested;
+    internal ContentEditorPublishingView Publishing => publishing;
     public event Action CloseRequested;
     public event Action ExitRequested;
     public event Action<ContentEditorColorMode> ColorModeChanged;
@@ -423,6 +428,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || form == null
             || menu == null
             || packDialog == null
+            || publishing == null
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
@@ -673,6 +679,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.TryCancel()
             || imagePreview.TryCancel()
             || confirmation.TryCancel()
+            || publishing.TryCancel()
             || artworkWorkspace.TryCancel()
             || packDialog.TryCancel()
         )
@@ -896,6 +903,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="isError">Whether the operation failed.</param>
     public void RenderStatus(string message, bool isError)
     {
+        if (publishing.IsOpen)
+        {
+            publishing.ShowStatus(message, isError);
+            return;
+        }
         noticeField = null;
         noticeFieldError = null;
         HideValidationIssues();
@@ -1012,6 +1024,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 "Export pack...",
                 () => ExportRequested?.Invoke(),
                 project != null
+            ),
+            new ContentEditorMenuCommand(
+                "Publishing...",
+                () => PublishingRequested?.Invoke(),
+                project?.IsInstalled == false
             ),
             new ContentEditorMenuCommand(
                 "Close pack",
@@ -1434,6 +1451,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (
             !workbench.interactable
             || packDialog.IsOpen
+            || publishing.IsOpen
             || selectionDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
