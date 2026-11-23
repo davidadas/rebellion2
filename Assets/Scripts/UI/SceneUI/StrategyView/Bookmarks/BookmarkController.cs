@@ -60,11 +60,13 @@ public sealed class BookmarkController
         List<BookmarkRenderData> data = new List<BookmarkRenderData>(bookmarks.Length);
         foreach (BookmarkEntry bookmark in bookmarks)
         {
+            var artwork = GetBookmarkArtwork(bookmark);
             data.Add(
                 new BookmarkRenderData(
                     bookmark?.Planet != null,
                     GetBookmarkLabel(bookmark),
-                    GetBookmarkIconTexture(bookmark)
+                    artwork.Texture,
+                    artwork.Crop
                 )
             );
         }
@@ -78,7 +80,6 @@ public sealed class BookmarkController
     internal void RequestIconTextures()
     {
         List<FactionTheme> themes = uiContext.GetAllThemes();
-        themes.Add(uiContext.GetTheme(null));
         foreach (FactionTheme theme in themes)
         {
             StrategyBookmarkIcons icons = theme?.StrategyBookmarkIcons;
@@ -87,6 +88,10 @@ public sealed class BookmarkController
             uiContext.GetTexture(icons?.FleetImagePath);
             uiContext.GetTexture(icons?.MissionImagePath);
         }
+        GetBookmarkFactionArtwork(null, PlanetIcon.Facility);
+        GetBookmarkFactionArtwork(null, PlanetIcon.Defense);
+        GetBookmarkFactionArtwork(null, PlanetIcon.Fleet);
+        GetBookmarkFactionArtwork(null, PlanetIcon.Mission);
     }
 
     /// <summary>
@@ -224,25 +229,25 @@ public sealed class BookmarkController
     /// Resolves one bookmark's feature icon from current domain state and faction theme.
     /// </summary>
     /// <param name="bookmark">The bookmark to project.</param>
-    /// <returns>The resolved icon texture, or null when the feature is absent.</returns>
-    private Texture2D GetBookmarkIconTexture(BookmarkEntry bookmark)
+    /// <returns>The resolved artwork, or an empty result when the feature is absent.</returns>
+    private (Texture2D Texture, RectInt Crop) GetBookmarkArtwork(BookmarkEntry bookmark)
     {
         if (bookmark?.Planet == null)
-            return null;
+            return default;
 
         PlanetIcon icon = bookmark.Icon;
         Planet planet = bookmark.Planet.Planet;
         return icon switch
         {
             PlanetIcon.Facility => HasFacilities(planet)
-                ? GetBookmarkFactionTexture(planet?.OwnerInstanceID, icon)
-                : null,
+                ? GetBookmarkFactionArtwork(planet?.OwnerInstanceID, icon)
+                : default,
             PlanetIcon.Defense => HasDefenses(planet)
-                ? GetBookmarkFactionTexture(planet?.OwnerInstanceID, icon)
-                : null,
-            PlanetIcon.Fleet => GetBookmarkFleetTexture(planet),
-            PlanetIcon.Mission => GetBookmarkMissionTexture(planet),
-            _ => null,
+                ? GetBookmarkFactionArtwork(planet?.OwnerInstanceID, icon)
+                : default,
+            PlanetIcon.Fleet => GetBookmarkFleetArtwork(planet),
+            PlanetIcon.Mission => GetBookmarkMissionArtwork(planet),
+            _ => default,
         };
     }
 
@@ -250,10 +255,10 @@ public sealed class BookmarkController
     /// Resolves a fleet bookmark icon from the factions currently present at the planet.
     /// </summary>
     /// <param name="planet">The bookmarked planet.</param>
-    /// <returns>The resolved fleet bookmark texture.</returns>
-    private Texture2D GetBookmarkFleetTexture(Planet planet)
+    /// <returns>The resolved fleet bookmark artwork.</returns>
+    private (Texture2D Texture, RectInt Crop) GetBookmarkFleetArtwork(Planet planet)
     {
-        return GetBookmarkFactionTexture(
+        return GetBookmarkFactionArtwork(
             SelectPresentFactionID(GetFleetOwnerFactionIDs(planet), planet?.OwnerInstanceID),
             PlanetIcon.Fleet
         );
@@ -263,25 +268,44 @@ public sealed class BookmarkController
     /// Resolves a mission bookmark icon from the factions currently active at the planet.
     /// </summary>
     /// <param name="planet">The bookmarked planet.</param>
-    /// <returns>The resolved mission bookmark texture.</returns>
-    private Texture2D GetBookmarkMissionTexture(Planet planet)
+    /// <returns>The resolved mission bookmark artwork.</returns>
+    private (Texture2D Texture, RectInt Crop) GetBookmarkMissionArtwork(Planet planet)
     {
-        return GetBookmarkFactionTexture(
+        return GetBookmarkFactionArtwork(
             SelectPresentFactionID(GetMissionOwnerFactionIDs(planet), planet?.OwnerInstanceID),
             PlanetIcon.Mission
         );
     }
 
     /// <summary>
-    /// Resolves one faction's themed bookmark icon for a feature category.
+    /// Resolves one themed icon and frames any positioned Neutral planet artwork reused by it.
     /// </summary>
     /// <param name="factionId">The faction presentation identifier.</param>
     /// <param name="icon">The feature category.</param>
-    /// <returns>The resolved bookmark texture.</returns>
-    private Texture2D GetBookmarkFactionTexture(string factionId, PlanetIcon icon)
+    /// <returns>The icon and its optional visible-pixel crop.</returns>
+    private (Texture2D Texture, RectInt Crop) GetBookmarkFactionArtwork(
+        string factionId,
+        PlanetIcon icon
+    )
     {
-        StrategyBookmarkIcons icons = uiContext.GetTheme(factionId)?.StrategyBookmarkIcons;
-        return uiContext.GetTexture(GetBookmarkImagePath(icons, icon));
+        FactionTheme theme = uiContext.GetTheme(factionId);
+        string path = GetBookmarkImagePath(theme?.StrategyBookmarkIcons, icon);
+        if (!string.IsNullOrEmpty(factionId))
+            return (uiContext.GetTexture(path), default);
+
+        Texture2D texture = uiContext.GetSmoothTexture(path);
+        PlanetOverlayIcons overlays = theme?.PlanetOverlayTheme?.PlanetOverlayIcons;
+        string overlayPath = icon switch
+        {
+            PlanetIcon.Facility => overlays?.Buildings?.NormalImagePath,
+            PlanetIcon.Defense => overlays?.Defenses?.NormalImagePath,
+            _ => null,
+        };
+        RectInt crop =
+            texture != null && path == overlayPath
+                ? uiContext.GetTextureContentBounds(texture)
+                : default;
+        return (texture, crop);
     }
 
     /// <summary>
