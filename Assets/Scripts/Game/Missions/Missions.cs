@@ -1277,6 +1277,17 @@ namespace Rebellion.Game.Missions
         }
 
         /// <summary>
+        /// Returns the next participant-roll chance without folding in uprising consequences.
+        /// </summary>
+        /// <param name="participants">The proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance that at least one participant passes the objective roll.</returns>
+        protected override double GetDisplayedObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        ) => base.GetObjectiveSuccessProbability(participants, context);
+
+        /// <summary>
         /// Includes the incident and control requirements for the next execution to report success.
         /// </summary>
         /// <param name="participants">The single proposed participant snapshot.</param>
@@ -3153,6 +3164,17 @@ namespace Rebellion.Game.Missions
                 && GetParent() is Planet planet
                 && planet.GetOwnerInstanceID() == OwnerInstanceID;
         }
+
+        /// <summary>
+        /// Returns the next participant-roll chance without folding in uprising recovery outcomes.
+        /// </summary>
+        /// <param name="participants">The proposed participant snapshot.</param>
+        /// <param name="context">The authoritative or observed objective state.</param>
+        /// <returns>The percentage chance that at least one participant passes the objective roll.</returns>
+        protected override double GetDisplayedObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        ) => base.GetObjectiveSuccessProbability(participants, context);
 
         /// <summary>
         /// Includes the support and garrison requirements for the next execution to report success.

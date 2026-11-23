@@ -14,17 +14,8 @@ copyrighted game assets**.
 
 ## Pull request checks
 
-Public checks start automatically for pull requests. Both same-repository and fork PRs run the core
-Unity suite without a media checkout. Run the same EditMode and PlayMode tests locally with
-`./build.sh test-core` from a game-only checkout.
-
-Fork Unity runs wait for a maintainer to approve **Review fork Unity tests** in the **Fork PR tests**
-environment before using the Unity CI license. Review the displayed commit before approving it.
-A new push requires a new approval. Default-branch CI runs the full suite with pinned media and
-checks combined coverage.
-
-Maintainers can also start the **CI** workflow manually with the PR number and its full head SHA.
-The test result is reported on that PR commit. Stale requests are rejected before Unity runs.
+Run the PR test suite locally with `./build.sh test-core`. Unity tests on fork PRs start after
+maintainer approval.
 
 ## AI assistance
 

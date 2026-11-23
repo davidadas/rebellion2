@@ -107,6 +107,11 @@ test('default-branch tests validate the pinned pack and check full coverage', ()
   assert.equal(ci.jobs.test.uses, ci.jobs['test-pr'].uses);
   assert.deepEqual(ci.on.push.branches, ['master']);
   assert.equal(ci.jobs.test.if, "github.event_name == 'push'");
+  const pushTestJobs = Object.keys(ci.jobs).filter(name => {
+    const job = ci.jobs[name];
+    return job.uses === ci.jobs.test.uses && job.if === ci.jobs.test.if;
+  });
+  assert.deepEqual(pushTestJobs, ['test']);
   assert.equal(ci.jobs.test.with.media_sha, '${{ needs.resolve-media.outputs.sha }}');
   assert.equal(dependsOn('test', 'resolve-media'), true);
   const steps = runner.jobs.test.steps;
@@ -118,8 +123,8 @@ test('default-branch tests validate the pinned pack and check full coverage', ()
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);
 });
 
-test('core runs omit the media checkout and content credentials', () => {
-  for (const job of [ci.jobs['test-core'], ci.jobs['test-pr'], dispatcher.jobs['trusted-test']]) {
+test('PR runs omit the media checkout and content credentials', () => {
+  for (const job of [ci.jobs['test-pr'], dispatcher.jobs['trusted-test']]) {
     assert.equal(job.uses, './.github/workflows/unity-test-runner.yml');
     assert.equal(job.with.core_only, true);
     assert.equal(job.with.media_sha, undefined);
