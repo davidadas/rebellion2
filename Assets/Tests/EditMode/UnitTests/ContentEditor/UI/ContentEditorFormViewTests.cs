@@ -1477,13 +1477,63 @@ namespace Rebellion.Tests.ContentEditor.UI
                 );
             }
             Assert.IsTrue(
-                results.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Images")
+                results
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Gameplay images")
             );
             Assert.IsFalse(
                 results
                     .GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text is "display" or "encyclopedia")
             );
+        }
+
+        [TestCase("Starfighter")]
+        [TestCase("Officer")]
+        public void Render_UnitArtwork_PutsLargeImagesInIllustrations(string kind)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            ContentEditorCardView illustrations =
+                view.GetComponentsInChildren<ContentEditorCardView>()
+                    .Single(card => card.name.EndsWith("-Illustrations", StringComparison.Ordinal));
+            CollectionAssert.AreEquivalent(
+                new[] { "MessageImagePath", "EncyclopediaImagePath" },
+                illustrations
+                    .GetComponentsInChildren<ContentEditorFieldView>()
+                    .Select(field => field.Field.MemberName)
+            );
+        }
+
+        [TestCase("EncyclopediaImagePath", "MessageImagePath")]
+        [TestCase("MessageImagePath", "EncyclopediaImagePath")]
+        public void Render_UseOtherIllustration_AssignsTheSameAssetAddress(
+            string source,
+            string target
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Starfighter" && record.Catalog.Faction == "Alliance"
+                );
+            string address = unit.GetField("EncyclopediaImagePath").Value;
+            project.SetField(unit.GetField(target), string.Empty);
+            project.SetField(unit.GetField(source), address);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ReuseIllustration-" + target)
+                .onClick.Invoke();
+
+            Assert.AreEqual(address, unit.GetField(target).Value);
         }
 
         [Test]
@@ -1518,14 +1568,19 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
-        [Test]
-        public void Render_ShipArtworkWithoutMessage_UsesTransparentDisplayAsGenerationSource()
+        [TestCase("CapitalShip", false)]
+        [TestCase("Starfighter", false)]
+        [TestCase("Starfighter", true)]
+        public void Render_ShipArtwork_OffersOnlyGameplayCuts(string kind, bool useLargeDisplay)
         {
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
-                .First(record =>
-                    record.Kind == "CapitalShip" && record.Catalog.Faction == "Alliance"
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            if (useLargeDisplay)
+                project.SetField(
+                    unit.GetField("DisplayImagePath"),
+                    unit.GetField("EncyclopediaImagePath").Value
                 );
             ContentPackEditorField requestedSource = null;
             IReadOnlyList<ContentPackEditorField> requestedTargets = null;
@@ -1547,15 +1602,87 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
             Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
             CollectionAssert.AreEquivalent(
-                new[]
-                {
-                    "SmallDisplayImagePath",
-                    "BattleResultImagePath",
-                    "MessageImagePath",
-                    "EncyclopediaImagePath",
-                },
+                new[] { "SmallDisplayImagePath", "BattleResultImagePath" },
                 requestedTargets.Select(field => field.MemberName).ToArray()
             );
+        }
+
+        [TestCase("CapitalShip", "MessageImagePath")]
+        [TestCase("Starfighter", "EncyclopediaImagePath")]
+        public void Render_ShipWithOnlyAnIllustration_OffersGameplayCuts(
+            string kind,
+            string sourceMember
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            string address = unit.GetField("EncyclopediaImagePath").Value;
+            foreach (
+                string member in new[]
+                {
+                    "MessageImagePath",
+                    "EncyclopediaImagePath",
+                    "DisplayImagePath",
+                    "SmallDisplayImagePath",
+                    "BattleResultImagePath",
+                }
+            )
+                project.SetField(
+                    unit.GetField(member),
+                    member == sourceMember ? address : string.Empty
+                );
+            ContentPackEditorField requestedSource = null;
+            IReadOnlyList<ContentPackEditorField> requestedTargets = null;
+            view.ArtworkCutsRequested += (source, targets) =>
+            {
+                requestedSource = source;
+                requestedTargets = targets;
+            };
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerateArtworkCuts")
+                .onClick.Invoke();
+
+            Assert.AreEqual(sourceMember, requestedSource.MemberName);
+            CollectionAssert.AreEquivalent(
+                new[] { "DisplayImagePath", "SmallDisplayImagePath", "BattleResultImagePath" },
+                requestedTargets.Select(field => field.MemberName).ToArray()
+            );
+        }
+
+        [Test]
+        public void Render_StarfighterArtworkWithUndersizedDisplay_OffersOnlySmallCut()
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Starfighter" && record.Catalog.Faction == "Alliance"
+                );
+            project.SetField(
+                unit.GetField("DisplayImagePath"),
+                unit.GetField("SmallDisplayImagePath").Value
+            );
+            ContentPackEditorField requestedSource = null;
+            IReadOnlyList<ContentPackEditorField> requestedTargets = null;
+            view.ArtworkCutsRequested += (source, targets) =>
+            {
+                requestedSource = source;
+                requestedTargets = targets;
+            };
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "GenerateArtworkCuts")
+                .onClick.Invoke();
+
+            Assert.AreEqual("DisplayImagePath", requestedSource.MemberName);
+            Assert.AreEqual("SmallDisplayImagePath", requestedTargets.Single().MemberName);
         }
 
         [TestCase("SpecialForce")]
@@ -1697,9 +1824,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             string[] documentText = project.Documents.Select(document => document.Text).ToArray();
             UICheckboxView outputToggle = view.GetComponentsInChildren<UICheckboxView>()
                 .Single(toggle => toggle.name == "ImagesBackgroundToggle");
+            UICheckboxView illustrationToggle = view.GetComponentsInChildren<UICheckboxView>()
+                .Single(toggle => toggle.name == "IllustrationBackgroundToggle");
             UICheckboxView stateToggle = view.GetComponentsInChildren<UICheckboxView>()
                 .Single(toggle => toggle.name == "GameplayStatesBackgroundToggle");
             Assert.IsTrue(outputToggle.IsChecked);
+            Assert.IsTrue(illustrationToggle.IsChecked);
             Assert.IsTrue(stateToggle.IsChecked);
 
             outputToggle.GetComponent<Toggle>().isOn = false;
@@ -1708,8 +1838,31 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(
                 view.GetComponentsInChildren<RawImage>()
                     .Any(image =>
-                        image.name.Contains("Output-", StringComparison.Ordinal)
-                        && image.name.EndsWith("-Background", StringComparison.Ordinal)
+                        image.name.EndsWith(
+                            "Output-DisplayImagePath-Background",
+                            StringComparison.Ordinal
+                        )
+                    )
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<RawImage>()
+                    .Any(image =>
+                        image.name.EndsWith(
+                            "Output-EncyclopediaImagePath-Background",
+                            StringComparison.Ordinal
+                        )
+                    )
+            );
+            illustrationToggle.GetComponent<Toggle>().isOn = false;
+            Canvas.ForceUpdateCanvases();
+
+            Assert.IsFalse(
+                view.GetComponentsInChildren<RawImage>()
+                    .Any(image =>
+                        image.name.EndsWith(
+                            "Output-EncyclopediaImagePath-Background",
+                            StringComparison.Ordinal
+                        )
                     )
             );
             Assert.IsTrue(

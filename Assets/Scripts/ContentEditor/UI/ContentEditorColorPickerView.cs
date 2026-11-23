@@ -111,10 +111,11 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     }
 
     /// <summary>
-    /// Places the complete color card within the scrolling form.
+    /// Places the color card and reserves room beside its title for the primary-color link.
     /// </summary>
     /// <param name="bounds">The card bounds in form coordinates.</param>
-    public void SetLayout(Rect bounds) =>
+    public void SetLayout(Rect bounds)
+    {
         UILayout.SetSourceRect(
             (RectTransform)transform,
             Mathf.RoundToInt(bounds.x),
@@ -122,6 +123,16 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
             Mathf.RoundToInt(bounds.width),
             Mathf.RoundToInt(bounds.height)
         );
+
+        const int inset = 16;
+        const int headerGap = 12;
+        RectTransform titleRect = title.rectTransform;
+        RectTransform linkRect = (RectTransform)primaryColorLink.transform;
+        linkRect.anchorMin = linkRect.anchorMax = linkRect.pivot = Vector2.one;
+        linkRect.anchoredPosition = new Vector2(-inset, titleRect.offsetMax.y);
+        float rightInset = LinkField == null ? inset : inset + linkRect.sizeDelta.x + headerGap;
+        titleRect.offsetMax = new Vector2(-rightInset, titleRect.offsetMax.y);
+    }
 
     /// <summary>
     /// Releases project references before the pooled card is hidden.

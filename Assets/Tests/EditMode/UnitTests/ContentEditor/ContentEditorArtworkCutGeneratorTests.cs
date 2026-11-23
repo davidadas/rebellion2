@@ -88,6 +88,25 @@ namespace Rebellion.Tests.ContentEditor
             }
         }
 
+        [TestCase(9, 4)]
+        [TestCase(8, 5)]
+        public void GeneratePlacedPngCuts_WithOutputLargerThanSource_RejectsUpscaling(
+            int width,
+            int height
+        )
+        {
+            string source = WriteSolidPng(Color.green, 8, 4);
+            Assert.Throws<ArgumentException>(() =>
+                ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                    source,
+                    new[] { (new Vector2Int(width, height), Vector2.zero) },
+                    fitEntireSource: true,
+                    preserveVisibleSubject: true,
+                    preventUpscaling: true
+                )
+            );
+        }
+
         [Test]
         public void GeneratePngCuts_MultipleOutputs_CreatesExactSizesAndPreservesAlpha()
         {

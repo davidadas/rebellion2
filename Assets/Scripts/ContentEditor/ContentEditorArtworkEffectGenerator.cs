@@ -322,6 +322,7 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <param name="preserveRegisteredTravel">Whether matching travel cards retain their authored pixels.</param>
     /// <param name="varyShipWakes">Whether to vary the reach of each authored ship wake.</param>
     /// <param name="travelPattern">The matching authored travel and display references, if available.</param>
+    /// <param name="loadLayerSource">Loads a draft or saved layer image by its pack address.</param>
     /// <returns>The caller-owned frame with separable artwork.</returns>
     internal static EditableFrame CreateEditableFrame(
         string sourcePath,
@@ -338,7 +339,8 @@ internal static class ContentEditorArtworkEffectGenerator
         bool completeTravel = false,
         ContentEditorTravelPattern travelPattern = default,
         bool preserveRegisteredTravel = false,
-        bool varyShipWakes = false
+        bool varyShipWakes = false,
+        Func<string, byte[]> loadLayerSource = null
     )
     {
         Texture2D source = new(2, 2, TextureFormat.RGBA32, false);
@@ -570,7 +572,8 @@ internal static class ContentEditorArtworkEffectGenerator
                 variant,
                 legacyStreaks,
                 clearance,
-                useSubjectMask
+                useSubjectMask,
+                loadLayerSource
             );
         }
         finally
@@ -591,9 +594,13 @@ internal static class ContentEditorArtworkEffectGenerator
         private readonly int variant;
         private readonly bool legacyStreaks;
         private readonly bool useSubjectMask;
+        private readonly Func<string, byte[]> loadLayerSource;
         private bool[] streakObstacles;
         private readonly List<(Texture2D Texture, RectInt Bounds)> defaults = new();
         private readonly Dictionary<int, (Texture2D Texture, RectInt Bounds)> additions = new();
+        private readonly Dictionary<string, (Texture2D Texture, RectInt Bounds)> imageLayers = new(
+            StringComparer.Ordinal
+        );
 
         internal Vector2Int Size { get; }
         internal Texture2D BaseImage { get; }
@@ -620,6 +627,7 @@ internal static class ContentEditorArtworkEffectGenerator
         /// <param name="legacyStreaks">Whether to re-create the geometry of an earlier draft.</param>
         /// <param name="facilityClearance">The facility silhouette margin in source pixels.</param>
         /// <param name="useSubjectMask">Whether effects should leave room for the subject.</param>
+        /// <param name="loadLayerSource">Loads a draft or saved layer image by its pack address.</param>
         internal EditableFrame(
             Vector2Int size,
             ContentEditorArtworkEffectStyle style,
@@ -632,7 +640,8 @@ internal static class ContentEditorArtworkEffectGenerator
             int variant,
             bool legacyStreaks,
             int facilityClearance,
-            bool useSubjectMask
+            bool useSubjectMask,
+            Func<string, byte[]> loadLayerSource
         )
         {
             Size = size;
@@ -643,6 +652,7 @@ internal static class ContentEditorArtworkEffectGenerator
             this.variant = variant;
             this.legacyStreaks = legacyStreaks;
             this.useSubjectMask = useSubjectMask;
+            this.loadLayerSource = loadLayerSource;
             FacilityClearance = facilityClearance;
             BaseImage = baseImage;
             SubjectOverlay = subjectOverlay;
@@ -657,6 +667,21 @@ internal static class ContentEditorArtworkEffectGenerator
         /// <returns>The cropped texture and original canvas bounds.</returns>
         internal (Texture2D Texture, RectInt Bounds) GetLayer(ContentEditorArtworkLayer layer)
         {
+            if (!string.IsNullOrEmpty(layer.ImageSource))
+            {
+                if (!imageLayers.TryGetValue(layer.ImageSource, out var image))
+                {
+                    byte[] source = loadLayerSource?.Invoke(layer.ImageSource);
+                    if (source == null)
+                        throw new FileNotFoundException(
+                            "Layer image is missing from the pack.",
+                            layer.ImageSource
+                        );
+                    image = LoadImageLayer(source, Size);
+                    imageLayers.Add(layer.ImageSource, image);
+                }
+                return image;
+            }
             if (layer.Source >= 0)
                 return layer.Source < defaults.Count ? defaults[layer.Source] : default;
             if (additions.TryGetValue(layer.Seed, out var result))
@@ -860,6 +885,44 @@ internal static class ContentEditorArtworkEffectGenerator
                 Release(piece.Texture);
             foreach (var piece in additions.Values)
                 Release(piece.Texture);
+            foreach (var piece in imageLayers.Values)
+                Release(piece.Texture);
+        }
+    }
+
+    /// <summary>
+    /// Places an imported image on the output canvas before trimming transparent padding.
+    /// </summary>
+    /// <param name="image">The encoded layer image.</param>
+    /// <param name="canvas">The output image dimensions.</param>
+    /// <returns>The visible layer pixels and their initial position.</returns>
+    private static (Texture2D Texture, RectInt Bounds) LoadImageLayer(
+        byte[] image,
+        Vector2Int canvas
+    )
+    {
+        Texture2D source = new(2, 2, TextureFormat.RGBA32, false);
+        try
+        {
+            if (!ImageConversion.LoadImage(source, image))
+                throw new InvalidDataException("The selected layer image could not be decoded.");
+            Vector2Int size = new(source.width, source.height);
+            bool fits = size.x <= canvas.x && size.y <= canvas.y;
+            var layer = fits
+                ? CropLayer(source.GetPixels(), size)
+                : CropLayer(
+                    FitToCanvas(source, canvas, stretchSource: false, filterAlpha: true),
+                    canvas
+                );
+            if (layer.Texture == null)
+                throw new InvalidDataException("Choose a layer image with visible pixels.");
+            if (fits)
+                layer.Bounds.position += (canvas - size) / 2;
+            return layer;
+        }
+        finally
+        {
+            Release(source);
         }
     }
 
@@ -2036,11 +2099,20 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <param name="source">The readable source texture.</param>
     /// <param name="target">The destination canvas.</param>
     /// <param name="stretchSource">Whether both runtime layers are stretched edge to edge.</param>
+    /// <param name="filterAlpha">Whether transparent pixels must be filtered in premultiplied form.</param>
     /// <returns>Canvas pixels with the source placement preserved.</returns>
-    private static Color[] FitToCanvas(Texture2D source, Vector2Int target, bool stretchSource)
+    private static Color[] FitToCanvas(
+        Texture2D source,
+        Vector2Int target,
+        bool stretchSource,
+        bool filterAlpha = false
+    )
     {
         if (source.width == target.x && source.height == target.y)
             return source.GetPixels();
+        Color32[] transparentPixels = filterAlpha ? source.GetPixels32() : null;
+        if (transparentPixels?.All(pixel => pixel.a == 255) == true)
+            transparentPixels = null;
         float scale = Mathf.Min((float)target.x / source.width, (float)target.y / source.height);
         float width = stretchSource ? target.x : scale * source.width;
         float height = stretchSource ? target.y : scale * source.height;
@@ -2053,7 +2125,16 @@ internal static class ContentEditorArtworkEffectGenerator
             float u = (x + 0.5f - left) / width;
             float v = (y + 0.5f - bottom) / height;
             if (u >= 0f && u <= 1f && v >= 0f && v <= 1f)
-                pixels[y * target.x + x] = source.GetPixelBilinear(u, v);
+                pixels[y * target.x + x] =
+                    transparentPixels == null
+                        ? source.GetPixelBilinear(u, v)
+                        : ContentEditorArtworkCutGenerator.SampleTransparentPixel(
+                            transparentPixels,
+                            source.width,
+                            source.height,
+                            u * source.width - 0.5f,
+                            v * source.height - 0.5f
+                        );
         }
         return pixels;
     }
@@ -2764,8 +2845,11 @@ internal static class ContentEditorArtworkEffectGenerator
 [Serializable]
 internal sealed class ContentEditorArtworkRecipe
 {
-    internal const int CurrentVersion = 7;
-    public int Version = CurrentVersion;
+    private const int _proceduralVersion = 7;
+    private const int _imageLayerVersion = 8;
+    internal const int CurrentVersion = _imageLayerVersion;
+    public int Version = _proceduralVersion;
+    public int LegacyRenderVersion;
     public string OutputMember;
     public int Seed;
     public int NextAddition;
@@ -2777,7 +2861,22 @@ internal sealed class ContentEditorArtworkRecipe
     public string[] TravelPatterns;
     public string[] TravelSubjects;
     internal bool HasStoredSources => ExistingSources is { Length: > 0 };
+    internal int RenderVersion => LegacyRenderVersion > 0 ? LegacyRenderVersion : Version;
     public List<ContentEditorArtworkLayer> Layers = new();
+    internal bool NeedsImageLayerUpgrade =>
+        Version < _imageLayerVersion
+        && Layers.Exists(layer => !string.IsNullOrEmpty(layer.ImageSource));
+
+    /// <summary>
+    /// Marks image layers as requiring a reader that can render them, retaining the procedural recipe.
+    /// </summary>
+    internal void UpgradeImageLayerVersion()
+    {
+        if (!NeedsImageLayerUpgrade)
+            return;
+        LegacyRenderVersion = RenderVersion;
+        Version = _imageLayerVersion;
+    }
 
     /// <summary>
     /// Reads one artwork sidecar and isolates the sources belonging to its output.
@@ -2855,6 +2954,7 @@ internal struct ContentEditorArtworkLayer
     public bool VisibleStreakGroup;
     public bool Hidden;
     public string Name;
+    public string ImageSource;
     public Vector2 Offset;
     public int ScalePercent;
 

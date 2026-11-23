@@ -209,11 +209,29 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral theme** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit shared interface artwork.
 Double-click an outlined sector icon to open its image settings. Use
-**Galaxy map icons** for neutral star markers and **Shared mission icons** for
+**Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's
 **Interfaces > Strategy view**.
+
+### Unit artwork
+
+In **Artwork**, the **Messages and encyclopedia** section holds the two 1800 × 900 images.
+Choose **Use message image** or **Use encyclopedia image** to share one file between them.
+**Generate cuts** uses the source image's actual dimensions to prevent upscaling.
+For capital ships and starfighters, it generates gameplay artwork only.
+Message and encyclopedia images can also supply the cuts.
+
+### Artwork layers
+
+In the travel or damage artwork editor, choose an output size and click **Add image…**.
+PNG and JPEG files become independent layers you can move, scale, hide, and reorder.
+When you save the artwork, the editor copies the source image into the pack and saves the layer
+with that output so you can edit it again later.
+
+Image pickers reopen in the last folder you imported from. On Windows and macOS, you can
+also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a layer.
 
 ## Sharing a mod
 
