@@ -117,7 +117,8 @@ test('default-branch tests validate the pinned pack and check full coverage', ()
   const steps = runner.jobs.test.steps;
   const gameci = steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
   assert.equal(gameci.with.testMode, 'all');
-  assert.equal(gameci.with.coverageEnabled, "${{ inputs.media_sha != '' }}");
+  assert.equal(gameci.env.GAME_CI_COVERAGE_ENABLED, "${{ inputs.media_sha != '' && 'true' || 'false' }}");
+  assert.equal(gameci.with.coverageEnabled, undefined);
   assert.equal(steps.find(step => step.name === 'Check coverage threshold').if, "inputs.media_sha != ''");
   assert.equal(runner.env.UNITY_VERSION, ci.env.UNITY_VERSION);
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);

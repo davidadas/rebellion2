@@ -266,6 +266,8 @@ jobs:
         env:
           UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
           UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          # The action's false input emits a negated flag rejected by the CLI.
+          GAME_CI_COVERAGE_ENABLED: ${{ inputs.media_sha != '' && 'true' || 'false' }}
         with:
           projectPath: .
           unityVersion: ${{ env.UNITY_VERSION }}
@@ -274,10 +276,9 @@ jobs:
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
           customParameters: ${{ inputs.media_sha != '' && '-force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll' || '-force-vulkan -debugCodeOptimization -testCategory !^RequiresMedia$' }}
-          coverageEnabled: ${{ inputs.media_sha != '' }}
           coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
           checkName: ${{ inputs.media_sha != '' && 'Test results' || 'Core Unity test results' }}
-          cliVersion: v0.1.65
+          cliVersion: v0.1.76
 
       - name: Verify test results
         run: |
