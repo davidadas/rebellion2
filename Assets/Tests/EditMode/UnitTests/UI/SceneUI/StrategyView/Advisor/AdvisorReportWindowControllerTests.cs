@@ -13,6 +13,7 @@ using GalaxyMapModel = Rebellion.Game.Galaxy.GalaxyMap;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Advisor
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AdvisorReportWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

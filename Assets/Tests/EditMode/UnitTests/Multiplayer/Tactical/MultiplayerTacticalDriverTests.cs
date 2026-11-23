@@ -9,7 +9,6 @@ using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
-using Rebellion.Gameplay.Scripting;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
 using Rebellion.SceneGraph;
@@ -72,7 +71,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
 
         [TestCase("FNALL1")]
         [TestCase("FNEMP1")]
-        public void Advance_AuthoredCarrierBattle_ProjectsNaturalCombatAndCommitsOneSharedResult(
+        public void Advance_CarrierBattle_ProjectsNaturalCombatAndCommitsOneSharedResult(
             string hostFaction
         )
         {
@@ -326,7 +325,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             public MultiplayerPacket LastCompletionCommit { get; private set; }
 
             /// <summary>
-            /// Restores two owned campaigns from one authored graph before attaching real replay boundaries.
+            /// Restores two owned campaigns from one fixture graph before attaching replay boundaries.
             /// </summary>
             /// <param name="hostFaction">The faction controlled by the authoritative host.</param>
             /// <param name="encounterCount">The number of independent contested systems to create.</param>
@@ -360,8 +359,9 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 guestGame.UseDeterministicRuntimeIdentifiers = true;
                 hostGame.LocalPlayerFactionID = _hostFaction;
                 guestGame.LocalPlayerFactionID = _guestFaction;
-                HostSimulation = new GameSession(hostGame, TestContent.Data);
-                GuestSimulation = new GameSession(guestGame, TestContent.Data);
+                GameDataCatalog data = TacticalTestData.CreateCatalog(source.Config);
+                HostSimulation = new GameSession(hostGame, data);
+                GuestSimulation = new GameSession(guestGame, data);
                 Host = new MultiplayerTurnProtocol(
                     MultiplayerRole.Host,
                     _hostFaction,
@@ -859,7 +859,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             }
 
             /// <summary>
-            /// Creates operational authored carriers and squadrons in independent contested systems.
+            /// Creates operational test carriers and squadrons in independent contested systems.
             /// </summary>
             /// <param name="hostFaction">The faction controlled by the authoritative host.</param>
             /// <param name="encounterCount">The number of independent contested systems to create.</param>
@@ -880,7 +880,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                         PlayerFactionID = hostFaction,
                         VictoryCondition = GameVictoryCondition.Conquest,
                     },
-                    TestContent.Data.GameConfig.CreateCopy()
+                    TacticalTestData.ConfigureCampaignRules(TestConfig.Create())
                 );
                 game.Metadata.CampaignID = Guid.NewGuid().ToString("N");
                 game.SetGameSpeed(TickSpeed.Fast);
@@ -901,10 +901,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 foreach (string id in new[] { "FNALL1", "FNEMP1" })
                 {
                     Faction faction = new() { InstanceID = id, HQInstanceID = "home-" + id };
-                    TestContent
-                        .Data.Factions.Single(item => item.InstanceID == id)
-                        .CopyDefinitionTo(faction);
-                    faction.HQInstanceID = "home-" + id;
+                    faction.Settings.BattleLossLoyaltyDivisor =
+                        TacticalTestData.BattleLossLoyaltyDivisor;
                     game.GetFactions().Add(faction);
                     game.SetFactionController(id, id + "-player", PlayerControllerType.Human);
                     Planet home = new()
@@ -919,15 +917,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                     home.InitializeSectorSupportEligibility(true);
                     game.AttachNode(home, sector);
                 }
-                PopulateScenarioOfficers(game);
-                UnitFactory units = new(
-                    TestContent.Data.Buildings,
-                    TestContent.Data.CapitalShips,
-                    TestContent.Data.Starfighters,
-                    TestContent.Data.Regiments,
-                    TestContent.Data.SpecialForces,
-                    TestContent.Data.TacticalCombat
-                );
+                UnitFactory units = TacticalTestData.CreateUnitFactory(game.Config);
                 for (int encounter = 0; encounter < encounterCount; encounter++)
                 {
                     Planet planet = new()
@@ -971,9 +961,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                         if (station && id == "FNEMP1")
                         {
                             CapitalShip battleStation = units.Create<CapitalShip>(
-                                TestContent
-                                    .Data.CapitalShips.Single(ship => ship.CanDestroyPlanets)
-                                    .TypeID,
+                                TacticalTestData.StationTypeID,
                                 id
                             );
                             battleStation.InstanceID = fleet.InstanceID + "-station";
@@ -981,54 +969,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                         }
                     }
                 }
-                VerifyAuthoredBindings(game);
                 return game;
-            }
-
-            /// <summary>
-            /// Deploys the scenario's entire guaranteed named roster at its faction homes outside combat.
-            /// Ownership follows authored ownership or the sole recruiting faction, as in officer generation.
-            /// </summary>
-            /// <param name="game">The independent battle scenario receiving its required story actors.</param>
-            private static void PopulateScenarioOfficers(GameRoot game)
-            {
-                Dictionary<string, Officer> templates = TestContent.Data.Officers.ToDictionary(
-                    officer => officer.InstanceID,
-                    StringComparer.Ordinal
-                );
-                Dictionary<string, Planet> homes = game.GetSceneNodesByType<Planet>()
-                    .ToDictionary(planet => planet.InstanceID, StringComparer.Ordinal);
-                foreach (
-                    StartingOfficerRule rule in TestContent
-                        .Data
-                        .GenerationConfig
-                        .Officers
-                        .StartingOfficers
-                )
-                {
-                    Officer officer = (Officer)templates[rule.OfficerInstanceID].CreateCopy();
-                    officer.OwnerInstanceID ??= officer.RecruitingFactionInstanceIDs.Single();
-                    game.AttachNode(officer, homes["home-" + officer.OwnerInstanceID]);
-                }
-            }
-
-            /// <summary>
-            /// Resolves every authored event-level binding before snapshotting the fixture, without scheduling
-            /// actions or consuming the campaign random stream.
-            /// </summary>
-            /// <param name="game">The complete minimal world whose eager story prerequisites are checked.</param>
-            private static void VerifyAuthoredBindings(GameRoot game)
-            {
-                IRandomNumberProvider selectionRandom = new SystemRandomProvider(123);
-                foreach (var gameEvent in TestContent.Data.GameEvents)
-                {
-                    GameEvaluationContext context = new(gameEvent.InstanceID);
-                    foreach (var binding in gameEvent.Bindings)
-                        Assert.DoesNotThrow(
-                            () => GameBindingResolver.Bind(binding, game, selectionRandom, context),
-                            $"Authored binding prerequisite: {gameEvent.InstanceID}/{binding.As}"
-                        );
-                }
             }
         }
 

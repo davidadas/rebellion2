@@ -9,9 +9,12 @@ on:
       base_sha:
         type: string
         default: ''
+      core_only:
+        type: boolean
+        default: false
       media_sha:
-        required: true
         type: string
+        default: ''
       reviewed_head_sha:
         type: string
         default: ''
@@ -24,6 +27,17 @@ on:
       save_cache:
         type: boolean
         default: true
+    secrets:
+      UNITY_EMAIL:
+        required: false
+      UNITY_PASSWORD:
+        required: false
+      REBELLION2_MEDIA_SSH_KEY:
+        required: false
+      R2_ACCESS_KEY_ID:
+        required: false
+      R2_SECRET_ACCESS_KEY:
+        required: false
 
 env:
   LOG_LEVEL: None
@@ -37,6 +51,17 @@ jobs:
     environment: production
 
     steps:
+      - name: Validate suite inputs
+        env:
+          CORE_ONLY: ${{ inputs.core_only }}
+          MEDIA_SHA: ${{ inputs.media_sha }}
+        run: |
+          if [ "$CORE_ONLY" = "true" ]; then
+            test -z "$MEDIA_SHA"
+          else
+            [[ "$MEDIA_SHA" =~ ^[a-f0-9]{40}$ ]]
+          fi
+
       - name: Checkout repository
         if: inputs.reviewed_head_sha == ''
         uses: actions/checkout@v4
@@ -100,6 +125,7 @@ jobs:
         run: python3 Tools/build_tactical_math.py --build-directory "$RUNNER_TEMP/tactical-math" --target linux-x64
 
       - name: Checkout media (git only, no LFS)
+        if: inputs.media_sha != ''
         uses: actions/checkout@v4
         with:
           repository: adasgames/rebellion2-media
@@ -146,7 +172,24 @@ jobs:
           path: ${{ runner.temp }}/unity-tooling-image.tar.zst
           key: unity-tooling-${{ runner.os }}-${{ runner.arch }}-${{ env.UNITY_VERSION }}-${{ env.UNITY_IMAGE_VERSION }}-${{ hashFiles('.github/docker/unity-tests.Dockerfile') }}
 
-      - name: Pull media LFS and Unity image
+      - name: Load Unity image
+        shell: bash
+        run: |
+          if [ "${{ steps.unity-image-cache.outputs.cache-hit }}" = "true" ]; then
+            zstd --decompress --stdout "$RUNNER_TEMP/unity-tooling-image.tar.zst" | docker load
+            exit 0
+          fi
+          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
+          for attempt in 1 2 3; do
+            docker pull "$BASE_IMAGE" && exit 0
+            if [ "$attempt" -lt 3 ]; then
+              sleep 30
+            fi
+          done
+          exit 1
+
+      - name: Pull media LFS
+        if: inputs.media_sha != ''
         working-directory: .ci/rebellion2-media
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -155,22 +198,6 @@ jobs:
           R2_BUCKET: ${{ vars.R2_BUCKET }}
         shell: bash
         run: |
-          BASE_IMAGE="unityci/editor:ubuntu-${{ env.UNITY_VERSION }}-linux-il2cpp-${{ env.UNITY_IMAGE_VERSION }}"
-          (
-            if [ "${{ steps.unity-image-cache.outputs.cache-hit }}" = "true" ]; then
-              zstd --decompress --stdout "$RUNNER_TEMP/unity-tooling-image.tar.zst" | docker load
-              exit 0
-            fi
-            for attempt in 1 2 3; do
-              docker pull "$BASE_IMAGE" && exit 0
-              echo "Attempt $attempt failed, retrying in 30s..."
-              sleep 30
-            done
-            exit 1
-          ) > "$RUNNER_TEMP/unity-image-pull.log" 2>&1 &
-          pull_pid=$!
-          trap 'kill "$pull_pid" >/dev/null 2>&1 || true' EXIT
-
           HOST="${R2_ENDPOINT#https://}"
           git config lfs.url "https://${R2_ACCESS_KEY_ID}:${R2_SECRET_ACCESS_KEY}@rebellion2-lfs-proxy.pages.dev/${HOST}/${R2_BUCKET}"
           git config lfs.concurrenttransfers 3
@@ -195,14 +222,8 @@ jobs:
             exit 1
           fi
 
-          if ! wait "$pull_pid"; then
-            cat "$RUNNER_TEMP/unity-image-pull.log"
-            exit 1
-          fi
-          cat "$RUNNER_TEMP/unity-image-pull.log"
-          trap - EXIT
-
       - name: Install media
+        if: inputs.media_sha != ''
         run: |
           mkdir -p Assets/Content Assets/Art/Models/MainMenu
           test -f .ci/rebellion2-media/Content/Application/Schemas/game-config.xsd
@@ -210,6 +231,14 @@ jobs:
           rsync -a --delete --exclude=.DS_Store --exclude='*.meta' .ci/rebellion2-media/Models/MainMenu/ Assets/Art/Models/MainMenu/
           rsync -a --exclude=.DS_Store .ci/rebellion2-media/UnityAssets/ Assets/
           rm -rf .ci
+
+      - name: Verify media is absent
+        if: inputs.media_sha == ''
+        run: |
+          test ! -e Assets/Content/catalog.xml
+          test ! -e Assets/Prefabs
+          test ! -e Assets/Scenes
+          test ! -e .ci/rebellion2-media
 
       - name: Prepare Vulkan-enabled Unity test image
         if: steps.unity-image-cache.outputs.cache-hit != 'true'
@@ -244,16 +273,21 @@ jobs:
           githubToken: ${{ inputs.publish_checks && secrets.GITHUB_TOKEN || '' }}
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
-          customParameters: -force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll
-          coverageEnabled: true
-          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
-          checkName: Test results
+          customParameters: ${{ inputs.media_sha != '' && '-force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll' || '-force-vulkan -debugCodeOptimization -testCategory !^RequiresMedia$' }}
+          coverageEnabled: ${{ inputs.media_sha != '' }}
+          coverageOptions: "generateHtmlReport;assemblyFilters:+Rebellion.AI,+Rebellion.Analytics,+Rebellion.App,+Rebellion.Content,+Rebellion.Game,+Rebellion.Gameplay,+Rebellion.Generation,+Rebellion.Multiplayer,+Rebellion.Networking.Transport,+Rebellion.Saves,+Rebellion.SceneGraph,+Rebellion.Sessions,+Rebellion.Tactical.Core,+Rebellion.UserSettings,+Rebellion.Util"
+          checkName: ${{ inputs.media_sha != '' && 'Test results' || 'Core Unity test results' }}
           cliVersion: v0.1.65
+
+      - name: Verify test results
+        run: |
+          test -s artifacts/editmode-results.xml
+          test -s artifacts/playmode-results.xml
 
       - name: Summarize test execution time
         if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         env:
-          TEST_RUN_NAME: Test
+          TEST_RUN_NAME: ${{ inputs.media_sha != '' && 'Full test suite' || 'Core test suite' }}
         run: |
           python3 - <<'EOF'
           import os
@@ -270,6 +304,8 @@ jobs:
               root = ET.parse(path).getroot()
               cases = [case for case in root.iter("test-case")
                        if "start-time" in case.attrib and "end-time" in case.attrib]
+              if not cases:
+                  raise SystemExit(f"No {mode} tests executed.")
               first = min(datetime.fromisoformat(case.attrib["start-time"]) for case in cases)
               last = max(datetime.fromisoformat(case.attrib["end-time"]) for case in cases)
               seconds = (last - first).total_seconds()
@@ -297,7 +333,7 @@ jobs:
         if: ${{ !cancelled() && hashFiles('artifacts/*mode-results.xml') != '' }}
         uses: actions/upload-artifact@v4
         with:
-          name: unity-test-results
+          name: ${{ inputs.media_sha != '' && 'unity-test-results' || 'core-unity-test-results' }}
           path: |
             artifacts/editmode-results.xml
             artifacts/playmode-results.xml
@@ -352,6 +388,7 @@ jobs:
             --no-build --logger "console;verbosity=normal"
 
       - name: Check coverage threshold
+        if: inputs.media_sha != ''
         run: |
           python3 - <<'EOF'
           import sys

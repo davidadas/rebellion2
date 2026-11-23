@@ -8,6 +8,7 @@ namespace Rebellion.Tests.UI.Runtime.Themes
     {
         [TestCase("FNALL1", "InterceptedCommunication", 121)]
         [TestCase("FNEMP1", "GeneralReport", 71)]
+        [Category("RequiresMedia")]
         public void GetNotification_ChatReceived_ResolvesDistinctSpeechAndGatedProtocol(
             string factionID,
             string protocolAnimation,

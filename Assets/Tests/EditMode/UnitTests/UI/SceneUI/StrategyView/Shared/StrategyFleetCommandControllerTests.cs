@@ -16,6 +16,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyFleetCommandControllerTests
     {
         private const string _opposingFactionId = "opponent";

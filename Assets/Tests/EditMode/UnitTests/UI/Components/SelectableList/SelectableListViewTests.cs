@@ -7,6 +7,7 @@ using UnityEngine.EventSystems;
 namespace Rebellion.Tests.UI.Components.SelectableList
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class SelectableListViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/FinderWindow.prefab";

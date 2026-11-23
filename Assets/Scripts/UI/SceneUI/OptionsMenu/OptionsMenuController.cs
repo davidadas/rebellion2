@@ -464,12 +464,6 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
             return;
         }
 
-        if (_selectedModResolver.ModIssues.Count > 0)
-        {
-            SetStatus(BuildContentErrorStatus("Mod"), true);
-            return;
-        }
-
         InstalledContentPack selectedPack = GetSelectedPack();
         if (
             selectedPack != null

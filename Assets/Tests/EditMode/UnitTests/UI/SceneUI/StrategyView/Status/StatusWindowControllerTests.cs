@@ -14,6 +14,7 @@ using UnityEngine.EventSystems;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StatusWindowControllerTests
     {
         private const string _playerFactionId = "FNALL1";

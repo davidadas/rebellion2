@@ -20,7 +20,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithRemoteTarget_MovesColonizationFleetIntact()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -63,7 +67,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithFleetReservedAtHeadquarters_MovesColonizationFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
@@ -102,7 +110,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithFleetAndRegimentAtTarget_ClaimsPlanet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
@@ -129,7 +141,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithColonizationFleetAtTarget_PreservesFleetRole()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
@@ -158,7 +174,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithMultipleRegiments_DropsWeakestRegiment()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
             target.IsColonized = false;
@@ -194,7 +214,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithStaleTargetState_TravelsBeforeRejectingColonization()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);

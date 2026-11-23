@@ -183,7 +183,11 @@ namespace Rebellion.Tests.AI.Proposals
             BuildingType completedDestinationBuildingType = BuildingType.Defense
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             empire.Settings.Headquarters = new HeadquartersSettings
             {
                 FacilityTypeID = "mobile-headquarters",

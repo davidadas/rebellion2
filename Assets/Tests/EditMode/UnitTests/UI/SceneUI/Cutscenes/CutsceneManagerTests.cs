@@ -13,7 +13,6 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
     [TestFixture]
     public class CutsceneManagerTests
     {
-        private const string _prefabPath = "Assets/Resources/UI/CutscenePlayer.prefab";
         private const string _clipPath =
             "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm";
 
@@ -34,8 +33,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         {
             _previousAudioPause = AudioListener.pause;
             AudioListener.pause = false;
-            _playerPrefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
             _managerObject = new GameObject("CutsceneManager");
+            _playerPrefab = CutscenePlayerFixture.Create(_managerObject.transform);
             _manager = _managerObject.AddComponent<CutsceneManager>();
             _manager.Initialize(_playerPrefab);
             _audioManager = _managerObject.AddComponent<AudioManager>();

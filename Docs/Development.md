@@ -6,6 +6,9 @@
 - .NET SDK
 - A Bash-compatible shell and `rg` (ripgrep)
 - Python 3.11 or later for desktop packaging
+
+Running the game, building it, or running the full test suite also requires:
+
 - Ownership of *Star Wars: Rebellion* or *Star Wars: Empire at War: Gold Pack* through GOG or Steam
 - Access to the separate `rebellion2-media` repository
 
@@ -36,7 +39,9 @@ Run these from the repository root:
 ```bash
 ./build.sh format     # Check C# formatting
 ./build.sh lint       # Run static analysis
-./build.sh test       # Run Unity EditMode and PlayMode tests
+./build.sh test-core  # Run Unity EditMode and PlayMode tests from the game repository alone
+./build.sh test-media # Run tests that require the installed media or generated UI
+./build.sh test       # Run both groups, with media installed
 ./build.sh coverage   # Run tests with coverage thresholds
 ./build.sh build      # Build and verify the game and content-pack editor
 ./build.sh clean      # Remove build artifacts

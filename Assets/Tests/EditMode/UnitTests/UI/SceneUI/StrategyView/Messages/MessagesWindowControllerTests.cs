@@ -23,6 +23,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 
         [TestCase(MessagesTab.All)]
         [TestCase(MessagesTab.Fleet)]
+        [Category("RequiresMedia")]
         public void TryCancel_MessageDetail_ReturnsToIndexBeforeClosingWindow(MessagesTab tab)
         {
             Message message = CreateMessage("report");
@@ -167,6 +168,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MessageRemovalRequested_SelectedMiddleRow_SelectsDisplayedRowAbove()
         {
             Message oldest = CreateMessage("oldest");
@@ -196,6 +198,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MessageRowSelected_MultiSelectModifier_RemovesToggledMessagesTogether()
         {
             Message oldest = CreateMessage("oldest");
@@ -227,6 +230,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MessageRowSelected_RangeSelectModifier_RemovesContiguousMessagesTogether()
         {
             Message oldest = CreateMessage("oldest");
@@ -258,6 +262,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanChooseMissionContinuation_PendingOwnedWorkingMission_ReturnsTrue()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -284,6 +289,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CanChooseMissionContinuation_NonPendingMissionMessage_ReturnsFalse()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
@@ -306,6 +312,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TryCancel_MissionContinuationDetail_ReturnsToIndexWithoutAbortingMission()
         {
             Message message = CreateMessage("report");
@@ -344,6 +351,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MissionContinueRequested_PendingReport_ReturnsToIndexWithoutAbortingMission()
         {
             Message message = CreateMessage("report");
@@ -380,6 +388,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void MissionAbortRequested_PendingReport_AbortsMissionAndReturnsToIndex()
         {
             Message message = CreateMessage("report");
@@ -416,6 +425,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Open_CategoryTab_PreservesIndividualUnreadState()
         {
             Message first = CreateMessage("first");
@@ -440,6 +450,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenTab_DifferentTab_AcknowledgesPreviousTabWithoutMarkingMessagesRead()
         {
             Message first = CreateMessage("first");
@@ -468,6 +479,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void DestroyWindow_PresentedMessages_ClearsNotifications()
         {
             Message first = CreateMessage("first");
@@ -563,6 +575,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Open_AdviceTab_OpensMessageIndexOnAgentAdvice()
         {
             Faction faction = new Faction { InstanceID = "FNALL1" };
@@ -622,6 +635,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenDetail_CombatReport_OpensBattleResultInsteadOfGenericDetail()
         {
             CombatReport report = new CombatReport
@@ -678,6 +692,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void TabClick_FromMessageDetail_LoadsRequestedTabRows()
         {
             Message fleetMessage = new StatusMessage(MessageType.Fleet, "Fleet", "Fleet")
@@ -747,6 +762,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         /// Opens an empty composer without changing the selected message category.
         /// </summary>
         [Test]
+        [Category("RequiresMedia")]
         public void ChatRequested_PeerAvailable_OpensEmptyComposerAndPreservesIndexCategory()
         {
             var fixture = OpenMessagesWindow(
@@ -773,6 +789,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public async Task SubmitPeerChatAsync_MultilineRawText_SendsUnchangedAndReturnsToIndexAsync()
         {
             TestActions actions = new TestActions { CanSendPeerChat = true };
@@ -804,6 +821,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public async Task SubmitPeerChatAsync_EmptyDraft_DoesNotSubmitAsync()
         {
             TestActions actions = new TestActions { CanSendPeerChat = true };
@@ -827,6 +845,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public async Task SubmitPeerChatAsync_RejectedSubmission_PreservesDraftAsync()
         {
             TestActions actions = new TestActions
@@ -861,6 +880,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public async Task SubmitPeerChatAsync_OverlappingSubmissions_SendsOnceAsync()
         {
             TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();
@@ -894,6 +914,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public async Task SubmitPeerChatAsync_CompletionAfterCancelAndReopen_PreservesNewDraftAsync()
         {
             TaskCompletionSource<bool> completion = new TaskCompletionSource<bool>();

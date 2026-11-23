@@ -21,6 +21,7 @@ using ArgumentOutOfRangeException = global::System.ArgumentOutOfRangeException;
 namespace Rebellion.Tests.AI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class AIAssessmentTests
     {
         [TestCase(nameof(AIAssessment.GetReadyFleetCombatValueAgainstCapitalShips))]
@@ -31,7 +32,7 @@ namespace Rebellion.Tests.AI
         [TestCase(nameof(AIAssessment.GetProjectedFleetRegimentAttackStrength))]
         public void BeginExecution_WithFleetReinforcements_ReturnsCurrentCapabilities(string query)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction empire, out _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", empire.InstanceID);
             Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = empire.InstanceID };
@@ -71,7 +72,10 @@ namespace Rebellion.Tests.AI
             PlanetIntelligenceCategory requested
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -84,7 +88,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetPlanetIntelAge_NarrowReportAfterFullObservation_UsesFullObservationAge()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -107,7 +114,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetPlanetIntelAge_NewPartialObservation_ReturnsUnknownAge()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -128,7 +138,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetPlanetIntelAge_OrdinaryObservation_ReturnsElapsedAge()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -143,7 +156,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetPlanetIntelAge_OrdinaryObservationAfterEspionage_UsesLatestObservation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -160,7 +176,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetPlanetIntelAge_PlanetLossObservation_UsesLossTick()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, sector, "enemy", empire.InstanceID);
@@ -258,7 +277,8 @@ namespace Rebellion.Tests.AI
                 false,
                 0,
                 out Fleet receiver,
-                out _
+                out _,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
             );
             Planet target = context.Game.GetSceneNodeByInstanceID<Planet>(
                 receiver.Order.TargetPlanetId
@@ -293,7 +313,8 @@ namespace Rebellion.Tests.AI
                 false,
                 5,
                 out Fleet receiver,
-                out CapitalShip ship
+                out CapitalShip ship,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
             );
             context.Game.MoveNode(ship, receiver);
             ship.ManufacturingStatus = ManufacturingStatus.Building;
@@ -327,7 +348,10 @@ namespace Rebellion.Tests.AI
             double expected
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "competition");
             sector.SectorType = PlanetSectorType.OuterRim;
             Planet planet = AITestSceneBuilder.AddPlanet(
@@ -372,7 +396,10 @@ namespace Rebellion.Tests.AI
             int successPercent
         )
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                age,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
             context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
             {
@@ -419,7 +446,10 @@ namespace Rebellion.Tests.AI
             int successPercent
         )
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                age,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             context.Game.Config.ProbabilityTables.Mission.DefaultSuccessProbability = 100;
             context.Game.Config.ProbabilityTables.Mission.Espionage = new Dictionary<int, int>
             {
@@ -463,7 +493,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_EquivalentRequests_ReusesAssessmentResult()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
             Planet target = context.Assessment.GetKnownPlanet("target");
 
@@ -493,7 +526,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_NewAssessment_RecalculatesResult()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             MissionContext request = new()
             {
                 MissionTypeID = MissionTypeIDs.Espionage,
@@ -994,7 +1030,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetOperationalMissionOdds_AfterCompleteEvaluation_KeepsPersonnelLossOmitted()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             MissionContext request = new()
             {
                 MissionTypeID = MissionTypeIDs.Espionage,
@@ -1029,7 +1068,10 @@ namespace Rebellion.Tests.AI
             double baselineWeight
         )
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(age);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                age,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet target = context.Assessment.GetKnownPlanet("target");
             Planet reference = context.Assessment.GetKnownPlanet("reference");
             Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
@@ -1065,7 +1107,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_MissingDefenderIntel_UsesBaselineDespiteRecentPlanetReport()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(0);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                0,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet target = context.Assessment.GetKnownPlanet("target");
             PlanetSector sector = target.GetParentOfType<PlanetSector>();
             context
@@ -1092,7 +1137,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_HiddenReinforcements_DoNotLeakIntoBaseline()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet target = context.Assessment.GetKnownPlanet("target");
             Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
             MissionContext request = new()
@@ -1126,7 +1174,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_BaselineHasCommander_UsesReferenceCommanderRatings()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet liveReference = context.Game.GetSceneNodeByInstanceID<Planet>("reference");
             foreach (Regiment regiment in liveReference.GetChildren<Regiment>())
                 regiment.DetectionRating = 0;
@@ -1168,7 +1219,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_NoObservedDefenses_UsesConfiguredFallback()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet reference = context.Game.GetSceneNodeByInstanceID<Planet>("reference");
             foreach (Regiment regiment in reference.GetChildren<Regiment>().ToList())
                 context.Game.DetachNode(regiment);
@@ -1197,7 +1251,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_SpecialForcesDecoy_ReducesUncertainOfficerRisk()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
             SpecialForces decoy = new()
             {
@@ -1233,7 +1290,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_WeakerBaseline_DoesNotReduceObservedRisk()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet target = context.Game.GetSceneNodeByInstanceID<Planet>("target");
             for (int index = 0; index < 3; index++)
                 context.Game.AttachNode(
@@ -1280,7 +1340,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_AnotherEnemyHasStrongerDefenses_UsesTargetFactionBaseline()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Officer spy = context.Game.GetSceneNodeByInstanceID<Officer>("spy");
             MissionContext request = new()
             {
@@ -1321,7 +1384,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetMissionOdds_SeparateGroundAndOrbitalReferences_UsesBothDefenseGroups()
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet target = context.Game.GetSceneNodeByInstanceID<Planet>("target");
             Planet orbitalReference = AITestSceneBuilder.AddPlanet(
                 context.Game,
@@ -1368,7 +1434,10 @@ namespace Rebellion.Tests.AI
             bool held
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction owner,
+                out Faction _
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", owner.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", owner.InstanceID);
@@ -1408,7 +1477,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_HoldConditionsStopMatching_ReleasesOfficerOnNextAssessment()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction owner,
+                out Faction _
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet origin = AITestSceneBuilder.AddPlanet(game, sector, "origin", owner.InstanceID);
             Planet destination = AITestSceneBuilder.AddPlanet(
@@ -1448,7 +1520,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_HoldBehaviorForAnotherFaction_DoesNotClaimForeignOfficer()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction owner, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction owner,
+                out Faction enemy
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "planet", enemy.InstanceID);
             Officer officer = EntityFactory.CreateOfficer("officer", enemy.InstanceID);
@@ -1466,7 +1541,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithMixedPlanetOwnership_BuildsOwnershipLists()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1491,7 +1569,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithEconomicState_CachesTurnValues()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Starfighter starfighter = AITestSceneBuilder.CreateStarfighter(
@@ -1522,7 +1603,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_HardAiMaintenanceBonus_CachesEffectiveCapacity()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
@@ -1562,7 +1646,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_MaximumEconomyModifiers_SaturatesCachedValues()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(empire.InstanceID, "EMPIRE-AI", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers
@@ -1608,7 +1695,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAvailableProductionLaneCount_WithPartiallyUsedStack_ReturnsFreeLanes()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1646,7 +1736,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetOffensiveSupportLeverage_WithFavoredTargetAndExposedPlanet_ReturnsBoth()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1666,7 +1759,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetDefensiveSupportRisk_WithFavoredEnemyAndExposedPlanet_ReturnsBoth()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1685,7 +1781,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithUnobservedForeignPlanet_DoesNotExposePlanet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet hidden = AITestSceneBuilder.AddPlanet(game, system, "hidden", rebels.InstanceID);
@@ -1703,7 +1802,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithObservedUncolonizedPlanet_ExposesColonizationTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -1725,7 +1827,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithStaleUncolonizedSnapshot_DoesNotRevealCurrentColonization()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", null);
@@ -1748,7 +1853,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithEnemyOfficer_BuildsTargetableEnemyOfficerTargets()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1776,7 +1884,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithEnemyOfficerAboardFleet_BuildsTargetableEnemyOfficerTargets()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1800,7 +1911,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithStaleSnapshot_UsesLastObservedEnemyState()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1830,7 +1944,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void Constructor_WithStaleSnapshot_UsesDetachedRecordedEntityCopies()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -1859,7 +1976,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_WithOnlyLocalFleet_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -1883,7 +2003,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_WithThreatBeyondRemainingDefense_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1938,7 +2061,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredHeadquartersDefenseStrength_WithKnownHostileFleet_UsesAffordableShare()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -1989,7 +2115,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetCommittedHeadquartersDefenseStrength_Default_SumsLocalAndInboundFleets()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2040,7 +2169,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredHeadquartersDefenseStrength_WithUnknownRemoteAttackOrder_UsesMinimumStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -2086,7 +2218,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_AtUndefendedCapturedEnemyHeadquarters_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2110,7 +2245,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_WhenEitherFleetLeavesEnoughDefense_ReturnsTrue()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
@@ -2151,7 +2289,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_FromUnstableOwnedPlanet_ReturnsFalseUntilThreshold()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
@@ -2189,7 +2330,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_FromLowLeverageEnemyDominatedSystem_ReturnsTrue()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
@@ -2217,7 +2361,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_FromLowLeverageFriendlySystem_ReturnsTrue()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             game.Config.SupportShift.GarrisonRemovalSupportShift = 10;
@@ -2246,7 +2393,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_FromHostilePlanet_AllowsImmediateEvacuation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.Garrison.SupportThreshold = 50;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "enemy", rebels.InstanceID);
@@ -2263,7 +2413,7 @@ namespace Rebellion.Tests.AI
         [Test]
         public void CanFleetDepartHeadquarters_FromUnstableFullyShieldedPlanet_ReturnsTrue()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction empire, out _);
             game.Config.AI.Garrison.SupportThreshold = 50;
             game.Config.Combat.PlanetaryAssault.ShieldGeneratorLimit = 2;
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
@@ -2288,7 +2438,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetProjectedFleetCombatValue_WithCommittedUnits_IncludesReadyAndPendingCombat()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2346,7 +2499,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetReadyFleetCombatValueAgainstCapitalShips_WithPartialSquadron_ReturnsSurvivingFighterStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2372,7 +2528,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetProjectedFleetCombatValueAgainstCapitalShips_WithPendingSquadron_ReturnsFullFighterStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2399,7 +2558,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetReadyFleetFirepowerAgainstStarfighters_WithTorpedoes_ExcludesTorpedoStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2427,7 +2589,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetReadyFleetFirepowerAgainstCapitalShips_WithIonCannonsAndTorpedoes_UsesIonCannons()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2455,7 +2620,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetStrongestHostileFleetFirepower_WithVisibleFleet_ReturnsKnownComposition()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("hostile-fleet", rebels.InstanceID);
@@ -2491,7 +2659,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetProjectedFleetRegimentAttackStrength_WithCommittedRegiments_IncludesPendingStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Fleet fleet = EntityFactory.CreateFleet("fleet", empire.InstanceID);
@@ -2538,7 +2709,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetFleetBombardmentStrength_WithDamagedUnitsAndAdmiral_MatchesCombatRules()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.Combat.Bombardment.AttackerLeadershipDivisor = 10;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -2571,7 +2745,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void IsFleetReadyToAttack_ShieldedTarget_RequiresShieldPenetration()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -2610,7 +2787,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void IsFleetReadyToAttack_BombardmentCanRemoveDefenders_RequiresOccupationForce()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
             game.Config.AI.Garrison.SupportThreshold = 60;
             game.Config.AI.Garrison.GarrisonDivisor = 10;
@@ -2654,7 +2834,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void IsFleetReadyToAttack_TransportOnlyFleet_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
@@ -2681,7 +2864,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void IsFleetReadyToAttack_SingleTroopFacingCertainDefenseFire_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -2711,7 +2897,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void IsFleetReadyToAttack_ReserveTroopSurvivesCertainDefenseFire_ReturnsTrue()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 0;
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 0;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
@@ -2746,7 +2935,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredAttackRegimentCount_BombardmentCanRemoveDefenders_RequiresStableOccupation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
             game.Config.AI.Garrison.SupportThreshold = 60;
@@ -2770,7 +2962,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredAttackRegimentCount_StabilityExceedsLandingCapacity_CapsOccupation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 3;
             game.Config.AI.Garrison.SupportThreshold = 100;
@@ -2794,7 +2989,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredAttackRegimentCount_WithoutDefenders_RequiresStableOccupation()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 1;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
             game.Config.AI.Garrison.SupportThreshold = 60;
@@ -2814,7 +3012,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetDefendingRegimentDefenseStrength_WithDifferentBombardmentDefense_ReturnsEqualStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet lowBombardmentDefense = AITestSceneBuilder.AddPlanet(
                 game,
@@ -2846,7 +3047,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredAttackRegimentCount_WithDefendersAndLowSupport_AddsOccupationForce()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultRegimentCount = 2;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
             game.Config.AI.Garrison.SupportThreshold = 60;
@@ -2884,7 +3088,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetRequiredAttackPackage_WithMultipleEnemyPlanets_UsesEachTargetsFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 6;
             game.Config.AI.Garrison.SupportThreshold = 60;
             game.Config.AI.Garrison.GarrisonDivisor = 10;
@@ -2974,7 +3181,16 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetSabotageTargetPriorityBonus_MixedTargets_UsesTacticalPriorityOrder()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
+            var utility = game.Config.AI.MissionPlanning.Utility.Sabotage;
+            utility.Infrastructure.Weight = 1;
+            utility.GarrisonStarfighter.Weight = 2;
+            utility.Defense.Weight = 3;
+            utility.GarrisonRegiment.Weight = 4;
+            utility.Shield.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
             Building shield = AddShield(game, target, "shield", rebels.InstanceID, 5);
@@ -3094,7 +3310,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAttackTargetPlanet_EnemyAttackOrder_ReturnsTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -3117,7 +3336,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAttackTargetPlanet_StaleEnemySnapshot_ReturnsKnownTarget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -3141,7 +3363,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetAttackTargetPlanet_NonEnemyAttackOrder_ReturnsNull()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet owned = AITestSceneBuilder.AddPlanet(game, system, "owned", empire.InstanceID);
             Planet enemy = AITestSceneBuilder.AddPlanet(game, system, "enemy", rebels.InstanceID);
@@ -3174,7 +3399,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetKnownIncomingHostileFleetStrength_StaleSnapshot_DoesNotPolluteFleetCombatCache()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Fleet inboundFleet = EntityFactory.CreateFleet("inbound", rebels.InstanceID);
@@ -3198,7 +3426,10 @@ namespace Rebellion.Tests.AI
         [Test]
         public void GetKnownIncomingHostileFleetStrength_MultipleSameOwnerFleets_ReturnsCombinedStrength()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet planet = AITestSceneBuilder.AddPlanet(game, sector, "owned", empire.InstanceID);
             Fleet firstFleet = EntityFactory.CreateFleet("first-inbound", rebels.InstanceID);
@@ -3322,7 +3553,10 @@ namespace Rebellion.Tests.AI
             out SpecialForces second
         )
         {
-            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(100);
+            AITurnContext context = AITestSceneBuilder.CreateMissionDefenseContext(
+                100,
+                AITestSceneBuilder.CreateFleetPlanningConfig()
+            );
             Planet origin = context.Game.GetSceneNodeByInstanceID<Planet>("origin");
             Planet secondOrigin = AITestSceneBuilder.AddPlanet(
                 context.Game,
@@ -3360,7 +3594,10 @@ namespace Rebellion.Tests.AI
             out Planet destination
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             producer = AITestSceneBuilder.AddPlanet(game, sector, "producer", faction.InstanceID);
             destination = AITestSceneBuilder.AddPlanet(

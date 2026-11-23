@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GalacticInformationSubmenuViewTests
     {
         private const string _prefabPath =

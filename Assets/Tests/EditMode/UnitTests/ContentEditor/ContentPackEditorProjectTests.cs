@@ -249,6 +249,7 @@ namespace Rebellion.Tests.ContentEditor
         [TestCase(BuildingType.Shipyard, ManufacturingType.Ship)]
         [TestCase(BuildingType.TrainingFacility, ManufacturingType.Troop)]
         [TestCase(BuildingType.ConstructionFacility, ManufacturingType.Building)]
+        [Category("RequiresMedia")]
         public void SetField_BuildingType_SynchronizesProductionType(
             BuildingType buildingType,
             ManufacturingType productionType
@@ -284,6 +285,7 @@ namespace Rebellion.Tests.ContentEditor
         [TestCase("Special forces", "ManufacturingFactionInstanceIDs", 1)]
         [TestCase("Buildings", "ManufacturingFactionInstanceIDs", 0)]
         [TestCase("Buildings", "ManufacturingFactionInstanceIDs", 1)]
+        [Category("RequiresMedia")]
         public void AddUnit_ExistingFaction_AssignsOnlyThatFactionAndSupportsUndo(
             string category,
             string member,
@@ -733,6 +735,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void AddFaction_LoadablePack_ProductionLoaderReadsFactionWithoutChangingScenario()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -1423,6 +1426,7 @@ namespace Rebellion.Tests.ContentEditor
         [TestCase("field")]
         [TestCase("duplicate")]
         [TestCase("remove")]
+        [Category("RequiresMedia")]
         public void Undo_StaleRecordHandle_RejectsMutationWithoutChangingRestoredText(
             string operation
         )
@@ -1450,6 +1454,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void Move_UndoThenStaleSectorHandle_RejectsTheDiscardedCoordinates()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -1465,6 +1470,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void SetField_DuplicatePlanetIdentity_RejectsTheEditWithoutChangingTheMap()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -1486,6 +1492,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetReferenceOptions_GenerationMine_ShowsBuildingNamesWithoutChangingTheDocument()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -1507,6 +1514,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void GetReferenceOptions_OrderedFacilityList_ProvidesNamedChoicesWithoutChangingQuantities()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -1523,6 +1531,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void ValidateField_UnchangedInvalidScalar_RejectsTheAuthoredTypeMismatch()
         {
             ContentPackEditorProject project = CreateLoadableProject();

@@ -10,8 +10,6 @@ using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
-using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Object = UnityEngine.Object;
@@ -28,19 +26,12 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private TacticalCombatSession _session;
 
         /// <summary>
-        /// Creates the controller and its owned screen in an isolated runtime scene.
+        /// Creates the controller and its test-owned screen.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"
-            );
-            Assert.IsNotNull(prefab);
-            _view = Object.Instantiate(prefab).GetComponent<TacticalCombatView>();
+            _view = TacticalCombatViewFixture.Create();
             _session = CreateSession();
             _controller = new TacticalCombatController(
                 _session,
@@ -51,7 +42,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         /// <summary>
-        /// Releases the encounter before leaving its runtime scene.
+        /// Releases the encounter and waits for its scene objects to be destroyed.
         /// </summary>
         /// <returns>The runtime cleanup sequence.</returns>
         [UnityTearDown]
@@ -64,8 +55,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             _controller = null;
             _view = null;
             _session = null;
-            if (Application.isPlaying)
-                yield return new ExitPlayMode();
         }
 
         [UnityTest]

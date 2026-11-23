@@ -8,7 +8,6 @@ using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Vector3N = System.Numerics.Vector3;
@@ -25,12 +24,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <summary>
         /// Creates an isolated effects owner using the authored tactical shader.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _root = new GameObject("Effects test");
             _positions.Clear();
             _effects = new TacticalCombatEffects(
@@ -51,7 +47,6 @@ namespace Rebellion.Tests.Tactical.Rendering
             _effects.Dispose();
             Object.Destroy(_root);
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [Test]

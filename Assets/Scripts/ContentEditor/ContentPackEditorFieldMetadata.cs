@@ -221,7 +221,9 @@ internal static class ContentPackEditorFieldMetadata
             "Optional theme background retained for capital-ship artwork workflows.",
         ["StarfighterBackgroundImagePath"] =
             "Optional theme background retained for starfighter artwork workflows.",
-        ["PrimaryColorHex"] = "Primary faction color used by strategy text and controls.",
+        ["PrimaryColorHex"] =
+            "Faction identity color used for planet names, support, and strategy counters.",
+        ["HighlightTextColorHex"] = "Text color used for selected and highlighted menu entries.",
         ["SelectionColorHex"] = "Color applied to shared selection frames across faction windows.",
         ["ActiveWindowTitleColorHex"] =
             "Color applied to the shared title mask while a window has focus.",
@@ -425,7 +427,8 @@ internal static class ContentPackEditorFieldMetadata
             "FallbackNamePoolID" => "Fallback pool",
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
             "BackgroundImagePath" => "Background override",
-            "PrimaryColorHex" => "Primary color",
+            "PrimaryColorHex" => "Primary faction color",
+            "HighlightTextColorHex" => "Highlight text color",
             "SelectionColorHex" => "Selection frames",
             "ActiveWindowTitleColorHex" => "Window titles, active",
             "InactiveWindowTitleColorHex" => "Window titles, inactive",
@@ -570,6 +573,18 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The supported media category.</returns>
     internal static ContentPackEditorMediaType GetMediaType(ContentPackEditorField field)
     {
+        if (
+            field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
+            && field.XmlElement.Parent.Parent?.Name.LocalName
+                == nameof(FactionTheme.GalaxyBackground)
+            && field.MemberName
+                is nameof(PlanetIcons.Small)
+                    or nameof(PlanetIcons.Medium)
+                    or nameof(PlanetIcons.Large)
+                    or nameof(PlanetIcons.XL)
+        )
+            return ContentPackEditorMediaType.Image;
+
         string ancestry = string.Join(
             "/",
             field.XmlElement.AncestorsAndSelf().Select(parent => parent.Name.LocalName)

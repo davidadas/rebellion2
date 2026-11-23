@@ -17,6 +17,7 @@ namespace Rebellion.Tests.Game
         [TestCase(SpaceCombatSupportContext.SecondFactionMedium, 150, 400)]
         [TestCase(SpaceCombatSupportContext.SecondFactionHard, 100, 400)]
         [TestCase(SpaceCombatSupportContext.Multiplayer, 400, 400)]
+        [Category("RequiresMedia")]
         public void BattleSupport_AuthoredContext_RetainsCompleteSideParameters(
             SpaceCombatSupportContext context,
             int firstGapScale,
@@ -49,7 +50,17 @@ namespace Rebellion.Tests.Game
         [Test]
         public void CreateCopy_EditingBattleSupportProfile_DoesNotChangeSource()
         {
-            GameConfig source = TestContent.Data.GameConfig.CreateCopy();
+            GameConfig source = TestConfig.Create();
+            source.SupportShift.BattleSupport = new SpaceCombatSupportConfig
+            {
+                Profiles =
+                {
+                    [SpaceCombatSupportContext.FirstFactionEasy] = new SpaceCombatSupportProfile
+                    {
+                        FirstSide = new SpaceCombatSupportSideConfig { LeadingGapScale = 100 },
+                    },
+                },
+            };
             string before = SerializationHelper.Serialize(source);
 
             GameConfig copy = source.CreateCopy();
@@ -65,7 +76,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void CreateCopy_ConfiguredRules_PreservesAllValues()
         {
-            GameConfig source = TestContent.Data.GameConfig;
+            GameConfig source = CreateConfiguredRules();
 
             GameConfig copy = source.CreateCopy();
 
@@ -78,7 +89,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void CreateCopy_EditingNestedRules_DoesNotChangeSource()
         {
-            GameConfig source = TestContent.Data.GameConfig.CreateCopy();
+            GameConfig source = CreateConfiguredRules();
             string before = SerializationHelper.Serialize(source);
             GameConfig copy = source.CreateCopy();
 
@@ -270,7 +281,28 @@ namespace Rebellion.Tests.Game
             ForceRankLabel expected
         )
         {
-            Assert.AreEqual(expected, TestContent.Data.GameConfig.Jedi.GetRankLabel(forceRank));
+            Assert.AreEqual(expected, TestConfig.Create().Jedi.GetRankLabel(forceRank));
+        }
+
+        /// <summary>
+        /// Supplies mutable rules and collections for the configuration copy tests.
+        /// </summary>
+        /// <returns>An independent configuration for the test.</returns>
+        private static GameConfig CreateConfiguredRules()
+        {
+            GameConfig config = new GameConfig();
+            config.AI.Selection.TechnologyUtility.Building.Capability.Curve.Exponent = 2;
+            config.Captive.EscapeAttemptInterval.Minimum = 3;
+            config.Captive.EscapeTable.Add(0, 15);
+            config.Jedi.MissionEncounterPriorityOfficerInstanceIDs.Add("test-officer");
+            config.DifficultyModifiers.Add(
+                GameDifficulty.Hard,
+                new DifficultyModifiers { ManufacturingSpeedPercent = 125 }
+            );
+            config.Movement.DistanceDivisor = 4;
+            config.Uprising.SuppressionRegiments.Add("test-guard", "test-faction");
+            config.Uprising.IncidentIntelligence.Add(PlanetIntelligenceCategory.Officers);
+            return config;
         }
     }
 }

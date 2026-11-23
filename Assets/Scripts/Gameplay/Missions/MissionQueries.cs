@@ -433,7 +433,8 @@ namespace Rebellion.Gameplay
                                 observedDetectors
                             )
                             : Array.Empty<ISceneNode>(),
-                includePersonnelLoss
+                includePersonnelLoss,
+                useDisplayedObjectiveProbability: true
             );
         }
 
@@ -591,6 +592,7 @@ namespace Rebellion.Gameplay
         /// <param name="reusableDecoys">Whether to calculate an optimistic bound rather than actual odds.</param>
         /// <param name="evaluationState">Optional turn-scoped objective assessment.</param>
         /// <param name="projectedMission">Optional validated mission using detached arrival-time personnel projections.</param>
+        /// <param name="useDisplayedObjectiveProbability">Whether to report the player-visible objective roll instead of complete resolution odds.</param>
         /// <returns>The complete mission odds, or null when the request cannot create a mission.</returns>
         private MissionOdds GetMissionOddsCore(
             MissionContext context,
@@ -605,7 +607,8 @@ namespace Rebellion.Gameplay
             double minimumOverallProbability = 0,
             bool reusableDecoys = false,
             Mission.MissionEvaluationState evaluationState = null,
-            Mission projectedMission = null
+            Mission projectedMission = null,
+            bool useDisplayedObjectiveProbability = false
         )
         {
             var previousLookups = _probabilityLookups;
@@ -642,13 +645,21 @@ namespace Rebellion.Gameplay
                         _evaluationStates.Add(observedPlanet, evaluationState);
                     }
                 }
-                double objectiveSuccessProbability = mission.GetObjectiveSuccessProbability(
-                    mainParticipants,
-                    _game,
-                    context.Location as Planet,
-                    context.SelectedTarget,
-                    evaluationState
-                );
+                double objectiveSuccessProbability = useDisplayedObjectiveProbability
+                    ? mission.GetDisplayedObjectiveSuccessProbability(
+                        mainParticipants,
+                        _game,
+                        context.Location as Planet,
+                        context.SelectedTarget,
+                        evaluationState
+                    )
+                    : mission.GetObjectiveSuccessProbability(
+                        mainParticipants,
+                        _game,
+                        context.Location as Planet,
+                        context.SelectedTarget,
+                        evaluationState
+                    );
                 if (objectiveSuccessProbability < minimumOverallProbability)
                     return null;
                 IReadOnlyList<IMissionParticipant> decoyParticipants = mission.GetDecoyParticipants(

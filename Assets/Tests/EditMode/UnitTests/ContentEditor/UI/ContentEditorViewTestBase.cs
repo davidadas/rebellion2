@@ -71,7 +71,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <returns>The independent working project.</returns>
         protected virtual ContentPackEditorProject CreateProject(string destination)
         {
-            return ContentEditorTestData.CreateProject(destination);
+            return ContentEditorTestData.CreateProject(destination, TestContent.Pack);
         }
 
         /// <summary>

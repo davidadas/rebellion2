@@ -13,15 +13,32 @@ internal static class ContentEditorPresentation
     /// Reads the working pack's effective neutral theme through its normal catalog inheritance.
     /// </summary>
     /// <param name="project">The working content pack.</param>
-    /// <returns>The authored neutral presentation.</returns>
+    /// <returns>The authored neutral presentation, when configured.</returns>
     internal static FactionTheme GetNeutralTheme(ContentPackEditorProject project)
     {
-        string path = project
-            .GetCatalogs()
-            .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
-            .DocumentRecord.Element.Element("NeutralThemePath")
-            .Value;
-        return GetTheme(project, path);
+        ContentPackEditorRecord record = GetNeutralThemeRecord(project.GetCatalogs());
+        return record == null ? null : GetFactionTheme(record);
+    }
+
+    /// <summary>
+    /// Finds the editable theme selected by the pack's neutral-theme reference.
+    /// </summary>
+    /// <param name="catalogs">The current effective content catalogs.</param>
+    /// <returns>The configured neutral theme record, when available.</returns>
+    internal static ContentPackEditorRecord GetNeutralThemeRecord(
+        IReadOnlyList<ContentPackEditorCatalog> catalogs
+    )
+    {
+        string path = catalogs
+            .FirstOrDefault(catalog => catalog.Document.Address == "Pack/pack.xml")
+            ?.DocumentRecord.Element.Element(nameof(ContentPackDefinition.NeutralThemePath))
+            ?.Value;
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+        string address = "Pack/" + path.Replace('\\', '/');
+        return catalogs
+            .FirstOrDefault(catalog => catalog.Document.Address == address)
+            ?.Records.FirstOrDefault(record => record.Kind == nameof(FactionTheme));
     }
 
     /// <summary>

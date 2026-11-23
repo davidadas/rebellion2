@@ -12,6 +12,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.ContextMenus
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyContextMenuPresenterTests
     {
         private const string _playerFactionId = "FNALL1";

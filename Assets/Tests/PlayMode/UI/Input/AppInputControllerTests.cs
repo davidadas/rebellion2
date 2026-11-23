@@ -1,6 +1,5 @@
 using System.Collections;
 using NUnit.Framework;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.TestTools;
@@ -14,26 +13,16 @@ namespace Rebellion.Tests.UI.Input.Integration
         private GameObject root;
 
         /// <summary>
-        /// Enters play mode in an empty scene to exercise Unity lifecycle callbacks.
-        /// </summary>
-        /// <returns>The runtime setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
-        {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
-        }
-
-        /// <summary>
-        /// Releases input components before leaving play mode.
+        /// Releases input components after the runtime lifecycle assertions.
         /// </summary>
         /// <returns>The runtime cleanup sequence.</returns>
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            Object.Destroy(root);
+            if (root != null)
+                Object.Destroy(root);
+
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [Test]

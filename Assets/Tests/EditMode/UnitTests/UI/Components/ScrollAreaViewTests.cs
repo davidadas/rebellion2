@@ -81,6 +81,7 @@ namespace Rebellion.Tests.UI.Components
         [TestCase(0f)]
         [TestCase(0.5f)]
         [TestCase(1f)]
+        [Category("RequiresMedia")]
         public void SetLayout_MenuPrefab_KeepsSlicedThumbInsideTrack(float position)
         {
             GameObject root = UIComponentTestHelper.InstantiatePrefab(

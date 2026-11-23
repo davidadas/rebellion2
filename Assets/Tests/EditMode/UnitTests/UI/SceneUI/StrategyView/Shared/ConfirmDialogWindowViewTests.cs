@@ -10,6 +10,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class ConfirmDialogWindowViewTests
     {
         private const string _prefabPath =

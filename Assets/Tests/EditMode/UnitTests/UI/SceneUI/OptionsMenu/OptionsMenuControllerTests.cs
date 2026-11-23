@@ -16,6 +16,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class OptionsMenuControllerTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/OptionsMenu/OptionsMenu.prefab";
@@ -335,13 +336,13 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void HandleApply_InvalidMod_ShowsNamedFailureAndKeepsMenuOpen()
+        public void HandleApply_InvalidMod_RemainsDisabledAndDoesNotBlockReload()
         {
             ContentPack contentPack = _bootstrap.GetContentPack();
             _testModDirectoryPath = Path.Combine(
                 Directory.GetParent(contentPack.ContentRootPath).FullName,
                 "Mods",
-                nameof(HandleApply_InvalidMod_ShowsNamedFailureAndKeepsMenuOpen)
+                nameof(HandleApply_InvalidMod_RemainsDisabledAndDoesNotBlockReload)
                     + "-"
                     + Guid.NewGuid().ToString("N")
             );
@@ -364,11 +365,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Assert.AreEqual("ERROR", GetField<TextMeshProUGUI>(row, "_stateTextField").text);
             Assert.IsFalse(GetField<Button>(row, "_button").interactable);
             GetField<Button>(view, "_applyButton").onClick.Invoke();
-            _controller.RenderWindows();
 
-            Assert.IsTrue(_controller.IsOpen);
-            string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
-            Assert.AreEqual("Mod could not be loaded. See Player.log for details.", status);
+            Assert.IsFalse(_controller.IsOpen);
+            Assert.IsTrue(LoadingScreenController.IsLoadInProgress);
         }
 
         [Test]

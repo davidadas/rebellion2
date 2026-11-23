@@ -4,7 +4,6 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
@@ -20,12 +19,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <summary>
         /// Creates an isolated play-mode battle frame for the boundary geometry.
         /// </summary>
-        /// <returns>The setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _parent = new GameObject("Battle frame");
             _parent.transform.SetPositionAndRotation(
                 new Vector3(16000, 16000, 16000),
@@ -34,7 +30,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         /// <summary>
-        /// Releases the owned geometry before leaving the isolated scene.
+        /// Releases the owned geometry and the test battle frame.
         /// </summary>
         /// <returns>The cleanup sequence.</returns>
         [UnityTearDown]
@@ -45,7 +41,6 @@ namespace Rebellion.Tests.Tactical.Rendering
             yield return null;
             _cube = null;
             _parent = null;
-            yield return new ExitPlayMode();
         }
 
         [UnityTest]

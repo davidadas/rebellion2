@@ -4993,7 +4993,7 @@ namespace Rebellion.Tests.Gameplay
                 .GetChildren<CapitalShip>(recursive: true)
                 .Single(ship => ship.OwnerInstanceID != attacker.OwnerInstanceID);
             carrier.StarfighterCapacity = 1;
-            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            Starfighter fighter = TacticalTestData.CreateFighter();
             fighter.InstanceID = "continuation-fighter";
             fighter.OwnerInstanceID = carrier.OwnerInstanceID;
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -5156,7 +5156,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateTacticalEncounter();
             Planet planet = attacker.GetParentOfType<Planet>();
             planet.OwnerInstanceID = "FNALL1";
-            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            Starfighter fighter = TacticalTestData.CreateFighter();
             fighter.InstanceID = "unrecovered-fighter";
             fighter.OwnerInstanceID = attacker.OwnerInstanceID;
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -5214,8 +5214,7 @@ namespace Rebellion.Tests.Gameplay
             Starfighter[] fighters = new Starfighter[2];
             for (int index = 0; index < fighters.Length; index++)
             {
-                Starfighter fighter = (Starfighter)
-                    TestContent.Data.Starfighters.First().CreateCopy();
+                Starfighter fighter = TacticalTestData.CreateFighter();
                 fighter.InstanceID = $"surviving-fighter-{index}";
                 fighter.OwnerInstanceID = first.OwnerInstanceID;
                 fighter.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -5331,7 +5330,7 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip second = (CapitalShip)first.CreateCopy();
             second.InstanceID = "second-capital";
             game.AttachNode(second, first.GetParent());
-            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            Starfighter fighter = TacticalTestData.CreateFighter();
             fighter.InstanceID = "carried-fighter";
             fighter.OwnerInstanceID = first.OwnerInstanceID;
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -5381,8 +5380,9 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
             Planet planet = attacker.GetParentOfType<Planet>();
-            CapitalShip construction = (CapitalShip)
-                TestContent.Data.CapitalShips.Single(ship => ship.CanDestroyPlanets).CreateCopy();
+            CapitalShip construction = TacticalTestData.CreateCapital(
+                TacticalTestData.StationTypeID
+            );
             construction.InstanceID = "station-construction";
             construction.OwnerInstanceID = attacker.OwnerInstanceID;
             construction.ManufacturingStatus = ManufacturingStatus.Building;
@@ -5407,8 +5407,9 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
             Planet planet = attacker.GetParentOfType<Planet>();
-            CapitalShip construction = (CapitalShip)
-                TestContent.Data.CapitalShips.Single(ship => ship.CanDestroyPlanets).CreateCopy();
+            CapitalShip construction = TacticalTestData.CreateCapital(
+                TacticalTestData.StationTypeID
+            );
             construction.InstanceID = "station-construction";
             construction.OwnerInstanceID = attacker.OwnerInstanceID;
             construction.ManufacturingStatus = ManufacturingStatus.Building;
@@ -5441,7 +5442,7 @@ namespace Rebellion.Tests.Gameplay
             game.GetFactionByOwnerInstanceID(
                 attacker.OwnerInstanceID
             ).Settings.Headquarters.IsMobile = mobile;
-            Starfighter fighter = (Starfighter)TestContent.Data.Starfighters.First().CreateCopy();
+            Starfighter fighter = TacticalTestData.CreateFighter();
             fighter.InstanceID = "ground-fighter";
             fighter.OwnerInstanceID = attacker.OwnerInstanceID;
             fighter.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -5631,7 +5632,9 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip Attacker
         ) CreateTacticalEncounter()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig.CreateCopy());
+            GameRoot game = TestGame.Create(
+                TacticalTestData.ConfigureCampaignRules(TestConfig.Create())
+            );
             game.GetFactions().Add(new Faction { InstanceID = "FNEMP1" });
             game.GetFactions().Add(new Faction { InstanceID = "FNALL1" });
             game.Summary.PlayerFactionID = "FNEMP1";
@@ -5655,7 +5658,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatQueries queries = new(game, new MovementQueries(game));
             TacticalCombatFactory factory = new(
                 game,
-                TestContent.Data.TacticalCombat,
+                TacticalTestData.CreateDefinition(),
                 queries,
                 TacticalCombatPlanner.Attach,
                 TacticalCombatAudio.Create,

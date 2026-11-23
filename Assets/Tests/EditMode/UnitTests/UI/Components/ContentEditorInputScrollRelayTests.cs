@@ -7,6 +7,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorInputScrollRelayTests
     {
         private GameObject root;

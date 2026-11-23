@@ -1,5 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
@@ -10,9 +12,9 @@ using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
+using Object = UnityEngine.Object;
 
 namespace Rebellion.Tests.Tactical.Rendering
 {
@@ -23,21 +25,65 @@ namespace Rebellion.Tests.Tactical.Rendering
         private TacticalCombatImpactEffects _effects;
         private ContentAssets _assets;
         private TacticalCombatDefinition _definition;
+        private string _folder;
         private readonly Dictionary<TacticalCombatUnit, Vector3> _positions = new();
         private int? _closeUpPrimary;
 
         /// <summary>
-        /// Enters an isolated scene and loads the pack-authored animation resources.
+        /// Creates test-owned animation frames and exposes them through the real content resolver.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [OneTimeSetUp]
+        public void CreateFrames()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
-            ContentPack pack = ContentPackLoader.OpenActive();
-            _assets = new ContentAssets(pack.FileResolver);
-            _definition = pack.GameData.TacticalCombat;
+            _folder = Path.Combine(Path.GetTempPath(), "tactical-impact-tests-" + Guid.NewGuid());
+            Directory.CreateDirectory(_folder);
+            _definition = new TacticalCombatDefinition();
+            Texture2D source = new(2, 2);
+            try
+            {
+                byte[] png = source.EncodeToPNG();
+                foreach (
+                    TacticalCombatEffectKind kind in Enum.GetValues(
+                        typeof(TacticalCombatEffectKind)
+                    )
+                )
+                {
+                    TacticalCombatEffectDefinition effect = new()
+                    {
+                        Kind = kind,
+                        Size = 1,
+                        OriginX = 0.5f,
+                        OriginY = 0.5f,
+                    };
+                    int frameCount = kind switch
+                    {
+                        TacticalCombatEffectKind.Destruction => 12,
+                        TacticalCombatEffectKind.TractorRestraint
+                        or TacticalCombatEffectKind.GravityLock => 8,
+                        _ => 4,
+                    };
+                    for (int frame = 0; frame < frameCount; frame++)
+                    {
+                        string name = $"{kind}-{frame}";
+                        File.WriteAllBytes(Path.Combine(_folder, name + ".png"), png);
+                        effect.FramePaths.Add("Pack/" + name);
+                    }
+                    _definition.Effects.Add(effect);
+                }
+            }
+            finally
+            {
+                Object.Destroy(source);
+            }
+        }
+
+        /// <summary>
+        /// Creates an isolated effects owner with the test animation definitions.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
+            _assets = new ContentAssets(new ContentFileResolver(_folder, _folder));
             _root = new GameObject("Impact test");
             _positions.Clear();
             _closeUpPrimary = null;
@@ -61,11 +107,20 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTearDown]
         public IEnumerator TearDown()
         {
-            _effects.Dispose();
+            _effects?.Dispose();
             Object.Destroy(_root);
             yield return null;
-            _assets.Dispose();
-            yield return new ExitPlayMode();
+            _assets?.Dispose();
+        }
+
+        /// <summary>
+        /// Removes test-owned animation frames after the textures have been released.
+        /// </summary>
+        [OneTimeTearDown]
+        public void RemoveFrames()
+        {
+            if (Directory.Exists(_folder))
+                Directory.Delete(_folder, true);
         }
 
         [TestCase(

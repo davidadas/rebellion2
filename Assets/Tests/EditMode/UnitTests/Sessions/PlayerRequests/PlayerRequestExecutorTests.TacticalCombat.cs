@@ -378,7 +378,7 @@ namespace Rebellion.Tests.PlayerRequests
         ) PrepareTacticalRequestEncounter()
         {
             _session.Dispose();
-            _game = TestGame.Create(TestContent.Data.GameConfig.CreateCopy());
+            _game = TestGame.Create(TacticalTestData.ConfigureCampaignRules(TestConfig.Create()));
             _game.Summary.PlayerFactionID = _opponentID;
             _game.LocalPlayerFactionID = _opponentID;
             _game.Random = new SystemRandomProvider(42);
@@ -402,9 +402,8 @@ namespace Rebellion.Tests.PlayerRequests
             foreach (Planet planet in sector.GetChildren<Planet>())
                 planet.InitializeSectorSupportEligibility(true);
             foreach (Faction faction in _game.GetFactions())
-                faction.Settings.BattleLossLoyaltyDivisor = TestContent
-                    .Data.Factions.Single(definition => definition.InstanceID == faction.InstanceID)
-                    .Settings.BattleLossLoyaltyDivisor;
+                faction.Settings.BattleLossLoyaltyDivisor =
+                    TacticalTestData.BattleLossLoyaltyDivisor;
             CreateFleet("shared-host", _opponentID, _origin, out CapitalShip host);
             CreateFleet("shared-guest", _ownerID, _origin, out CapitalShip guest);
             host.TypeID = "CSEM006";
@@ -416,7 +415,7 @@ namespace Rebellion.Tests.PlayerRequests
             host.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100000, 0, 0, 0, 100 };
             guest.TypeID = "ALCS008";
             guest.MaxHullStrength = guest.CurrentHullStrength = 10;
-            _session = TestContent.CreateGameSession(_game);
+            _session = new GameSession(_game, TacticalTestData.CreateCatalog(_game.Config));
             _gameManager = new GameManager(() => _session.Game, _session.Tick);
             _executor = new PlayerRequestExecutor(_session, _gameManager);
             _session.Tick.ProcessTick();

@@ -808,6 +808,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase("FNEMP1")]
         [TestCase("FNALL1")]
+        [Category("RequiresMedia")]
         public void CompleteTacticalCombat_AuthoredCarrierBattle_CommitsOneResultAndResumesOneTick(
             string playerFactionId
         )
@@ -992,6 +993,11 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             _session.Dispose();
+            _game.SetConfig(
+                populateFleet == null
+                    ? TacticalTestData.ConfigureCampaignRules(_game.Config)
+                    : TestContent.CreateGameConfig()
+            );
             _game.CurrentTick = 40;
             _game.Summary.PlayerFactionID = playerFactionId;
             foreach (string factionId in new[] { "FNEMP1", "FNALL1" })
@@ -1005,9 +1011,9 @@ namespace Rebellion.Tests.Gameplay
                     TestContent
                         .Data.Factions.Single(definition => definition.InstanceID == factionId)
                         .CopyDefinitionTo(faction);
-                faction.Settings.BattleLossLoyaltyDivisor = TestContent
-                    .Data.Factions.Single(definition => definition.InstanceID == factionId)
-                    .Settings.BattleLossLoyaltyDivisor;
+                else
+                    faction.Settings.BattleLossLoyaltyDivisor =
+                        TacticalTestData.BattleLossLoyaltyDivisor;
                 _game.GetFactions().Add(faction);
             }
             _game.SetFactionController(playerFactionId, "PLAYER", PlayerControllerType.Human);
@@ -1058,7 +1064,10 @@ namespace Rebellion.Tests.Gameplay
                 }
             }
 
-            _session = TestContent.CreateGameSession(_game);
+            _session =
+                populateFleet == null
+                    ? new GameSession(_game, TacticalTestData.CreateCatalog(_game.Config))
+                    : TestContent.CreateGameSession(_game);
             _tick = CreateTickProcessor();
             return _session.GetService<SpaceCombatCommands>();
         }

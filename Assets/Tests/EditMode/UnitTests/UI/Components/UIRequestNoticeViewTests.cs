@@ -5,6 +5,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class UIRequestNoticeViewTests
     {
         private GameObject _root;

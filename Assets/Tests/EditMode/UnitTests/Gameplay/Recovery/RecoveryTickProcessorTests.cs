@@ -16,6 +16,7 @@ namespace Rebellion.Tests.Gameplay
     {
         [TestCase(79, 9)]
         [TestCase(80, 8)]
+        [Category("RequiresMedia")]
         public void ProcessTick_AuthoredHealingThreshold_UsesConfiguredForceBoundary(
             int rank,
             int expectedInjury
@@ -1183,19 +1184,8 @@ namespace Rebellion.Tests.Gameplay
         /// <returns>The attached damaged ship.</returns>
         private static CapitalShip CreateSystemDamagedShip(GameRoot game, Planet planet)
         {
-            GameDataCatalog content = TestContent.Data;
-            UnitFactory factory = new(
-                content.Buildings,
-                content.CapitalShips,
-                content.Starfighters,
-                content.Regiments,
-                content.SpecialForces,
-                content.TacticalCombat
-            );
-            CapitalShip ship = factory.Create<CapitalShip>(
-                content.CapitalShips[0].TypeID,
-                "empire"
-            );
+            UnitFactory factory = TacticalTestData.CreateUnitFactory(game.Config);
+            CapitalShip ship = factory.Create<CapitalShip>("ALCS008", "empire");
             ship.InstanceID = "repair-ship";
             ship.OwnerInstanceID = "empire";
             ship.ManufacturingStatus = ManufacturingStatus.Complete;

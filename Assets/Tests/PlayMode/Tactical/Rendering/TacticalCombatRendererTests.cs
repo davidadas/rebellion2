@@ -19,7 +19,6 @@ using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.InputSystem;
@@ -37,10 +36,12 @@ namespace Rebellion.Tests.Tactical.Rendering
 {
     [TestFixture]
     [Category("Graphics")]
+    [Category("RequiresMedia")]
     public sealed class TacticalCombatRendererTests
     {
         private TacticalCombatController controller;
         private TacticalCombatView view;
+        private ContentPack _pack;
         private ContentAssets assets;
         private ContentModelCache models;
         private readonly Dictionary<
@@ -51,16 +52,22 @@ namespace Rebellion.Tests.Tactical.Rendering
         private bool _audioVolumeCaptured;
 
         /// <summary>
-        /// Enters an empty play-mode scene for the isolated render target.
+        /// Opens the shipped catalog once. Each case creates its own battle and asset cache.
         /// </summary>
-        /// <returns>The setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [OneTimeSetUp]
+        public void LoadPack()
         {
             if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
                 Assert.Ignore("Tactical render targets require a graphics device.");
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
+            _pack = ContentPackLoader.OpenActive();
+        }
+
+        /// <summary>
+        /// Suppresses tactical audio while the test exercises the real render target.
+        /// </summary>
+        [SetUp]
+        public void SetUp()
+        {
             _audioVolume = AudioListener.volume;
             _audioVolumeCaptured = true;
             AudioListener.volume = 0;
@@ -89,22 +96,19 @@ namespace Rebellion.Tests.Tactical.Rendering
             if (_audioVolumeCaptured)
                 AudioListener.volume = _audioVolume;
             _audioVolumeCaptured = false;
-            if (Application.isPlaying)
-                yield return new ExitPlayMode();
         }
 
         [UnityTest]
         public IEnumerator PrepareAsync_AuthoredRoster_InstantiatesCapitalModelsFightersAndStation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            assets = new ContentAssets(pack.FileResolver);
+            assets = new ContentAssets(_pack.FileResolver);
             models = new ContentModelCache(assets);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"
             );
             Assert.IsNotNull(prefab);
             view = Object.Instantiate(prefab).GetComponent<TacticalCombatView>();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             controller = new TacticalCombatController(
                 encounter,
                 view,
@@ -193,11 +197,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_SharedDriver_DelegatesEntryAndLeavesClockOwnershipWithDriver()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             PresentationDriver driver = new(encounter);
 
-            yield return PrepareController(encounter, pack, driver);
+            yield return PrepareController(encounter, driver);
 
             Assert.AreEqual(1, driver.PreparationCount);
             Assert.AreSame(view.Renderer, driver.Presentation);
@@ -215,11 +218,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Advance_SharedCompletion_WaitsForAgreementAndCompletesOnce()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             PresentationDriver driver = new(encounter);
             int completions = 0;
-            yield return PrepareController(encounter, pack, driver, _ => completions++);
+            yield return PrepareController(encounter, driver, _ => completions++);
             Assert.IsTrue(encounter.RequestImmediateResult());
             encounter.Advance(0);
             Assert.IsTrue(encounter.IsComplete);
@@ -236,10 +238,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_ReplicaView_KeepsCameraLocalAndSelectsAuthenticatedFaction()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession host = CreateEncounter(pack.GameData);
+            TacticalCombatSession host = CreateEncounter(_pack.GameData);
             TacticalCombatSession guest = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 playerSide: CombatSide.Defender
             );
             host.ConfigureSynchronizedAuthority();
@@ -247,7 +248,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             List<TacticalCombatCommand> commands = new();
             guest.SynchronizedCommandRequested += commands.Add;
             PresentationDriver driver = new(guest);
-            yield return PrepareController(guest, pack, driver);
+            yield return PrepareController(guest, driver);
             string framePath = guest
                 .Definition.HudImages.Concat(
                     guest.Definition.Factions.Single(faction => faction.FactionIndex == 1).HudImages
@@ -304,9 +305,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator RenderUnits_ReplicaMotion_AlignsModelPickingAndWeaponEndpointsToDelayedPose()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession host = CreateEncounter(pack.GameData);
-            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            TacticalCombatSession host = CreateEncounter(_pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(_pack.GameData);
             host.ConfigureSynchronizedAuthority();
             guest.ConfigureSynchronizedReplica();
             try
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 second.TimestampMilliseconds = 100;
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
-                yield return PrepareRenderer(guest, pack);
+                yield return PrepareRenderer(guest);
                 GetReplicaPlayback(guest).Advance(50);
 
                 view.Renderer.RenderUnits();
@@ -387,9 +387,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator RenderUnits_ReplicaDeparture_UsesInterpolatedTimerWithoutChangingRawDeparture()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession host = CreateEncounter(pack.GameData);
-            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            TacticalCombatSession host = CreateEncounter(_pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(_pack.GameData);
             host.ConfigureSynchronizedAuthority();
             guest.ConfigureSynchronizedReplica();
             try
@@ -404,7 +403,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 second.TimestampMilliseconds = 100;
                 ApplyCapturedProjection(guest, first);
                 ApplyCapturedProjection(guest, second);
-                yield return PrepareRenderer(guest, pack);
+                yield return PrepareRenderer(guest);
                 GetReplicaPlayback(guest).Advance(50);
 
                 view.Renderer.RenderUnits();
@@ -437,9 +436,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator RenderUnits_ReplicaDestruction_RetainsModelsUntilDelayedDeathThenExplosionOwnsVisibility()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession host = CreateEncounter(pack.GameData);
-            TacticalCombatSession guest = CreateEncounter(pack.GameData);
+            TacticalCombatSession host = CreateEncounter(_pack.GameData);
+            TacticalCombatSession guest = CreateEncounter(_pack.GameData);
             host.ConfigureSynchronizedAuthority();
             guest.ConfigureSynchronizedReplica();
             Action<TacticalCombatUnit> destruction = null;
@@ -466,7 +464,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 GetReplicaPlayback(guest);
                 guest.ApplySnapshot(first);
                 guest.ApplySnapshot(death);
-                yield return PrepareRenderer(guest, pack);
+                yield return PrepareRenderer(guest);
                 destruction = view.Renderer.ShowDestruction;
                 guest.DestructionEffectRequested += destruction;
                 Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
@@ -555,9 +553,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator SetTransform_ArrivalFrame_RetainsPoseWithoutChangingSimulation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -587,9 +584,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator SetArrivalActive_CompletedArrival_ReleasesTransformsToSimulation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -626,9 +622,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Reset_HiddenCapital_RestoresBaseModelBeforeRefresh()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -644,46 +639,16 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         [UnityTest]
-        public IEnumerator Refresh_UnknownRegistration_DoesNotCreatePresentation()
-        {
-            GameObject root = new("Empty renderer", typeof(TacticalCombatRenderer));
-            try
-            {
-                ITacticalCombatArrivalPresentation presentation =
-                    root.GetComponent<TacticalCombatRenderer>();
-                presentation.ResetArrival(42);
-                presentation.SetTransform(
-                    42,
-                    System.Numerics.Vector4.Zero,
-                    System.Numerics.Vector4.UnitZ
-                );
-                presentation.Refresh(42);
-
-                Assert.AreEqual(0, root.transform.childCount);
-            }
-            finally
-            {
-                Object.DestroyImmediate(root);
-            }
-            yield return null;
-        }
-
-        [UnityTest]
         public IEnumerator PrepareAsync_PlanetDisabled_SkipsImageAndItsRandomDraws()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             TacticalCombatSceneryRandom expectedRandom = new(
                 new LinearCongruentialRandomProvider(42),
                 () => 1
             );
             Vector3N expectedStation = expectedRandom.NextPosition(100, -2, 0.2f);
 
-            yield return PrepareRenderer(
-                encounter,
-                pack,
-                new UserVideoSettings { ShowPlanet = false }
-            );
+            yield return PrepareRenderer(encounter, new UserVideoSettings { ShowPlanet = false });
 
             Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
             Assert.IsFalse(objects.Any(item => item.name == "Planet"));
@@ -696,13 +661,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowImpact_PyrotechnicsDisabled_DoesNotCreateImpactOrRetainDestroyedModel()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(
-                encounter,
-                pack,
-                new UserVideoSettings { ShowPyro = false }
-            );
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter, new UserVideoSettings { ShowPyro = false });
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -727,13 +687,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_ReducedDetail_NeverDisplaysNearFighterSprite()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(
-                encounter,
-                pack,
-                new UserVideoSettings { HighDetail = false }
-            );
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter, new UserVideoSettings { HighDetail = false });
             TacticalCombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
@@ -759,9 +714,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Advance_CapturedArrival_HoldsBattleClockAndReleasesPresentation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            assets = new ContentAssets(pack.FileResolver);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            assets = new ContentAssets(_pack.FileResolver);
             models = new ContentModelCache(assets);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"
@@ -820,10 +774,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_HolocubeDisabled_RetainsEncounterOptionSnapshot()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             UserVideoSettings settings = new() { ShowHolocube = false };
-            yield return PrepareRenderer(encounter, pack, settings);
+            yield return PrepareRenderer(encounter, settings);
             Transform cube = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == "Holocube");
@@ -839,9 +792,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Focus_StationFrame_AimsAtBattleOriginWithoutMovingItsBillboard()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
@@ -863,9 +815,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowShot_StationTarget_UsesLogicalFrameWithoutMovingBackgroundBillboard()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
             TacticalCombatUnit source = encounter.Units.First(item =>
                 !item.IsBattleStation && !item.IsFighter
@@ -898,9 +849,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Focus_ArrivalTransform_AimsAtLiveRenderPoseWithoutMovingSimulation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -931,9 +881,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_CapitalFrame_UsesCachedMiddleBoundsAndLivePresentationPose()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter
                 .GetObjectGroup(encounter.PlayerSide, 0)
                 .PrimaryMember;
@@ -977,9 +926,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowImpact_CategoryCloseUp_SuppressesPrimaryWithoutSuppressingOrdinaryFocus()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter
                 .GetObjectGroup(encounter.PlayerSide, 0)
                 .PrimaryMember;
@@ -1018,12 +966,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowImpact_InspectedPrimaryChangesBeforeCameraRefresh_ResolvesLiveCategoryOwner()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 allCapitalsPlayer: true
             );
-            yield return PrepareRenderer(encounter, pack);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit previous = encounter
                 .GetObjectGroup(encounter.PlayerSide, 0)
                 .PrimaryMember;
@@ -1063,9 +1010,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_AppliedRouteAndTarget_PrefersAppliedPointOverRequestedChanges()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatGroup group = encounter.GetObjectGroup(encounter.PlayerSide, 0);
             group.SetTarget(
                 encounter.Units.First(item =>
@@ -1095,12 +1041,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_MembershipTransferPending_UsesAppliedLeader()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 allCapitalsPlayer: true
             );
-            yield return PrepareRenderer(encounter, pack);
+            yield return PrepareRenderer(encounter);
             TacticalCombatGroup group = encounter.GetObjectGroup(encounter.PlayerSide, 0);
             TacticalCombatUnit applied = group.PrimaryMember;
             TacticalCombatUnit requested = encounter
@@ -1119,12 +1064,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_OtherObjectCategoryInspected_UsesGlobalInspectedObject()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 allCapitalsPlayer: true
             );
-            yield return PrepareRenderer(encounter, pack);
+            yield return PrepareRenderer(encounter);
             encounter.Selection.QueueObjectCategory(0);
             encounter.Selection.ProcessPendingCommands();
             TacticalCombatUnit inspected = encounter.Selection.PrimaryUnit;
@@ -1145,9 +1089,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_CategoryCleared_ResumesPrimaryViewWithoutChangingSelection()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             view.Renderer.ApplyCameraCommand(TacticalCombatCameraCommand.ZoomIn);
             Vector3 position = view.Renderer.Camera.transform.position;
             Quaternion rotation = view.Renderer.Camera.transform.rotation;
@@ -1171,9 +1114,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowCategory_FighterWithoutModelBounds_UsesExactPresentationOrigin()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData, fighterCategory: 0);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData, fighterCategory: 0);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
@@ -1192,9 +1134,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator SetInspection_CapitalPreview_EnlargesVisibleHullWithoutOverlappingStatus()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareController(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareController(encounter);
             TacticalCombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
@@ -1238,8 +1179,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_Wasd_RotatesAndTiltsBattleCamera()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            yield return PrepareController(CreateEncounter(pack.GameData), pack);
+            yield return PrepareController(CreateEncounter(_pack.GameData));
             foreach (KeyCode key in new[] { KeyCode.W, KeyCode.S, KeyCode.A, KeyCode.D })
             {
                 Quaternion before = view.Renderer.Camera.transform.rotation;
@@ -1260,8 +1200,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_EscapeAndShiftEscape_RequestsMenuOncePerPress()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            yield return PrepareController(CreateEncounter(pack.GameData), pack);
+            yield return PrepareController(CreateEncounter(_pack.GameData));
             int requests = 0;
             controller.MenuControlRequested += control =>
             {
@@ -1306,8 +1245,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             try
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-                ContentPack pack = ContentPackLoader.OpenActive();
-                yield return PrepareController(CreateEncounter(pack.GameData), pack);
+                yield return PrepareController(CreateEncounter(_pack.GameData));
                 int requests = 0;
                 controller.MenuControlRequested += _ => requests++;
                 controller.SetApplicationMenuOpen(true);
@@ -1345,9 +1283,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_ApplicationMenuOpen_BlocksNativeCameraUntilInputOwnershipReturns()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareController(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             float before = view.Renderer.Camera.fieldOfView;
@@ -1384,10 +1321,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator RenderUnits_DepartingParticipant_UsesTemporaryPoseWithoutMovingSimulation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateWithdrawalEncounter(pack.GameData);
+            TacticalCombatSession encounter = CreateWithdrawalEncounter(_pack.GameData);
             TacticalCombatUnit unit = encounter.GetUnit("departing");
-            yield return PrepareRenderer(encounter, pack);
+            yield return PrepareRenderer(encounter);
             Assert.IsTrue(encounter.BeginWithdrawal(encounter.PlayerSide));
             for (
                 int frame = 0;
@@ -1422,9 +1358,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ShowShotAndImpact_DepartingTarget_FollowsPresentationWithoutMovingSimulation()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit source = encounter.GetUnit("CSEM006");
             TacticalCombatUnit target = encounter.GetUnit("ALCS008");
             Vector3N canonical = target.Position;
@@ -1474,9 +1409,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_CategoryRepeats_PostsEveryPressAndIgnoresRelease()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareController(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             TacticalCombatGroup group = encounter.GetGroup(
@@ -1514,9 +1448,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_Arrival_PreservesCameraWithoutAdmittingDirectCommands()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareController(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareController(encounter);
             controller.Advance(0);
             Assert.IsTrue(encounter.IsArriving);
             float before = view.Renderer.Camera.fieldOfView;
@@ -1551,9 +1484,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleKeyboardEvent_HeldTab_TraversesOnceUntilReleased()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareController(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             TacticalCombatUnit unit = encounter.Units.First(item =>
@@ -1604,9 +1536,8 @@ namespace Rebellion.Tests.Tactical.Rendering
             try
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-                ContentPack pack = ContentPackLoader.OpenActive();
-                TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-                yield return PrepareController(encounter, pack);
+                TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+                yield return PrepareController(encounter);
                 TacticalCombatHudButton button = SelectInspectionButton(encounter);
                 int presses = 0;
                 button.onClick.AddListener(() => presses++);
@@ -1650,9 +1581,8 @@ namespace Rebellion.Tests.Tactical.Rendering
             try
             {
                 Keyboard keyboard = InputSystem.AddDevice<Keyboard>();
-                ContentPack pack = ContentPackLoader.OpenActive();
-                TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-                yield return PrepareController(encounter, pack);
+                TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+                yield return PrepareController(encounter);
                 TacticalCombatHudButton button = SelectInspectionButton(encounter);
                 int presses = 0;
                 button.onClick.AddListener(() => presses++);
@@ -1685,8 +1615,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ClearKeyboardArtwork_HeldRepeatingPointer_RetainsRepeatOwnership()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            yield return PrepareRenderer(CreateEncounter(pack.GameData), pack);
+            yield return PrepareRenderer(CreateEncounter(_pack.GameData));
             TacticalCombatHudButton button = view.GetComponentsInChildren<TacticalCombatHudButton>(
                     true
                 )
@@ -1710,13 +1639,12 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PointerClick_ChangingEmpireObjectGroups_UpdatesSelectionAndInspection()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 playerSide: CombatSide.Defender
             );
             encounter.IsPaused = true;
-            yield return PrepareController(encounter, pack);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             Assert.IsFalse(encounter.IsArriving);
@@ -1780,12 +1708,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PointerClick_EmptyEmpireSlot_AssignsSelectedCapital()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 playerSide: CombatSide.Defender
             );
-            yield return PrepareEmpireGroupSelection(encounter, pack);
+            yield return PrepareEmpireGroupSelection(encounter);
             TacticalCombatUnit unit = encounter.GetUnit("CSEM006");
             encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
             encounter.Selection.QueueObject(unit);
@@ -1818,12 +1745,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PointerClick_MultipleEmpireSelection_AdmitsAssignmentBeforeAuthorityReturns()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 playerSide: CombatSide.Defender
             );
-            yield return PrepareEmpireGroupSelection(encounter, pack);
+            yield return PrepareEmpireGroupSelection(encounter);
             TacticalCombatUnit first = encounter.GetUnit("CSEM006");
             TacticalCombatUnit second = encounter.GetUnit("CSAL009");
             encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
@@ -1861,9 +1787,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_TractorMembership_ShowsLockWithZeroRestraint()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: false);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: false);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
             Assert.AreEqual(0, unit.TractorRestraint);
 
@@ -1873,9 +1798,10 @@ namespace Rebellion.Tests.Tactical.Rendering
                 .Renderer.GetComponentsInChildren<MeshRenderer>(true)
                 .Single(renderer => renderer.name == "Lock");
             Assert.IsTrue(loop.enabled);
-            TacticalCombatEffectDefinition definition = pack.GameData.TacticalCombat.Effects.Single(
-                effect => effect.Kind == TacticalCombatEffectKind.TractorRestraint
-            );
+            TacticalCombatEffectDefinition definition =
+                _pack.GameData.TacticalCombat.Effects.Single(effect =>
+                    effect.Kind == TacticalCombatEffectKind.TractorRestraint
+                );
             Assert.AreSame(
                 assets.GetTexture(definition.FramePaths[0]),
                 loop.sharedMaterial.mainTexture
@@ -1887,9 +1813,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_GravityGenerator_IgnoresTractorAndShowsMovementLoop()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: true);
-            yield return PrepareRenderer(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: true);
+            yield return PrepareRenderer(encounter);
             TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
             int gravityRequests = 0;
             unit.GravityWellPresentationRequested += () => gravityRequests++;
@@ -1908,9 +1833,10 @@ namespace Rebellion.Tests.Tactical.Rendering
                 .Where(renderer => renderer.name == "Lock")
                 .ToArray();
             Assert.IsNotEmpty(loops);
-            TacticalCombatEffectDefinition definition = pack.GameData.TacticalCombat.Effects.Single(
-                effect => effect.Kind == TacticalCombatEffectKind.GravityLock
-            );
+            TacticalCombatEffectDefinition definition =
+                _pack.GameData.TacticalCombat.Effects.Single(effect =>
+                    effect.Kind == TacticalCombatEffectKind.GravityLock
+                );
             Assert.IsTrue(
                 loops.All(renderer =>
                     renderer.enabled
@@ -1925,13 +1851,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator PrepareAsync_PyrotechnicsDisabled_DoesNotCreateLockBillboards()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData, gravityWell: true);
-            yield return PrepareRenderer(
-                encounter,
-                pack,
-                new UserVideoSettings { ShowPyro = false }
-            );
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: true);
+            yield return PrepareRenderer(encounter, new UserVideoSettings { ShowPyro = false });
             TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
             int gravityRequests = 0;
             unit.GravityWellPresentationRequested += () => gravityRequests++;
@@ -1950,9 +1871,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ConfirmPanel_UnchangedGroupEditors_PreservesMissionAndTarget()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter);
             TacticalCombatGroup group = encounter.Groups.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighterGroup
             );
@@ -1987,9 +1907,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator ConfirmPanel_AttackModeOnly_PreservesMissionAndTarget()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter);
             TacticalCombatGroup group = encounter.Groups.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighterGroup
             );
@@ -2016,9 +1935,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator HandleControl_ImmediateResultWhilePaused_QueuesOneCompletion()
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
-            TacticalCombatSession encounter = CreateEncounter(pack.GameData);
-            yield return PrepareEmpireGroupSelection(encounter, pack);
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            yield return PrepareEmpireGroupSelection(encounter);
             int completed = 0;
             encounter.Completed += () => completed++;
 
@@ -2073,15 +1991,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// Prepares the Empire controls while keeping deterministic input checks paused.
         /// </summary>
         /// <param name="encounter">The encounter whose controls are being tested.</param>
-        /// <param name="pack">The content supplying its presentation.</param>
         /// <returns>The presentation preparation sequence.</returns>
-        private IEnumerator PrepareEmpireGroupSelection(
-            TacticalCombatSession encounter,
-            ContentPack pack
-        )
+        private IEnumerator PrepareEmpireGroupSelection(TacticalCombatSession encounter)
         {
             encounter.IsPaused = true;
-            yield return PrepareController(encounter, pack);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             Assert.IsFalse(encounter.IsArriving);
@@ -2094,13 +2008,12 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>The preparation, input, and verification sequence.</returns>
         private IEnumerator VerifyEmptyEmpireSlot(bool keyboard)
         {
-            ContentPack pack = ContentPackLoader.OpenActive();
             TacticalCombatSession encounter = CreateEncounter(
-                pack.GameData,
+                _pack.GameData,
                 playerSide: CombatSide.Defender
             );
             encounter.IsPaused = true;
-            yield return PrepareController(encounter, pack);
+            yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
             TacticalCombatGroup group = encounter.GetGroup(encounter.GetUnit("CSEM006"));
@@ -2200,18 +2113,16 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// Prepares the real presentation controller with captured arrival metadata.
         /// </summary>
         /// <param name="encounter">The encounter to present.</param>
-        /// <param name="pack">The active content pack.</param>
         /// <param name="driver">The shared playback owner, or null for a local encounter.</param>
         /// <param name="complete">Observes completion, or null when no completion observation is needed.</param>
         /// <returns>The asynchronous preparation sequence.</returns>
         private IEnumerator PrepareController(
             TacticalCombatSession encounter,
-            ContentPack pack,
             ITacticalCombatPresentationDriver driver = null,
             Action<TacticalCombatSession> complete = null
         )
         {
-            assets = new ContentAssets(pack.FileResolver);
+            assets = new ContentAssets(_pack.FileResolver);
             models = new ContentModelCache(assets);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"
@@ -2311,16 +2222,14 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// Prepares a renderer directly so its presentation contract can be exercised independently of session ticking.
         /// </summary>
         /// <param name="encounter">The encounter to present.</param>
-        /// <param name="pack">The active content pack.</param>
         /// <param name="videoSettings">The explicitly configured presentation options, or null for their authored defaults.</param>
         /// <returns>The asynchronous preparation sequence.</returns>
         private IEnumerator PrepareRenderer(
             TacticalCombatSession encounter,
-            ContentPack pack,
             UserVideoSettings videoSettings = null
         )
         {
-            assets = new ContentAssets(pack.FileResolver);
+            assets = new ContentAssets(_pack.FileResolver);
             models = new ContentModelCache(assets);
             GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
                 "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"

@@ -8,6 +8,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyWindowPlacementControllerTests
     {
         private const string _playerFactionId = "FNALL1";

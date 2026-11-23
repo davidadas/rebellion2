@@ -140,11 +140,20 @@ public sealed class ContentPackEditorDocument
     /// <param name="container">The owner of an absent optional member.</param>
     /// <param name="attribute">The edited attribute, when present.</param>
     /// <returns>True for a setting outside an ordered collection with an inherited container.</returns>
-    internal bool CanInherit(XElement element, XElement container = null, XName attribute = null) =>
-        inheritedText != null
-        && ContentXmlOverrides.CanResetSetting(element, attribute, container)
-        && ContentXmlOverrides.FindEquivalent(element.Parent ?? container ?? element, InheritedRoot)
-            != null;
+    internal bool CanInherit(XElement element, XElement container = null, XName attribute = null)
+    {
+        if (
+            inheritedText == null
+            || !ContentXmlOverrides.CanResetSetting(element, attribute, container)
+        )
+            return false;
+        XElement owner = element.Parent ?? container ?? element;
+        XElement root = InheritedRoot;
+        return ContentXmlOverrides.FindEquivalent(owner, root) != null
+            || owner.Name.LocalName == nameof(FactionTheme.ColorScheme)
+                && owner.Parent?.Name.LocalName == nameof(FactionTheme)
+                && ContentXmlOverrides.FindEquivalent(owner.Parent, root) != null;
+    }
 
     /// <summary>
     /// Gets an individual artwork reference from the record beneath the working pack.

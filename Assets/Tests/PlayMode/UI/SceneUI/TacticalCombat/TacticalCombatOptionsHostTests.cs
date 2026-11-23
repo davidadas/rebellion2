@@ -9,8 +9,6 @@ using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
-using UnityEditor;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
@@ -30,14 +28,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         private TestOptions _options;
 
         /// <summary>
-        /// Creates an isolated authored battle and an independent application window desktop.
+        /// Creates a test battle view and an independent application window desktop.
         /// </summary>
-        /// <returns>The editor transition into Play Mode.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _sourceRoot = new GameObject(
                 "Application canvas",
                 typeof(RectTransform),
@@ -52,10 +47,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             desktop.transform.SetParent(_sourceRoot.transform, false);
             RectTransform desktopRect = desktop.GetComponent<RectTransform>();
             desktopRect.sizeDelta = new Vector2(853.3333f, 480);
-            GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
-                "Assets/Prefabs/UI/StrategyView/TacticalCombat.prefab"
-            );
-            _view = UnityEngine.Object.Instantiate(prefab).GetComponent<TacticalCombatView>();
+            _view = TacticalCombatViewFixture.Create();
             _session = new TacticalCombatSession(
                 Array.Empty<TacticalCombatUnit>(),
                 Array.Empty<TacticalCombatGroup>(),
@@ -80,18 +72,19 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         }
 
         /// <summary>
-        /// Releases the modal and battle owners before returning to Edit Mode.
+        /// Releases the modal, battle view, and desktop.
         /// </summary>
-        /// <returns>The editor transition out of Play Mode.</returns>
+        /// <returns>The runtime cleanup sequence.</returns>
         [UnityTearDown]
         public IEnumerator TearDown()
         {
             _host?.Dispose();
             _combat?.Dispose();
+            if (_view != null)
+                UnityEngine.Object.Destroy(_view.gameObject);
             if (_sourceRoot != null)
                 UnityEngine.Object.Destroy(_sourceRoot);
             yield return null;
-            yield return new ExitPlayMode();
         }
 
         [UnityTest]

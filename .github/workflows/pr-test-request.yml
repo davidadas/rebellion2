@@ -36,30 +36,19 @@ jobs:
               },
             });
 
-  trusted-media:
-    name: Resolve trusted PR media
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    uses: ./.github/workflows/resolve-media.yml
-    with:
-      branch: ${{ github.event.pull_request.head.ref }}
-      checkout_ref: ${{ github.event.pull_request.merge_commit_sha }}
-      expected_base_sha: ${{ github.event.pull_request.base.sha }}
-      expected_head_sha: ${{ github.event.pull_request.head.sha }}
-    secrets: inherit
-    permissions:
-      contents: read
-
   trusted-test:
     name: Test trusted PR
     if: github.event.pull_request.head.repo.full_name == github.repository
-    needs: trusted-media
     uses: ./.github/workflows/unity-test-runner.yml
     with:
       base_sha: ${{ github.event.pull_request.base.sha }}
       reviewed_head_sha: ${{ github.event.pull_request.head.sha }}
       reviewed_head_repository: ${{ github.event.pull_request.head.repo.full_name }}
-      media_sha: ${{ needs.trusted-media.outputs.sha }}
-    secrets: inherit
+      core_only: true
+      save_cache: false
+    secrets:
+      UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+      UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
     permissions:
       checks: write
       contents: read

@@ -24,14 +24,12 @@ function dependsOn(jobName, required) {
   return needs(ci.jobs[jobName]).some(parent => parent === required || dependsOn(parent, required));
 }
 
-test('private PR media and Unity execution both depend on the required-reviewer gate', () => {
+test('fork Unity execution depends on the required-reviewer gate', () => {
   assert.notEqual(REVIEW_ENVIRONMENT.toLowerCase(), 'production');
   assert.equal(ci.jobs['approve-pr'].environment.name, REVIEW_ENVIRONMENT);
   assert.equal(environmentName(mediaResolver.jobs.resolve), 'production');
   assert.equal(environmentName(runner.jobs.test), 'production');
-  assert.equal(dependsOn('resolve-pr-media', 'approve-pr'), true);
   assert.equal(dependsOn('test-pr', 'approve-pr'), true);
-  assert.equal(dependsOn('test-pr', 'resolve-pr-media'), true);
   assert.equal(ci.jobs['approve-pr'].outputs.base_sha, '${{ steps.approve.outputs.base_sha }}');
   assert.equal(ci.jobs['approve-pr'].outputs.head_repository, '${{ steps.approve.outputs.head_repository }}');
   assert.equal(ci.jobs['approve-pr'].permissions.checks, 'write');
@@ -62,24 +60,13 @@ test('the pull_request_target dispatcher requests a protected workflow run only 
   assert.equal(dispatcher.jobs.request.environment, undefined);
 });
 
-test('same-repository PRs run private tests automatically from the protected workflow revision', () => {
-  const media = dispatcher.jobs['trusted-media'];
+test('same-repository PRs run automatically from the protected workflow revision', () => {
   const unity = dispatcher.jobs['trusted-test'];
-  assert.equal(media.if, trustedPullRequestCondition);
-  assert.equal(media.uses, './.github/workflows/resolve-media.yml');
-  assert.equal(media.with.branch, '${{ github.event.pull_request.head.ref }}');
-  assert.equal(media.with.checkout_ref, '${{ github.event.pull_request.merge_commit_sha }}');
-  assert.equal(media.with.expected_base_sha, '${{ github.event.pull_request.base.sha }}');
-  assert.equal(media.with.expected_head_sha, '${{ github.event.pull_request.head.sha }}');
-  assert.equal(media.secrets, 'inherit');
   assert.equal(unity.if, trustedPullRequestCondition);
-  assert.ok(needs(unity).includes('trusted-media'));
-  assert.equal(unity.uses, './.github/workflows/unity-test-runner.yml');
+  assert.deepEqual(needs(unity), []);
   assert.equal(unity.with.base_sha, '${{ github.event.pull_request.base.sha }}');
   assert.equal(unity.with.reviewed_head_sha, '${{ github.event.pull_request.head.sha }}');
   assert.equal(unity.with.reviewed_head_repository, '${{ github.event.pull_request.head.repo.full_name }}');
-  assert.equal(unity.with.media_sha, '${{ needs.trusted-media.outputs.sha }}');
-  assert.equal(unity.secrets, 'inherit');
 });
 
 test('the shared runner prepares and verifies PR merges from exact base and head revisions', () => {
@@ -116,14 +103,22 @@ test('reviewed PR tests cannot write GitHub checks or poison shared caches', () 
   assert.match(gameci.with.githubToken, /inputs.publish_checks/);
 });
 
-test('default-branch and reviewed PR tests share the complete Unity and coverage pipeline', () => {
+test('default-branch tests validate the pinned pack and check full coverage', () => {
   assert.equal(ci.jobs.test.uses, ci.jobs['test-pr'].uses);
+  assert.deepEqual(ci.on.push.branches, ['master']);
+  assert.equal(ci.jobs.test.if, "github.event_name == 'push'");
+  const pushTestJobs = Object.keys(ci.jobs).filter(name => {
+    const job = ci.jobs[name];
+    return job.uses === ci.jobs.test.uses && job.if === ci.jobs.test.if;
+  });
+  assert.deepEqual(pushTestJobs, ['test']);
+  assert.equal(ci.jobs.test.with.media_sha, '${{ needs.resolve-media.outputs.sha }}');
+  assert.equal(dependsOn('test', 'resolve-media'), true);
   const steps = runner.jobs.test.steps;
   const gameci = steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
   assert.equal(gameci.with.testMode, 'all');
-  assert.equal(gameci.with.coverageEnabled, true);
-  assert.ok(steps.find(step => step.name === 'Check coverage threshold'));
-  assert.ok(steps.find(step => step.name === 'Check compiled architecture'));
+  assert.equal(gameci.with.coverageEnabled, "${{ inputs.media_sha != '' }}");
+  assert.equal(steps.find(step => step.name === 'Check coverage threshold').if, "inputs.media_sha != ''");
   assert.equal(runner.env.UNITY_VERSION, ci.env.UNITY_VERSION);
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);
 });
@@ -151,6 +146,25 @@ test('local and CI coverage include every assembly extracted from the game runti
   assert.deepEqual(filters(local), assemblies.sort());
 });
 
+test('PR runs omit the media checkout and content credentials', () => {
+  for (const job of [ci.jobs['test-pr'], dispatcher.jobs['trusted-test']]) {
+    assert.equal(job.uses, './.github/workflows/unity-test-runner.yml');
+    assert.equal(job.with.core_only, true);
+    assert.equal(job.with.media_sha, undefined);
+    assert.deepEqual(Object.keys(job.secrets).sort(), ['UNITY_EMAIL', 'UNITY_PASSWORD']);
+  }
+  assert.equal(dependsOn('test-pr', 'resolve-media'), false);
+  assert.deepEqual(Object.keys(dispatcher.jobs).sort(), ['request', 'trusted-test']);
+  const steps = runner.jobs.test.steps;
+  for (const name of ['Checkout media (git only, no LFS)', 'Pull media LFS', 'Install media']) {
+    assert.equal(steps.find(step => step.name === name).if, "inputs.media_sha != ''");
+  }
+  const gameci = steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
+  assert.match(gameci.with.customParameters, /-testCategory !\^RequiresMedia\$/);
+  assert.equal(steps.find(step => step.name === 'Verify media is absent').if, "inputs.media_sha == ''");
+  assert.equal(steps.find(step => step.name === 'Check compiled architecture').if, undefined);
+});
+
 test('the shared runner stages optional native math after the verified merge and before Unity', () => {
   const steps = runner.jobs.test.steps;
   const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
@@ -165,7 +179,7 @@ test('the shared runner stages optional native math after the verified merge and
 
 test('PR results require actual Unity execution and target the PR check', () => {
   const job = ci.jobs['pr-result'];
-  for (const dependency of ['pr-plan', 'approve-pr', 'resolve-pr-media', 'test-pr']) {
+  for (const dependency of ['pr-plan', 'approve-pr', 'test-pr']) {
     assert.ok(needs(job).includes(dependency));
   }
   const script = job.steps.find(step => step.uses === 'actions/github-script@v7');
@@ -226,16 +240,6 @@ test('desktop builds install every verified native platform without copying cont
 test('media resolution reads the tested pin while executing only the workflow revision helper', () => {
   assert.equal(mediaResolver.on.workflow_call.inputs.checkout_ref.required, true);
   assert.equal(ci.jobs['resolve-media'].with.checkout_ref, '${{ github.sha }}');
-  assert.equal(
-    ci.jobs['resolve-pr-media'].with.checkout_ref,
-    'refs/pull/${{ inputs.pull_request_number }}/merge',
-  );
-  assert.equal(
-    ci.jobs['resolve-pr-media'].with.expected_base_sha,
-    '${{ needs.approve-pr.outputs.base_sha }}',
-  );
-  assert.equal(ci.jobs['resolve-pr-media'].with.expected_head_sha, '${{ inputs.head_sha }}');
-  assert.equal(ci.jobs['resolve-pr-media'].with.branch, '${{ needs.approve-pr.outputs.media_branch }}');
   const steps = mediaResolver.jobs.resolve.steps;
   const trusted = steps.find(step => step.name === 'Checkout trusted media resolver');
   const pin = steps.find(step => step.name === 'Checkout tested media pin');
@@ -262,13 +266,12 @@ test('media resolution reads the tested pin while executing only the workflow re
   assert.ok(steps.indexOf(verify) < steps.indexOf(resolve));
 });
 
-test('trusted builds and reviewed tests consume the exact resolved media commit', () => {
+test('trusted builds and shipped-pack tests consume the exact resolved media commit', () => {
   const buildMedia = ci.jobs.build.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
   const testMedia = runner.jobs.test.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
   assert.equal(buildMedia.with.ref, '${{ needs.resolve-media.outputs.sha }}');
   assert.equal(testMedia.with.ref, '${{ inputs.media_sha }}');
   assert.equal(ci.jobs.test.with.media_sha, '${{ needs.resolve-media.outputs.sha }}');
-  assert.equal(ci.jobs['test-pr'].with.media_sha, '${{ needs.resolve-pr-media.outputs.sha }}');
 });
 
 test('every CI secret-bearing job is restricted to a default-branch push or reviewed PR', () => {

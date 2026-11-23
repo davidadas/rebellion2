@@ -15,6 +15,7 @@ using InvalidOperationException = global::System.InvalidOperationException;
 namespace Rebellion.Tests.App
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class AppBootstrapTests
     {
         private AppBootstrap _bootstrap;

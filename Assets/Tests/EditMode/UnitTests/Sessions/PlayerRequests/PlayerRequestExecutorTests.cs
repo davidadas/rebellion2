@@ -56,7 +56,7 @@ namespace Rebellion.Tests.PlayerRequests
             _origin = CreatePlanet("origin", _ownerID, sector, 0);
             _destination = CreatePlanet("destination", _ownerID, sector, 100);
             _opponentPlanet = CreatePlanet("opponent", _opponentID, sector, 200);
-            _session = TestContent.CreateGameSession(_game);
+            _session = TestGameData.CreateSession(_game);
             _gameManager = new GameManager(() => _session.Game, _session.Tick);
             _executor = new PlayerRequestExecutor(_session, _gameManager);
         }
@@ -1102,7 +1102,7 @@ namespace Rebellion.Tests.PlayerRequests
                 SerializationHelper.Serialize(_game)
             );
             copy.UseDeterministicRuntimeIdentifiers = true;
-            using GameSession otherSession = TestContent.CreateGameSession(copy);
+            using GameSession otherSession = TestGameData.CreateSession(copy);
             PlayerRequestExecutor other = new PlayerRequestExecutor(
                 otherSession,
                 new GameManager(() => otherSession.Game, otherSession.Tick)

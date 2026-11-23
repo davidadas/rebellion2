@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Constructor_SharedShipTemplates_DoesNotMutateRuntimeEquipmentBindings()
         {
-            GameDataCatalog source = TestContent.Data;
+            GameDataCatalog source = TacticalTestData.CreateCatalog(TestConfig.Create());
             CapitalShip template = source.CapitalShips.First(ship =>
                 source.TacticalCombat.Units.Any(unit =>
                     unit.UnitTypeID == ship.TypeID && unit.BackupHyperdrive > 0

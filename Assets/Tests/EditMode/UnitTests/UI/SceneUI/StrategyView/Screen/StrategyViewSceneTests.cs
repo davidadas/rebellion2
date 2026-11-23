@@ -11,6 +11,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyViewSceneTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";

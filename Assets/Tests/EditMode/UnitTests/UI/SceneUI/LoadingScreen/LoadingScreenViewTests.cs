@@ -12,6 +12,7 @@ using StringComparison = global::System.StringComparison;
 namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class LoadingScreenViewTests
     {
         private LoadingScreenView _instance;

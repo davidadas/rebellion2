@@ -467,7 +467,7 @@ internal sealed class BattleAlertWindowProjector
             enabled ? GetTexture(uiContext, theme?.DownImagePath) : null,
             GetSourceBounds(sourceLayout ?? theme?.SourceLayout),
             selected,
-            uiContext?.GetPlayerFactionTheme()?.GetPrimaryColor() ?? Color.white
+            uiContext?.GetPlayerFactionTheme()?.GetHighlightTextColor() ?? Color.white
         );
     }
 

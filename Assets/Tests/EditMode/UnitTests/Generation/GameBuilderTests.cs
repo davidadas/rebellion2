@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -23,6 +24,8 @@ namespace Rebellion.Tests.Generation
     {
         private readonly GameSize _size;
         private GameRoot _game;
+        private string _folder;
+        private GameDataCatalog _data;
 
         /// <summary>
         /// Initializes a new instance of the GameBuilderTests class.
@@ -39,16 +42,22 @@ namespace Rebellion.Tests.Generation
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
+            _folder = Path.Combine(
+                Path.GetTempPath(),
+                "game-builder-tests-" + Guid.NewGuid().ToString("N")
+            );
+            _data = CreateCatalog(TestPackFixture.Install(_folder).GameData);
             GameSummary summary = new GameSummary
             {
                 GalaxySize = _size,
                 Difficulty = GameDifficulty.Medium,
+                Seed = 12345,
                 VictoryCondition = GameVictoryCondition.Conquest,
                 ResourceAvailability = GameResourceAvailability.Normal,
                 PlayerFactionID = "FNALL1",
             };
 
-            GameBuilder builder = new GameBuilder(summary, TestContent.Data);
+            GameBuilder builder = new GameBuilder(summary, _data);
             _game = builder.Build();
         }
 
@@ -90,8 +99,8 @@ namespace Rebellion.Tests.Generation
             bool expected
         )
         {
-            PlanetSector[] sectors = TestContent
-                .Data.PlanetSectors.Select(sector =>
+            PlanetSector[] sectors = _data
+                .PlanetSectors.Select(sector =>
                     (PlanetSector)sector.CreateCopy(recursive: true, includeDisabled: true)
                 )
                 .ToArray();
@@ -130,9 +139,7 @@ namespace Rebellion.Tests.Generation
                 SectorType = (PlanetSectorType)int.MaxValue,
                 Visibility = GameSize.Small,
             };
-            PlanetSector[] sectors = TestContent
-                .Data.PlanetSectors.Concat(new[] { invalidSector })
-                .ToArray();
+            PlanetSector[] sectors = _data.PlanetSectors.Concat(new[] { invalidSector }).ToArray();
             GameSummary summary = new()
             {
                 GalaxySize = _size,
@@ -147,10 +154,20 @@ namespace Rebellion.Tests.Generation
             StringAssert.Contains("Unsupported planet sector type", error.Message);
         }
 
+        /// <summary>
+        /// Removes the temporary generation pack.
+        /// </summary>
+        [OneTimeTearDown]
+        public void OneTimeTearDown()
+        {
+            if (Directory.Exists(_folder))
+                Directory.Delete(_folder, true);
+        }
+
         [Test]
         public void Build_EditingFactionRules_DoesNotChangeContentDefinition()
         {
-            Faction definition = TestContent.Data.Factions[0];
+            Faction definition = _data.Factions[0];
             string before = SerializationHelper.Serialize(definition);
             GameRoot game = new GameBuilder(
                 new GameSummary
@@ -159,7 +176,7 @@ namespace Rebellion.Tests.Generation
                     PlayerFactionID = "FNALL1",
                     Seed = 12345,
                 },
-                TestContent.Data
+                _data
             ).Build();
             Faction faction = game.GetFactions()
                 .Single(value => value.InstanceID == definition.InstanceID);
@@ -181,7 +198,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_AuthoredStartingAdvice_PreservesMessageContent()
         {
-            Faction definition = TestContent.Data.Factions[0];
+            Faction definition = _data.Factions[0];
             GameRoot game = new GameBuilder(
                 new GameSummary
                 {
@@ -189,7 +206,7 @@ namespace Rebellion.Tests.Generation
                     PlayerFactionID = "FNALL1",
                     Seed = 12345,
                 },
-                TestContent.Data
+                _data
             ).Build();
             Faction faction = game.GetFactions()
                 .Single(value => value.InstanceID == definition.InstanceID);
@@ -225,7 +242,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_ReadingStartingAdvice_DoesNotMarkContentDefinitionRead()
         {
-            Faction definition = TestContent.Data.Factions[0];
+            Faction definition = _data.Factions[0];
             bool before = definition.Messages[MessageType.Advice][0].Read;
             GameRoot game = new GameBuilder(
                 new GameSummary
@@ -234,7 +251,7 @@ namespace Rebellion.Tests.Generation
                     PlayerFactionID = "FNALL1",
                     Seed = 12345,
                 },
-                TestContent.Data
+                _data
             ).Build();
             Faction faction = game.GetFactions()
                 .Single(value => value.InstanceID == definition.InstanceID);
@@ -326,7 +343,7 @@ namespace Rebellion.Tests.Generation
                 PlayerFactionID = "FNALL1",
                 Seed = 12345,
             };
-            GameBuilder builder = new GameBuilder(summary, TestContent.Data);
+            GameBuilder builder = new GameBuilder(summary, _data);
 
             summary.GalaxySize = GameSize.Large;
             summary.PlayerFactionID = "FNEMP1";
@@ -342,7 +359,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_CustomGenerationConfig_UsesSettingsForPlanetResources()
         {
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig generation = _data.GenerationConfig.CreateCopy();
             PlanetResourceProfile resources = generation.PlanetResources.Profiles.Single(profile =>
                 profile.Availability == GameResourceAvailability.Normal
             );
@@ -358,7 +375,7 @@ namespace Rebellion.Tests.Generation
                 CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             foreach (
                 Planet planet in game
@@ -371,9 +388,9 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_CustomGarrisonRules_AppliesRuntimeConfiguration()
         {
-            int authoredThreshold = TestContent.Data.GameConfig.AI.Garrison.SupportThreshold;
-            int authoredDivisor = TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor;
-            int authoredMultiplier = TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier;
+            int authoredThreshold = _data.GameConfig.AI.Garrison.SupportThreshold;
+            int authoredDivisor = _data.GameConfig.AI.Garrison.GarrisonDivisor;
+            int authoredMultiplier = _data.GameConfig.AI.Garrison.UprisingMultiplier;
             GameSummary summary = new GameSummary
             {
                 GalaxySize = _size,
@@ -392,29 +409,20 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             Assert.AreEqual(70, game.Config.AI.Garrison.SupportThreshold);
             Assert.AreEqual(5, game.Config.AI.Garrison.GarrisonDivisor);
             Assert.AreEqual(3, game.Config.AI.Garrison.UprisingMultiplier);
-            Assert.AreEqual(
-                authoredThreshold,
-                TestContent.Data.GameConfig.AI.Garrison.SupportThreshold
-            );
-            Assert.AreEqual(
-                authoredDivisor,
-                TestContent.Data.GameConfig.AI.Garrison.GarrisonDivisor
-            );
-            Assert.AreEqual(
-                authoredMultiplier,
-                TestContent.Data.GameConfig.AI.Garrison.UprisingMultiplier
-            );
+            Assert.AreEqual(authoredThreshold, _data.GameConfig.AI.Garrison.SupportThreshold);
+            Assert.AreEqual(authoredDivisor, _data.GameConfig.AI.Garrison.GarrisonDivisor);
+            Assert.AreEqual(authoredMultiplier, _data.GameConfig.AI.Garrison.UprisingMultiplier);
         }
 
         [Test]
         public void Build_CustomMovementRules_AppliesTravelSpeedWithoutMutatingContent()
         {
-            double authoredDivisor = TestContent.Data.GameConfig.Movement.DistanceDivisor;
+            double authoredDivisor = _data.GameConfig.Movement.DistanceDivisor;
             GameSummary summary = new GameSummary
             {
                 GalaxySize = _size,
@@ -428,20 +436,20 @@ namespace Rebellion.Tests.Generation
                 },
             };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             Assert.AreEqual(authoredDivisor * 1.5d, game.Config.Movement.DistanceDivisor, 0.0001d);
-            Assert.AreEqual(authoredDivisor, TestContent.Data.GameConfig.Movement.DistanceDivisor);
+            Assert.AreEqual(authoredDivisor, _data.GameConfig.Movement.DistanceDivisor);
         }
 
         [Test]
         public void Build_FactionModifierOverride_AppliesToGeneratedFactionOnly()
         {
-            Faction template = TestContent.Data.Factions[0];
+            Faction template = _data.Factions[0];
             int authored = template.Settings.GarrisonEfficiency;
             FactionSettings settings = template.Settings.CreateCopy();
             settings.GarrisonEfficiency = authored + 2;
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig generation = _data.GenerationConfig.CreateCopy();
             generation.FactionModifiers = new List<FactionModifierConfig>
             {
                 new FactionModifierConfig { FactionID = template.InstanceID, Settings = settings },
@@ -456,7 +464,7 @@ namespace Rebellion.Tests.Generation
                 CustomSettings = new CustomGameSettings { GenerationConfig = generation },
             };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             Assert.AreEqual(
                 authored + 2,
@@ -471,13 +479,11 @@ namespace Rebellion.Tests.Generation
         [TestCase("FNEMP1")]
         public void Build_EmptyOverrideConquestObjectives_RetainsAuthoredOfficers(string factionID)
         {
-            Faction template = TestContent.Data.Factions.Single(faction =>
-                faction.InstanceID == factionID
-            );
+            Faction template = _data.Factions.Single(faction => faction.InstanceID == factionID);
             FactionSettings settings = template.Settings.CreateCopy();
             settings.ConquestOfficerInstanceIDs.Clear();
             settings.GarrisonEfficiency++;
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig generation = _data.GenerationConfig.CreateCopy();
             generation.FactionModifiers = new List<FactionModifierConfig>
             {
                 new FactionModifierConfig { FactionID = factionID, Settings = settings },
@@ -490,7 +496,7 @@ namespace Rebellion.Tests.Generation
                     Seed = 12345,
                     CustomSettings = new CustomGameSettings { GenerationConfig = generation },
                 },
-                TestContent.Data
+                _data
             ).Build();
             Faction actual = game.GetFactions().Single(faction => faction.InstanceID == factionID);
 
@@ -510,8 +516,8 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_DuplicateFactionModifier_ThrowsInvalidOperationException()
         {
-            string factionID = TestContent.Data.Factions[0].InstanceID;
-            GameGenerationConfig generation = TestContent.Data.GenerationConfig.CreateCopy();
+            string factionID = _data.Factions[0].InstanceID;
+            GameGenerationConfig generation = _data.GenerationConfig.CreateCopy();
             generation.FactionModifiers = new List<FactionModifierConfig>
             {
                 new FactionModifierConfig { FactionID = factionID },
@@ -525,7 +531,7 @@ namespace Rebellion.Tests.Generation
             };
 
             InvalidOperationException exception = Assert.Throws<InvalidOperationException>(() =>
-                new GameBuilder(summary, TestContent.Data).Build()
+                new GameBuilder(summary, _data).Build()
             );
 
             StringAssert.Contains("duplicate faction modifier", exception.Message);
@@ -584,12 +590,12 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_AfterRebuild_TechnologiesSurvive()
         {
-            IManufacturable[] templates = TestContent
-                .Data.Buildings.Cast<IManufacturable>()
-                .Concat(TestContent.Data.CapitalShips)
-                .Concat(TestContent.Data.Starfighters)
-                .Concat(TestContent.Data.Regiments)
-                .Concat(TestContent.Data.SpecialForces)
+            IManufacturable[] templates = _data
+                .Buildings.Cast<IManufacturable>()
+                .Concat(_data.CapitalShips)
+                .Concat(_data.Starfighters)
+                .Concat(_data.Regiments)
+                .Concat(_data.SpecialForces)
                 .ToArray();
 
             foreach (Faction faction in _game.GetFactions())
@@ -623,11 +629,11 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_RebuildTechnologies_IncludesAllManufacturingTypes()
         {
-            IManufacturable[] templates = TestContent
-                .Data.Buildings.Cast<IManufacturable>()
-                .Concat(TestContent.Data.CapitalShips)
-                .Concat(TestContent.Data.Starfighters)
-                .Concat(TestContent.Data.Regiments)
+            IManufacturable[] templates = _data
+                .Buildings.Cast<IManufacturable>()
+                .Concat(_data.CapitalShips)
+                .Concat(_data.Starfighters)
+                .Concat(_data.Regiments)
                 .ToArray();
 
             foreach (Faction faction in _game.GetFactions())
@@ -855,19 +861,19 @@ namespace Rebellion.Tests.Generation
                 Seed = 12345,
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
+                    GenerationConfig = _data.GenerationConfig.CreateCopy(),
                 },
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =
                 new List<GameEventCategory> { disabledCategory };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             Assert.IsFalse(
                 game.GetEventPool().Any(gameEvent => gameEvent.Category == disabledCategory)
             );
             foreach (
-                GameEvent template in TestContent.Data.GameEvents.Where(gameEvent =>
+                GameEvent template in _data.GameEvents.Where(gameEvent =>
                     gameEvent.Category != disabledCategory
                 )
             )
@@ -889,13 +895,13 @@ namespace Rebellion.Tests.Generation
                 Seed = 12345,
                 CustomSettings = new CustomGameSettings
                 {
-                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
+                    GenerationConfig = _data.GenerationConfig.CreateCopy(),
                 },
             };
             summary.CustomSettings.GenerationConfig.DisabledEventCategories =
                 new List<GameEventCategory> { GameEventCategory.Story, GameEventCategory.Disaster };
 
-            GameRoot game = new GameBuilder(summary, TestContent.Data).Build();
+            GameRoot game = new GameBuilder(summary, _data).Build();
 
             Assert.IsNotEmpty(game.GetEventPool());
             Assert.IsTrue(
@@ -1048,7 +1054,7 @@ namespace Rebellion.Tests.Generation
         [Test]
         public void Build_FogOfWar_OuterRimPlanetsStartUnexplored()
         {
-            GameGenerationConfig rules = TestContent.Data.GenerationConfig;
+            GameGenerationConfig rules = _data.GenerationConfig;
             Dictionary<string, string> planetInstanceIdsByTypeId = _game
                 .Galaxy.GetChildren<PlanetSector>()
                 .SelectMany(sector => sector.GetChildren<Planet>())
@@ -1172,42 +1178,135 @@ namespace Rebellion.Tests.Generation
         /// </summary>
         /// <param name="sectors">The replacement authored sectors.</param>
         /// <returns>A game-data catalog containing the replacement sectors.</returns>
-        private static GameDataCatalog CopyGameDataWithSectors(PlanetSector[] sectors)
-        {
-            GameDataCatalog source = TestContent.Data;
-            return new GameDataCatalog(
-                source.GameConfig,
-                source.GenerationConfig,
-                source.Factions,
-                sectors,
-                source.Buildings,
-                source.CapitalShips,
-                source.Starfighters,
-                source.Regiments,
-                source.SpecialForces,
-                source.Officers,
-                source.GameEvents,
-                source.MessageDefinitions,
-                source.EncyclopediaEntries,
-                source.FactionThemes,
-                source.OfficerTraits,
-                source.TacticalCombat
-            );
-        }
+        private GameDataCatalog CopyGameDataWithSectors(PlanetSector[] sectors) =>
+            CopyCatalog(_data, sectors, _data.GameEvents);
 
         /// <summary>
         /// Copies the shared game-data catalog with a replacement event collection.
         /// </summary>
         /// <param name="events">The replacement event definitions.</param>
         /// <returns>A game-data catalog containing the replacement events.</returns>
-        private static GameDataCatalog CopyGameDataWithEvents(params GameEvent[] events)
+        private GameDataCatalog CopyGameDataWithEvents(params GameEvent[] events)
         {
-            GameDataCatalog source = TestContent.Data;
+            return CopyCatalog(_data, _data.PlanetSectors, events);
+        }
+
+        /// <summary>
+        /// Adds test starting forces, an Outer Rim sector, and events to the fixture catalog.
+        /// </summary>
+        /// <param name="source">The catalog loaded from the fixture pack.</param>
+        /// <returns>The catalog used by the generation tests.</returns>
+        private static GameDataCatalog CreateCatalog(GameDataCatalog source)
+        {
+            GameGenerationConfig generation = source.GenerationConfig;
+            generation.Officers.StartingOfficers.Add(
+                new StartingOfficerRule
+                {
+                    OfficerInstanceID = "EMPEROR_PALPATINE",
+                    DestinationTypeID = "FACTION_HQ",
+                }
+            );
+            foreach (StartingOfficerRule officer in generation.Officers.StartingOfficers)
+            {
+                Faction faction = source.Factions.Single(candidate =>
+                    candidate.InstanceID
+                    == source
+                        .Officers.Single(template =>
+                            template.InstanceID == officer.OfficerInstanceID
+                        )
+                        .OwnerInstanceID
+                );
+                faction.Settings.ConquestOfficerInstanceIDs.Add(officer.OfficerInstanceID);
+                faction.Messages.TryAdd(MessageType.Conflict, new List<Message>());
+            }
+
+            generation.FacilityGeneration.HQLoadouts.Add(
+                new HQFacilityLoadout
+                {
+                    PlanetTypeID = "PLSEW02",
+                    FacilityTypeIDs = new List<string> { "BDFA01" },
+                }
+            );
+            generation.UnitDeployment.FixedFleets = new List<FixedFleet>
+            {
+                new FixedFleet
+                {
+                    PlanetTypeID = "PLSEW01",
+                    FactionID = "FNALL1",
+                    SpawnChancePct = 100,
+                    ShipEntries = new List<FixedFleetShip>
+                    {
+                        new FixedFleetShip { TypeID = "CSAL001", Count = 1 },
+                    },
+                },
+                new FixedFleet
+                {
+                    PlanetTypeID = "PLSEW02",
+                    FactionID = "FNEMP1",
+                    SpawnChancePct = 100,
+                    ShipEntries = new List<FixedFleetShip>
+                    {
+                        new FixedFleetShip { TypeID = "CSEM001", Count = 1 },
+                    },
+                },
+            };
+            generation
+                .GalaxyClassification.FactionSetups.Single(setup => setup.FactionID == "FNALL1")
+                .StartingPlanets.Add(
+                    new StartingPlanet { PlanetTypeID = "RIM_OUTPOST", Loyalty = 100 }
+                );
+            PlanetSector rim = new PlanetSector
+            {
+                TypeID = "FIXTURE_RIM",
+                DisplayName = "Rim sector",
+                SectorType = PlanetSectorType.OuterRim,
+                Visibility = GameSize.Small,
+            };
+            rim.AddChild(new Planet { TypeID = "RIM_OUTPOST", DisplayName = "Rim outpost" });
+            rim.AddChild(new Planet { TypeID = "RIM_SURVEY", DisplayName = "Rim survey site" });
+
+            return CopyCatalog(
+                source,
+                source.PlanetSectors.Append(rim).ToArray(),
+                source
+                    .GameEvents.Concat(
+                        new[]
+                        {
+                            new GameEvent
+                            {
+                                InstanceID = "FIXTURE_DISASTER",
+                                Category = GameEventCategory.Disaster,
+                                Schedule = new GameEventSchedule { At = new AtTick { Tick = 50 } },
+                            },
+                            new GameEvent
+                            {
+                                InstanceID = "FIXTURE_NEUTRAL_EVENT",
+                                Schedule = new GameEventSchedule { At = new AtTick { Tick = 80 } },
+                            },
+                        }
+                    )
+                    .ToArray()
+            );
+        }
+
+        /// <summary>
+        /// Creates a catalog with the supplied sectors and events.
+        /// </summary>
+        /// <param name="source">The templates and rules shared by the new catalog.</param>
+        /// <param name="sectors">The sectors to seed.</param>
+        /// <param name="events">The events to install.</param>
+        /// <returns>The configured catalog.</returns>
+        private static GameDataCatalog CopyCatalog(
+            GameDataCatalog source,
+            PlanetSector[] sectors,
+            GameEvent[] events
+        )
+        {
             return new GameDataCatalog(
                 source.GameConfig,
                 source.GenerationConfig,
                 source.Factions,
-                source.PlanetSectors,
+                sectors,
                 source.Buildings,
                 source.CapitalShips,
                 source.Starfighters,

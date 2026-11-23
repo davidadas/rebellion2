@@ -251,7 +251,10 @@ namespace Rebellion.Tests.AI.Fleets
         /// <returns>The configured engagement scenario.</returns>
         private static EngagementScenario CreateScenario(bool includeHostileFleet)
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet origin = AITestSceneBuilder.AddPlanet(game, system, "origin", empire.InstanceID);
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);

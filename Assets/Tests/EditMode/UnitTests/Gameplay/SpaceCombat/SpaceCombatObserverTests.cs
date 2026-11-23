@@ -37,7 +37,7 @@ namespace Rebellion.Tests.Gameplay
         [SetUp]
         public void SetUp()
         {
-            _game = TestGame.Create(TestConfig.Create());
+            _game = TestGame.Create(TacticalTestData.ConfigureCampaignRules(TestConfig.Create()));
             _game.Summary.PlayerFactionID = _firstID;
             _game
                 .GetFactions()
@@ -85,14 +85,14 @@ namespace Rebellion.Tests.Gameplay
                 Tick = 42,
             };
             _result.AcceptedLosses.RecordDestroyedUnit(_lostShip);
-            _session = new GameSession(_game, TestContent.Data);
+            _session = new GameSession(_game, TacticalTestData.CreateCatalog(_game.Config));
         }
 
         /// <summary>
         /// Releases the session's result subscriptions.
         /// </summary>
         [TearDown]
-        public void TearDown() => _session.Dispose();
+        public void TearDown() => _session?.Dispose();
 
         [Test]
         public void HandleResults_ManualBattle_AppliesLoyaltyOnceAndPublishesSectorSupport()

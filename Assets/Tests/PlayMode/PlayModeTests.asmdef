@@ -19,7 +19,8 @@
         "Rebellion.Sessions",
         "Rebellion.Multiplayer",
         "Rebellion.Gameplay",
-        "Rebellion.AI"
+        "Rebellion.AI",
+        "Rebellion.Tactical.Core"
     ],
     "includePlatforms": [],
     "overrideReferences": true,

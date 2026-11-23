@@ -8,7 +8,6 @@ using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TestTools;
 using Array = global::System.Array;
@@ -25,12 +24,9 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <summary>
         /// Creates an isolated scene before exercising runtime-owned marker resources.
         /// </summary>
-        /// <returns>The play-mode setup sequence.</returns>
-        [UnitySetUp]
-        public IEnumerator SetUp()
+        [SetUp]
+        public void SetUp()
         {
-            EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
-            yield return new EnterPlayMode();
             _root = new GameObject("Navigation test");
             _root.transform.position = Vector3.one * 100;
             _subject = new TacticalCombatNavigationRenderer(
@@ -41,7 +37,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         /// <summary>
-        /// Releases markers before leaving play mode.
+        /// Releases markers and their test owner.
         /// </summary>
         /// <returns>The cleanup sequence.</returns>
         [UnityTearDown]
@@ -52,7 +48,6 @@ namespace Rebellion.Tests.Tactical.Rendering
             yield return null;
             _subject = null;
             _root = null;
-            yield return new ExitPlayMode();
         }
 
         [Test]

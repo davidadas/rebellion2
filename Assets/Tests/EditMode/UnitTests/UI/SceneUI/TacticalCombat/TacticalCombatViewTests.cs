@@ -11,6 +11,7 @@ using TextMeshProUGUI = global::TMPro.TextMeshProUGUI;
 namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class TacticalCombatViewTests
     {
         private GameObject _prefab;

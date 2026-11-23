@@ -13,6 +13,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MainMenuViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/MainMenu/MainMenuRoot.prefab";

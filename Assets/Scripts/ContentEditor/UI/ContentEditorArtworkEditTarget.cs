@@ -28,6 +28,8 @@ public sealed class ContentEditorArtworkEditTarget
     private Vector2 hoverFrameAnchorMax = Vector2.one;
     private Vector2 hoverFrameAnchorMin = Vector2.zero;
     private RectTransform hoverFrame;
+    private RectMask2D hoverClip;
+    private readonly List<RectMask2D> enclosingMasks = new();
     private ContentPackEditorField hoverField;
     private Texture hoverTexture;
     private RectTransform interactionArea;
@@ -58,6 +60,10 @@ public sealed class ContentEditorArtworkEditTarget
     /// Gets whether this image has authored source coordinates that can be moved.
     /// </summary>
     internal bool CanMove => placements.Count > 0;
+
+    internal bool IsGalaxyBackdrop =>
+        releasedField?.MemberName == nameof(GalaxyBackground.ImagePath)
+        && releasedField.Group == nameof(FactionTheme.GalaxyBackground);
 
     /// <summary>
     /// Configures the represented image field and its navigation callback.
@@ -271,6 +277,14 @@ public sealed class ContentEditorArtworkEditTarget
             image.texture = hovered ? hoverTexture : releasedTexture;
         if (hovered)
         {
+            if (
+                hoverClip == null
+                && GetComponentInParent<ContentEditorArtworkWindowPreview>()?.CanZoom == true
+            )
+            {
+                GetComponentsInParent(false, enclosingMasks);
+                hoverClip = hoverFrame.gameObject.AddComponent<RectMask2D>();
+            }
             ConfigureFrameGeometry(
                 hoverFrame,
                 transform,
@@ -279,6 +293,8 @@ public sealed class ContentEditorArtworkEditTarget
             );
         }
         hoverFrame.gameObject.SetActive(hovered);
+        if (hovered)
+            ClipHoverFrame();
     }
 
     /// <summary>
@@ -410,9 +426,29 @@ public sealed class ContentEditorArtworkEditTarget
     {
         if (hoverFrame?.gameObject.activeSelf != true)
             return;
+        ClipHoverFrame();
         float alpha = 0.88f + Mathf.Sin(Time.unscaledTime * 5f) * 0.1f;
         foreach (Image border in hoverFrame.GetComponentsInChildren<Image>())
             border.color = new Color(_accentColor.r, _accentColor.g, _accentColor.b, alpha);
+    }
+
+    /// <summary>
+    /// Applies the enclosing viewport masks inside the frame's top-sorted canvas.
+    /// </summary>
+    private void ClipHoverFrame()
+    {
+        if (hoverClip == null)
+            return;
+        Rect visible = Clipping.FindCullAndClipWorldRect(enclosingMasks, out _);
+        Rect frame = hoverClip.canvasRect;
+        Vector4 padding = new(
+            visible.xMin - frame.xMin,
+            visible.yMin - frame.yMin,
+            frame.xMax - visible.xMax,
+            frame.yMax - visible.yMax
+        );
+        if (hoverClip.padding != padding)
+            hoverClip.padding = padding;
     }
 
     /// <summary>

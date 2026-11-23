@@ -37,7 +37,7 @@ async function readRequest(github, repo, request) {
   return data;
 }
 
-/** Publish a pending PR check before any approval or private-content job starts. */
+/** Publish a pending PR check before requesting approval to run Unity. */
 async function plan({ github, context, core, number, headSha }) {
   const request = parseRequest(number, headSha);
   await requireReviewProtection(github, context.repo);
@@ -51,7 +51,7 @@ async function plan({ github, context, core, number, headSha }) {
     details_url: runUrl,
     output: {
       title: 'Awaiting maintainer approval',
-      summary: `Review commit ${request.headSha} before granting access to private test content.`,
+      summary: `Review commit ${request.headSha} before running Unity with the CI license.`,
     },
   });
   core.setOutput('check_id', String(check.id));
@@ -73,7 +73,6 @@ async function approve({ github, context, core, number, headSha, checkId }) {
 
   core.setOutput('base_sha', pull.base.sha);
   core.setOutput('head_repository', pull.head.repo.full_name);
-  core.setOutput('media_branch', pull.head.ref);
   await github.rest.checks.update({
     ...context.repo,
     check_run_id: Number(checkId),
@@ -86,12 +85,12 @@ async function approve({ github, context, core, number, headSha, checkId }) {
 }
 
 /** Report the actual test outcome on the reviewed PR head, rather than on the default branch. */
-async function report({ github, context, checkId, testResult, mediaResult, approvalResult }) {
+async function report({ github, context, checkId, testResult, approvalResult }) {
   if (!/^[1-9]\d*$/.test(String(checkId)) || !Number.isSafeInteger(Number(checkId))) {
     throw new Error('A valid PR check ID is required.');
   }
-  const success = approvalResult === 'success' && mediaResult === 'success' && testResult === 'success';
-  const cancelled = [testResult, mediaResult, approvalResult].includes('cancelled');
+  const success = approvalResult === 'success' && testResult === 'success';
+  const cancelled = [testResult, approvalResult].includes('cancelled');
   await github.rest.checks.update({
     ...context.repo,
     check_run_id: Number(checkId),
@@ -99,7 +98,7 @@ async function report({ github, context, checkId, testResult, mediaResult, appro
     conclusion: success ? 'success' : cancelled ? 'cancelled' : 'failure',
     output: {
       title: success ? 'Unity tests passed' : 'Unity tests did not complete successfully',
-      summary: `Approval: ${approvalResult}. Media setup: ${mediaResult}. Unity tests: ${testResult}.`,
+      summary: `Approval: ${approvalResult}. Unity tests: ${testResult}.`,
     },
   });
 }

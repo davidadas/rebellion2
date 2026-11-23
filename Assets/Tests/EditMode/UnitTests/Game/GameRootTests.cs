@@ -1698,7 +1698,7 @@ namespace Rebellion.Tests.Game
         {
             GameRoot game = TestGame.Create(
                 new GameSummary { PlayerFactionID = _faction1.InstanceID },
-                TestContent.Data.GameConfig
+                TestConfig.Create()
             );
             game.GetFactions().Add(_faction1);
 
@@ -2232,7 +2232,7 @@ namespace Rebellion.Tests.Game
             string xml = SerializationHelper.Serialize(_game);
             StringAssert.Contains("<IsEnabled>False</IsEnabled>", xml);
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
-            restored.SetConfig(TestContent.Data.GameConfig);
+            restored.SetConfig(TestConfig.Create());
             restored.RebuildSceneState();
 
             Fleet restoredFleet = restored.GetSceneNodeByInstanceID<Fleet>(

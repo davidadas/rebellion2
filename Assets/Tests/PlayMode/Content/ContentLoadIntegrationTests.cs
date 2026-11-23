@@ -29,6 +29,7 @@ using SetSpeedRequest = global::Rebellion.Game.PlayerRequests.SetSpeedRequest;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentLoadIntegrationTests
     {
         private const string _settingsBackupKey = "ContentLoadIntegrationTests.SettingsBackup";
@@ -492,39 +493,6 @@ namespace Rebellion.Tests.Content
                 yield return null;
 
             Assert.IsTrue(preload.IsCanceled, preload.Exception?.ToString());
-        }
-
-        [UnityTest]
-        public IEnumerator CutscenePlayback_SkippedVideo_ReleasesPlayerBeforeStartingNextVideo()
-        {
-            AppBootstrap bootstrap = AppBootstrap.EnsureExists();
-            VideoClip clip = AssetDatabase.LoadAssetAtPath<VideoClip>(
-                "Assets/Tests/EditMode/UnitTests/UI/SceneUI/Cutscenes/CutsceneTestClip.webm"
-            );
-            Assert.IsNotNull(clip);
-            CutsceneManager manager = bootstrap.GetCutsceneManager();
-            CutscenePlayer firstPlayer = null;
-            bool firstPlayerReleasedBeforeCompletion = false;
-            manager.Play(
-                clip,
-                () =>
-                {
-                    firstPlayerReleasedBeforeCompletion = firstPlayer == null;
-                    manager.Play(clip, null);
-                }
-            );
-            firstPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
-            Assert.IsNotNull(firstPlayer);
-
-            firstPlayer.Skip();
-
-            Assert.IsFalse(firstPlayerReleasedBeforeCompletion);
-            yield return null;
-
-            Assert.IsTrue(firstPlayerReleasedBeforeCompletion);
-            CutscenePlayer secondPlayer = Object.FindAnyObjectByType<CutscenePlayer>();
-            Assert.IsNotNull(secondPlayer);
-            Assert.AreNotSame(firstPlayer, secondPlayer);
         }
 
         /// <summary>

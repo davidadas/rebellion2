@@ -82,6 +82,7 @@ namespace Rebellion.Tests.Content
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_TacticalAssetAddresses_ResolveEveryDeclaredResource()
         {
             ContentPack pack = TestContent.Pack;
@@ -112,6 +113,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_TacticalRoster_ContainsEveryAuthoredShipAndFighter()
         {
             GameDataCatalog data = TestContent.Pack.GameData;
@@ -133,6 +135,7 @@ namespace Rebellion.Tests.Content
         /// Verifies that stock ship suppression is loaded independently from destruction capability.
         /// </summary>
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_SectorSuppression_LoadsAuthoredShipValues()
         {
             CapitalShip suppressionShip = TestContent.Pack.GameData.CapitalShips.Single(ship =>
@@ -147,6 +150,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_DetectionBlockingFacilities_LoadExpectedFlags()
         {
             Building ionCannon = TestContent.Pack.GameData.Buildings.Single(building =>
@@ -167,6 +171,7 @@ namespace Rebellion.Tests.Content
         [TestCase("HAN_SOLO", "FNALL1")]
         [TestCase("EMPEROR_PALPATINE", "FNEMP1")]
         [TestCase("DARTH_VADER", "FNEMP1")]
+        [Category("RequiresMedia")]
         public void OpenActive_ProtectedMainOfficer_RetainsFactionFlagsWithoutBecomingRecruitable(
             string officerID,
             string factionID
@@ -182,6 +187,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void OpenActive_OfficerTraits_LoadDefinitionsAndAuthoredAssignments()
         {
             OfficerTraitDefinition smuggler = TestContent.Pack.GameData.OfficerTraits.Single(
@@ -779,6 +785,7 @@ namespace Rebellion.Tests.Content
         [TestCase("Uprising", "MissionLeadershipDivisor", 0)]
         [TestCase("Uprising", "DiceRange", -2)]
         [TestCase("Research", "RefreshIntervalSpread", -2)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InvalidRuleOverride_RejectsDocument(
             string section,
             string member,
@@ -802,6 +809,7 @@ namespace Rebellion.Tests.Content
 
         [TestCase(10, 5)]
         [TestCase(0, int.MaxValue)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InvalidBombardmentRange_RejectsDocument(int minimum, int maximum)
         {
             InvalidDataException error = Assert.Throws<InvalidDataException>(() =>
@@ -814,6 +822,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_InheritedBombardmentBound_RejectsInvertedOverride()
         {
             Assert.Throws<InvalidDataException>(() =>
@@ -827,6 +836,7 @@ namespace Rebellion.Tests.Content
         [TestCase(5, 5)]
         [TestCase(1, 10)]
         [TestCase(int.MaxValue - 1, int.MaxValue - 1)]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_ValidBombardmentRange_PreservesValues(int minimum, int maximum)
         {
             GameConfig config = LoadApplicationGameConfig(
@@ -890,6 +900,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_BattleSupportEntryLeafOverride_PreservesOtherContextsAndValues()
         {
             GameConfig config = LoadApplicationGameConfig(
@@ -923,6 +934,7 @@ namespace Rebellion.Tests.Content
         [TestCase("Divisor")]
         [TestCase("FirstSide.LeadingFlat")]
         [TestCase("SecondSide.SupportThreshold")]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_RemovedRequiredBattleSupportInput_RejectsMergedDocument(
             string member
         )
@@ -962,6 +974,7 @@ namespace Rebellion.Tests.Content
 
         [TestCase("0")]
         [TestCase("Unknown")]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_UnsupportedBattleSupportContext_RejectsMergedDocument(
             string context
         )
@@ -987,6 +1000,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_DuplicateBattleSupportContext_RejectsDocument()
         {
             string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
@@ -1009,6 +1023,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_ZeroBattleSupportDivisor_RejectsMergedDocument()
         {
             Assert.Throws<XmlSchemaValidationException>(() =>
@@ -1021,6 +1036,7 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void LoadGameConfig_RemovedBattleSupportProfile_RejectsMergedDocument()
         {
             Assert.Throws<XmlSchemaValidationException>(() =>

@@ -91,27 +91,10 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void GetOperationalHyperdrive_DamagedPrimary_UsesInstalledBackup()
         {
-            GameDataCatalog data = TestContent.Data;
-            CapitalShip template = data.CapitalShips.First(item =>
-                item.Hyperdrive > 0
-                && data.TacticalCombat.Units.Any(definition =>
-                    definition.UnitTypeID == item.TypeID && definition.BackupHyperdrive > 0
-                )
-            );
-            UnitFactory factory = new(
-                data.Buildings,
-                data.CapitalShips,
-                data.Starfighters,
-                data.Regiments,
-                data.SpecialForces,
-                data.TacticalCombat
-            );
-            CapitalShip ship = factory.Create<CapitalShip>(template.TypeID, "owner");
+            UnitFactory factory = TacticalTestData.CreateUnitFactory(TestConfig.Create());
+            CapitalShip ship = factory.Create<CapitalShip>("ALCS008", "owner");
             ship.SystemDamage.PrimaryHyperdrive = 1;
-            int backup = TestContent
-                .Data.TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
-                .BackupHyperdrive;
-            Assert.AreEqual(backup, ship.GetOperationalHyperdrive());
+            Assert.AreEqual(2, ship.GetOperationalHyperdrive());
         }
 
         [Test]

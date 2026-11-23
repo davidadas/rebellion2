@@ -9,6 +9,7 @@ using UnityEngine;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorXmlViewTests
     {
         private string folder;
