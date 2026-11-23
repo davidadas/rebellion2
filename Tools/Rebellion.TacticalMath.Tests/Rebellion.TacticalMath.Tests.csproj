@@ -2,13 +2,13 @@
   <PropertyGroup>
     <TargetFramework>net9.0</TargetFramework>
     <IsTestProject>true</IsTestProject>
-    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
     <NativeTarget Condition="'$(NativeTarget)' == ''">win-x64</NativeTarget>
-    <NativeRoot Condition="'$(NativeRoot)' == ''">../../../Assets/Plugins/TacticalMath</NativeRoot>
+    <NativeRoot Condition="'$(NativeRoot)' == ''">../../Assets/Plugins/TacticalMath</NativeRoot>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="../managed/*.cs" />
-    <Compile Include="TacticalCombatGeometryTests.cs" />
+    <Compile Include="../../Assets/Scripts/Tactical/Core/TacticalCombatGeometry.cs" />
+    <Compile Include="../../Assets/Scripts/Tactical/Core/Mathematics/TacticalCombatNativeMath.cs" />
+    <Compile Include="../../Assets/Scripts/Tactical/Core/Mathematics/TacticalCombatVectorLength.cs" />
     <PackageReference Include="NUnit" Version="3.14.0" />
     <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />

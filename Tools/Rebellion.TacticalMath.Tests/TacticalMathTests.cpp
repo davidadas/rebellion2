@@ -1,4 +1,4 @@
-#include "../TacticalMath.h"
+#include "TacticalMath.h"
 #include <bit>
 #include <cstdio>
 #include <initializer_list>

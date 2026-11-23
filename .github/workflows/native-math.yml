@@ -5,12 +5,18 @@ on:
     paths:
       - '.github/workflows/native-math.yml'
       - 'Native/TacticalMath/**'
+      - 'Assets/Scripts/Tactical/Core/Mathematics/**'
+      - 'Assets/Scripts/Tactical/Core/TacticalCombatGeometry.cs'
+      - 'Tools/Rebellion.TacticalMath.Tests/**'
       - 'Tools/build_tactical_math.py'
   push:
     branches: [master]
     paths:
       - '.github/workflows/native-math.yml'
       - 'Native/TacticalMath/**'
+      - 'Assets/Scripts/Tactical/Core/Mathematics/**'
+      - 'Assets/Scripts/Tactical/Core/TacticalCombatGeometry.cs'
+      - 'Tools/Rebellion.TacticalMath.Tests/**'
       - 'Tools/build_tactical_math.py'
   workflow_call:
   workflow_dispatch:
@@ -55,7 +61,7 @@ jobs:
         if: runner.os != 'Windows'
         run: python3 Tools/build_tactical_math.py --build-directory native-build --output-directory native-output/TacticalMath --target ${{ matrix.target }}
       - name: Verify managed public geometry
-        run: dotnet test Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj -p:NativeTarget=${{ matrix.target }} -p:NativeRoot=${{ github.workspace }}/native-output/TacticalMath --verbosity minimal
+        run: dotnet test Tools/Rebellion.TacticalMath.Tests/Rebellion.TacticalMath.Tests.csproj -p:NativeTarget=${{ matrix.target }} -p:NativeRoot=${{ github.workspace }}/native-output/TacticalMath --verbosity minimal
       - uses: actions/upload-artifact@v4
         with:
           name: tactical-math-${{ matrix.target }}
@@ -89,4 +95,4 @@ jobs:
         run: |
           chmod +x native-output/TacticalMath/osx/TacticalMathContracts
           native-output/TacticalMath/osx/TacticalMathContracts
-          dotnet test Native/TacticalMath/managed-tests/TacticalMath.ManagedTests.csproj -p:NativeTarget=osx -p:NativeRoot="$PWD/native-output/TacticalMath" --verbosity minimal
+          dotnet test Tools/Rebellion.TacticalMath.Tests/Rebellion.TacticalMath.Tests.csproj -p:NativeTarget=osx -p:NativeRoot="$PWD/native-output/TacticalMath" --verbosity minimal
