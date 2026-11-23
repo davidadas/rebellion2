@@ -220,9 +220,14 @@ facility research artwork. Player HUD artwork is under each faction's
 ### Managing community mods
 
 Open **Mods** in the content pack editor's menu bar. A project does not need to be open.
-Use **Browse** to search the Rebellion 2 Thunderstore community, select a release, and install it
+Use **Discover** to search the Rebellion 2 Thunderstore community, select a release, and install it
 with its declared package dependencies. The release selector also allows installing an older
 published version. **Import ZIP…** accepts native content archives from disk.
+
+Search matches every entered word across names, creators, descriptions, and categories, ignoring
+spacing, punctuation, and accents. Use **Ctrl+F** (**Command+F** on Mac) to focus search. Filter by
+category or installation status, and sort by relevance, downloads, update date, creation date, or
+name. **Clear filters** resets the query and filters while retaining your chosen sorting.
 
 **Installed** includes downloaded packages and manually installed content. Select a content pack
 with **Use content pack**, or enable and disable add-ons. This updates the game's existing content

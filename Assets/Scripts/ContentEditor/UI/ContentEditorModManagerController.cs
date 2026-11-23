@@ -21,6 +21,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private readonly CancellationTokenSource lifetime = new();
     private CancellationTokenSource operation;
     private CancellationTokenSource iconRequest;
+    private CancellationTokenSource searchRequest;
     private ThunderstorePackage[] catalog = Array.Empty<ThunderstorePackage>();
     private IReadOnlyList<InstalledModPackage> installed = Array.Empty<InstalledModPackage>();
     private string selection;
@@ -70,6 +71,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
         view.SearchChanged += Search;
         view.SelectionChanged += Select;
         view.VersionChanged += SelectVersion;
+        view.CriteriaChanged += ChangeCriteria;
+        view.IconsRequested += LoadIcons;
     }
 
     /// <summary>
@@ -84,7 +87,10 @@ internal sealed class ContentEditorModManagerController : IDisposable
             installed = store.GetInstalled();
             if (catalog.Length == 0 && File.Exists(store.CatalogPath))
                 catalog = ThunderstoreClient.ParseCatalog(File.ReadAllText(store.CatalogPath));
-            RenderRows();
+            view.SetCategories(
+                catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
+            );
+            RenderRows(true);
             RenderDetails();
             Refresh();
         }
@@ -98,18 +104,30 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// Refreshes the public catalog while retaining usable offline data after a failure.
     /// </summary>
     private void Refresh() =>
-        Run(async token =>
-        {
-            view.SetStatus("Checking Thunderstore…");
-            var result = await client.GetCatalogAsync(token);
-            catalog = result.Packages;
-            store.SaveCatalog(result.Json);
-            installed = store.GetInstalled();
-            view.SetStatus(
-                catalog.Length
-                    + " community packages. Official content packs are managed by the launcher."
-            );
-        });
+        Run(
+            async token =>
+            {
+                view.SetStatus("Checking Thunderstore…");
+                var result = await client.GetCatalogAsync(token);
+                string selectedRelease = SelectedVersion?.version_number;
+                catalog = result.Packages;
+                store.SaveCatalog(result.Json);
+                installed = store.GetInstalled();
+                view.SetCategories(
+                    catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
+                );
+                if (selectedRelease != null && SelectedListing != null)
+                    versionIndex = Mathf.Max(
+                        0,
+                        Array.FindIndex(
+                            SelectedListing.versions,
+                            version => version.version_number == selectedRelease
+                        )
+                    );
+                view.SetStatus("Community catalog is up to date.");
+            },
+            false
+        );
 
     /// <summary>
     /// Switches between community listings and installed packages.
@@ -118,7 +136,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private void SelectTab(bool value)
     {
         installedTab = value;
-        RenderRows();
+        RenderRows(true);
         RenderDetails();
     }
 
@@ -126,9 +144,31 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// Filters package names, authors, and descriptions.
     /// </summary>
     /// <param name="value">The current search text.</param>
-    private void Search(string value)
+    private async void Search(string value)
     {
-        RenderRows();
+        searchRequest?.Cancel();
+        searchRequest?.Dispose();
+        searchRequest = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+        CancellationToken token = searchRequest.Token;
+        try
+        {
+            await Task.Delay(150, token);
+            if (!disposed && !token.IsCancellationRequested && view.Search == value)
+            {
+                RenderRows(true);
+                RenderDetails();
+            }
+        }
+        catch (OperationCanceledException) { }
+    }
+
+    /// <summary>
+    /// Applies filter and ordering choices without delaying deliberate selector changes.
+    /// </summary>
+    private void ChangeCriteria()
+    {
+        searchRequest?.Cancel();
+        RenderRows(true);
         RenderDetails();
     }
 
@@ -138,11 +178,12 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// <param name="id">The stable distribution identity.</param>
     private void Select(string id)
     {
+        if (selection == id)
+            return;
         selection = id;
         versionIndex = 0;
         RenderRows();
         RenderDetails();
-        LoadIcon();
     }
 
     /// <summary>
@@ -153,76 +194,36 @@ internal sealed class ContentEditorModManagerController : IDisposable
     {
         versionIndex = index;
         RenderDetails();
-        LoadIcon();
     }
 
     /// <summary>
-    /// Builds the searchable rows using exact installed distribution identities.
+    /// Queries the catalog while preserving stable selection and ordinary scroll position.
     /// </summary>
-    private void RenderRows()
+    /// <param name="resetScroll">Whether changed criteria require showing the first result.</param>
+    private void RenderRows(bool resetScroll = false)
     {
-        string query = view.Search.Trim();
-        List<(string ID, string Text)> rows = installedTab
-            ? installed
-                .Where(package =>
-                    Matches(package.Name + " " + package.Author + " " + package.Description, query)
-                )
-                .Select(package =>
-                    (
-                        package.PackageID,
-                        package.Name
-                            + "\n"
-                            + package.Author
-                            + " · "
-                            + package.Version
-                            + (package.Local ? " · Local" : " · Installed")
-                    )
-                )
-                .ToList()
-            : catalog
-                .Where(package =>
-                    Matches(
-                        package.name + " " + package.owner + " " + package.Latest.description,
-                        query
-                    )
-                )
-                .Select(package =>
-                {
-                    InstalledModPackage current = installed.FirstOrDefault(item =>
-                        item.PackageID == package.full_name
-                    );
-                    string state =
-                        current == null ? string.Empty
-                        : current.Version == package.Latest.version_number ? " · Installed"
-                        : " · Update available";
-                    return (
-                        package.full_name,
-                        package.name
-                            + "\n"
-                            + package.owner
-                            + " · "
-                            + package.Latest.version_number
-                            + state
-                    );
-                })
-                .ToList();
-        if (!rows.Any(row => row.ID == selection))
+        IReadOnlyList<ContentEditorModEntry> entries = ContentEditorModCatalog.Find(
+            catalog,
+            installed,
+            installedTab,
+            view.Search,
+            view.Category,
+            view.Filter,
+            view.Sort
+        );
+        if (!entries.Any(entry => entry.ID == selection))
         {
-            selection = rows.FirstOrDefault().ID;
+            selection = entries.FirstOrDefault()?.ID;
             versionIndex = 0;
-            LoadIcon();
         }
-        view.RenderRows(rows, selection, installedTab);
+        view.RenderRows(
+            entries,
+            selection,
+            installedTab,
+            installedTab ? installed.Count : catalog.Length,
+            resetScroll
+        );
     }
-
-    /// <summary>
-    /// Compares search text without depending on the machine's current culture.
-    /// </summary>
-    /// <param name="text">The combined searchable fields.</param>
-    /// <param name="query">The entered query.</param>
-    /// <returns>Whether the package matches.</returns>
-    private static bool Matches(string text, string query) =>
-        text.IndexOf(query, StringComparison.OrdinalIgnoreCase) >= 0;
 
     /// <summary>
     /// Displays native pack versions separately from distribution release versions.
@@ -237,7 +238,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         string text =
             release?.description
             ?? current?.Description
-            ?? "Browse community packages or import a content archive.\n\nDownloads install beside the game's content, separate from your editable projects.";
+            ?? "Select a package to see its description, available versions, and installation options.";
         string issue = current == null ? string.Empty : store.GetCompatibilityIssue(current);
         if (current != null)
         {
@@ -267,7 +268,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         }
         if (release != null)
         {
-            text += "\n\nDownload: " + (release.file_size / 1048576d).ToString("0.0") + " MB";
+            text += "\n\nDownload size: " + (release.file_size / 1048576d).ToString("0.0") + " MB";
             if (release.dependencies.Length > 0)
                 text += "\n\nRequired packages:\n" + string.Join("\n", release.dependencies);
             if (listing.is_deprecated)
@@ -296,16 +297,14 @@ internal sealed class ContentEditorModManagerController : IDisposable
         if (inUse)
             text +=
                 "\n\nUsed by the open project. Close the project before replacing or removing these files.";
-        text +=
-            "\n\nClose the game before changing installed files. Content selection takes effect when the game next loads content. Older saves still require their recorded content versions.";
         view.RenderDetails(
-            listing?.name ?? current?.Name ?? "Community mods",
+            listing == null && current == null ? null : new ContentEditorModEntry(listing, current),
             text,
             listing?.versions.Select(item => item.version_number).ToList() ?? new List<string>(),
             versionIndex,
-            current == null ? "Install"
-                : current.Version == release?.version_number ? "Reinstall"
-                : "Install selected version",
+            current == null ? "Install package"
+                : current.Version == release?.version_number ? "Reinstall package"
+                : "Install version " + release?.version_number,
             release != null && !inUse,
             activateLabel,
             current != null && string.IsNullOrEmpty(issue) && !selected,
@@ -315,23 +314,35 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
-    /// Loads a selection-owned icon without allowing stale responses to replace it.
+    /// Loads uncached artwork for visible cards and the detail panel, canceling obsolete requests.
     /// </summary>
-    private async void LoadIcon()
+    /// <param name="urls">The currently visible public icon URLs.</param>
+    private async void LoadIcons(string[] urls)
     {
         iconRequest?.Cancel();
         iconRequest?.Dispose();
         iconRequest = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         CancellationToken token = iconRequest.Token;
-        view.SetIcon(null);
-        string url = SelectedVersion?.icon;
-        if (string.IsNullOrWhiteSpace(url))
-            return;
+        string[] missing = urls.Where(url => !view.HasIcon(url)).ToArray();
+        for (int index = 0; index < missing.Length && !token.IsCancellationRequested; index += 4)
+            await Task.WhenAll(
+                missing.Skip(index).Take(4).Select(url => LoadIconAsync(url, token))
+            );
+    }
+
+    /// <summary>
+    /// Retrieves one card image without allowing canceled or disposed views to receive it.
+    /// </summary>
+    /// <param name="url">The exact public icon URL.</param>
+    /// <param name="token">The visible-image request lifetime.</param>
+    /// <returns>The completion of this artwork request.</returns>
+    private async Task LoadIconAsync(string url, CancellationToken token)
+    {
         try
         {
             byte[] bytes = await client.GetIconAsync(url, token);
             if (!disposed && !token.IsCancellationRequested)
-                view.SetIcon(bytes);
+                view.SetIcon(url, bytes);
         }
         catch (OperationCanceledException) { }
         catch (Exception exception)
@@ -502,12 +513,13 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// Runs one cancellable operation and keeps errors in their owning screen.
     /// </summary>
     /// <param name="action">The download or filesystem operation.</param>
-    private async void Run(Func<CancellationToken, Task> action)
+    /// <param name="changesFiles">Whether package files are being changed and browsing must pause.</param>
+    private async void Run(Func<CancellationToken, Task> action, bool changesFiles = true)
     {
         if (IsBusy || disposed)
             return;
         operation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-        view.SetBusy(true);
+        view.SetBusy(true, changesFiles);
         try
         {
             await action(operation.Token);
@@ -556,6 +568,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             return;
         }
         iconRequest?.Cancel();
+        searchRequest?.Cancel();
         view.Hide();
     }
 
@@ -578,6 +591,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
     public void Dispose()
     {
         disposed = true;
+        searchRequest?.Cancel();
+        searchRequest?.Dispose();
         lifetime.Cancel();
         lifetime.Dispose();
         iconRequest?.Cancel();
@@ -594,5 +609,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         view.SearchChanged -= Search;
         view.SelectionChanged -= Select;
         view.VersionChanged -= SelectVersion;
+        view.CriteriaChanged -= ChangeCriteria;
+        view.IconsRequested -= LoadIcons;
     }
 }

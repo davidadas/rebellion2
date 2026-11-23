@@ -74,12 +74,46 @@ public static class ContentPackEditorPreview
             manager.Show();
             while (manager.IsBusy)
                 await Task.Yield();
-            RawImage icon = view.ModManager.GetComponentInChildren<RawImage>(true);
+            RawImage icon = view
+                .ModManager.GetComponentsInChildren<RawImage>(true)
+                .Single(image => image.name == "PackageIcon");
             DateTime iconDeadline = DateTime.UtcNow.AddSeconds(10);
             while (!icon.enabled && DateTime.UtcNow < iconDeadline)
                 await Task.Yield();
             Canvas.ForceUpdateCanvases();
+            foreach (
+                ContentEditorColorMode mode in new[]
+                {
+                    ContentEditorColorMode.Dark,
+                    ContentEditorColorMode.Light,
+                }
+            )
+            {
+                view.SetColorMode(mode);
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Mod-manager-" + mode + ".png"
+                );
+            }
+            view.SetColorMode(ContentEditorColorMode.Dark);
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager.png");
+            TMP_Dropdown sort = view
+                .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
+                .Single(dropdown => dropdown.name == "sorting");
+            sort.value = (int)ContentEditorModSort.Downloads;
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-downloads.png");
+            TMP_Dropdown category = view
+                .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
+                .Single(dropdown => dropdown.name == "category");
+            category.value = 1;
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-category.png");
+            category.value = 0;
+            TMP_InputField search = view.ModManager.GetComponentInChildren<TMP_InputField>(true);
+            search.text = "no such package";
+            await Task.Delay(250);
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-empty.png");
+
             Debug.Log(
                 "Mod manager preview: "
                     + Path.GetFullPath("_screenshots/ContentEditor/Mod-manager.png")

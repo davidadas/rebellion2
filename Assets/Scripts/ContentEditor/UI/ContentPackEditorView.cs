@@ -1475,6 +1475,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 key.Use();
             return handled;
         }
+        if (modManager.IsOpen && workbench.interactable)
+            return modManager.HandleKeyboardShortcut(key);
         if (artworkWorkspace.gameObject.activeSelf && workbench.interactable)
             return !confirmation.gameObject.activeSelf
                 && artworkWorkspace.HandleKeyboardShortcut(key);

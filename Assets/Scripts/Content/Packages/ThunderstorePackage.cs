@@ -12,6 +12,8 @@ public sealed class ThunderstorePackage
     public string owner;
     public string package_url;
     public string date_updated;
+    public string date_created;
+    public string[] categories;
     public bool is_deprecated;
     public ThunderstorePackageVersion[] versions;
 
@@ -29,6 +31,7 @@ public sealed class ThunderstorePackageVersion
     public string download_url;
     public string icon;
     public long file_size;
+    public long downloads;
     public string[] dependencies;
 }
 
