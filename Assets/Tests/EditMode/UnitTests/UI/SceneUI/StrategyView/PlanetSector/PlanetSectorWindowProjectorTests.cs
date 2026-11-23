@@ -398,10 +398,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         }
 
         [Test]
-        public void CreateRenderData_HiddenAllocatedEnergy_ShowsTotalConsumption()
+        public void CreateRenderData_ReservedEnergyAboveCapacity_ShowsExactConsumption()
         {
             Planet planet = CreatePlanet("planet", _playerFactionId, 2, 0);
-            planet.EnergyCapacity = 2;
+            planet.EnergyCapacity = 1;
             planet.AllocatedEnergy = 2;
             planet.AddTestChild(CreateBuilding(BuildingType.Defense));
             GalaxyMapSector sector = CreateSector(
@@ -417,7 +417,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             );
 
             Assert.AreEqual(2, data.Planets[0].EnergyBar.LitCells);
-            Assert.AreEqual("Energy Consumption 2/2", data.Planets[0].EnergyBar.TooltipText);
+            Assert.AreEqual("Energy Consumption 2/1", data.Planets[0].EnergyBar.TooltipText);
         }
 
         [TestCase(53, 53, 11, 7)]

@@ -1818,7 +1818,8 @@ namespace Rebellion.Gameplay
             {
                 arrivalPlanet.IsColonized = true;
                 arrivalPlanet.PopularSupport.Clear();
-                arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
+                if (!string.IsNullOrEmpty(arrivalPlanet.OwnerInstanceID))
+                    arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
             }
 
             string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);

@@ -5495,7 +5495,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_UnrestrictedBuildingBecomesNeutral()
+        public void ProcessTick_BuildingInTransitDestinationBecomesUncolonizedAndNeutral_UnrestrictedBuildingColonizesWithoutSupport()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5523,6 +5523,7 @@ namespace Rebellion.Tests.Gameplay
                 PositionY = 0,
             };
             game.AttachNode(destinationPlanet, sector);
+            destinationPlanet.SetFullPopularSupport("empire");
             Building mine = new Building
             {
                 InstanceID = "mine1",
@@ -5540,6 +5541,7 @@ namespace Rebellion.Tests.Gameplay
             );
             movement.RequestMove(mine, destinationPlanet, originPlanet);
             game.ChangeOwnership(destinationPlanet, null);
+            destinationPlanet.IsColonized = false;
 
             int transitTicks = mine.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
@@ -5550,6 +5552,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(destinationPlanet, mine.GetParent());
             Assert.IsNull(mine.OwnerInstanceID);
             Assert.IsNull(mine.Movement);
+            Assert.IsTrue(destinationPlanet.IsColonized);
+            Assert.IsEmpty(destinationPlanet.PopularSupport);
             UnitOwnershipChangedResult ownershipChange = results
                 .OfType<UnitOwnershipChangedResult>()
                 .Single(result => ReferenceEquals(result.Unit, mine));
