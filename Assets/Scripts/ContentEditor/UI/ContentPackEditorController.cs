@@ -559,7 +559,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorField[] GetFirstArtworkCutTargets(ContentPackEditorField source)
     {
         if (
-            !ContentEditorUnitArtworkLayout.IsStandardCut(source)
+            !ContentEditorUnitArtworkLayout.IsCutSource(source)
             || ResolveArtworkFile(source) != null
         )
             return Array.Empty<ContentPackEditorField>();
@@ -567,11 +567,16 @@ public sealed class ContentPackEditorController : MonoBehaviour
             .GetMembers(source.Record)
             .Where(member => member != source.MemberName)
             .Select(source.Record.GetField)
-            .Where(ContentEditorUnitArtworkLayout.IsStandardCut)
+            .Where(ContentEditorUnitArtworkLayout.IsCutSource)
             .ToArray();
         return others.Any(field => ResolveArtworkFile(field) != null)
             ? Array.Empty<ContentPackEditorField>()
-            : others.Where(field => string.IsNullOrWhiteSpace(field.Value)).ToArray();
+            : others
+                .Where(field =>
+                    ContentEditorUnitArtworkLayout.IsCutTarget(field)
+                    && string.IsNullOrWhiteSpace(field.Value)
+                )
+                .ToArray();
     }
 
     /// <summary>
@@ -1098,13 +1103,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 string existing = ExistingSource(draft, index);
                 bool completeTravel =
                     effect == ContentEditorArtworkEffect.Travel
-                    && draft.Version >= 5
+                    && draft.RenderVersion >= 5
                     && !draft.UsesExisting;
                 ContentEditorTravelPattern pattern =
                     completeTravel
                     || (
                         effect == ContentEditorArtworkEffect.Travel
-                        && draft.Version >= 5
+                        && draft.RenderVersion >= 5
                         && style == ContentEditorArtworkEffectStyle.FacilityTravel
                     )
                         ? GetTravelPattern(draft, index)
@@ -1113,7 +1118,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     style == ContentEditorArtworkEffectStyle.FacilityTravel
                     && output.ExpectedSize == new Vector2Int(302, 158);
                 int? clearance =
-                    draft.Version < 4 || !facilityCard ? 0
+                    draft.RenderVersion < 4 || !facilityCard ? 0
                     : draft.FacilityClearance >= 0 ? draft.FacilityClearance
                     : null;
                 string reference =
@@ -1132,12 +1137,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         previewBackground,
                         existing,
                         draft.Variant,
-                        legacyStreaks: draft.Version == 2,
+                        legacyStreaks: draft.RenderVersion == 2,
                         facilityClearance: clearance,
                         facilityReferencePath: reference,
                         completeTravel: completeTravel,
                         travelPattern: pattern,
-                        preserveRegisteredTravel: completeTravel && draft.Version >= 6,
+                        preserveRegisteredTravel: completeTravel && draft.RenderVersion >= 6,
                         varyShipWakes: draft.VaryShipWakes,
                         loadLayerSource: LoadLayerSource
                     );
@@ -1171,14 +1176,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         previewBackground,
                         existing,
                         draft.Variant,
-                        legacyStreaks: draft.Version == 2,
+                        legacyStreaks: draft.RenderVersion == 2,
                         facilityClearance: clearance,
                         completeTravel: completeTravel,
                         travelPattern: fallback,
                         loadLayerSource: LoadLayerSource
                     );
                 }
-                if (draft.Version >= 4 && draft.FacilityClearance < 0)
+                if (draft.RenderVersion >= 4 && draft.FacilityClearance < 0)
                     draft.FacilityClearance = frame.FacilityClearance;
                 return frame;
             }
@@ -1218,7 +1223,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 if (
                     current.Seed != restored.Seed
                     || current.Variant != restored.Variant
-                    || current.Version != restored.Version
+                    || current.RenderVersion != restored.RenderVersion
                     || current.FacilityClearance != restored.FacilityClearance
                     || current.UsesExisting != restored.UsesExisting
                     || current.VaryShipWakes != restored.VaryShipWakes
@@ -1449,7 +1454,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             }
 
             bool HasChanges(int index) =>
-                drafts[index] != null && savedRecipes[index] != JsonUtility.ToJson(drafts[index]);
+                drafts[index] != null
+                && (
+                    drafts[index].NeedsImageLayerUpgrade
+                    || savedRecipes[index] != JsonUtility.ToJson(drafts[index])
+                );
 
             void Save()
             {
@@ -1471,7 +1480,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         };
                     if (
                         effect == ContentEditorArtworkEffect.Travel
-                        && draft.Version >= 5
+                        && draft.RenderVersion >= 5
                         && !draft.UsesExisting
                         && draft.TravelPatterns?.Length != 1
                     )
@@ -1480,9 +1489,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         draft.TravelPatterns = new[] { StoreTravelPatternSource(pattern.Image) };
                         draft.TravelSubjects = new[] { StoreTravelPatternSource(pattern.Subject) };
                     }
-                    images.Add(
-                        (output.Field, frames[index].Bake(draft.Layers), JsonUtility.ToJson(draft))
-                    );
+                    byte[] png = frames[index].Bake(draft.Layers);
+                    draft.UpgradeImageLayerVersion();
+                    images.Add((output.Field, png, JsonUtility.ToJson(draft)));
                     foreach (var layer in draft.Layers)
                         if (
                             layer.ImageSource != null
@@ -1534,8 +1543,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     ContentEditorArtworkEffectStyle.PersonnelTravel
                         when draft.UsesExisting && definition.Source >= 3 =>
                         $"Existing accent {definition.Source - 2}",
-                    _ when draft.Version >= 6 && !draft.UsesExisting && definition.Source == 0 =>
-                        "Travel field",
+                    _ when draft.RenderVersion >= 6
+                            && !draft.UsesExisting
+                            && definition.Source == 0 => "Travel field",
                     _ => $"Streaks {ordinal}",
                 };
             }

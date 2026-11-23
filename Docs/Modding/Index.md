@@ -221,6 +221,7 @@ In **Artwork**, the **Messages and encyclopedia** section holds the two 1800 × 
 Choose **Use message image** or **Use encyclopedia image** to share one file between them.
 **Generate cuts** uses the source image's actual dimensions to prevent upscaling.
 For capital ships and starfighters, it generates gameplay artwork only.
+Message and encyclopedia images can also supply the cuts.
 
 ### Artwork layers
 

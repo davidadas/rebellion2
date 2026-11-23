@@ -213,7 +213,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <param name="x">The horizontal sample coordinate in source pixels.</param>
     /// <param name="y">The vertical sample coordinate in source pixels.</param>
     /// <returns>The filtered straight-alpha pixel.</returns>
-    private static Color SampleTransparentPixel(
+    internal static Color SampleTransparentPixel(
         Color32[] pixels,
         int width,
         int height,

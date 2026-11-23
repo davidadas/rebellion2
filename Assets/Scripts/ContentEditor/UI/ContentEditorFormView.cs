@@ -1369,7 +1369,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ContentPackEditorField candidate = fields.FirstOrDefault(field =>
                 field.MemberName == member
             );
-            if (candidate == null || !ContentEditorUnitArtworkLayout.IsStandardCut(candidate))
+            if (candidate == null || !ContentEditorUnitArtworkLayout.IsCutSource(candidate))
                 continue;
             Texture2D texture = ResolveArtworkTexture(candidate);
             if (texture == null)

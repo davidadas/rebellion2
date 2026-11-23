@@ -127,17 +127,25 @@ internal static class ContentEditorUnitArtworkLayout
         !IsHeadquartersIcon(record);
 
     /// <summary>
-    /// Checks whether a field can supply or receive a standard artwork cut.
+    /// Checks whether a field can supply pixels for a standard artwork cut.
     /// </summary>
     /// <param name="field">The unit image field being evaluated.</param>
     /// <returns>True for an ordinary fixed-size image in the unit's artwork workflow.</returns>
-    internal static bool IsStandardCut(ContentPackEditorField field) =>
+    internal static bool IsCutSource(ContentPackEditorField field) =>
         SupportsStandardCuts(field.Record)
         && SupportsMember(field.Record, field.MemberName)
         && field.MemberName != BackgroundMember
         && !IsStateSpecific(field.MemberName)
-        && (field.Record.Kind is not ("CapitalShip" or "Starfighter") || !IsIllustration(field))
         && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _);
+
+    /// <summary>
+    /// Checks whether a field can receive generated artwork.
+    /// </summary>
+    /// <param name="field">The unit image field being evaluated.</param>
+    /// <returns>True for standard cut destinations, excluding ship illustrations.</returns>
+    internal static bool IsCutTarget(ContentPackEditorField field) =>
+        IsCutSource(field)
+        && (field.Record.Kind is not ("CapitalShip" or "Starfighter") || !IsIllustration(field));
 
     /// <summary>
     /// Identifies the large report and encyclopedia illustrations for a unit.
@@ -165,8 +173,8 @@ internal static class ContentEditorUnitArtworkLayout
         dimensions = default;
         return target.Record.Element == source.Record.Element
             && target.MemberName != source.MemberName
-            && IsStandardCut(source)
-            && IsStandardCut(target)
+            && IsCutSource(source)
+            && IsCutTarget(target)
             && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(target, out dimensions)
             && ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, dimensions);
     }

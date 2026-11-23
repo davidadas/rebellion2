@@ -910,7 +910,10 @@ internal static class ContentEditorArtworkEffectGenerator
             bool fits = size.x <= canvas.x && size.y <= canvas.y;
             var layer = fits
                 ? CropLayer(source.GetPixels(), size)
-                : CropLayer(FitToCanvas(source, canvas, stretchSource: false), canvas);
+                : CropLayer(
+                    FitToCanvas(source, canvas, stretchSource: false, filterAlpha: true),
+                    canvas
+                );
             if (layer.Texture == null)
                 throw new InvalidDataException("Choose a layer image with visible pixels.");
             if (fits)
@@ -2096,11 +2099,20 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <param name="source">The readable source texture.</param>
     /// <param name="target">The destination canvas.</param>
     /// <param name="stretchSource">Whether both runtime layers are stretched edge to edge.</param>
+    /// <param name="filterAlpha">Whether transparent pixels must be filtered in premultiplied form.</param>
     /// <returns>Canvas pixels with the source placement preserved.</returns>
-    private static Color[] FitToCanvas(Texture2D source, Vector2Int target, bool stretchSource)
+    private static Color[] FitToCanvas(
+        Texture2D source,
+        Vector2Int target,
+        bool stretchSource,
+        bool filterAlpha = false
+    )
     {
         if (source.width == target.x && source.height == target.y)
             return source.GetPixels();
+        Color32[] transparentPixels = filterAlpha ? source.GetPixels32() : null;
+        if (transparentPixels?.All(pixel => pixel.a == 255) == true)
+            transparentPixels = null;
         float scale = Mathf.Min((float)target.x / source.width, (float)target.y / source.height);
         float width = stretchSource ? target.x : scale * source.width;
         float height = stretchSource ? target.y : scale * source.height;
@@ -2113,7 +2125,16 @@ internal static class ContentEditorArtworkEffectGenerator
             float u = (x + 0.5f - left) / width;
             float v = (y + 0.5f - bottom) / height;
             if (u >= 0f && u <= 1f && v >= 0f && v <= 1f)
-                pixels[y * target.x + x] = source.GetPixelBilinear(u, v);
+                pixels[y * target.x + x] =
+                    transparentPixels == null
+                        ? source.GetPixelBilinear(u, v)
+                        : ContentEditorArtworkCutGenerator.SampleTransparentPixel(
+                            transparentPixels,
+                            source.width,
+                            source.height,
+                            u * source.width - 0.5f,
+                            v * source.height - 0.5f
+                        );
         }
         return pixels;
     }
@@ -2824,8 +2845,11 @@ internal static class ContentEditorArtworkEffectGenerator
 [Serializable]
 internal sealed class ContentEditorArtworkRecipe
 {
-    internal const int CurrentVersion = 7;
-    public int Version = CurrentVersion;
+    private const int _proceduralVersion = 7;
+    private const int _imageLayerVersion = 8;
+    internal const int CurrentVersion = _imageLayerVersion;
+    public int Version = _proceduralVersion;
+    public int LegacyRenderVersion;
     public string OutputMember;
     public int Seed;
     public int NextAddition;
@@ -2837,7 +2861,22 @@ internal sealed class ContentEditorArtworkRecipe
     public string[] TravelPatterns;
     public string[] TravelSubjects;
     internal bool HasStoredSources => ExistingSources is { Length: > 0 };
+    internal int RenderVersion => LegacyRenderVersion > 0 ? LegacyRenderVersion : Version;
     public List<ContentEditorArtworkLayer> Layers = new();
+    internal bool NeedsImageLayerUpgrade =>
+        Version < _imageLayerVersion
+        && Layers.Exists(layer => !string.IsNullOrEmpty(layer.ImageSource));
+
+    /// <summary>
+    /// Marks image layers as requiring a reader that can render them, retaining the procedural recipe.
+    /// </summary>
+    internal void UpgradeImageLayerVersion()
+    {
+        if (!NeedsImageLayerUpgrade)
+            return;
+        LegacyRenderVersion = RenderVersion;
+        Version = _imageLayerVersion;
+    }
 
     /// <summary>
     /// Reads one artwork sidecar and isolates the sources belonging to its output.
