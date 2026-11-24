@@ -24,9 +24,8 @@ or otherwise redistribute `rebellion2-media`, `Assets/Content`, or copyrighted g
 4. Overlay `rebellion2-media/UnityAssets/` onto `rebellion2/Assets/`, preserving `.meta` files.
    This installs native Unity packages, including the main-menu planet, at their logical art
    paths.
-5. Build the host vector library using the instructions in [Native vector math](NativeMath.md).
-6. Open `rebellion2` in Unity.
-7. Run **Rebellion > Build > Build All UI**.
+5. Open `rebellion2` in Unity.
+6. Run **Rebellion > Build > Build All UI**.
 
 Copied media, generated prefabs, and generated scenes are local development artifacts ignored by
 Git. Refresh copied media with Unity closed. The revision in `.github/media-revision` pins the

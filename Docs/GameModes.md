@@ -39,7 +39,7 @@ is imposed on them.
 | `Tactical/Core/Targeting` | Target and force assessment shared by player orders and automated policy |
 | `Tactical/Core/Automation` | Autonomous deployment, assignment, regrouping, retreat, and battle-station policy |
 | `Tactical/Core/Synchronization` | Transport-agnostic commands, complete snapshots, ordered presentation events, and validation/application |
-| `Tactical/Core/Mathematics` | Battle vector operations and the native precision boundary |
+| `Tactical/Core/Mathematics` | Battle vector and formation calculations |
 | `Tactical/Runtime/Audio` | Notification scheduling and playback-backed queue maintenance |
 | `Tactical/Runtime/Scenery` | Encounter calendar seeding and lazy scenery initialization |
 | `Tactical/Runtime/Presentation` | Bounded delayed pose history and interpolation |
@@ -155,7 +155,7 @@ reads the timeline without advancing simulation, outcomes, or random state.
   connectivity, latency, or rendered frame rate.
 
 Unknown gameplay behavior remains unresolved rather than receiving a new default during cleanup.
-Native vector operations retain their precision and storage boundaries; wrapped multiplication and
+Vector calculations use double-precision intermediates and retain their float storage boundaries; wrapped multiplication and
 general saturating arithmetic have different results and are not substituted for one another.
 
 ## Design references

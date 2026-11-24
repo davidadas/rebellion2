@@ -167,16 +167,8 @@ namespace Rebellion.Tests.Tactical
 
             Vector3 heading = group.GetMemberHeading(member);
 
-            if (TacticalCombatNativeMath.SignificandBits == 64)
-            {
-                // The native trigonometric libraries differ slightly before the cancellation.
-                const int retainedHeading = unchecked((int)0xa89c9435);
-                Assert.That(
-                    BitConverter.SingleToInt32Bits(heading.X),
-                    Is.InRange(retainedHeading - 4, retainedHeading + 4)
-                );
-            }
             Assert.That(heading.X, Is.LessThan(0));
+            Assert.That(heading.X, Is.GreaterThan(-0.000001f));
             Assert.AreEqual(0, heading.Y);
             Assert.AreEqual(-1, heading.Z);
         }

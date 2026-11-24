@@ -166,18 +166,6 @@ test('PR runs omit the media checkout and content credentials', () => {
   assert.equal(steps.find(step => step.name === 'Check compiled architecture').if, undefined);
 });
 
-test('the shared runner stages optional native math after the verified merge and before Unity', () => {
-  const steps = runner.jobs.test.steps;
-  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
-  const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
-  const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
-  assert.ok(merge >= 0 && merge < native && native < unity);
-  assert.equal(steps[native].if, "${{ hashFiles('Native/TacticalMath/CMakeLists.txt') != '' }}");
-  assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
-  assert.match(steps[native].run, /--target linux-x64/);
-  assert.equal(steps[native].env, undefined);
-});
-
 test('PR results require actual Unity execution and target the PR check', () => {
   const job = ci.jobs['pr-result'];
   for (const dependency of ['pr-plan', 'approve-pr', 'test-pr']) {
@@ -199,43 +187,6 @@ test('fork pull_request jobs never receive repository or environment secrets', (
   }
   assert.ok(ci.concurrency.group.includes('github.event_name'));
   assert.ok(ci.concurrency.group.includes('inputs.pull_request_number'));
-});
-
-test('Unity tests build the Linux native dependency from the verified tested checkout', () => {
-  const job = runner.jobs.test;
-  assert.equal(job['runs-on'], 'ubuntu-22.04');
-  const steps = job.steps;
-  const baseCheckout = steps.findIndex(step => step.name === 'Checkout PR base');
-  const headCheckout = steps.findIndex(step => step.name === 'Checkout reviewed PR head');
-  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
-  const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
-  const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
-  assert.ok(
-    baseCheckout >= 0 &&
-      baseCheckout < headCheckout &&
-      headCheckout < merge &&
-      merge < native &&
-      native < unity,
-  );
-  assert.equal(steps[baseCheckout].with.ref, '${{ inputs.base_sha }}');
-  assert.equal(steps[baseCheckout].with['persist-credentials'], false);
-  assert.equal(steps[headCheckout].with.repository, '${{ inputs.reviewed_head_repository }}');
-  assert.equal(steps[headCheckout].with.ref, '${{ inputs.reviewed_head_sha }}');
-  assert.equal(steps[headCheckout].with['persist-credentials'], false);
-  assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
-  assert.match(steps[native].run, /--target linux-x64/);
-  assert.equal(steps[native].env, undefined);
-});
-
-test('desktop builds install every verified native platform without copying contract executables', () => {
-  assert.ok(needs(ci.jobs.build).includes('native-math'));
-  assert.equal(ci.jobs['native-math'].uses, './.github/workflows/native-math.yml');
-  assert.equal(ci.jobs['native-math'].secrets, undefined);
-  const native = ci.jobs.build.steps.filter(step => step.uses === 'actions/download-artifact@v4');
-  assert.deepEqual(native.map(step => step.with.name).sort(), [
-    'tactical-math-linux-x64', 'tactical-math-osx', 'tactical-math-win-x64',
-  ]);
-  assert.ok(native.every(step => step.with.path === 'Assets/Plugins'));
 });
 
 test('media resolution reads the tested pin while executing only the workflow revision helper', () => {

@@ -25,8 +25,6 @@ namespace Rebellion.Tactical
         private readonly Dictionary<TacticalCombatUnit, Member> _members = new();
         private readonly List<TacticalCombatUnit> _memberOrder = new();
         private readonly Vector3 _initialHeading;
-        private Vector3[] _rotationBuffer = Array.Empty<Vector3>();
-        private Member[] _rotationMembers = Array.Empty<Member>();
         private Vector3 _previousPosition;
         private Vector3 _lastMovement;
         private float _spacingFloor = 12;
@@ -101,7 +99,7 @@ namespace Rebellion.Tactical
                 return;
             _currentCount++;
             _maximumCount = Math.Max(_maximumCount, _currentCount);
-            _spacingFloor = TacticalCombatNativeMath.UpdateSpacing(
+            _spacingFloor = TacticalCombatFormationMath.UpdateSpacing(
                 _spacingFloor,
                 unit.CollisionRadius
             );
@@ -110,7 +108,6 @@ namespace Rebellion.Tactical
             _members.Add(unit, new Member { Offset = ComputeOffset(unit) });
             int index = _memberOrder.BinarySearch(unit, _memberComparer);
             _memberOrder.Insert(index < 0 ? ~index : index, unit);
-            EnsureRotationCapacity();
         }
 
         /// <summary>
@@ -148,7 +145,7 @@ namespace Rebellion.Tactical
                 TacticalCombatUnit unit = _memberOrder[index];
                 _currentCount++;
                 _maximumCount = _currentCount;
-                _spacingFloor = TacticalCombatNativeMath.UpdateSpacing(
+                _spacingFloor = TacticalCombatFormationMath.UpdateSpacing(
                     _spacingFloor,
                     unit.CollisionRadius
                 );
@@ -157,7 +154,6 @@ namespace Rebellion.Tactical
             if (_memberOrder.Count > 0)
                 Position = _memberOrder[0].Position;
             _memberOrder.Sort(_memberComparer);
-            EnsureRotationCapacity();
         }
 
         /// <summary>
@@ -256,7 +252,7 @@ namespace Rebellion.Tactical
                 return Vector3.Zero;
             if (Kind != TacticalCombatFormationKind.Direct && member.HasRecovery)
                 return member.Recovery;
-            return TacticalCombatNativeMath.MemberTarget(
+            return TacticalCombatFormationMath.MemberTarget(
                 Position,
                 member.Offset,
                 unit.Position,
@@ -322,7 +318,7 @@ namespace Rebellion.Tactical
                 targetHeading.Y = 0;
                 if (IsZeroOrUnordered(targetHeading))
                     targetHeading = _memberOrder.Count > 0 ? _initialHeading : Vector3.UnitZ;
-                targetHeading = TacticalCombatNativeMath.NormalizeDirection(targetHeading);
+                targetHeading = TacticalCombatGeometry.NormalizeTurnDirection(targetHeading);
             }
             else if (
                 (targetHeading.X == 0 || float.IsNaN(targetHeading.X))
@@ -382,61 +378,52 @@ namespace Rebellion.Tactical
         private Vector3 ComputeOffset(TacticalCombatUnit unit)
         {
             if (Kind == TacticalCombatFormationKind.Surround)
-                return TacticalCombatNativeMath.SurroundOffset(
+                return TacticalCombatFormationMath.SurroundOffset(
                     (uint)_currentCount,
                     ref _surroundScale,
                     12.5f
                 );
             return Kind == TacticalCombatFormationKind.Line
-                ? TacticalCombatNativeMath.LineOffset(
+                ? TacticalCombatFormationMath.LineOffset(
                     (uint)_currentCount,
                     (uint)_maximumCount,
                     unit.CollisionRadius,
                     _spacingFloor,
                     Heading
                 )
-                : TacticalCombatNativeMath.DirectOffset((uint)_currentCount, Heading);
+                : TacticalCombatFormationMath.DirectOffset((uint)_currentCount, Heading);
         }
 
         /// <summary>
-        /// Reserves reusable rotation storage when the member roster grows.
-        /// </summary>
-        private void EnsureRotationCapacity()
-        {
-            int required = _memberOrder.Count;
-            if (_rotationMembers.Length >= required)
-                return;
-            int capacity = Math.Max(required, Math.Max(4, _rotationMembers.Length * 2));
-            Array.Resize(ref _rotationMembers, capacity);
-            Array.Resize(ref _rotationBuffer, checked(capacity * 2));
-        }
-
-        /// <summary>
-        /// Rotates member and recovery offsets in a single native call without per-frame allocation.
+        /// Rotates every member offset and stored recovery position around the vertical axis.
         /// </summary>
         /// <param name="angle">The signed applied yaw in radians.</param>
         private void RotateOffsets(float angle)
         {
-            int count = 0;
+            float cosine = (float)Math.Cos(angle);
+            float sine = (float)Math.Sin(angle);
             for (int index = 0; index < _memberOrder.Count; index++)
             {
                 Member member = _members[_memberOrder[index]];
-                _rotationMembers[index] = member;
-                _rotationBuffer[count++] = member.Offset;
+                member.Offset = RotateOffset(member.Offset, cosine, sine);
                 if (member.HasRecovery)
-                    _rotationBuffer[count++] = member.Recovery;
-            }
-            TacticalCombatNativeMath.RotateOffsets(_rotationBuffer, count, angle);
-            count = 0;
-            for (int index = 0; index < _memberOrder.Count; index++)
-            {
-                Member member = _rotationMembers[index];
-                member.Offset = _rotationBuffer[count++];
-                if (member.HasRecovery)
-                    member.Recovery = _rotationBuffer[count++];
-                _rotationMembers[index] = null;
+                    member.Recovery = RotateOffset(member.Recovery, cosine, sine);
             }
         }
+
+        /// <summary>
+        /// Applies a stored yaw rotation to one offset while preserving its vertical component.
+        /// </summary>
+        /// <param name="offset">The offset before rotation.</param>
+        /// <param name="cosine">The stored cosine of the yaw.</param>
+        /// <param name="sine">The stored sine of the yaw.</param>
+        /// <returns>The rotated offset.</returns>
+        private static Vector3 RotateOffset(Vector3 offset, float cosine, float sine) =>
+            new(
+                (float)((double)cosine * offset.X - (double)sine * offset.Z),
+                offset.Y,
+                (float)((double)sine * offset.X + (double)cosine * offset.Z)
+            );
 
         /// <summary>
         /// Tests whether all components are zero or unordered.

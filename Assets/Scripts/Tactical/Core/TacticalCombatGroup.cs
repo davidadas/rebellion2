@@ -628,12 +628,18 @@ namespace Rebellion.Tactical
                     && Formation.StableUpdates >= 5
                 )
                 {
-                    int arc = (int)(
+                    TacticalWeaponArc arc =
                         TacticalCombatFireControl.GetStrongestArc(unit, false)
-                        ?? TacticalWeaponArc.Forward
-                    );
+                        ?? TacticalWeaponArc.Forward;
                     Vector3 delta = target.Position - unit.Position;
-                    heading = TacticalCombatNativeMath.RotateBatteryDirection(delta, (uint)arc);
+                    double angle = (int)arc * (double)MathF.PI * 0.5;
+                    double cosine = Math.Cos(angle);
+                    double sine = Math.Sin(angle);
+                    heading = new Vector3(
+                        (float)(delta.X * (double)(float)cosine - sine * delta.Z),
+                        delta.Y,
+                        (float)(delta.X * sine + cosine * delta.Z)
+                    );
                 }
                 else
                     heading = unit.Heading;

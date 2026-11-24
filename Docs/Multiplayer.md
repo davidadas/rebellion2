@@ -104,7 +104,7 @@ store authentication, EOS discovery and peer, ordered campaign, and tactical dri
 Build one Windows x64 integration player from the current checkout with Unity's
 `-batchmode -nographics -quit -buildTarget StandaloneWindows64 -executeMethod EosTacticalIntegrationPlayerBuild.Build` arguments and
 `-eosTacticalBuildDirectory <absolute-directory-under-the-system-temp-directory>`. Supply the usual
-`-projectPath` and `-logFile` paths. The builder requires installed Windows native math and local EOS
+`-projectPath` and `-logFile` paths. The builder requires local EOS
 configuration under the existing ignored `Assets/StreamingAssets/EOS` path. Its build manifest records
 source and artifact fingerprints without player tokens or client configuration values.
 

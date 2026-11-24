@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void GetMemberMovement_DirectThresholdWithSmallThirdCoordinate_UsesNativePrecision()
+        public void GetMemberMovement_DirectThresholdWithSmallThirdCoordinate_UsesFallbackVelocity()
         {
             TacticalCombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(
@@ -68,12 +68,7 @@ namespace Rebellion.Tests.Tactical
 
             Vector3 movement = formation.GetMemberMovement(unit);
 
-            Assert.AreEqual(
-                TacticalCombatNativeMath.SignificandBits == 53
-                    ? Vector3.Zero
-                    : new Vector3(2, 0, 9.313225746154785e-10f),
-                movement
-            );
+            Assert.AreEqual(Vector3.Zero, movement);
         }
 
         [Test]
@@ -118,11 +113,7 @@ namespace Rebellion.Tests.Tactical
                 formation.Heading
             );
             Assert.AreEqual(unchecked((int)0xc13f9f06), BitConverter.SingleToInt32Bits(movement.X));
-            if (TacticalCombatNativeMath.SignificandBits == 64)
-                Assert.AreEqual(
-                    unchecked((int)0xbf40e0b5),
-                    BitConverter.SingleToInt32Bits(movement.Z)
-                );
+            Assert.That(movement.Z, Is.EqualTo(-0.75342894f).Within(0.000001f));
         }
 
         [Test]
