@@ -294,7 +294,7 @@ namespace Rebellion.Tests.Gameplay
                 {
                     foreach (BlockadeChangedResult result in results)
                         if (result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet))
-                            observedStartStates.Add(result.Planet.IsBlockaded());
+                            observedStartStates.Add(result.Planet.IsBlockaded(_game));
                 }
             );
 
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(origin, sector);
             _game.AttachNode(destination, sector);
             Fleet fleet = AttachOperationalFleet(origin, "FNEMP1", "UNRELATED_FLEET");
-            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsTrue(origin.IsBlockaded(_game));
             MovementCommands movement = _session.GetService<MovementCommands>();
             List<BlockadeChangedResult> blockades = new();
             bool departureObserved = false;

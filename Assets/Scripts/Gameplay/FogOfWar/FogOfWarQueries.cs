@@ -39,6 +39,19 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Determines whether a faction can observe current political changes on a planet.
+        /// Core politics are public; Outer Rim politics require current ownership or fleet visibility.
+        /// </summary>
+        /// <param name="planet">The planet whose political state changed.</param>
+        /// <param name="faction">The faction receiving the political information.</param>
+        /// <returns>True when the political change is public or currently visible to the faction.</returns>
+        public bool IsPlanetControlVisible(Planet planet, Faction faction)
+        {
+            return planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                || IsPlanetVisible(planet, faction);
+        }
+
+        /// <summary>
         /// Determines visibility while retaining the first active child snapshot for the current
         /// synchronous planet projection.
         /// </summary>
@@ -408,6 +421,12 @@ namespace Rebellion.Gameplay
             viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
+            if (masterPlanet.OwnerInstanceID == faction.InstanceID)
+                viewPlanet.AllocatedEnergy = masterPlanet.GetEnergyUsed();
+            else if (planetSnapshot?.HasIntelligence(PlanetIntelligenceCategory.Planet) == true)
+                viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
+            else
+                viewPlanet.AllocatedEnergy = 0;
 
             IEnumerable<Officer> officers = activeMasterChildren
                 .OfType<Officer>()

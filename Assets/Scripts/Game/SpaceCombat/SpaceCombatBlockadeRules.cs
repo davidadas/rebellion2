@@ -7,7 +7,7 @@ using Rebellion.SceneGraph;
 namespace Rebellion.Game.SpaceCombat
 {
     /// <summary>
-    /// Evaluates live orbital blockades for an exact authored two-faction campaign domain.
+    /// Evaluates live orbital blockades for a campaign with a configured pair of factions.
     /// </summary>
     internal static class SpaceCombatBlockadeRules
     {
@@ -16,13 +16,13 @@ namespace Rebellion.Game.SpaceCombat
         /// Unsupported faction domains remain owned by the planet's existing fleet predicate.
         /// </summary>
         /// <param name="game">The game owning the registered orbital units.</param>
-        /// <param name="definition">The current authored tactical faction mapping.</param>
+        /// <param name="factionIds">The campaign's starting faction identities.</param>
         /// <param name="planet">The exact registered planet whose orbital state is inspected.</param>
         /// <param name="blockaded">The current blockade state when this domain applies.</param>
         /// <returns>Whether the current faction domain supports these orbital rules.</returns>
         internal static bool TryCalculate(
             GameRoot game,
-            TacticalCombatDefinition definition,
+            IReadOnlyList<string> factionIds,
             Planet planet,
             out bool blockaded
         )
@@ -31,7 +31,7 @@ namespace Rebellion.Game.SpaceCombat
             if (
                 !TryGetFactionPair(
                     game.GetFactions(),
-                    definition,
+                    factionIds,
                     out string first,
                     out string second
                 )
@@ -100,58 +100,31 @@ namespace Rebellion.Game.SpaceCombat
             && ReferenceEquals(registered, node);
 
         /// <summary>
-        /// Validates the two current campaign identities against distinct authored tactical indexes.
-        /// The fixed-size checks also cover mutations to either list or its identity fields.
+        /// Checks whether the live campaign still has its original two factions.
         /// </summary>
-        /// <param name="factions">The campaign's current faction collection.</param>
-        /// <param name="definition">The mutable authored tactical definition.</param>
-        /// <param name="first">The faction currently mapped to index zero.</param>
-        /// <param name="second">The faction currently mapped to index one.</param>
-        /// <returns>Whether the authored pair exactly covers the campaign's faction identities.</returns>
+        /// <param name="factions">The current campaign factions.</param>
+        /// <param name="factionIds">The saved faction order.</param>
+        /// <param name="first">The first configured identity.</param>
+        /// <param name="second">The second configured identity.</param>
+        /// <returns>Whether both configured identities are present in the current pair.</returns>
         private static bool TryGetFactionPair(
             IReadOnlyList<Faction> factions,
-            TacticalCombatDefinition definition,
+            IReadOnlyList<string> factionIds,
             out string first,
             out string second
         )
         {
             first = null;
             second = null;
-            if (factions.Count != 2 || definition?.Factions?.Count != 2)
+            if (factions.Count != 2 || factionIds.Count != 2)
                 return false;
 
+            first = factionIds[0];
+            second = factionIds[1];
             string firstOwner = factions[0]?.InstanceID;
             string secondOwner = factions[1]?.InstanceID;
-            TacticalCombatFactionDefinition firstDefinition = definition.Factions[0];
-            TacticalCombatFactionDefinition secondDefinition = definition.Factions[1];
-            if (
-                string.IsNullOrEmpty(firstOwner)
-                || string.IsNullOrEmpty(secondOwner)
-                || firstOwner == secondOwner
-                || firstDefinition == null
-                || secondDefinition == null
-                || !(
-                    firstDefinition.FactionIndex == 0 && secondDefinition.FactionIndex == 1
-                    || firstDefinition.FactionIndex == 1 && secondDefinition.FactionIndex == 0
-                )
-                || !(
-                    firstDefinition.FactionInstanceID == firstOwner
-                        && secondDefinition.FactionInstanceID == secondOwner
-                    || firstDefinition.FactionInstanceID == secondOwner
-                        && secondDefinition.FactionInstanceID == firstOwner
-                )
-            )
-                return false;
-
-            first =
-                firstDefinition.FactionIndex == 0
-                    ? firstDefinition.FactionInstanceID
-                    : secondDefinition.FactionInstanceID;
-            second =
-                firstDefinition.FactionIndex == 1
-                    ? firstDefinition.FactionInstanceID
-                    : secondDefinition.FactionInstanceID;
-            return true;
+            return firstOwner == first && secondOwner == second
+                || firstOwner == second && secondOwner == first;
         }
     }
 }

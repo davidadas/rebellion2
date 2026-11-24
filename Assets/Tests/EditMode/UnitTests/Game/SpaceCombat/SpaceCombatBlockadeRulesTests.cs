@@ -3,7 +3,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
@@ -40,16 +39,6 @@ namespace Rebellion.Tests.Game.SpaceCombat
             };
             _game.AttachNode(_planet, sector);
             _catalog = TestGameData.Create(_game.Config);
-            _catalog.TacticalCombat.Factions.Add(
-                new TacticalCombatFactionDefinition
-                {
-                    FactionInstanceID = "alpha",
-                    FactionIndex = 0,
-                }
-            );
-            _catalog.TacticalCombat.Factions.Add(
-                new TacticalCombatFactionDefinition { FactionInstanceID = "beta", FactionIndex = 1 }
-            );
             _session = new GameSession(_game, _catalog);
             _enemyFleet = AddFleet("beta");
             _enemyShip = AddCapital(_enemyFleet);
@@ -71,8 +60,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
         [Test]
         public void IsBlockaded_ReadyDirectFriendlyFighter_SuppressesHostileFleet()
         {
-            Assert.IsFalse(_planet.IsBlockaded());
-            Assert.IsFalse(_planet.IsBlockadedFor("alpha"));
+            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(_planet.IsBlockadedFor("alpha", _game));
         }
 
         [Test]
@@ -81,7 +70,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.DeleteNode(_enemyFleet);
             _game.ChangeOwnership(_fighter, "beta");
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase(false)]
@@ -90,11 +79,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.ChangeOwnership(_planet, null);
             _planet.IsColonized = populated;
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
 
             _game.DeleteNode(_fighter);
 
-            Assert.AreEqual(populated, _planet.IsBlockaded());
+            Assert.AreEqual(populated, _planet.IsBlockaded(_game));
         }
 
         [Test]
@@ -104,7 +93,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.DeleteNode(_fighter);
             AddCapital(AddFleet("alpha"));
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase(null)]
@@ -117,29 +106,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _planet.OwnerInstanceID = owner;
             AddCapital(AddFleet(null));
 
-            Assert.IsFalse(_planet.IsBlockaded());
-        }
-
-        [Test]
-        public void IsBlockaded_UnregisteredFighter_DoesNotSuppressBlockade()
-        {
-            _game.DetachNode(_fighter);
-            _planet.AddChild(_fighter);
-
-            Assert.IsTrue(_planet.IsBlockaded());
-        }
-
-        [Test]
-        public void IsBlockaded_CapitalChangesOwner_RechecksFleetReadiness()
-        {
-            _game.DeleteNode(_fighter);
-            Assert.IsTrue(_planet.IsBlockaded());
-
-            _game.ChangeOwnership(_enemyShip, "alpha");
-            Assert.IsFalse(_planet.IsBlockaded());
-
-            _game.ChangeOwnership(_enemyShip, "beta");
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase("fleet")]
@@ -165,7 +132,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     break;
             }
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase(false, ManufacturingStatus.Complete, false)]
@@ -182,7 +149,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _fighter.ManufacturingStatus = status;
             _fighter.Movement = moving ? new MovementState() : null;
 
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
@@ -193,7 +160,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             ownFleet.Movement = new MovementState();
             _game.MoveNode(_fighter, carrier);
 
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
@@ -201,21 +168,21 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _enemyShip.CurrentHullStrength = 0;
             _fighter.CurrentSquadronSize = 0;
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
 
             _game.DeleteNode(_fighter);
 
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
         public void IsBlockaded_FighterDepartsAndReturns_ReadsCurrentOrbit()
         {
             _fighter.Movement = new MovementState();
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
 
             _fighter.Movement = null;
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase("add")]
@@ -248,81 +215,35 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     factions[1] = null;
                     break;
             }
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
 
             factions.Clear();
             first.InstanceID = "alpha";
             second.InstanceID = "beta";
             factions.Add(first);
             factions.Add(second);
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
-        [TestCase("add")]
-        [TestCase("remove")]
-        [TestCase("rename")]
-        [TestCase("index")]
-        [TestCase("replace")]
-        [TestCase("null-list")]
-        [TestCase("null-entry")]
-        [TestCase("empty-id")]
-        public void IsBlockaded_AuthoredFactionMapMutates_RevalidatesCurrentMap(string change)
+        [TestCase("alpha", "gamma")]
+        [TestCase("alpha", "alpha")]
+        [TestCase("alpha", "")]
+        public void IsBlockaded_ConfiguredFactionPairDoesNotMatch_UsesFleetPredicate(
+            string first,
+            string second
+        )
         {
-            List<TacticalCombatFactionDefinition> definitions = _catalog.TacticalCombat.Factions;
-            TacticalCombatFactionDefinition first = definitions[0];
-            TacticalCombatFactionDefinition second = definitions[1];
-            switch (change)
-            {
-                case "add":
-                    definitions.Add(
-                        new TacticalCombatFactionDefinition
-                        {
-                            FactionInstanceID = "gamma",
-                            FactionIndex = 0,
-                        }
-                    );
-                    break;
-                case "remove":
-                    definitions.Remove(second);
-                    break;
-                case "rename":
-                    second.FactionInstanceID = "gamma";
-                    break;
-                case "index":
-                    second.FactionIndex = 0;
-                    break;
-                case "replace":
-                    _catalog.TacticalCombat.Factions = new List<TacticalCombatFactionDefinition>();
-                    break;
-                case "null-list":
-                    _catalog.TacticalCombat.Factions = null;
-                    break;
-                case "null-entry":
-                    definitions[1] = null;
-                    break;
-                case "empty-id":
-                    second.FactionInstanceID = string.Empty;
-                    break;
-            }
-            Assert.IsTrue(_planet.IsBlockaded());
+            _game.ConfigureBlockadeFactions(new[] { first, second });
 
-            second.FactionInstanceID = "beta";
-            second.FactionIndex = 1;
-            _catalog.TacticalCombat.Factions = new List<TacticalCombatFactionDefinition>
-            {
-                first,
-                second,
-            };
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_FactionAndDefinitionOrderChanges_PreservesExactPair()
+        public void IsBlockaded_LiveFactionOrderChanges_RetainsConfiguredPair()
         {
             _game.GetFactions().Reverse();
-            _catalog.TacticalCombat.Factions.Reverse();
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [Test]
@@ -330,48 +251,48 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _planet.OwnerInstanceID = "unknown-owner";
 
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_DetachedRecursiveCopy_DoesNotRetainLiveGameBinding()
+        public void IsBlockaded_DetachedRecursiveCopy_UsesStandaloneRules()
         {
             Planet copy = (Planet)_planet.CreateCopy(recursive: true);
 
-            Assert.IsTrue(copy.IsBlockaded());
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsTrue(copy.IsBlockaded(_game));
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_DetachedThenRegisteredPlanet_RebindsOnlyAuthoritativeInstance()
+        public void IsBlockaded_DetachedThenRegisteredPlanet_UsesCampaignRulesOnlyWhenRegistered()
         {
             PlanetSector parent = _planet.GetParentOfType<PlanetSector>();
             _game.DetachNode(_planet);
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
 
             _game.AttachNode(_planet, parent);
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_ReplacedGalaxy_ReleasesPreviousPlanetBinding()
+        public void IsBlockaded_ReplacedGalaxy_UsesStandaloneRulesForOldPlanet()
         {
             _game.Galaxy = new GalaxyMap();
 
-            Assert.IsTrue(_planet.IsBlockaded());
+            Assert.IsTrue(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_RebuiltSceneState_RetainsLiveBinding()
+        public void IsBlockaded_RebuiltSceneState_RetainsCampaignRules()
         {
             _game.RebuildSceneState();
 
-            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_PlanetRegisteredAfterSession_BindsCurrentRules()
+        public void IsBlockaded_PlanetRegisteredAfterSession_UsesCampaignRules()
         {
             Planet next = new()
             {
@@ -383,21 +304,21 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.MoveNode(_enemyFleet, next);
             _game.MoveNode(_fighter, next);
 
-            Assert.IsFalse(next.IsBlockaded());
+            Assert.IsFalse(next.IsBlockaded(_game));
         }
 
         [Test]
-        public void IsBlockaded_RestoredCampaign_RebindsRulesWithoutPersistingLiveContext()
+        public void IsBlockaded_RestoredCampaign_UsesCampaignRulesAfterSessionStarts()
         {
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
                 SerializationHelper.Serialize(_game)
             );
             Planet restoredPlanet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
-            Assert.IsTrue(restoredPlanet.IsBlockaded());
+            Assert.IsTrue(restoredPlanet.IsBlockaded(restored));
 
             using GameSession runtime = new(restored, _catalog);
 
-            Assert.IsFalse(restoredPlanet.IsBlockaded());
+            Assert.IsFalse(restoredPlanet.IsBlockaded(restored));
         }
 
         /// <summary>

@@ -10,7 +10,6 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -3022,7 +3021,7 @@ namespace Rebellion.Tests.Gameplay
                 game
             );
 
-            Assert.IsFalse(origin.IsBlockaded());
+            Assert.IsFalse(origin.IsBlockaded(game));
             BlockadeChangedResult blockade = results
                 .OfType<BlockadeChangedResult>()
                 .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
@@ -3045,12 +3044,12 @@ namespace Rebellion.Tests.Gameplay
                 Hyperdrive = 1,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsFalse(origin.IsBlockaded());
+            Assert.IsFalse(origin.IsBlockaded(game));
 
             movement.RequestMove(fighter, destination);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
-            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsTrue(origin.IsBlockaded(game));
             Assert.IsNotNull(fighter.Movement);
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
@@ -3072,13 +3071,13 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsTrue(origin.IsBlockaded(game));
 
             movement.RequestMove(fighter, origin, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded());
+            Assert.IsFalse(origin.IsBlockaded(game));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsNull(blockade.BlockadingFleet);
@@ -3109,16 +3108,16 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, destination);
-            Assert.IsTrue(origin.IsBlockaded());
-            Assert.IsTrue(destination.IsBlockaded());
+            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(destination.IsBlockaded(game));
 
             movement.RequestMove(fighter, destination, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreSame(origin, fighter.GetParent());
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded());
-            Assert.IsTrue(destination.IsBlockaded());
+            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsTrue(destination.IsBlockaded(game));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsFalse(blockade.Blockaded);
@@ -3163,7 +3162,7 @@ namespace Rebellion.Tests.Gameplay
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, origin);
 
-            Assert.IsFalse(origin.IsBlockaded());
+            Assert.IsFalse(origin.IsBlockaded(game));
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -5474,7 +5473,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_IncompatibleBuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5511,6 +5510,7 @@ namespace Rebellion.Tests.Gameplay
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
             };
 
             game.AttachNode(mine, destPlanet);
@@ -5537,7 +5537,89 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_CompatibleBuildingTransfersOwnership()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+            Planet destinationPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destinationPlanet, sector);
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Defense,
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+                ManufacturingFactionInstanceIDs = new List<string>
+                {
+                    empire.InstanceID,
+                    rebels.InstanceID,
+                },
+            };
+            game.AttachNode(building, destinationPlanet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(building, destinationPlanet, originPlanet);
+            game.ChangeOwnership(destinationPlanet, rebels.InstanceID);
+
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int i = 0; i < transitTicks; i++)
+                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.AreSame(building, game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            Assert.AreSame(destinationPlanet, building.GetParent());
+            Assert.AreEqual(rebels.InstanceID, building.OwnerInstanceID);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.IsNull(building.Movement);
+            UnitOwnershipChangedResult ownershipChange = results
+                .OfType<UnitOwnershipChangedResult>()
+                .Single(result => ReferenceEquals(result.Unit, building));
+            Assert.AreSame(empire, ownershipChange.PreviousOwner);
+            Assert.AreSame(rebels, ownershipChange.NewOwner);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.IsTrue(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, building))
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDeployedResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, building))
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingInTransitDestinationBecomesUncolonizedAndNeutral_UnrestrictedBuildingColonizesWithoutSupport()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5565,6 +5647,7 @@ namespace Rebellion.Tests.Gameplay
                 PositionY = 0,
             };
             game.AttachNode(destinationPlanet, sector);
+            destinationPlanet.SetFullPopularSupport("empire");
             Building mine = new Building
             {
                 InstanceID = "mine1",
@@ -5582,13 +5665,25 @@ namespace Rebellion.Tests.Gameplay
             );
             movement.RequestMove(mine, destinationPlanet, originPlanet);
             game.ChangeOwnership(destinationPlanet, null);
+            destinationPlanet.IsColonized = false;
 
+            int transitTicks = mine.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
-            for (int i = 0; i < mine.Movement.TransitTicks; i++)
+            for (int i = 0; i < transitTicks; i++)
                 results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
-            Assert.IsTrue(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.AreSame(mine, game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.AreSame(destinationPlanet, mine.GetParent());
+            Assert.IsNull(mine.OwnerInstanceID);
+            Assert.IsNull(mine.Movement);
+            Assert.IsTrue(destinationPlanet.IsColonized);
+            Assert.IsEmpty(destinationPlanet.PopularSupport);
+            UnitOwnershipChangedResult ownershipChange = results
+                .OfType<UnitOwnershipChangedResult>()
+                .Single(result => ReferenceEquals(result.Unit, mine));
+            Assert.AreEqual("empire", ownershipChange.PreviousOwner.InstanceID);
+            Assert.IsNull(ownershipChange.NewOwner);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
@@ -6301,6 +6396,32 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(starfighter, origin);
             AddBlockadingFleet(game, destination);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { starfighter },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
+        public void TryRequestMove_StarfighterToEnemyUnblockadedPlanet_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
 
             bool moved = movement.TryRequestMove(
                 new ISceneNode[] { starfighter },
@@ -7452,7 +7573,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(hostileShip, hostile);
 
-            Assert.IsTrue(origin.IsBlockaded());
+            Assert.IsTrue(origin.IsBlockaded(game));
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -7472,16 +7593,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="game">The game containing the two factions.</param>
         private static void ConfigureBlockadeFactions(GameRoot game)
         {
-            game.ConfigureBlockadeFactions(
-                new TacticalCombatDefinition
-                {
-                    Factions = new List<TacticalCombatFactionDefinition>
-                    {
-                        new() { FactionInstanceID = "empire", FactionIndex = 0 },
-                        new() { FactionInstanceID = "rebels", FactionIndex = 1 },
-                    },
-                }
-            );
+            game.ConfigureBlockadeFactions(new[] { "empire", "rebels" });
         }
 
         /// <summary>

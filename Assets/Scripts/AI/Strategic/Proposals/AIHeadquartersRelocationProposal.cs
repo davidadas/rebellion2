@@ -200,7 +200,11 @@ namespace Rebellion.AI.Proposals
                 || Destination.GetOwnerInstanceID() != context.Faction.InstanceID
                 || !Destination.IsColonized
                 || Destination.IsDestroyed
-                || MovementQueries.IsBlockedFromDestinationByBlockade(Headquarters, Destination)
+                || MovementQueries.IsBlockedFromDestinationByBlockade(
+                    Headquarters,
+                    Destination,
+                    context.Game
+                )
                 || context.Assessment.HasKnownHostileFleet(Destination)
                 || context.Assessment.GetKnownIncomingHostileFleetStrength(Origin)
                     <= context.Assessment.GetHeadquartersOrbitalDefenseStrength(Origin)

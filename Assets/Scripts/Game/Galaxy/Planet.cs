@@ -47,8 +47,6 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
-        private GameRoot _blockadeGame;
-
         /// <summary>
         /// Reports completed support changes to the session's notification observer.
         /// </summary>
@@ -255,24 +253,18 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Binds authoritative orbital queries while this exact planet is registered in a game.
-        /// Detached copies retain no live game reference.
-        /// </summary>
-        /// <param name="game">The owning live game, or null when the planet is unregistered.</param>
-        internal void BindBlockadeGame(GameRoot game) => _blockadeGame = game;
-
-        /// <summary>
         /// Checks if the planet is blockaded.
         /// In a configured two-faction campaign, ready orbital presence from both factions
         /// prevents a blockade. Other faction domains retain fleet-based ownership rules.
         /// A neutral planet can be blockaded only while it has a civilian population.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
-        public bool IsBlockaded()
+        public bool IsBlockaded(GameRoot game = null)
         {
             if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
-            if (_blockadeGame?.TryCalculateSpaceCombatBlockade(this, out bool blockaded) == true)
+            if (game?.TryCalculateSpaceCombatBlockade(this, out bool blockaded) == true)
                 return blockaded;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
@@ -293,11 +285,12 @@ namespace Rebellion.Game.Galaxy
         /// Returns whether the active blockade opposes a faction.
         /// </summary>
         /// <param name="factionInstanceID">The faction whose access is being evaluated.</param>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>True when the planet is blockaded by another faction.</returns>
-        public bool IsBlockadedFor(string factionInstanceID)
+        public bool IsBlockadedFor(string factionInstanceID, GameRoot game = null)
         {
             return !string.IsNullOrEmpty(factionInstanceID)
-                && IsBlockaded()
+                && IsBlockaded(game)
                 && _fleets.Any(fleet =>
                     fleet.Movement == null
                     && fleet.GetOwnerInstanceID() != factionInstanceID
@@ -308,10 +301,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>True when destroyed, blockaded, or in uprising.</returns>
-        public bool IsResourceProductionSuspended()
+        public bool IsResourceProductionSuspended(GameRoot game = null)
         {
-            return IsDestroyed || IsBlockaded() || IsInUprising;
+            return IsDestroyed || IsBlockaded(game) || IsInUprising;
         }
 
         /// <summary>
@@ -447,10 +441,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of resource nodes available while production is active.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
-        public int GetAvailableResourceNodes()
+        public int GetAvailableResourceNodes(GameRoot game = null)
         {
-            return IsResourceProductionSuspended() ? 0 : GetRawResourceNodes();
+            return IsResourceProductionSuspended(game) ? 0 : GetRawResourceNodes();
         }
 
         /// <summary>
@@ -492,10 +487,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of mined resources available while production is active.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
-        public int GetAvailableMinedResources()
+        public int GetAvailableMinedResources(GameRoot game = null)
         {
-            return IsResourceProductionSuspended() ? 0 : GetActiveMinedResources();
+            return IsResourceProductionSuspended(game) ? 0 : GetActiveMinedResources();
         }
 
         /// <summary>
@@ -520,10 +516,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the completed refinement capacity available while production is active.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
-        public int GetAvailableRefinementCapacity()
+        public int GetAvailableRefinementCapacity(GameRoot game = null)
         {
-            return IsResourceProductionSuspended() ? 0 : GetActiveRefinementCapacity();
+            return IsResourceProductionSuspended(game) ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -1111,10 +1108,15 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
         /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeProductionModifier(int capitalShipPenalty, int fighterPenalty)
+        public int GetBlockadeProductionModifier(
+            int capitalShipPenalty,
+            int fighterPenalty,
+            GameRoot game = null
+        )
         {
-            if (!IsBlockaded() || HasOperationalIonCannon())
+            if (!IsBlockaded(game) || HasOperationalIonCannon())
                 return _maximumProductionModifier;
 
             List<CapitalShip> capitalShips = _fleets

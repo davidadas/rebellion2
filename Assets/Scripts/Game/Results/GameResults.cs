@@ -303,6 +303,15 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// Reports officers who left a mission after their destination was resolved.
+    /// </summary>
+    internal sealed class MissionOfficersReleasedResult : GameResult
+    {
+        public string MissionInstanceID { get; set; }
+        public IReadOnlyList<Officer> Officers { get; set; }
+    }
+
+    /// <summary>
     /// An espionage mission revealed intelligence about planets beyond its primary target.
     /// </summary>
     public class PlanetsRevealedResult : GameResult
@@ -423,6 +432,14 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// An authored event made an officer eligible to use the Force.
+    /// </summary>
+    internal sealed class OfficerForceEligibilityChangedResult : GameResult
+    {
+        public Officer Officer { get; set; }
+    }
+
+    /// <summary>
     /// Records the effective Force rank before and after one progression operation.
     /// </summary>
     public abstract class ForceProgressionResult : GameResult
@@ -478,11 +495,28 @@ namespace Rebellion.Game.Results
     }
 
     /// <summary>
+    /// An authored event enabled or disabled a unit or container.
+    /// </summary>
+    internal sealed class SceneNodeActivationChangedResult : GameResult
+    {
+        public ISceneNode Node { get; set; }
+        public bool IsActive { get; set; }
+    }
+
+    /// <summary>
     /// A game object was created.
     /// </summary>
     public class GameObjectCreatedResult : GameResult
     {
         public IGameEntity GameObject { get; set; }
+    }
+
+    /// <summary>
+    /// A movement command placed the unit at its destination without transit.
+    /// </summary>
+    internal sealed class UnitPlacedResult : GameResult
+    {
+        public IMovable Unit { get; set; }
     }
 
     /// <summary>

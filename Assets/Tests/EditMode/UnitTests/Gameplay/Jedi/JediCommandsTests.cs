@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
@@ -12,6 +13,7 @@ using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -23,6 +25,7 @@ namespace Rebellion.Tests.Gameplay
     {
         private GameRoot _game;
         private JediCommands _system;
+        private GameResultBus _results;
         private Faction _alliance;
         private Faction _empire;
         private Planet _tatooine;
@@ -35,7 +38,9 @@ namespace Rebellion.Tests.Gameplay
         {
             GameConfig config = TestConfig.Create();
             _game = TestGame.Create(config);
+            _results = new GameResultBus();
             _system = new JediCommands(_game, new FixedRNG());
+            _system.Connect(_results);
 
             _alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             _empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
@@ -86,6 +91,7 @@ namespace Rebellion.Tests.Gameplay
             officer.OwnerInstanceID = _alliance.InstanceID;
             officer.ForceValue = _game.Config.Jedi.DiscoveringForceUserThreshold;
             _game.AttachNode(officer, _tatooine);
+            _results.Publish(new GameObjectCreatedResult { GameObject = officer });
 
             new JediTickProcessor(_system).ProcessTick(_game);
 
@@ -142,7 +148,11 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 50);
             luke.IsCaptured = true;
+            _results.Publish(
+                new OfficerCaptureStateResult { TargetOfficer = luke, IsCaptured = true }
+            );
             luke.ForceValue = 100;
+            _results.Publish(new ForceExperienceResult { Officer = luke });
 
             List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
                 .ProcessTick(_game)
@@ -174,6 +184,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer luke = CreateJediTrainer("LUKE", forceValue: 100);
             luke.ForceValue = 50;
+            _results.Publish(new ForceExperienceResult { Officer = luke });
 
             new JediTickProcessor(_system).ProcessTick(_game);
 
@@ -222,6 +233,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer leia = CreateDormantJedi("LEIA");
             leia.IsJediTrainer = true;
+            _results.Publish(new GameObjectCreatedResult { GameObject = leia });
 
             List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
                 .ProcessTick(_game)
@@ -265,6 +277,7 @@ namespace Rebellion.Tests.Gameplay
             // ForceValue 70 alone is below threshold 80, but with adjustment of 15 => rank 85
             Officer luke = CreateJediTrainer("LUKE", forceValue: 70);
             luke.ForceTrainingAdjustment = 15;
+            _results.Publish(new ForceExperienceResult { Officer = luke });
 
             List<ForceDiscoveryResult> results = new JediTickProcessor(_system)
                 .ProcessTick(_game)
@@ -407,6 +420,9 @@ namespace Rebellion.Tests.Gameplay
 
             Officer leia = CreateDormantJedi("LEIA");
             leia.IsCaptured = true;
+            _results.Publish(
+                new OfficerCaptureStateResult { TargetOfficer = leia, IsCaptured = true }
+            );
 
             _system?.Dispose();
             _system = new JediCommands(_game, new FixedRNG(0.0));
@@ -568,6 +584,7 @@ namespace Rebellion.Tests.Gameplay
             _game.CurrentTick++;
             Officer leia = CreateDormantJedi("LEIA");
             leia.ForceValue = forceValue;
+            _results.Publish(new ForceExperienceResult { Officer = leia });
             _system?.Dispose();
             _system = new JediCommands(_game, new ThrowingRNG());
 
@@ -707,9 +724,13 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 80);
             scanner.Movement = TestMovement.Create();
+            _results.Publish(
+                new GameObjectEnrouteActiveResult { GameObject = scanner, IsActive = true }
+            );
             Officer candidate = CreateDormantJedi("STUDENT");
             _game.CurrentTick = 20;
             scanner.Movement = null;
+            _results.Publish(new UnitArrivedResult { Unit = scanner });
             _game.CurrentTick = 21;
 
             new JediTickProcessor(_system).ProcessTick(_game);
@@ -753,7 +774,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer scanner = CreateJediTrainer("TRAINER", forceValue: 120);
             _game.CurrentTick++;
-            scanner.IsEnabled = false;
+            _game.SetNodeEnabled(scanner, false);
             Officer candidate = CreateDormantJedi("STUDENT");
 
             new JediTickProcessor(_system).ProcessTick(_game);
@@ -763,11 +784,30 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ObserveResults_CaptureThenReleaseInOneBatch_RestartsScanOnNextTick()
+        {
+            Officer trainer = CreateJediTrainer("TRAINER", forceValue: 80);
+            _game.CurrentTick = 8;
+
+            _results.Publish(
+                new GameResult[]
+                {
+                    new OfficerCaptureStateResult { TargetOfficer = trainer, IsCaptured = true },
+                    new OfficerCaptureStateResult { TargetOfficer = trainer },
+                }
+            );
+
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(9, trainer.NextForceDiscoveryTick);
+        }
+
+        [Test]
         public void ProcessTick_EqualDueScanners_DiscoveryFollowsActivationOrder()
         {
             Officer first = CreateJediTrainer("FIRST", forceValue: 50);
             Officer second = CreateJediTrainer("SECOND", forceValue: 80);
             first.ForceValue = 80;
+            _results.Publish(new ForceExperienceResult { Officer = first });
             Officer candidate = CreateDormantJedi("STUDENT");
             _game.CurrentTick = 1;
 
@@ -786,6 +826,7 @@ namespace Rebellion.Tests.Gameplay
             Officer second = CreateJediTrainer("SECOND", forceValue: 80);
             _game.CurrentTick = 1;
             first.ForceValue = 80;
+            _results.Publish(new ForceExperienceResult { Officer = first });
             Officer candidate = CreateDormantJedi("STUDENT");
             _game.CurrentTick = 3;
 
@@ -834,6 +875,7 @@ namespace Rebellion.Tests.Gameplay
             Officer second = CreateJediTrainer("SECOND", forceValue: 50);
             _game.CurrentTick = 1;
             second.ForceValue = 80;
+            _results.Publish(new ForceExperienceResult { Officer = second });
             new JediTickProcessor(_system).ProcessTick(_game);
             Officer candidate = CreateDormantJedi("STUDENT");
             _game.CurrentTick = 2;
@@ -847,12 +889,28 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GalaxyReplacement_PreviousOfficerChangesRank_DoesNotScheduleDiscovery()
+        {
+            Officer oldTrainer = CreateJediTrainer("OLD_TRAINER", forceValue: 50);
+
+            _game.Galaxy = new GalaxyMap();
+            oldTrainer.ForceValue = 80;
+            _results.Publish(new ForceExperienceResult { Officer = oldTrainer });
+
+            Assert.IsFalse(oldTrainer.IsDiscoveringForceUser);
+            Assert.Zero(oldTrainer.NextForceDiscoveryTick);
+            CollectionAssert.DoesNotContain(_game.RegisteredOfficers, oldTrainer);
+            Assert.IsEmpty(_system.TakeDiscoveryResults());
+        }
+
+        [Test]
         public void ProcessTick_ScannerRemovedDuringEarlierScan_DoesNotRunRemovedScan()
         {
             CreateJediTrainer("FIRST", forceValue: 80);
             Officer second = CreateJediTrainer("SECOND", forceValue: 80);
             Officer newTrainer = CreateDormantJedi("NEW_TRAINER");
             newTrainer.IsJediTrainer = true;
+            _results.Publish(new GameObjectCreatedResult { GameObject = newTrainer });
             newTrainer.JediLevel = 80;
             Officer candidate = CreateDormantJedi("STUDENT");
             candidate.ForceDiscoveryConditionals.Add(
@@ -862,11 +920,9 @@ namespace Rebellion.Tests.Gameplay
                     UnitInstanceID = second.InstanceID,
                 }
             );
-            _game.ForceDiscoveryStarted += officer =>
-            {
-                if (officer == newTrainer)
-                    _game.DetachNode(second);
-            };
+            newTrainer.JediLevelVariance = 1;
+            _system.Dispose();
+            _system = new JediCommands(_game, new DetachOnRoll(() => _game.DetachNode(second)));
             _game.CurrentTick = 1;
 
             new JediTickProcessor(_system).ProcessTick(_game);
@@ -882,6 +938,7 @@ namespace Rebellion.Tests.Gameplay
             Officer first = CreateJediTrainer("FIRST", forceValue: 50);
             CreateJediTrainer("SECOND", forceValue: 80);
             first.ForceValue = 80;
+            _results.Publish(new ForceExperienceResult { Officer = first });
             CreateDormantJedi("STUDENT");
             GameRoot restored = RestoreDiscoveryGame(legacySave);
             restored.CurrentTick = 1;
@@ -945,12 +1002,15 @@ namespace Rebellion.Tests.Gameplay
                 IsJediTrainer = true,
                 ForceValue = 80,
             };
+            GameResultBus results = new();
+            using JediCommands commands = new(restored, new FixedRNG());
+            commands.Connect(results);
             restored.AttachNode(
                 newTrainer,
                 restored.GetSceneNodeByInstanceID<Planet>(_tatooine.InstanceID)
             );
+            results.Publish(new GameObjectCreatedResult { GameObject = newTrainer });
             restored.CurrentTick = 1;
-            using JediCommands commands = new(restored, new FixedRNG());
 
             ForceDiscoveryResult discovery = new JediTickProcessor(commands)
                 .ProcessTick(restored)
@@ -1022,6 +1082,7 @@ namespace Rebellion.Tests.Gameplay
         {
             Officer officer = CreateKnownJedi(id, forceValue);
             officer.IsJediTrainer = true;
+            _results.Publish(new GameObjectCreatedResult { GameObject = officer });
             return officer;
         }
 
@@ -1068,6 +1129,38 @@ namespace Rebellion.Tests.Gameplay
             };
             _game.AttachNode(officer, _tatooine);
             return officer;
+        }
+
+        /// <summary>
+        /// Runs a scene change during the Force roll that reveals a hidden officer.
+        /// </summary>
+        private sealed class DetachOnRoll : IRandomNumberProvider
+        {
+            private readonly Action _detach;
+
+            /// <summary>
+            /// Creates a random provider that detaches one scanner during the next roll.
+            /// </summary>
+            /// <param name="detach">The scanner removal to perform.</param>
+            public DetachOnRoll(Action detach) => _detach = detach;
+
+            /// <summary>
+            /// Returns the fixed fractional roll.
+            /// </summary>
+            /// <returns>A fixed fractional value.</returns>
+            public double NextDouble() => 0.5;
+
+            /// <summary>
+            /// Detaches the scanner while another officer is being discovered.
+            /// </summary>
+            /// <param name="min">The inclusive minimum value.</param>
+            /// <param name="max">The exclusive maximum value.</param>
+            /// <returns>The inclusive minimum value.</returns>
+            public int NextInt(int min, int max)
+            {
+                _detach();
+                return min;
+            }
         }
     }
 }

@@ -42,12 +42,7 @@ namespace Rebellion.Game
         // Scene graph.
         private GalaxyMap _galaxy;
         private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
-        private TacticalCombatDefinition _blockadeDefinition;
-
-        /// <summary>
-        /// Reports an officer whose retained discovery state has just become enabled.
-        /// </summary>
-        internal event Action<Officer> ForceDiscoveryStarted;
+        private string[] _blockadeFactionIds = Array.Empty<string>();
 
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
@@ -195,9 +190,6 @@ namespace Rebellion.Game
         [PersistableIgnore]
         private readonly List<Officer> _registeredOfficers = new List<Officer>();
 
-        [PersistableIgnore]
-        private long _forceDiscoveryOrder;
-
         /// <summary>
         /// Gets the registered officer roster, including disabled officers, without traversing the scene.
         /// Callers must finish enumeration before adding or removing registered officers.
@@ -308,16 +300,22 @@ namespace Rebellion.Game
 
             Config = config;
             foreach (Officer officer in _registeredOfficers)
-                officer.BindForceRules(config.Jedi, this);
+                officer.BindForceRules(config.Jedi);
         }
 
         /// <summary>
-        /// Sets the authored faction mapping used by blockade queries.
+        /// Sets the faction pair used by campaign blockade queries.
         /// </summary>
-        /// <param name="definition">The active content pack's combat definitions.</param>
-        internal void ConfigureBlockadeFactions(TacticalCombatDefinition definition)
+        /// <param name="factionIds">The faction identities in starting order.</param>
+        internal void ConfigureBlockadeFactions(IReadOnlyList<string> factionIds)
         {
-            _blockadeDefinition = definition;
+            _blockadeFactionIds =
+                factionIds?.Count == 2
+                && !string.IsNullOrEmpty(factionIds[0])
+                && !string.IsNullOrEmpty(factionIds[1])
+                && factionIds[0] != factionIds[1]
+                    ? new[] { factionIds[0], factionIds[1] }
+                    : Array.Empty<string>();
         }
 
         /// <summary>
@@ -325,9 +323,9 @@ namespace Rebellion.Game
         /// </summary>
         /// <param name="planet">The authoritative planet registered in this game.</param>
         /// <param name="blockaded">The current blockade state when the faction domain is supported.</param>
-        /// <returns>Whether the current campaign and definitions identify the exact faction pair.</returns>
+        /// <returns>Whether the current campaign still uses its configured faction pair.</returns>
         internal bool TryCalculateSpaceCombatBlockade(Planet planet, out bool blockaded) =>
-            SpaceCombatBlockadeRules.TryCalculate(this, _blockadeDefinition, planet, out blockaded);
+            SpaceCombatBlockadeRules.TryCalculate(this, _blockadeFactionIds, planet, out blockaded);
 
         /// <summary>
         /// Gets the game configuration.
@@ -574,7 +572,6 @@ namespace Rebellion.Game
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -717,7 +714,6 @@ namespace Rebellion.Game
             ISceneNode parent = node.GetParent();
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
             node.SetParent(null);
 
@@ -1090,21 +1086,13 @@ namespace Rebellion.Game
         {
             EnsureRuntimeIdentifier((BaseGameEntity)node);
             if (node is Officer officerToBind && Config != null)
-                officerToBind.BindForceRules(Config.Jedi, this);
+                officerToBind.BindForceRules(Config.Jedi);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
                 _spaceCombatMilitaryRoster.Register(node);
                 if (node is Officer officer)
-                {
                     _registeredOfficers.Add(officer);
-                    _forceDiscoveryOrder = Math.Max(
-                        _forceDiscoveryOrder,
-                        officer.ForceDiscoveryOrder
-                    );
-                    if (officer.IsDiscoveringForceUser && officer.ForceDiscoveryOrder == 0)
-                        officer.ForceDiscoveryOrder = AllocateForceDiscoveryOrder();
-                }
             }
             catch (ArgumentException)
             {
@@ -1112,10 +1100,6 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            if (node is Officer registeredOfficer)
-                registeredOfficer.ReconcileForceDiscoveryState();
-            if (node is Planet planet)
-                planet.BindBlockadeGame(this);
         }
 
         /// <summary>
@@ -1124,41 +1108,10 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to deregister.</param>
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
-            if (node is Planet planet)
-                planet.BindBlockadeGame(null);
             NodesByInstanceID.Remove(node.InstanceID);
             _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
             if (node is Officer officer)
-            {
-                officer.UnbindForceRuntime();
                 _registeredOfficers.Remove(officer);
-            }
-        }
-
-        /// <summary>
-        /// Records a completed discovery-state transition for the connected runtime.
-        /// </summary>
-        /// <param name="officer">The officer whose scanner became enabled.</param>
-        internal void RecordForceDiscoveryStarted(Officer officer)
-        {
-            ForceDiscoveryStarted?.Invoke(officer);
-        }
-
-        /// <summary>
-        /// Allocates the next insertion order for a discovery scan, including recurring scans.
-        /// Restored officer orders advance this counter as the scene registry is rebuilt.
-        /// </summary>
-        /// <returns>An order greater than every previously registered or scheduled scan.</returns>
-        internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
-
-        /// <summary>
-        /// Disconnects a removed officer before containment changes can schedule new work.
-        /// </summary>
-        /// <param name="node">The node leaving the game registry.</param>
-        private static void DisconnectOfficerRuntime(ISceneNode node)
-        {
-            if (node is Officer officer)
-                officer.UnbindForceRuntime();
         }
 
         /// <summary>
@@ -1166,15 +1119,7 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            ClearBlockadeBindings();
-            foreach (Officer officer in _registeredOfficers)
-                officer.UnbindForceRuntime();
-            NodesByInstanceID.Clear();
-            _spaceCombatMilitaryRoster.Clear();
-            _registeredOfficers.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
-
+            ClearSceneRegistration();
             InitializeSceneRoot(Galaxy);
         }
 
@@ -1185,23 +1130,21 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            ClearBlockadeBindings();
-            NodesByInstanceID.Clear();
-            _spaceCombatMilitaryRoster.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
+            ClearSceneRegistration();
             InitializeSceneRoot(galaxy);
             return galaxy;
         }
 
         /// <summary>
-        /// Releases authoritative blockade ownership before replacing the registered scene graph.
+        /// Disconnects the current scene before rebuilding its registration and ownership indexes.
         /// </summary>
-        private void ClearBlockadeBindings()
+        private void ClearSceneRegistration()
         {
-            foreach (ISceneNode node in NodesByInstanceID.Values)
-                if (node is Planet planet)
-                    planet.BindBlockadeGame(null);
+            NodesByInstanceID.Clear();
+            _spaceCombatMilitaryRoster.Clear();
+            _registeredOfficers.Clear();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
         }
 
         /// <summary>
