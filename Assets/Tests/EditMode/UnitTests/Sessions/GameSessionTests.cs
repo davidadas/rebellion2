@@ -613,6 +613,46 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ForceDiscovery_MissionFoiledBeforeDeparture_ReschedulesUncapturedTrainer()
+        {
+            (GameRoot game, Planet planet, CapitalShip ship, Officer trainer, Regiment target) =
+                CreateFleetMissionCaptureScene();
+            game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            game.Config.ProbabilityTables.Mission.Evasion = new Dictionary<int, int>
+            {
+                { -1000, 100 },
+            };
+            trainer.IsJediTrainer = true;
+            trainer.IsForceSensitive = true;
+            trainer.IsForceEligible = true;
+            trainer.ForceValue = game.Config.Jedi.DiscoveringForceUserThreshold;
+            trainer.GrowsForceOnMission = false;
+            using GameSession session = TestGameData.CreateSession(game);
+            List<GameResult> resolved = new();
+            session.Pipeline.ResultsResolved += resolved.AddRange;
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            game.CurrentTick = 10;
+
+            Assert.IsTrue(
+                session
+                    .GetService<MissionCommands>()
+                    .InitiateMission(CreateFleetMissionContext(game, planet, trainer, target))
+            );
+
+            Assert.AreEqual(
+                MissionOutcome.Foiled,
+                resolved.OfType<MissionCompletedResult>().Single().Outcome
+            );
+            Assert.IsFalse(trainer.IsCaptured);
+            Assert.AreSame(ship, trainer.GetParent());
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(11, trainer.NextForceDiscoveryTick);
+        }
+
+        [Test]
         public void ForceDiscovery_MissionAbortedAndOfficerMoved_ResumesAfterArrival()
         {
             Officer trainer = new Officer

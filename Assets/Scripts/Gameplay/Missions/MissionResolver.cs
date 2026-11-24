@@ -115,7 +115,14 @@ namespace Rebellion.Gameplay
                     _game.CurrentTick
                 );
             if (mission.GetParent() == null)
+            {
+                RecordOfficersReleased(
+                    mission,
+                    startingParticipants.Where(IsFreeParticipant),
+                    results
+                );
                 return;
+            }
             if (departureFoiled)
             {
                 AddMissionResults(mission, mission.ResolveInterruption(_game, _provider), results);
@@ -133,6 +140,11 @@ namespace Rebellion.Gameplay
                 mission.SetResultMissionID(completed);
                 results.Add(completed);
                 _game.DetachNode(mission);
+                RecordOfficersReleased(
+                    mission,
+                    startingParticipants.Where(IsFreeParticipant),
+                    results
+                );
                 return;
             }
 
