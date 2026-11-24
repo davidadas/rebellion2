@@ -187,8 +187,9 @@ when edited, including when the last entry is removed.
 
 The content editor displays resolved inherited values while keeping their authored overrides
 separate. Editing an inherited document saves only the changed settings. Authored overrides use a
-distinct input color. **Reset section** removes every override in the active inspector section;
-resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
+distinct input color. The reset button names what it resets, for example **Reset artwork**.
+It clears the overrides shown in the active tab and uses the inherited or built-in defaults.
+Resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
 snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
@@ -220,8 +221,10 @@ facility research artwork. Player HUD artwork is under each faction's
 In **Artwork**, the **Messages and encyclopedia** section holds the two 1800 × 900 images.
 Choose **Use message image** or **Use encyclopedia image** to share one file between them.
 **Generate cuts** uses the source image's actual dimensions to prevent upscaling.
-For capital ships and starfighters, it generates gameplay artwork only.
-Message and encyclopedia images can also supply the cuts.
+Uncheck any cut you want to keep before choosing **Save cuts**.
+For capital ships and starfighters, full-size display art can also be framed at native scale
+on an encyclopedia canvas with the configured unit or faction background.
+Message and encyclopedia images can also supply gameplay cuts.
 
 ### Artwork layers
 

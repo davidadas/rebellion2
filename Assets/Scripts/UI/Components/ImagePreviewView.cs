@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -38,6 +39,9 @@ public sealed class ImagePreviewView
     [SerializeField]
     private TMP_Text layerInstructions;
 
+    [SerializeField]
+    private UICheckboxView cutSelectionTemplate;
+
     private Vector2 dragStart;
     private RectTransform dragCanvas;
     private Vector2 cutOrigin;
@@ -72,7 +76,8 @@ public sealed class ImagePreviewView
         if (moveCut != null)
         {
             draggedCut = cutCards.FindIndex(card =>
-                RectTransformUtility.RectangleContainsScreenPoint(
+                card.Background.raycastTarget
+                && RectTransformUtility.RectangleContainsScreenPoint(
                     card.Background.rectTransform,
                     eventData.pressPosition,
                     eventData.pressEventCamera
@@ -151,20 +156,25 @@ public sealed class ImagePreviewView
     /// Displays all standard artwork outputs together and lets the author apply those exact files.
     /// </summary>
     /// <param name="previews">The owned generated textures, their labels, and optional borrowed backgrounds.</param>
-    /// <param name="apply">The action that saves the displayed output images.</param>
+    /// <param name="selected">The save choices retained while previews are regenerated.</param>
+    /// <param name="apply">The action that saves the indices of the selected images.</param>
     /// <param name="move">Moves one preview by a normalized displacement.</param>
     public void ShowCuts(
         IReadOnlyList<(
             string Caption,
             Texture2D Texture,
             Texture2D Background,
-            Rect BackgroundUv
+            Rect BackgroundUv,
+            bool BlackMatte
         )> previews,
-        Action apply,
+        IList<bool> selected,
+        Action<IReadOnlyList<int>> apply,
         Action<int, Vector2> move = null
     )
     {
         VerifyReferences();
+        if (cutSelectionTemplate == null)
+            throw new MissingReferenceException(name + " has no artwork cut checkbox.");
         ClearCuts();
         image.gameObject.SetActive(false);
         moveCut = move;
@@ -175,16 +185,8 @@ public sealed class ImagePreviewView
                 typeof(RectTransform)
             ).GetComponent<RectTransform>();
             card.SetParent(artworkSlot, false);
-            TextMeshProUGUI label = Instantiate(caption, card);
-            label.text = preview.Caption;
-            label.raycastTarget = false;
-            label.rectTransform.anchorMin = Vector2.up;
-            label.rectTransform.anchorMax = Vector2.one;
-            label.rectTransform.offsetMin = new Vector2(0, -34);
-            label.rectTransform.offsetMax = Vector2.zero;
-
             RawImage backing = CreateCutLayer(card, "CutBacking", null);
-            backing.color = new Color(0.035f, 0.04f, 0.05f, 1f);
+            backing.color = preview.BlackMatte ? Color.black : new Color(0.035f, 0.04f, 0.05f, 1f);
             if (preview.Background != null)
             {
                 RawImage background = CreateCutLayer(
@@ -198,9 +200,9 @@ public sealed class ImagePreviewView
                 background.rectTransform.offsetMin = background.rectTransform.offsetMax =
                     Vector2.zero;
             }
-            backing.raycastTarget = moveCut != null;
             backing.gameObject.AddComponent<RectMask2D>();
             RawImage cut = CreateCutLayer(backing.rectTransform, "CutArtwork", preview.Texture);
+            ConfigureCutSelection(card, backing, preview.Caption, selected, cutCards.Count);
             cutCards.Add((card, cut, backing));
         }
         caption.text = "Generated artwork cuts";
@@ -210,19 +212,67 @@ public sealed class ImagePreviewView
             true,
             () =>
             {
+                int[] included = Enumerable
+                    .Range(0, selected.Count)
+                    .Where(index => selected[index])
+                    .ToArray();
+                if (included.Length == 0)
+                    return;
                 TryCancel();
-                apply();
+                apply(included);
             }
         );
-        if (moveCut != null)
-        {
-            layerInstructions.text = "Drag any image to adjust its placement.";
-            layerInstructions.gameObject.SetActive(true);
-        }
-        artworkSlot.offsetMin = new Vector2(artworkSlot.offsetMin.x, moveCut == null ? 78 : 108);
+        applyButton.interactable = selected.Contains(true);
+        layerInstructions.text =
+            moveCut == null
+                ? "Uncheck a cut to keep the existing image."
+                : "Uncheck a cut to keep the existing image. Drag a checked image to reposition it.";
+        layerInstructions.gameObject.SetActive(true);
+        artworkSlot.offsetMin = new Vector2(artworkSlot.offsetMin.x, 108);
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
         LayoutGallery();
+    }
+
+    /// <summary>
+    /// Adds the include checkbox for a cut and synchronizes the card with the save choice.
+    /// </summary>
+    /// <param name="card">The cut's containing rectangle.</param>
+    /// <param name="backing">The artwork surface beneath the checkbox.</param>
+    /// <param name="title">The cut's caption.</param>
+    /// <param name="selected">The current save choices.</param>
+    /// <param name="index">This cut's position in the gallery.</param>
+    private void ConfigureCutSelection(
+        RectTransform card,
+        RawImage backing,
+        string title,
+        IList<bool> selected,
+        int index
+    )
+    {
+        UICheckboxView checkbox = Instantiate(cutSelectionTemplate, card);
+        checkbox.GetComponentInChildren<TMP_Text>(true).text = title;
+        var rect = (RectTransform)checkbox.transform;
+        rect.anchorMin = Vector2.up;
+        rect.anchorMax = Vector2.one;
+        rect.offsetMin = new Vector2(0, -34);
+        rect.offsetMax = Vector2.zero;
+        CanvasGroup artwork = backing.gameObject.AddComponent<CanvasGroup>();
+        bool canMove = moveCut != null;
+        checkbox.gameObject.SetActive(true);
+        checkbox.SetIsCheckedWithoutNotify(selected[index]);
+        artwork.alpha = selected[index] ? 1f : 0.45f;
+        backing.raycastTarget = canMove && selected[index];
+        checkbox
+            .GetComponent<Toggle>()
+            .onValueChanged.AddListener(included =>
+            {
+                selected[index] = included;
+                checkbox.SetIsCheckedWithoutNotify(included);
+                artwork.alpha = included ? 1f : 0.45f;
+                backing.raycastTarget = canMove && included;
+                applyButton.interactable = selected.Contains(true);
+            });
     }
 
     /// <summary>

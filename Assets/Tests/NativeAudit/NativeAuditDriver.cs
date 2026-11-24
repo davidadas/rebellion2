@@ -485,10 +485,10 @@ namespace Rebellion.Tests.NativeAudit
         /// </summary>
         /// <returns>The distinct selectable and authored pointer controls.</returns>
         private static Component[] GetTargets() =>
-            FindObjectsByType<Selectable>(FindObjectsSortMode.None)
+            FindObjectsByType<Selectable>()
                 .Cast<Component>()
-                .Concat(FindObjectsByType<UIRaycastArea>(FindObjectsSortMode.None))
-                .GroupBy(component => component.gameObject.GetInstanceID())
+                .Concat(FindObjectsByType<UIRaycastArea>())
+                .GroupBy(component => component.gameObject.GetEntityId())
                 .Select(group => group.First())
                 .ToArray();
 
@@ -599,14 +599,14 @@ namespace Rebellion.Tests.NativeAudit
                 .ToArray();
             response.pointerX = UnityInput.mousePosition.x;
             response.pointerY = UnityInput.mousePosition.y;
-            response.inputOwners = FindObjectsByType<AppInputController>(FindObjectsSortMode.None)
+            response.inputOwners = FindObjectsByType<AppInputController>()
                 .Select(owner => new InputOwner
                 {
                     path = GetPath(owner.transform),
                     shortcutsSuppressed = owner.ShortcutsSuppressed,
                 })
                 .ToArray();
-            response.eventSystems = FindObjectsByType<EventSystem>(FindObjectsSortMode.None)
+            response.eventSystems = FindObjectsByType<EventSystem>()
                 .Select(system => GetPath(system.transform) + "@" + system.gameObject.scene.name)
                 .ToArray();
             response.controls = GetTargets()

@@ -204,6 +204,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Button resetSection = view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "ResetSection");
 
+            Assert.AreEqual("Reset settings", resetSection.GetComponentInChildren<TMP_Text>().text);
             resetSection.onClick.Invoke();
 
             ContentPackEditorRecord reset = project
@@ -373,6 +374,10 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             Assert.IsTrue(resetSection.gameObject.activeSelf);
             Assert.IsTrue(resetSection.interactable);
+            Assert.AreEqual(
+                "Reset buildings",
+                resetSection.GetComponentInChildren<TMP_Text>().text
+            );
         }
 
         [Test]
