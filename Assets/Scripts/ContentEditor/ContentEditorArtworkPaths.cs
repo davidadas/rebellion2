@@ -20,7 +20,8 @@ internal static class ContentEditorArtworkPaths
             field.MediaType != ContentPackEditorMediaType.Image
             || field.IsList
             || field.IsMediaDirectory
-            || field.XmlElement.Parent != field.Record.Element
+            || field.XmlAttributeName != null
+            || field.Container != null && field.Container != field.Record.Element
         )
             return null;
         string category = field.Record.Kind switch

@@ -94,7 +94,7 @@ internal static class ContentEditorArtworkConversion
                     edit.Address[5..] + extension,
                     project.PackRootPath
                 );
-                if (File.Exists(other))
+                if (File.Exists(other) || destinations.ContainsKey(other))
                     CheckDestination(project, destinations, other, bytes);
             }
             CheckDestination(project, destinations, edit.Target, bytes);
@@ -210,28 +210,82 @@ internal static class ContentEditorArtworkConversion
             || !field.Value.StartsWith("Pack/", StringComparison.Ordinal)
         )
             return;
-        int consumers = project
-            .GetCatalogs()
-            .SelectMany(catalog => catalog.Records)
-            .SelectMany(record => record.GetFields())
-            .Count(candidate => candidate.IsMedia && candidate.Values.Contains(field.Value));
         Dictionary<string, string> aliases = ContentArtworkAliases.Load(project.PackRootPath);
         if (aliases.TryGetValue(field.Value, out string retained) && retained == field.Value)
             return;
-        if (consumers > 1)
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            project.ContentRootPath,
+            project.PackRootPath,
+            project.Definition
+        );
+        string source = resolver.ResolveFile(field.Value, _extensions);
+        string[][] consumers = project
+            .GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .SelectMany(record => record.GetFields())
+            .Where(candidate =>
+                candidate.MediaType == ContentPackEditorMediaType.Image
+                && !candidate.IsMediaDirectory
+            )
+            .Select(candidate =>
+                candidate
+                    .Values.Select(candidate.GetMediaAddress)
+                    .Where(value =>
+                        value.StartsWith("Pack/", StringComparison.Ordinal)
+                        && (
+                            value == field.Value
+                            || source != null
+                                && string.Equals(
+                                    resolver.ResolveFile(value, _extensions),
+                                    source,
+                                    StringComparison.OrdinalIgnoreCase
+                                )
+                        )
+                    )
+                    .ToArray()
+            )
+            .Where(values => values.Length > 0)
+            .ToArray();
+        string sourceRoot =
+            source == null
+                ? null
+                : resolver.PackRootPaths.FirstOrDefault(root =>
+                    ContentEditorPaths.Contains(root, source)
+                );
+        string sourceAddress =
+            sourceRoot == null
+                ? field.Value
+                : "Pack/" + Path.GetRelativePath(sourceRoot, source).Replace('\\', '/');
+        string[] addresses = new[]
         {
-            if (aliases.ContainsKey(field.Value))
-                return;
-            aliases[field.Value] = field.Value;
-            project.WriteAsset(
-                Path.Combine(project.PackRootPath, ContentArtworkAliases.FileName),
-                Encoding.UTF8.GetBytes(ContentArtworkAliases.Serialize(aliases))
-            );
-            return;
+            field.Value,
+            sourceAddress,
+            Path.ChangeExtension(sourceAddress, null),
         }
-        AddAlias(aliases, field.Value, address);
-        foreach (string revision in FindPreviousRevisions(project, field))
-            AddAlias(aliases, revision, address);
+            .Concat(consumers.SelectMany(values => values))
+            .Distinct(StringComparer.Ordinal)
+            .Where(value =>
+                value == field.Value
+                || source != null
+                    && string.Equals(
+                        resolver.ResolveFile(value, _extensions),
+                        source,
+                        StringComparison.OrdinalIgnoreCase
+                    )
+            )
+            .ToArray();
+        if (consumers.Length > 1)
+        {
+            foreach (string previous in addresses)
+                aliases.TryAdd(previous, previous);
+        }
+        else
+        {
+            foreach (string previous in addresses.OrderBy(aliases.ContainsKey))
+                AddAlias(aliases, previous, address);
+            foreach (string revision in FindPreviousRevisions(project, field))
+                AddAlias(aliases, revision, address);
+        }
         project.WriteAsset(
             Path.Combine(project.PackRootPath, ContentArtworkAliases.FileName),
             Encoding.UTF8.GetBytes(ContentArtworkAliases.Serialize(aliases))
@@ -277,10 +331,21 @@ internal static class ContentEditorArtworkConversion
             return;
         if (aliases.TryGetValue(source, out string retained) && retained == source)
             return;
-        if (aliases.TryGetValue(source, out string existing) && existing != target)
-            throw new InvalidDataException(
-                "An older artwork address already belongs to a different slot: " + source
-            );
+        if (aliases.TryGetValue(source, out string existing))
+        {
+            var visited = new HashSet<string>(StringComparer.Ordinal) { source };
+            while (
+                existing != target
+                && aliases.TryGetValue(existing, out string next)
+                && visited.Add(existing)
+            )
+                existing = next;
+            if (existing != target)
+                throw new InvalidDataException(
+                    "An older artwork address already belongs to a different slot: " + source
+                );
+            return;
+        }
         aliases[source] = target;
     }
 

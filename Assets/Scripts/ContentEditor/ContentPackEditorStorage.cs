@@ -488,8 +488,15 @@ public static class ContentPackEditorStorage
             }
             string candidate = unitAddress;
             int suffix = 2;
+            ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Dictionary<string, string> aliases = ContentArtworkAliases.Load(project.PackRootPath);
             while (
-                field.MediaExtensions.Any(extension =>
+                aliases.ContainsKey(candidate)
+                || field.MediaExtensions.Any(extension =>
                     File.Exists(Path.GetFullPath(candidate[5..] + extension, project.PackRootPath))
                 )
             )
@@ -498,10 +505,19 @@ public static class ContentPackEditorStorage
                     .MediaExtensions.Select(extension =>
                         Path.GetFullPath(candidate[5..] + extension, project.PackRootPath)
                     )
-                    .First(File.Exists);
-                ContentEditorPaths.VerifyWritePath(project, existing);
-                if (File.ReadAllBytes(existing).AsSpan().SequenceEqual(bytes))
-                    return candidate;
+                    .FirstOrDefault(File.Exists);
+                if (existing != null)
+                {
+                    ContentEditorPaths.VerifyWritePath(project, existing);
+                    if (
+                        string.Equals(
+                            resolver.ResolveFile(candidate, field.MediaExtensions),
+                            existing,
+                            StringComparison.OrdinalIgnoreCase
+                        ) && File.ReadAllBytes(existing).AsSpan().SequenceEqual(bytes)
+                    )
+                        return candidate;
+                }
                 candidate = unitAddress + "-" + suffix++;
             }
             return WriteUnitArtwork(project, field, candidate, bytes, null);
