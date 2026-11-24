@@ -1158,7 +1158,6 @@ namespace Rebellion.Gameplay
                 CaptiveStateTransition.Release(
                     officer,
                     planet,
-                    _game,
                     _game.CurrentTick,
                     officer.CaptorInstanceID
                 )

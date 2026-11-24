@@ -38,12 +38,6 @@ namespace Rebellion.Game
         /// </summary>
         internal event Action<ISceneNode, Planet, Planet> UnitPresenceChanged;
 
-        /// <summary>
-        /// Reports a unit state change that observers process synchronously.
-        /// The boolean indicates whether the change can affect its descendants.
-        /// </summary>
-        internal event Action<ISceneNode, bool> UnitStateChanged;
-
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -573,7 +567,6 @@ namespace Rebellion.Game
             if (node.IsEnabled == enabled)
                 return;
             node.IsEnabled = enabled;
-            NotifyUnitStateChanged(node, includeDescendants: true);
             if (UnitPresenceChanged != null)
             {
                 Planet planet = GetContainingPlanet(node);
@@ -731,7 +724,6 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
-            NotifyUnitStateChanged(node, includeDescendants: true);
             if (UnitPresenceChanged != null)
                 UnitPresenceChanged(node, origin, GetContainingPlanet(node));
         }
@@ -948,7 +940,6 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            NotifyUnitStateChanged(node);
         }
 
         /// <summary>
@@ -960,28 +951,6 @@ namespace Rebellion.Game
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
                 _registeredOfficers.Remove(officer);
-        }
-
-        /// <summary>
-        /// Reports a completed change to a registered unit's state.
-        /// </summary>
-        /// <param name="node">The unit or container being changed.</param>
-        /// <param name="includeDescendants">Whether the change may affect contained units.</param>
-        internal void NotifyUnitStateChanged(ISceneNode node, bool includeDescendants = false) =>
-            UnitStateChanged?.Invoke(node, includeDescendants);
-
-        /// <summary>
-        /// Changes a unit's movement and notifies scene observers.
-        /// </summary>
-        /// <param name="unit">The unit whose movement changes.</param>
-        /// <param name="movement">The new movement, or null when stationary.</param>
-        internal void SetMovement(IMovable unit, MovementState movement)
-        {
-            if (ReferenceEquals(unit.Movement, movement))
-                return;
-
-            unit.Movement = movement;
-            NotifyUnitStateChanged(unit, includeDescendants: true);
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
+using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
@@ -15,6 +16,7 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        private GameResultBus _discoveryResults;
         private JediCommands _discoveryCommands;
 
         /// <summary>
@@ -25,6 +27,7 @@ namespace Rebellion.Tests.Game.Units
         {
             _discoveryCommands?.Dispose();
             _discoveryCommands = null;
+            _discoveryResults = null;
         }
 
         [TestCase(79, false)]
@@ -38,7 +41,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceValue = rank;
-            game.NotifyUnitStateChanged(officer);
+            _discoveryResults.Publish(new ForceExperienceResult { Officer = officer });
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -58,7 +61,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceTrainingAdjustment = adjustment;
-            game.NotifyUnitStateChanged(officer);
+            _discoveryResults.Publish(new ForceTrainingResult { Officer = officer });
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -70,10 +73,12 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsCaptured_ActiveScanner_CancelsDiscoveryImmediately()
         {
-            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
+            (_, Officer officer) = RegisterDiscoveryOfficer(80);
 
             officer.IsCaptured = true;
-            game.NotifyUnitStateChanged(officer);
+            _discoveryResults.Publish(
+                new OfficerCaptureStateResult { TargetOfficer = officer, IsCaptured = true }
+            );
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -84,11 +89,13 @@ namespace Rebellion.Tests.Game.Units
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             officer.IsCaptured = true;
-            game.NotifyUnitStateChanged(officer);
+            _discoveryResults.Publish(
+                new OfficerCaptureStateResult { TargetOfficer = officer, IsCaptured = true }
+            );
             game.CurrentTick = 70;
 
             officer.IsCaptured = false;
-            game.NotifyUnitStateChanged(officer);
+            _discoveryResults.Publish(new OfficerCaptureStateResult { TargetOfficer = officer });
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -98,10 +105,14 @@ namespace Rebellion.Tests.Game.Units
         public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
-            game.SetMovement(officer, TestMovement.Create());
+            officer.Movement = TestMovement.Create();
+            _discoveryResults.Publish(
+                new GameObjectEnrouteActiveResult { GameObject = officer, IsActive = true }
+            );
             game.CurrentTick = 70;
 
-            game.SetMovement(officer, null);
+            officer.Movement = null;
+            _discoveryResults.Publish(new UnitArrivedResult { Unit = officer });
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -112,9 +123,13 @@ namespace Rebellion.Tests.Game.Units
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             game.SetNodeEnabled(officer, false);
+            _discoveryResults.Publish(new SceneNodeActivationChangedResult { Node = officer });
             game.CurrentTick = 70;
 
             game.SetNodeEnabled(officer, true);
+            _discoveryResults.Publish(
+                new SceneNodeActivationChangedResult { Node = officer, IsActive = true }
+            );
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -128,6 +143,13 @@ namespace Rebellion.Tests.Game.Units
 
             game.AttachNode(mission, officer.GetParent());
             game.MoveNode(officer, mission);
+            _discoveryResults.Publish(
+                new MissionStartedResult
+                {
+                    Mission = mission,
+                    Participants = new() { officer },
+                }
+            );
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -148,11 +170,15 @@ namespace Rebellion.Tests.Game.Units
             game.AttachNode(ship, fleet);
             game.MoveNode(officer, ship);
             IMovable transport = fleetTransit ? fleet : ship;
-            game.SetMovement(transport, TestMovement.Create());
+            transport.Movement = TestMovement.Create();
+            _discoveryResults.Publish(
+                new GameObjectEnrouteActiveResult { GameObject = transport, IsActive = true }
+            );
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             game.CurrentTick = 70;
 
-            game.SetMovement(transport, null);
+            transport.Movement = null;
+            _discoveryResults.Publish(new UnitArrivedResult { Unit = transport });
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -173,6 +199,7 @@ namespace Rebellion.Tests.Game.Units
             game.MoveNode(officer, ship);
 
             game.SetNodeEnabled(ship, false);
+            _discoveryResults.Publish(new SceneNodeActivationChangedResult { Node = ship });
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -1040,7 +1067,9 @@ namespace Rebellion.Tests.Game.Units
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.Jedi.DiscoveringForceUserThreshold = 80;
             game.CurrentTick = 42;
+            _discoveryResults = new GameResultBus();
             _discoveryCommands = new JediCommands(game, new FixedRNG());
+            _discoveryCommands.Connect(_discoveryResults);
             Officer officer = new()
             {
                 InstanceID = "discovery-officer",
@@ -1052,6 +1081,7 @@ namespace Rebellion.Tests.Game.Units
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             game.AttachNode(officer, planet);
+            _discoveryResults.Publish(new GameObjectCreatedResult { GameObject = officer });
             return (game, officer);
         }
 

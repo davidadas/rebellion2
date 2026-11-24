@@ -146,8 +146,13 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="units">The units that must be placed together.</param>
         /// <param name="destinations">Candidate destinations in preference order.</param>
+        /// <param name="results">The batch receiving the completed placements, if provided.</param>
         /// <returns>True when a destination accepts the complete group.</returns>
-        internal bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
+        internal bool TryPlaceUnits(
+            List<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            ICollection<GameResult> results = null
+        )
         {
             if (units == null || destinations == null)
                 return false;
@@ -155,7 +160,9 @@ namespace Rebellion.Gameplay
             string rejectionReason = null;
             foreach (ContainerNode candidate in destinations)
             {
-                if (TryPlaceGroup(units, candidate, out rejectionReason))
+                if (
+                    TryPlaceGroup(units, candidate, results ?? _pendingResults, out rejectionReason)
+                )
                     return true;
             }
 
@@ -333,7 +340,7 @@ namespace Rebellion.Gameplay
             )
             {
                 MoveNode(unit, origin, _pendingResults);
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
                 return;
             }
@@ -350,7 +357,7 @@ namespace Rebellion.Gameplay
             if (destinationPlanet == origin)
             {
                 bool? wasBlockaded = CaptureBlockadeState(unit, destinationPlanet);
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
                 AddPlanetGarrisonChangedResults(_pendingResults, unit, destinationPlanet);
                 AddBlockadeChangedResult(destinationPlanet, wasBlockaded, _pendingResults);
@@ -358,17 +365,10 @@ namespace Rebellion.Gameplay
             }
 
             int transitTicks = _queries.CalculateTransitTicks(unit, origin, destinationPlanet);
-            _game.SetMovement(
-                unit,
-                new MovementState(
-                    new MovementLeg(
-                        transitTicks,
-                        origin.GetPosition(),
-                        destinationPlanet.InstanceID
-                    ),
-                    origin.InstanceID,
-                    _game.GenerateRuntimeIdentifier()
-                )
+            unit.Movement = new MovementState(
+                new MovementLeg(transitTicks, origin.GetPosition(), destinationPlanet.InstanceID),
+                origin.InstanceID,
+                _game.GenerateRuntimeIdentifier()
             );
 
             GameLogger.Log(
@@ -400,17 +400,14 @@ namespace Rebellion.Gameplay
                 return;
             }
             string previousLocationID = _queries.GetPreviousLocation(unit)?.InstanceID;
-            _game.SetMovement(
-                unit,
-                new MovementState(
-                    new MovementLeg(
-                        _queries.CalculateTransitTicks(unit, origin, destinationPlanet),
-                        origin.GetPosition(),
-                        destinationPlanet.InstanceID
-                    ),
-                    previousLocationID,
-                    _game.GenerateRuntimeIdentifier()
-                )
+            unit.Movement = new MovementState(
+                new MovementLeg(
+                    _queries.CalculateTransitTicks(unit, origin, destinationPlanet),
+                    origin.GetPosition(),
+                    destinationPlanet.InstanceID
+                ),
+                previousLocationID,
+                _game.GenerateRuntimeIdentifier()
             );
             results.Add(
                 new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
@@ -601,7 +598,7 @@ namespace Rebellion.Gameplay
                 .Where(unit => unit.Movement != null)
                 .ToDictionary(unit => unit, unit => unit.Movement);
             foreach (IMovable unit in interruptedMovements.Keys)
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
 
             foreach (
                 KeyValuePair<ContainerNode, List<IMovable>> returnGroup in returnGroups.ToList()
@@ -739,7 +736,7 @@ namespace Rebellion.Gameplay
                 }
 
                 MoveNode(participant, missionPlanet, results);
-                _game.SetMovement(participant, null);
+                participant.Movement = null;
             }
 
             return strandedUnits;
@@ -754,7 +751,7 @@ namespace Rebellion.Gameplay
         )
         {
             foreach (KeyValuePair<IMovable, MovementState> movement in interruptedMovements)
-                _game.SetMovement(movement.Key, movement.Value);
+                movement.Key.Movement = movement.Value;
         }
 
         /// <summary>
@@ -1172,11 +1169,13 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="units">The units to place together.</param>
         /// <param name="destination">The shared requested destination.</param>
+        /// <param name="results">The batch receiving the completed placements.</param>
         /// <param name="rejectionReason">The reason placement was rejected, or null when accepted.</param>
         /// <returns>True when the complete group was placed.</returns>
         private bool TryPlaceGroup(
             List<IMovable> units,
             ContainerNode destination,
+            ICollection<GameResult> results,
             out string rejectionReason
         )
         {
@@ -1218,8 +1217,9 @@ namespace Rebellion.Gameplay
 
             for (int index = 0; index < liveUnits.Count; index++)
             {
-                ISceneNode unit = liveUnits[index];
+                IMovable unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
+                bool changed = unit.GetParent() != resolvedDestination || unit.Movement != null;
                 if (unit.GetParent() == null)
                 {
                     if (_game.NodesByInstanceID.ContainsKey(unit.InstanceID))
@@ -1227,8 +1227,10 @@ namespace Rebellion.Gameplay
                     _game.AttachNode(unit, resolvedDestination);
                 }
                 else
-                    MoveNode(unit, resolvedDestination, _pendingResults);
-                _game.SetMovement(liveUnits[index], null);
+                    MoveNode(unit, resolvedDestination, results);
+                unit.Movement = null;
+                if (changed)
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
             }
 
             return true;
@@ -1489,10 +1491,10 @@ namespace Rebellion.Gameplay
 
             ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
             MovementState interruptedMovement = officer.Movement;
-            _game.SetMovement(officer, null);
+            officer.Movement = null;
             if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID(), _game, _movementRandom))
             {
-                _game.SetMovement(officer, interruptedMovement);
+                officer.Movement = interruptedMovement;
                 return;
             }
 
@@ -1522,7 +1524,7 @@ namespace Rebellion.Gameplay
             ICollection<GameResult> results
         )
         {
-            _game.SetMovement(specialForces, null);
+            specialForces.Movement = null;
             _game.DeleteNode(specialForces);
             results.Add(
                 new GameObjectDestroyedResult
@@ -1644,7 +1646,7 @@ namespace Rebellion.Gameplay
         /// <param name="movable">The arriving unit.</param>
         private void CompleteMissionParticipantArrival(IMovable movable)
         {
-            _game.SetMovement(movable, null);
+            movable.Movement = null;
         }
 
         /// <summary>
@@ -1821,7 +1823,7 @@ namespace Rebellion.Gameplay
         )
         {
             MoveNode(movable, destination, results);
-            _game.SetMovement(movable, null);
+            movable.Movement = null;
             GameLogger.Log($"{movable.GetDisplayName()} arrived at {destination.GetDisplayName()}");
 
             if (
@@ -2106,7 +2108,7 @@ namespace Rebellion.Gameplay
             string ownerID = MovementQueries.GetMovementControlOwner(unit);
             if (string.IsNullOrEmpty(ownerID))
             {
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
                 GameLogger.Warning($"{unit.GetDisplayName()} has no owner — cannot evacuate.");
                 return false;
             }
@@ -2169,7 +2171,7 @@ namespace Rebellion.Gameplay
                     return true;
             }
 
-            _game.SetMovement(unit, null);
+            unit.Movement = null;
             GameLogger.Warning($"{unit.GetDisplayName()} has no friendly planet to evacuate to.");
             return false;
         }
@@ -2252,7 +2254,7 @@ namespace Rebellion.Gameplay
             string ownerID = MovementQueries.GetMovementControlOwner(movable);
             if (string.IsNullOrEmpty(ownerID))
             {
-                _game.SetMovement(movable, null);
+                movable.Movement = null;
                 GameLogger.Warning(
                     $"{movable.GetDisplayName()} has no owner, cannot find fallback."
                 );
@@ -2265,7 +2267,7 @@ namespace Rebellion.Gameplay
 
             if (fallback != null)
             {
-                _game.SetMovement(movable, null);
+                movable.Movement = null;
                 ExecuteMove(movable, fallback, _pendingResults, out _);
                 GameLogger.Log(
                     $"{movable.GetDisplayName()} redirected to fallback: {fallback.GetDisplayName()}"
@@ -2273,7 +2275,7 @@ namespace Rebellion.Gameplay
             }
             else
             {
-                _game.SetMovement(movable, null);
+                movable.Movement = null;
                 GameLogger.Warning(
                     $"{movable.GetDisplayName()} has no valid fallback. Staying at {movable.GetParent()?.GetDisplayName() ?? "current location"}."
                 );
@@ -2439,7 +2441,8 @@ namespace Rebellion.Gameplay
 
             if (unit.GetParent() == destination)
             {
-                _game.SetMovement(unit, null);
+                bool endedTransit = unit.Movement != null;
+                unit.Movement = null;
                 CompleteManufacturingDelivery(unit, results);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
                     AddArrivalResults(
@@ -2449,6 +2452,8 @@ namespace Rebellion.Gameplay
                         results,
                         sourceEventInstanceID
                     );
+                else if (endedTransit)
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
                 AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
@@ -2457,7 +2462,7 @@ namespace Rebellion.Gameplay
             {
                 MoveNode(unit, destination, results);
                 ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
                 CompleteManufacturingDelivery(unit, results);
                 AddPlanetGarrisonChangedResults(results, unit, originPlanet);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
@@ -2468,6 +2473,8 @@ namespace Rebellion.Gameplay
                         results,
                         sourceEventInstanceID
                     );
+                else
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
                 AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
@@ -2477,15 +2484,12 @@ namespace Rebellion.Gameplay
             MoveNode(unit, destination, results);
             ClaimUncolonizedDestinationFromRegiment(unit, destination, results);
 
-            _game.SetMovement(
-                unit,
-                new MovementState(
-                    new MovementLeg(transitTicks, originPosition, destinationPlanet.InstanceID),
-                    previousLocationID,
-                    movementGroupID,
-                    sourceEventInstanceID,
-                    resolveEncounterOnArrival
-                )
+            unit.Movement = new MovementState(
+                new MovementLeg(transitTicks, originPosition, destinationPlanet.InstanceID),
+                previousLocationID,
+                movementGroupID,
+                sourceEventInstanceID,
+                resolveEncounterOnArrival
             );
 
             AddPlanetGarrisonChangedResults(results, unit, originPlanet);

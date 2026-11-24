@@ -142,7 +142,6 @@ namespace Rebellion.Gameplay
                         CaptiveStateTransition.Release(
                             officer,
                             planet,
-                            _game,
                             result.Tick,
                             officer.CaptorInstanceID
                         )
@@ -265,7 +264,7 @@ namespace Rebellion.Gameplay
             );
             if (!officer.IsActive() || ReferenceEquals(origin, destinationPlanet) || escort == null)
             {
-                _game.SetMovement(officer, null);
+                officer.Movement = null;
                 _game.MoveNode(officer, resolvedDestination);
                 return true;
             }

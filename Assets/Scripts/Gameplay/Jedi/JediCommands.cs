@@ -14,7 +14,7 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Applies Force discovery, growth, and force-user scanning operations.
     /// </summary>
-    public class JediCommands : IDisposable
+    public class JediCommands : IResultObserver, IDisposable
     {
         private static readonly IComparer<(int Tick, long Order, Officer Scanner)> _scanComparer =
             Comparer<(int Tick, long Order, Officer Scanner)>.Create(
@@ -29,6 +29,7 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _provider;
         private readonly List<GameResult> _pendingDiscoveryResults = new();
         private long _forceDiscoveryOrder;
+        private IDisposable _resultSubscription;
 
         /// <summary>
         /// Creates a new JediCommands.
@@ -40,7 +41,6 @@ namespace Rebellion.Gameplay
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
             ReconcileDiscoveryState();
-            _game.UnitStateChanged += ObserveUnitStateChange;
         }
 
         /// <summary>
@@ -60,7 +60,6 @@ namespace Rebellion.Gameplay
 
             int previousForceRank = officer.ForceRank;
             officer.ForceValue += growth;
-            _game.NotifyUnitStateChanged(officer);
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
             );
@@ -76,11 +75,22 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Stops observing scene changes when this runtime is disposed.
+        /// Observes the results of completed campaign operations.
+        /// </summary>
+        /// <param name="results">The campaign result bus.</param>
+        public void Connect(GameResultBus results)
+        {
+            if (_resultSubscription != null)
+                throw new InvalidOperationException("Jedi commands are already connected.");
+            _resultSubscription = results.ObserveAll(ObserveResults);
+        }
+
+        /// <summary>
+        /// Disconnects from the campaign result bus.
         /// </summary>
         public void Dispose()
         {
-            _game.UnitStateChanged -= ObserveUnitStateChange;
+            _resultSubscription?.Dispose();
         }
 
         /// <summary>
@@ -119,29 +129,88 @@ namespace Rebellion.Gameplay
             foreach (Officer officer in _game.RegisteredOfficers)
                 _forceDiscoveryOrder = Math.Max(_forceDiscoveryOrder, officer.ForceDiscoveryOrder);
 
-            foreach (Officer officer in _game.RegisteredOfficers)
-                ReconcileForceDiscoveryState(officer);
+            RefreshDiscoveryState();
             _pendingDiscoveryResults.Clear();
         }
 
         /// <summary>
-        /// Updates scanners affected by a completed change in the scene.
+        /// Keeps eligibility current for officers restored or placed without an operation result.
         /// </summary>
-        /// <param name="node">The officer or container that changed.</param>
-        /// <param name="includeDescendants">Whether to check officers within that container.</param>
-        private void ObserveUnitStateChange(ISceneNode node, bool includeDescendants)
+        internal void RefreshDiscoveryState()
         {
-            if (node is Officer officer)
+            foreach (Officer officer in _game.RegisteredOfficers)
                 ReconcileForceDiscoveryState(officer);
-            else if (
-                includeDescendants
-                && node is ContainerNode container
-                && _game.RegisteredOfficers.Count != 0
-            )
+        }
+
+        /// <summary>
+        /// Refreshes officers affected by each settled result in publication order.
+        /// </summary>
+        /// <param name="results">Results after their campaign reactions have settled.</param>
+        private void ObserveResults(IReadOnlyList<GameResult> results)
+        {
+            foreach (GameResult result in results)
+            {
+                switch (result)
+                {
+                    case MissionStartedResult started:
+                        foreach (Officer officer in started.Participants.OfType<Officer>())
+                            ReconcileForceDiscoveryState(officer, unavailable: true);
+                        break;
+                    case MissionOfficersReleasedResult release:
+                        foreach (Officer officer in release.Officers)
+                            ReconcileForceDiscoveryState(officer);
+                        break;
+                    case OfficerCaptureStateResult custody:
+                        RefreshAffectedOfficers(
+                            custody.TargetOfficer,
+                            unavailable: custody.IsCaptured
+                        );
+                        break;
+                    case OfficerKilledResult death:
+                        RefreshAffectedOfficers(death.TargetOfficer);
+                        break;
+                    case OfficerRecruitedResult recruitment:
+                        RefreshAffectedOfficers(recruitment.Officer);
+                        break;
+                    case ForceProgressionResult progression:
+                        RefreshAffectedOfficers(progression.Officer);
+                        break;
+                    case OfficerForceEligibilityChangedResult eligibility:
+                        RefreshAffectedOfficers(eligibility.Officer);
+                        break;
+                    case GameObjectEnrouteActiveResult transit:
+                        RefreshAffectedOfficers(transit.GameObject, unavailable: transit.IsActive);
+                        break;
+                    case UnitArrivedResult arrival:
+                        RefreshAffectedOfficers(arrival.Unit);
+                        break;
+                    case UnitPlacedResult placement:
+                        RefreshAffectedOfficers(placement.Unit);
+                        break;
+                    case SceneNodeActivationChangedResult activation:
+                        RefreshAffectedOfficers(activation.Node, unavailable: !activation.IsActive);
+                        break;
+                    case GameObjectCreatedResult creation:
+                        RefreshAffectedOfficers(creation.GameObject);
+                        break;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Updates an officer or the passengers affected by a change to their container.
+        /// </summary>
+        /// <param name="entity">The officer or container described by a result.</param>
+        /// <param name="unavailable">Whether this result stopped discovery at any point in the batch.</param>
+        private void RefreshAffectedOfficers(IGameEntity entity, bool unavailable = false)
+        {
+            if (entity is Officer officer)
+                ReconcileForceDiscoveryState(officer, unavailable);
+            else if (entity is ContainerNode container && _game.RegisteredOfficers.Count != 0)
                 container.TraverseIncludingDisabled(child =>
                 {
                     if (child is Officer passenger)
-                        ReconcileForceDiscoveryState(passenger);
+                        ReconcileForceDiscoveryState(passenger, unavailable);
                 });
         }
 
@@ -149,7 +218,8 @@ namespace Rebellion.Gameplay
         /// Applies discovery eligibility and schedules or cancels the officer's scan.
         /// </summary>
         /// <param name="officer">The officer whose Force or availability changed.</param>
-        private void ReconcileForceDiscoveryState(Officer officer)
+        /// <param name="unavailable">Whether the result places the officer out of action.</param>
+        private void ReconcileForceDiscoveryState(Officer officer, bool unavailable = false)
         {
             if (
                 _game.Config == null
@@ -166,9 +236,9 @@ namespace Rebellion.Gameplay
             _forceDiscoveryOrder = Math.Max(_forceDiscoveryOrder, officer.ForceDiscoveryOrder);
             int nextTick = unchecked(_game.CurrentTick + 1);
             officer.RestoreForceDiscoveryTick(nextTick);
-            bool enabled = officer.CanDiscoverForceUsers(
-                _game.Config.Jedi.DiscoveringForceUserThreshold
-            );
+            bool enabled =
+                !unavailable
+                && officer.CanDiscoverForceUsers(_game.Config.Jedi.DiscoveringForceUserThreshold);
             if (officer.IsDiscoveringForceUser == enabled)
             {
                 if (enabled && officer.ForceDiscoveryOrder == 0)
@@ -327,7 +397,7 @@ namespace Rebellion.Gameplay
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
             candidate.InitializeForceValue(_provider);
-            _game.NotifyUnitStateChanged(candidate);
+            ReconcileForceDiscoveryState(candidate);
             int currentForceRank = candidate.ForceRank;
 
             results.Add(

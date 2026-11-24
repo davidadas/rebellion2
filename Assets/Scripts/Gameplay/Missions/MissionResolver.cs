@@ -343,6 +343,7 @@ namespace Rebellion.Gameplay
                 )
             );
             ResolveStrandedMissionUnits(stranded, missionPlanet, withdrawalResults);
+            RecordOfficersReleased(mission, attachedOfficers, withdrawalResults);
             AddMissionResults(mission, withdrawalResults, results);
 
             mission.AcceptCurrentParticipantRoster();
@@ -769,6 +770,35 @@ namespace Rebellion.Gameplay
                 mission.SetResultMissionID(result);
 
             _game.DetachNode(mission);
+            RecordOfficersReleased(mission, freeParticipants, results);
+        }
+
+        /// <summary>
+        /// Records the officers whose mission assignment actually ended.
+        /// </summary>
+        /// <param name="mission">The mission the officers were assigned to.</param>
+        /// <param name="participants">The participants before their locations changed.</param>
+        /// <param name="results">The batch receiving the assignment change.</param>
+        private void RecordOfficersReleased(
+            Mission mission,
+            IEnumerable<IMissionParticipant> participants,
+            ICollection<GameResult> results
+        )
+        {
+            List<Officer> officers = participants
+                .OfType<Officer>()
+                .Where(officer => officer.GetParent() != mission)
+                .ToList();
+            if (officers.Count == 0)
+                return;
+            results.Add(
+                new MissionOfficersReleasedResult
+                {
+                    MissionInstanceID = mission.InstanceID,
+                    Officers = officers,
+                    Tick = _game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -808,7 +838,7 @@ namespace Rebellion.Gameplay
         {
             foreach (IMovable unit in units)
             {
-                _game.SetMovement(unit, null);
+                unit.Movement = null;
                 if (unit is Officer officer)
                 {
                     if (!officer.IsCaptured)

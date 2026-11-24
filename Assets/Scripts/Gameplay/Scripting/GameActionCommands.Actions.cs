@@ -380,7 +380,6 @@ namespace Rebellion.Gameplay.Scripting
                 else
                 {
                     officer.ReleaseFromCaptivity();
-                    context.Game.NotifyUnitStateChanged(officer);
                 }
 
                 results.Add(
@@ -705,7 +704,6 @@ namespace Rebellion.Gameplay.Scripting
                 if (increase == 0)
                     continue;
                 officer.ForceValue = checked(stored + increase);
-                context.Game.NotifyUnitStateChanged(officer);
                 context.Record(
                     new ForceExperienceResult
                     {
@@ -763,8 +761,13 @@ namespace Rebellion.Gameplay.Scripting
 
             officer.IsForceEligible = true;
             officer.InitializeForceValue(context.Random);
-            context.Game.NotifyUnitStateChanged(officer);
-            return;
+            context.Record(
+                new OfficerForceEligibilityChangedResult
+                {
+                    Officer = officer,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -1419,13 +1422,14 @@ namespace Rebellion.Gameplay.Scripting
                 nameof(PlaceUnitsAction),
                 _ =>
                 {
+                    List<GameResult> results = new();
                     (
                         _movementCommands
                         ?? throw new InvalidOperationException(
                             "Movement commands are not configured."
                         )
-                    ).TryPlaceUnits(units, destinations);
-                    return new List<GameResult>();
+                    ).TryPlaceUnits(units, destinations, results);
+                    return results;
                 }
             );
         }
@@ -1510,7 +1514,18 @@ namespace Rebellion.Gameplay.Scripting
                     );
                 }
 
-                context.Game.SetNodeEnabled(node, action.State == SceneNodeState.Active);
+                bool enabled = action.State == SceneNodeState.Active;
+                if (node.IsEnabled == enabled)
+                    continue;
+                context.Game.SetNodeEnabled(node, enabled);
+                context.Record(
+                    new SceneNodeActivationChangedResult
+                    {
+                        Node = node,
+                        IsActive = enabled,
+                        Tick = context.Game.CurrentTick,
+                    }
+                );
             }
             return;
         }

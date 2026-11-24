@@ -612,6 +612,62 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(_game.CurrentTick + 1, trainer.NextForceDiscoveryTick);
         }
 
+        [Test]
+        public void ForceDiscovery_MissionAbortedAndOfficerMoved_ResumesAfterArrival()
+        {
+            Officer trainer = new Officer
+            {
+                InstanceID = "trainer",
+                OwnerInstanceID = _faction.InstanceID,
+                IsJediTrainer = true,
+                IsForceSensitive = true,
+                IsForceEligible = true,
+                ForceValue = _game.Config.Jedi.DiscoveringForceUserThreshold,
+            };
+            _game.AttachNode(trainer, _planet);
+            Planet destination = new Planet
+            {
+                InstanceID = "trainer-destination",
+                OwnerInstanceID = _faction.InstanceID,
+                IsColonized = true,
+                PositionX = 20,
+            };
+            _game.AttachNode(destination, _planet.GetParent());
+            _session.Dispose();
+            _session = new GameSession(_game, TestGameData.Create(_game.Config));
+
+            MissionCommands missions = _session.GetService<MissionCommands>();
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.IsTrue(
+                missions.InitiateMission(
+                    new MissionContext
+                    {
+                        MissionTypeID = DiplomacyMission.MissionTypeID,
+                        Location = _planet,
+                        MainParticipants = new() { trainer },
+                    }
+                )
+            );
+            Assert.IsFalse(trainer.IsDiscoveringForceUser);
+            Assert.IsTrue(missions.AbortMission(trainer.GetParent().InstanceID));
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(_game.CurrentTick + 1, trainer.NextForceDiscoveryTick);
+
+            Assert.IsTrue(
+                _session
+                    .GetService<MovementCommands>()
+                    .TryRequestMove(new ISceneNode[] { trainer }, destination, _faction.InstanceID)
+            );
+            Assert.IsFalse(trainer.IsDiscoveringForceUser);
+            int travelTicks = trainer.Movement.TicksRemaining();
+            for (int tick = 0; tick < travelTicks; tick++)
+                _session.Tick.ProcessTick();
+
+            Assert.IsNull(trainer.Movement);
+            Assert.IsTrue(trainer.IsDiscoveringForceUser);
+            Assert.AreEqual(_game.CurrentTick + 1, trainer.NextForceDiscoveryTick);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void ProcessResults_PlanetDestructionDestroysHeadquarters_PublishesLossAndVictory(

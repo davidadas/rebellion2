@@ -100,7 +100,6 @@ namespace Rebellion.Gameplay
             OfficerCaptureStateResult result = CaptiveStateTransition.Release(
                 liveOfficer,
                 liveOfficer.GetParentOfType<Planet>(),
-                _game,
                 _game.CurrentTick,
                 liveOfficer.CaptorInstanceID
             );
@@ -182,7 +181,6 @@ namespace Rebellion.Gameplay
         {
             string captorInstanceID = officer.CaptorInstanceID;
             officer.IsCaptured = false;
-            _game.NotifyUnitStateChanged(officer);
             officer.CaptorInstanceID = null;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
@@ -194,7 +192,6 @@ namespace Rebellion.Gameplay
             )
             {
                 officer.IsCaptured = true;
-                _game.NotifyUnitStateChanged(officer);
                 officer.CaptorInstanceID = captorInstanceID;
                 return null;
             }
@@ -202,7 +199,6 @@ namespace Rebellion.Gameplay
             return CaptiveStateTransition.Release(
                 officer,
                 planet,
-                _game,
                 _game.CurrentTick,
                 captorInstanceID
             );
