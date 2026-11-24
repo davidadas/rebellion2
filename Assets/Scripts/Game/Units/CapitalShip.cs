@@ -98,6 +98,8 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Hyperdrive))]
         private int _hyperdrive;
 
+        public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
+
         [PersistableMember(Name = nameof(SublightSpeed))]
         private int _sublightSpeed;
 
@@ -426,6 +428,7 @@ namespace Rebellion.Game.Units
             copy.MaxShieldStrength = MaxShieldStrength;
             copy.ShieldRechargeRate = ShieldRechargeRate;
             copy.Hyperdrive = Hyperdrive;
+            copy.SystemDamage = SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             copy.SublightSpeed = SublightSpeed;
             copy.Maneuverability = Maneuverability;
             copy.StarfighterCapacity = StarfighterCapacity;

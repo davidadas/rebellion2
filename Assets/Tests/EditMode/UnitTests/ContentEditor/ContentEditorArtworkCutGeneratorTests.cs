@@ -35,6 +35,63 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void GenerateFramedPngCut_SmallerSource_KeepsNativePixelDimensions()
+        {
+            string source = WriteSolidPng(Color.green, 5, 3);
+            var size = new Vector2Int(12, 8);
+
+            Texture2D output = Decode(
+                ContentEditorArtworkCutGenerator.GenerateFramedPngCut(source, size, Vector2.zero)
+            );
+
+            try
+            {
+                int opaque = Array
+                    .FindAll(output.GetPixels32(), pixel => pixel.a == byte.MaxValue)
+                    .Length;
+                Assert.That(opaque, Is.EqualTo(15));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
+        public void AddBackground_TransparentCut_BakesBackgroundIntoThePng()
+        {
+            string source = WriteSolidPng(new Color(0, 1, 0, 0.5f), 4, 2);
+            var background = new Texture2D(1, 1, TextureFormat.RGBA32, false);
+            background.SetPixel(0, 0, new Color(1, 0, 0, 0.5f));
+            background.Apply();
+            Texture2D output = null;
+            try
+            {
+                output = Decode(
+                    ContentEditorArtworkCutGenerator.AddBackground(
+                        ContentEditorArtworkCutGenerator.GenerateFramedPngCut(
+                            source,
+                            new Vector2Int(8, 4),
+                            Vector2.zero
+                        ),
+                        background
+                    )
+                );
+                Color32 corner = output.GetPixels32()[0];
+                Color center = output.GetPixel(4, 2);
+                Assert.That(corner, Is.EqualTo(new Color32(128, 0, 0, 255)));
+                Assert.That(center.g, Is.EqualTo(0.5f).Within(0.01f));
+                Assert.That(center.r, Is.EqualTo(0.25f).Within(0.01f));
+                Assert.That(center.a, Is.EqualTo(1f));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(output);
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
         public void GeneratePlacedPngCuts_SameSizeWithDifferentOffsets_RendersEachPlacement()
         {
             string source = WriteSolidPng(Color.green, 8, 4);
@@ -86,6 +143,25 @@ namespace Rebellion.Tests.ContentEditor
             {
                 UnityEngine.Object.DestroyImmediate(output);
             }
+        }
+
+        [TestCase(9, 4)]
+        [TestCase(8, 5)]
+        public void GeneratePlacedPngCuts_WithOutputLargerThanSource_RejectsUpscaling(
+            int width,
+            int height
+        )
+        {
+            string source = WriteSolidPng(Color.green, 8, 4);
+            Assert.Throws<ArgumentException>(() =>
+                ContentEditorArtworkCutGenerator.GeneratePlacedPngCuts(
+                    source,
+                    new[] { (new Vector2Int(width, height), Vector2.zero) },
+                    fitEntireSource: true,
+                    preserveVisibleSubject: true,
+                    preventUpscaling: true
+                )
+            );
         }
 
         [Test]

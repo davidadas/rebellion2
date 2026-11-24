@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Game
                     {
                         ManufacturingSpeedPercent = 120,
                     },
-                    GenerationConfig = TestContent.Data.GenerationConfig.CreateCopy(),
+                    GenerationConfig = TestPackFixture.CreateGenerationConfig(),
                     GarrisonRules = new GarrisonRuleSettings
                     {
                         SupportThreshold = 50,
@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Game
         [Test]
         public void SerializeAndDeserialize_PopulatedSetup_MaintainsState()
         {
-            GameGenerationConfig generationConfig = TestContent.Data.GenerationConfig.CreateCopy();
+            GameGenerationConfig generationConfig = TestPackFixture.CreateGenerationConfig();
             generationConfig.FacilityGeneration.CoreMineMultiplier = 17;
             GameSummary summary = new GameSummary
             {

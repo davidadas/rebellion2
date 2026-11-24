@@ -203,7 +203,11 @@ namespace Rebellion.AI.Planners
                     && planet.IsColonized
                     && !planet.IsDestroyed
                     && !context.Assessment.HasKnownHostileFleet(planet)
-                    && !MovementQueries.IsBlockedFromDestinationByBlockade(headquarters, planet)
+                    && !MovementQueries.IsBlockedFromDestinationByBlockade(
+                        headquarters,
+                        planet,
+                        context.Game
+                    )
                 )
                 .GroupBy(planet =>
                     GetKnownEnemyPlanetCount(context, knownEnemyPlanetsBySystem, planet)

@@ -730,13 +730,39 @@ public static class ContentPackEditorStorage
     )
     {
         byte[] image = File.ReadAllBytes(sourcePath);
+        string address = GetArtworkLayerSourceAddress(image, Path.GetExtension(sourcePath));
+        StoreArtworkLayerSource(project, address, image);
+        return address;
+    }
+
+    /// <summary>
+    /// Derives the pack address for an immutable source image before it is saved.
+    /// </summary>
+    /// <param name="image">The source image bytes.</param>
+    /// <param name="extension">The image format extension.</param>
+    /// <returns>The portable pack address for the image.</returns>
+    internal static string GetArtworkLayerSourceAddress(byte[] image, string extension)
+    {
         using SHA256 hash = SHA256.Create();
         string key = BitConverter
             .ToString(hash.ComputeHash(image))
             .Replace("-", "")
             .ToLowerInvariant();
-        string address =
-            "Pack/Assets/ArtworkSources/" + key + Path.GetExtension(sourcePath).ToLowerInvariant();
+        return "Pack/Assets/ArtworkSources/" + key + extension.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Writes an image at its derived pack address for use by saved artwork recipes.
+    /// </summary>
+    /// <param name="project">The pack receiving the layer source.</param>
+    /// <param name="address">The derived pack address for the image.</param>
+    /// <param name="image">The source image bytes.</param>
+    internal static void StoreArtworkLayerSource(
+        ContentPackEditorProject project,
+        string address,
+        byte[] image
+    )
+    {
         string target = Path.GetFullPath(address[5..], project.PackRootPath);
         ContentEditorPaths.VerifyWritePath(project, target);
         if (!File.Exists(target))
@@ -744,7 +770,6 @@ public static class ContentPackEditorStorage
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             WriteBytesAtomically(target, image);
         }
-        return address;
     }
 
     /// <summary>

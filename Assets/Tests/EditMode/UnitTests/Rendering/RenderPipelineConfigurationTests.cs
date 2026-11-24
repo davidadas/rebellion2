@@ -174,6 +174,7 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("FORGE3D/Planets HD/HDRP/Atmosphere")]
     [TestCase("FORGE3D/Planets HD/HDRP/Terrestrial")]
     [TestCase("FORGE3D/Planets HD/HDRP/Thunderstorm")]
+    [Category("RequiresMedia")]
     public void PackagedShader_HighDefinitionPipeline_IsAvailable(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);

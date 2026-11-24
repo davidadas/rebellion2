@@ -1204,7 +1204,7 @@ namespace Rebellion.Tests.Gameplay
             MovementQueries movement
         ) BuildScene(GameConfig config = null)
         {
-            GameRoot game = TestGame.Create(config ?? TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(config ?? TestConfig.Create());
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);

@@ -141,14 +141,24 @@ internal static class ThemeColorParser
     /// <param name="configuredValue">The serialized HTML color value.</param>
     /// <param name="fallback">The value returned when configuration is absent or invalid.</param>
     /// <returns>The parsed color or the supplied fallback.</returns>
-    public static Color Parse(string configuredValue, Color fallback)
+    public static Color Parse(string configuredValue, Color fallback) =>
+        TryParse(configuredValue, out Color color) ? color : fallback;
+
+    /// <summary>
+    /// Attempts to parse an authored HTML color with or without its number sign.
+    /// </summary>
+    /// <param name="configuredValue">The serialized HTML color value.</param>
+    /// <param name="color">The parsed color, when available.</param>
+    /// <returns>Whether the value specifies a valid color.</returns>
+    public static bool TryParse(string configuredValue, out Color color)
     {
+        color = default;
         if (string.IsNullOrWhiteSpace(configuredValue))
-            return fallback;
+            return false;
 
         string htmlValue = configuredValue.StartsWith("#")
             ? configuredValue
             : "#" + configuredValue;
-        return ColorUtility.TryParseHtmlString(htmlValue, out Color color) ? color : fallback;
+        return ColorUtility.TryParseHtmlString(htmlValue, out color);
     }
 }

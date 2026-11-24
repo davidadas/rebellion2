@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class BookmarkSlotViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";
@@ -75,6 +76,35 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.AreEqual(TextWrappingModes.NoWrap, label.textWrappingMode);
             Assert.AreEqual(TextOverflowModes.Truncate, label.overflowMode);
             Assert.IsTrue(_view.gameObject.activeSelf);
+        }
+
+        [Test]
+        public void Render_PositionedArtwork_CentersVisibleRegionInIconSlot()
+        {
+            StrategyBookmarkLayout layout = CreateLayout();
+            RectInt crop = new RectInt(3, 2, 6, 4);
+            RawImage icon = _view.transform.Find("IconImage").GetComponent<RawImage>();
+
+            _view.Render(0, new BookmarkRenderData(true, "Corellia", _texture, crop), layout);
+
+            Assert.AreEqual(new Rect(0.25f, 0.25f, 0.5f, 0.5f), icon.uvRect);
+            Assert.AreEqual(new RectInt(2, 6, 12, 8), GetSourceRect(icon.transform));
+        }
+
+        [Test]
+        public void Render_UncroppedArtworkAfterPositionedArtwork_RestoresFullTexture()
+        {
+            StrategyBookmarkLayout layout = CreateLayout();
+            RawImage icon = _view.transform.Find("IconImage").GetComponent<RawImage>();
+            _view.Render(
+                0,
+                new BookmarkRenderData(true, "Corellia", _texture, new RectInt(3, 2, 6, 4)),
+                layout
+            );
+
+            _view.Render(0, new BookmarkRenderData(true, "Mon Cala", _texture), layout);
+
+            Assert.AreEqual(new Rect(0, 0, 1, 1), icon.uvRect);
         }
 
         [Test]

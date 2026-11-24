@@ -8,6 +8,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Game.GameEvents
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GameEventSchemaTests
     {
         /// <summary>

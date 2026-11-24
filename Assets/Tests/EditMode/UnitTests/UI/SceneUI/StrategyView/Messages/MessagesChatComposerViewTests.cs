@@ -7,6 +7,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MessagesChatComposerViewTests
     {
         private GameObject _window;

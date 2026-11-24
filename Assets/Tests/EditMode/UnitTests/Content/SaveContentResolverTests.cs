@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -8,10 +9,33 @@ namespace Rebellion.Tests.Content
     [TestFixture]
     public sealed class SaveContentResolverTests
     {
+        private string _directory;
+        private ContentPack _fixturePack;
+
+        /// <summary>
+        /// Installs the pack used for exact save-content matching.
+        /// </summary>
+        [OneTimeSetUp]
+        public void SetUp()
+        {
+            _directory = Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"));
+            _fixturePack = TestPackFixture.Install(Path.Combine(_directory, "Content"));
+        }
+
+        /// <summary>
+        /// Removes the temporary content installation.
+        /// </summary>
+        [OneTimeTearDown]
+        public void TearDown()
+        {
+            if (Directory.Exists(_directory))
+                Directory.Delete(_directory, true);
+        }
+
         [Test]
         public void Open_MatchingLaunchContent_RetainsActivePack()
         {
-            ContentPack activePack = TestContent.Pack;
+            ContentPack activePack = _fixturePack;
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(activePack);
 
             Assert.AreSame(activePack, SaveContentResolver.Open(activePack, summary));
@@ -20,7 +44,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Open_UnavailableLaunchVersion_RejectsContent()
         {
-            ContentPack activePack = TestContent.Pack;
+            ContentPack activePack = _fixturePack;
             GameSummary summary = GameLaunchContext.CreateDefaultSummary(activePack);
             summary.PackVersion = "unavailable-version";
 
@@ -32,7 +56,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Resolve_MatchingInstalledContent_ReturnsExactSelection()
         {
-            ContentPack activePack = TestContent.Pack;
+            ContentPack activePack = _fixturePack;
             GameMetadata metadata = CreateMetadata(activePack);
 
             SaveContentSelection selection = SaveContentResolver.Resolve(activePack, metadata);
@@ -51,7 +75,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Resolve_DifferentPackVersion_ThrowsInvalidOperationException()
         {
-            ContentPack activePack = TestContent.Pack;
+            ContentPack activePack = _fixturePack;
             GameMetadata metadata = CreateMetadata(activePack);
             metadata.PackVersion = "unavailable-version";
 
@@ -63,7 +87,7 @@ namespace Rebellion.Tests.Content
         [Test]
         public void Resolve_MismatchedModIdentityArrays_ThrowsInvalidOperationException()
         {
-            ContentPack activePack = TestContent.Pack;
+            ContentPack activePack = _fixturePack;
             GameMetadata metadata = CreateMetadata(activePack);
             metadata.ModIDs = new[] { "mod" };
             metadata.ModVersions = Array.Empty<string>();

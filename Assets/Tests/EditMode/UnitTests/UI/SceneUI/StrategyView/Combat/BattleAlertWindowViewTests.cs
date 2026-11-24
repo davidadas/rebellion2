@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class BattleAlertWindowViewTests
     {
         private const string _prefabPath =

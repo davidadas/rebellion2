@@ -15,8 +15,70 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentPackEditorWorkspaceControllerTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void SelectRecord_DuplicateAuthoredTypeID_PreservesFormAndShowsValidationError()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            XElement overlay = new XElement(
+                "CapitalShips",
+                new XAttribute("Inherit", true),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("DisplayName", "Edited ship")
+                ),
+                new XElement(
+                    "CapitalShip",
+                    new XElement("TypeID", ship.ID),
+                    new XElement("ResearchOrder", 10)
+                )
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(ship.Catalog.Document.TargetPath));
+            File.WriteAllText(ship.Catalog.Document.TargetPath, overlay.ToString());
+            project = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+            workspace.RenderProject(project, assets);
+            ContentPackEditorRecord previous = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip" && record.ID != ship.ID);
+            SelectRecord(previous);
+            ContentPackEditorRecord duplicate = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == ship.ID);
+
+            Assert.DoesNotThrow(() => SelectRecord(duplicate));
+
+            Assert.IsTrue(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == previous.ID)
+            );
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => field.Field?.Record.ID == duplicate.ID)
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(text =>
+                        text.text.Contains("Duplicate TypeID")
+                        && text.text.Contains(ship.ID)
+                        && text.text.Contains(ship.Catalog.Document.Address)
+                    )
+            );
+        }
+
         [Test]
         public void RenderFieldError_SnapshotInvalidChoice_RevealsAndFocusesItsDropdown()
         {
@@ -142,6 +204,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Button resetSection = view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "ResetSection");
 
+            Assert.AreEqual("Reset settings", resetSection.GetComponentInChildren<TMP_Text>().text);
             resetSection.onClick.Invoke();
 
             ContentPackEditorRecord reset = project
@@ -178,6 +241,109 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void ResetSection_HighlightOverrideWithoutInheritedColorScheme_RestoresBaseAndSupportsUndo()
+        {
+            project = ContentEditorTestData.CreateLoadableProject(
+                Path.Combine(folder, "InheritedContent")
+            );
+            ContentPackEditorRecord theme = GetAllianceTheme();
+            Assert.IsNull(theme.Element.Element(nameof(FactionTheme.ColorScheme)));
+            Color defaultHighlight = ContentEditorPresentation
+                .GetFactionTheme(theme)
+                .GetHighlightTextColor();
+            ContentPackEditorField highlight = ContentEditorContentSections
+                .FactionArtworkFields(theme)
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            project.SetField(highlight, "ABCDEF");
+            workspace.RenderProject(project, assets);
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.RenderSection("Colors");
+            Button reset = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ResetSection");
+            Assert.AreEqual("Reset colors", reset.GetComponentInChildren<TMP_Text>().text);
+
+            reset.onClick.Invoke();
+
+            Assert.AreEqual(
+                defaultHighlight,
+                ContentEditorPresentation
+                    .GetFactionTheme(GetAllianceTheme())
+                    .GetHighlightTextColor()
+            );
+            Assert.IsFalse(reset.gameObject.activeSelf);
+            Assert.IsTrue(project.Undo());
+            ContentPackEditorField restored = GetAllianceTheme()
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == nameof(FactionColorScheme.HighlightTextColorHex)
+                );
+            Assert.AreEqual("ABCDEF", restored.Value);
+        }
+
+        [Test]
+        public void SetField_LegacyPrimaryColorChanges_PreservesWhichColorsFollowIt()
+        {
+            ContentPackEditorRecord record = GetAllianceTheme();
+            record.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.ColorScheme),
+                    new XElement(nameof(FactionColorScheme.PrimaryColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.SelectionColorHex), "223344")
+                )
+            );
+            ContentPackEditorField primary = ContentEditorContentSections
+                .FactionColorFields(record)
+                .Single(field => field.MemberName == nameof(FactionColorScheme.PrimaryColorHex));
+
+            project.SetField(primary, "223344");
+            project.SetField(primary, "334455");
+
+            FactionTheme edited = ContentEditorPresentation.GetFactionTheme(record);
+            Assert.AreEqual(
+                new Color32(0x33, 0x44, 0x55, 0xff),
+                (Color32)edited.GetHighlightTextColor()
+            );
+            Assert.AreEqual(
+                new Color32(0x22, 0x33, 0x44, 0xff),
+                (Color32)edited.GetSelectionColor()
+            );
+        }
+
+        [Test]
+        public void SetField_TurningOffPrimaryLink_KeepsTheDisplayedColor()
+        {
+            ContentPackEditorRecord record = GetAllianceTheme();
+            record.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.ColorScheme),
+                    new XElement(nameof(FactionColorScheme.PrimaryColorHex), "112233"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextColorHex), "0000FF"),
+                    new XElement(nameof(FactionColorScheme.HighlightTextFollowsPrimary), true)
+                )
+            );
+            var fields = ContentEditorContentSections
+                .FactionColorFields(record)
+                .ToDictionary(field => field.MemberName);
+
+            project.SetField(
+                fields[nameof(FactionColorScheme.HighlightTextFollowsPrimary)],
+                "false"
+            );
+            project.SetField(fields[nameof(FactionColorScheme.PrimaryColorHex)], "334455");
+
+            FactionTheme edited = ContentEditorPresentation.GetFactionTheme(record);
+            Assert.AreEqual(
+                new Color32(0x11, 0x22, 0x33, 0xff),
+                (Color32)edited.GetHighlightTextColor()
+            );
+        }
+
+        [Test]
         public void SelectGenerationTask_TaskWithOverride_ShowsSectionResetImmediately()
         {
             project = ContentEditorTestData.CreateLoadableProject(
@@ -208,6 +374,10 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             Assert.IsTrue(resetSection.gameObject.activeSelf);
             Assert.IsTrue(resetSection.interactable);
+            Assert.AreEqual(
+                "Reset buildings",
+                resetSection.GetComponentInChildren<TMP_Text>().text
+            );
         }
 
         [Test]

@@ -57,8 +57,14 @@ namespace Rebellion.Gameplay
                 )
                 .Select(building => building.InstanceID)
                 .ToHashSet(StringComparer.Ordinal);
-            List<Building> activeMines = GetActiveFacilities(faction, BuildingType.Mine, excluded);
+            List<Building> activeMines = GetActiveFacilities(
+                _game,
+                faction,
+                BuildingType.Mine,
+                excluded
+            );
             List<Building> activeRefineries = GetActiveFacilities(
+                _game,
                 faction,
                 BuildingType.Refinery,
                 excluded
@@ -184,8 +190,8 @@ namespace Rebellion.Gameplay
             return CalculateOperatingEconomy(
                 faction,
                 excluded,
-                GetActiveFacilities(faction, BuildingType.Mine, excluded),
-                GetActiveFacilities(faction, BuildingType.Refinery, excluded),
+                GetActiveFacilities(_game, faction, BuildingType.Mine, excluded),
+                GetActiveFacilities(_game, faction, BuildingType.Refinery, excluded),
                 CalculateMaintenanceCosts(faction, excluded).Committed,
                 CalculateMaintenanceCapacity(_game, faction, excluded)
             );
@@ -208,14 +214,16 @@ namespace Rebellion.Gameplay
         /// Captures completed stationary facilities on each currently operating owned planet.
         /// </summary>
         /// <param name="faction">The faction whose facilities are captured.</param>
+        /// <param name="game">The campaign evaluating blockades.</param>
         /// <returns>Planet and facility inputs in stable planet and child order.</returns>
         private static IReadOnlyList<(Planet Planet, Building[] Buildings)> CaptureResourcePlanets(
+            GameRoot game,
             Faction faction
         )
         {
             return faction
                 .GetOwnedUnitsByType<Planet>()
-                .Where(planet => !planet.IsResourceProductionSuspended())
+                .Where(planet => !planet.IsResourceProductionSuspended(game))
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .Select(planet =>
                     (
@@ -356,8 +364,10 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The owning faction.</param>
         /// <param name="buildingType">The requested resource-facility type.</param>
         /// <param name="excluded">Optional facility identifiers omitted from the projection.</param>
+        /// <param name="game">The campaign evaluating blockades.</param>
         /// <returns>The active facilities in stable planet and building order.</returns>
         internal static List<Building> GetActiveFacilities(
+            GameRoot game,
             Faction faction,
             BuildingType buildingType,
             ISet<string> excluded = null
@@ -370,7 +380,7 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (planet.IsResourceProductionSuspended())
+                if (planet.IsResourceProductionSuspended(game))
                     continue;
 
                 facilities.AddRange(
@@ -421,7 +431,7 @@ namespace Rebellion.Gameplay
         /// <param name="includeBuilding">Whether facilities still being manufactured are included.</param>
         /// <param name="excluded">Facility identifiers omitted from the projection.</param>
         /// <returns>The projected facilities in stable planet and building order.</returns>
-        private static List<Building> GetProjectedFacilities(
+        private List<Building> GetProjectedFacilities(
             Faction faction,
             BuildingType buildingType,
             bool includeBuilding,
@@ -435,7 +445,7 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (planet.IsResourceProductionSuspended())
+                if (planet.IsResourceProductionSuspended(_game))
                     continue;
 
                 IEnumerable<Building> planetFacilities = planet
@@ -785,7 +795,7 @@ namespace Rebellion.Gameplay
         )
         {
             int materialCapacity = Math.Min(
-                faction.GetTotalAvailableResourceNodes(),
+                faction.GetTotalAvailableResourceNodes(_game),
                 Math.Min(mineCount, refineryCount)
             );
             return IntegerMath.SaturatingMultiply(
@@ -821,7 +831,7 @@ namespace Rebellion.Gameplay
                 return 0;
 
             return IntegerMath.SaturatingMultiply(
-                faction.GetTotalAvailableMaterialsRaw(),
+                faction.GetTotalAvailableMaterialsRaw(game),
                 CalculateMaintenanceCapacityPerFacility(game, faction)
             );
         }
@@ -842,9 +852,9 @@ namespace Rebellion.Gameplay
             if (excluded.Count == 0)
                 return CalculateMaintenanceCapacity(game, faction);
             return CalculateMaintenanceCapacity(
-                CaptureResourcePlanets(faction),
+                CaptureResourcePlanets(game, faction),
                 excluded,
-                faction.GetTotalAvailableResourceNodes(),
+                faction.GetTotalAvailableResourceNodes(game),
                 CalculateMaintenanceCapacityPerFacility(game, faction)
             );
         }
@@ -948,7 +958,7 @@ namespace Rebellion.Gameplay
             {
                 _queries = queries;
                 _faction = faction;
-                var planets = CaptureResourcePlanets(faction);
+                var planets = CaptureResourcePlanets(queries._game, faction);
                 _minesByPlanet = new (int Mines, int RawNodes)[planets.Count];
                 List<(int MineLimit, Building[] Mines, Building[] Refineries)> active = new();
                 List<(string Id, int Planet, BuildingType Type)> facilities = new();
@@ -998,7 +1008,7 @@ namespace Rebellion.Gameplay
                     new HashSet<string>()
                 ).Committed;
                 _maintenanceCapacity = CalculateMaintenanceCapacity(queries._game, faction);
-                _availableNodes = faction.GetTotalAvailableResourceNodes();
+                _availableNodes = faction.GetTotalAvailableResourceNodes(queries._game);
                 _facilityCapacity = CalculateMaintenanceCapacityPerFacility(queries._game, faction);
                 foreach (
                     Building building in faction.GetAllOwnedManufacturables().OfType<Building>()

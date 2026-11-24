@@ -712,6 +712,40 @@ namespace Rebellion.Game.Missions
             );
 
         /// <summary>
+        /// Calculates the player-visible objective-roll probability without resolving the mission.
+        /// </summary>
+        /// <param name="participants">The participants to evaluate.</param>
+        /// <param name="game">The authoritative game state.</param>
+        /// <param name="observedPlanet">Optional player-visible planet state used for planning.</param>
+        /// <param name="observedTarget">Optional player-visible target state used for planning.</param>
+        /// <param name="evaluationState">The optional turn-scoped observed-planet assessment.</param>
+        /// <returns>The percentage chance that at least one participant passes the displayed objective roll.</returns>
+        internal double GetDisplayedObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            GameRoot game,
+            Planet observedPlanet = null,
+            ISceneNode observedTarget = null,
+            MissionEvaluationState evaluationState = null
+        ) =>
+            GetDisplayedObjectiveSuccessProbability(
+                participants as IReadOnlyList<IMissionParticipant>
+                    ?? participants?.ToArray()
+                    ?? Array.Empty<IMissionParticipant>(),
+                new MissionEvaluationContext(game, observedPlanet, observedTarget, evaluationState)
+            );
+
+        /// <summary>
+        /// Calculates the player-visible objective-roll probability against authoritative or observed state.
+        /// </summary>
+        /// <param name="participants">The participants to evaluate.</param>
+        /// <param name="context">The state used for evaluation.</param>
+        /// <returns>The percentage chance displayed for the next objective roll.</returns>
+        protected virtual double GetDisplayedObjectiveSuccessProbability(
+            IEnumerable<IMissionParticipant> participants,
+            MissionEvaluationContext context
+        ) => GetObjectiveSuccessProbability(participants, context);
+
+        /// <summary>
         /// Calculates objective success probability against authoritative or observed state.
         /// </summary>
         /// <param name="participants">The participants to evaluate.</param>

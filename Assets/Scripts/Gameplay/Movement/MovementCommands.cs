@@ -29,6 +29,7 @@ namespace Rebellion.Gameplay
         private readonly IRandomNumberProvider _movementRandom;
         private readonly BlockadeTransitionResolver _blockadeTransitionResolver;
         private readonly JediCommands _jediCommands;
+        private readonly PlanetaryControlCommands _planetaryControlCommands;
         private readonly List<GameResult> _pendingResults = new List<GameResult>();
 
         /// <summary>
@@ -53,6 +54,7 @@ namespace Rebellion.Gameplay
         /// <param name="personnelCommands">The personnel lifecycle operations.</param>
         /// <param name="blockadeTransitionResolver">Resolves blockade changes around movement mutations.</param>
         /// <param name="jediCommands">The Force progression operations.</param>
+        /// <param name="planetaryControlCommands">Changes ownership for facilities accepted by a new destination owner.</param>
         public MovementCommands(
             GameRoot game,
             FogOfWarCommands fogOfWar,
@@ -62,7 +64,8 @@ namespace Rebellion.Gameplay
             IRandomNumberProvider random = null,
             PersonnelCommands personnelCommands = null,
             BlockadeTransitionResolver blockadeTransitionResolver = null,
-            JediCommands jediCommands = null
+            JediCommands jediCommands = null,
+            PlanetaryControlCommands planetaryControlCommands = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
@@ -78,6 +81,13 @@ namespace Rebellion.Gameplay
             _blockadeTransitionResolver =
                 blockadeTransitionResolver ?? new BlockadeTransitionResolver(game);
             _jediCommands = jediCommands ?? new JediCommands(game, _movementRandom);
+            _planetaryControlCommands =
+                planetaryControlCommands
+                ?? new PlanetaryControlCommands(
+                    game,
+                    new PlanetaryControlQueries(game),
+                    fogOfWarQueries
+                );
         }
 
         /// <summary>
@@ -283,7 +293,7 @@ namespace Rebellion.Gameplay
             }
 
             Planet requestedPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet))
+            if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet, _game))
             {
                 rejectionReason =
                     $"{unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}.";
@@ -319,12 +329,18 @@ namespace Rebellion.Gameplay
             if (
                 unit is Starfighter
                 && destinationPlanet != origin
-                && MovementQueries.IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
+                && MovementQueries.IsBlockedFromDestinationByBlockade(
+                    unit,
+                    destinationPlanet,
+                    _game
+                )
             )
             {
+                bool? wasBlockaded = CaptureBlockadeState(unit, origin);
                 MoveNode(unit, origin, _pendingResults);
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit);
+                AddBlockadeChangedResult(origin, wasBlockaded, _pendingResults);
                 return;
             }
 
@@ -1578,6 +1594,7 @@ namespace Rebellion.Gameplay
             try
             {
                 CompleteArrival(movable, destination, destinationPlanet, results);
+                TransferArrivingBuildingOwnership(movable, destinationPlanet, results);
                 if (completesManufacturingDelivery)
                     CompleteManufacturingDelivery(movable);
                 CaptureArrivalSnapshot(movable, destinationPlanet);
@@ -1633,7 +1650,7 @@ namespace Rebellion.Gameplay
         /// <param name="destination">The destination container.</param>
         /// <param name="destinationPlanet">The destination planet.</param>
         /// <returns>True if the unit cannot complete arrival.</returns>
-        private static bool HasArrivalOwnerConflict(
+        private bool HasArrivalOwnerConflict(
             IMovable movable,
             ContainerNode destination,
             Planet destinationPlanet
@@ -1642,9 +1659,78 @@ namespace Rebellion.Gameplay
             string destinationOwner = destinationPlanet.GetOwnerInstanceID();
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
             bool ownershipChanged = destinationOwner != movableOwner;
+            if (movable is Starfighter starfighter)
+            {
+                return MovementQueries.HasStarfighterOwnerConflict(
+                    starfighter,
+                    destination,
+                    destinationPlanet
+                );
+            }
+            if (
+                ownershipChanged
+                && movable is Building building
+                && CanBuildingAdoptDestinationOwner(building, destinationOwner)
+            )
+                return false;
+
             return ownershipChanged
                 && (movable is Building || !string.IsNullOrEmpty(destinationOwner))
                 && !MovementQueries.CanEnterHostileOrbit(movable, destination);
+        }
+
+        /// <summary>
+        /// Returns whether an arriving building is available to the destination's current owner.
+        /// </summary>
+        /// <param name="building">The arriving building.</param>
+        /// <param name="destinationOwnerInstanceId">The destination owner's identifier, or null for neutral control.</param>
+        /// <returns>True when the building can adopt the destination's ownership.</returns>
+        private bool CanBuildingAdoptDestinationOwner(
+            Building building,
+            string destinationOwnerInstanceId
+        )
+        {
+            if (!string.IsNullOrEmpty(destinationOwnerInstanceId))
+                return IManufacturable.CanBeManufacturedBy(building, destinationOwnerInstanceId);
+
+            IReadOnlyList<Faction> factions = _game.GetFactions();
+            return factions.Count > 0
+                && factions.All(faction =>
+                    IManufacturable.CanBeManufacturedBy(building, faction.InstanceID)
+                );
+        }
+
+        /// <summary>
+        /// Transfers an accepted building to the destination's current owner.
+        /// </summary>
+        /// <param name="movable">The unit completing arrival.</param>
+        /// <param name="destinationPlanet">The planet receiving the unit.</param>
+        /// <param name="results">The collection receiving the ownership transition.</param>
+        private void TransferArrivingBuildingOwnership(
+            IMovable movable,
+            Planet destinationPlanet,
+            ICollection<GameResult> results
+        )
+        {
+            if (
+                movable is not Building building
+                || building.OwnerInstanceID == destinationPlanet.OwnerInstanceID
+                || (
+                    string.IsNullOrEmpty(destinationPlanet.OwnerInstanceID)
+                    && _planetaryControlCommands.ShouldRetainOwnershipOnNeutralPlanet(building)
+                )
+            )
+                return;
+
+            Faction newOwner = string.IsNullOrEmpty(destinationPlanet.OwnerInstanceID)
+                ? null
+                : _game.GetFactionByOwnerInstanceID(destinationPlanet.OwnerInstanceID);
+            UnitOwnershipChangedResult result = _planetaryControlCommands.ChangeUnitOwnership(
+                building,
+                newOwner
+            );
+            if (result != null)
+                results.Add(result);
         }
 
         /// <summary>
@@ -1664,7 +1750,7 @@ namespace Rebellion.Gameplay
                 return false;
 
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
-            if (!destinationPlanet.IsBlockadedFor(movableOwner))
+            if (!destinationPlanet.IsBlockadedFor(movableOwner, _game))
                 return false;
             Fleet blockadingFleet = destinationPlanet
                 .GetChildren<Fleet>()
@@ -1750,7 +1836,8 @@ namespace Rebellion.Gameplay
             {
                 arrivalPlanet.IsColonized = true;
                 arrivalPlanet.PopularSupport.Clear();
-                arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
+                if (!string.IsNullOrEmpty(arrivalPlanet.OwnerInstanceID))
+                    arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
             }
 
             string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);
@@ -2432,9 +2519,9 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The unit about to change movement or containment.</param>
         /// <param name="planet">The affected planet.</param>
         /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
-        private static bool? CaptureBlockadeState(IMovable unit, Planet planet)
+        private bool? CaptureBlockadeState(IMovable unit, Planet planet)
         {
-            return unit is Fleet or CapitalShip ? planet?.IsBlockaded() : null;
+            return unit is Fleet or CapitalShip or Starfighter ? planet?.IsBlockaded(_game) : null;
         }
 
         /// <summary>
@@ -2728,7 +2815,7 @@ namespace Rebellion.Gameplay
 
             List<string> blockadedFactionInstanceIDs = _game
                 .GetFactions()
-                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID))
+                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID, _game))
                 .Select(candidate => candidate.InstanceID)
                 .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);

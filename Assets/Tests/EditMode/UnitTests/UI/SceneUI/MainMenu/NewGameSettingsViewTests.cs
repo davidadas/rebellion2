@@ -16,6 +16,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class NewGameSettingsViewTests
     {
         private static readonly Color DefaultTextColor = new Color(0.875f, 0.910f, 0.941f);

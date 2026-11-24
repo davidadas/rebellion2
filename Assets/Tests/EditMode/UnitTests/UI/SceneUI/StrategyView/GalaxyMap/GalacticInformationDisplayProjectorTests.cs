@@ -8,6 +8,7 @@ using UnityEngine;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GalacticInformationDisplayProjectorTests
     {
         private const string _playerFactionId = "FNALL1";

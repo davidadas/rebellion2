@@ -156,6 +156,7 @@ namespace Rebellion.Game.Messages
         NoLosses,
         TargetLosses,
         AttackerLosses,
+        TargetKilled,
     }
 
     /// <summary>

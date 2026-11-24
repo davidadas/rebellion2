@@ -845,9 +845,9 @@ namespace Rebellion.AI
                     .Select(candidate => candidate.InstanceID)
                     .ToList()
                 ?? new List<string>();
-            AvailableResourceNodeCapacity = faction?.GetTotalAvailableResourceNodes() ?? 0;
-            AvailableMinedResourceCapacity = faction?.GetTotalAvailableMinedResources() ?? 0;
-            AvailableRefinementCapacity = faction?.GetTotalAvailableRefinementCapacity() ?? 0;
+            AvailableResourceNodeCapacity = faction?.GetTotalAvailableResourceNodes(_game) ?? 0;
+            AvailableMinedResourceCapacity = faction?.GetTotalAvailableMinedResources(_game) ?? 0;
+            AvailableRefinementCapacity = faction?.GetTotalAvailableRefinementCapacity(_game) ?? 0;
             AvailableMaterialCapacity = Math.Min(
                 AvailableResourceNodeCapacity,
                 Math.Min(AvailableMinedResourceCapacity, AvailableRefinementCapacity)

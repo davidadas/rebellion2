@@ -187,14 +187,54 @@ when edited, including when the last entry is removed.
 
 The content editor displays resolved inherited values while keeping their authored overrides
 separate. Editing an inherited document saves only the changed settings. Authored overrides use a
-distinct input color. **Reset section** removes every override in the active inspector section;
-resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
+distinct input color. The reset button names what it resets, for example **Reset artwork**.
+It clears the overrides shown in the active tab and uses the inherited or built-in defaults.
+Resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
 snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
 in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
+
+### Faction and neutral themes
+
+In the Content Pack Editor, open a faction's **Colors** tab to set its primary
+color, selected menu text color, and individual interface tints. **Reset colors**
+restores the inherited or default colors for that theme.
+
+Check **Use primary color** to link a color to the primary palette. Matching
+colors start linked and existing custom colors start independent. In
+**Interfaces > Strategy view**, scroll over the preview, pinch on a Mac trackpad,
+or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
+movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
+galaxy background. **Fit to view** restores the full scene.
+
+Open **Factions > Neutral** to preview and edit shared interface artwork.
+Double-click an outlined sector icon to open its image settings. Use
+**Galaxy map icons** for neutral star markers and **Facility research icons** for
+facility research artwork. Player HUD artwork is under each faction's
+**Interfaces > Strategy view**.
+
+### Unit artwork
+
+In **Artwork**, the **Messages and encyclopedia** section holds the two 1800 × 900 images.
+Choose **Use message image** or **Use encyclopedia image** to share one file between them.
+**Generate cuts** uses the source image's actual dimensions to prevent upscaling.
+Uncheck any cut you want to keep before choosing **Save cuts**.
+For capital ships and starfighters, full-size display art can also be framed at native scale
+on an encyclopedia canvas with the configured unit or faction background.
+Message and encyclopedia images can also supply gameplay cuts.
+
+### Artwork layers
+
+In the travel or damage artwork editor, choose an output size and click **Add image…**.
+PNG and JPEG files become independent layers you can move, scale, hide, and reorder.
+When you save the artwork, the editor copies the source image into the pack and saves the layer
+with that output so you can edit it again later.
+
+Image pickers reopen in the last folder you imported from. On Windows and macOS, you can
+also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a layer.
 
 ## Sharing a mod
 

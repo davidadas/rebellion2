@@ -41,10 +41,16 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     [SerializeField]
     private TextMeshProUGUI error;
 
+    [SerializeField]
+    private UICheckboxView primaryColorLink;
+
     private ContentPackEditorField field;
     private Action<ContentPackEditorField, string> submitted;
     private Action changed;
     private Action<string> validationFailed;
+    private Color fallbackColor;
+    private Color primaryColor;
+    private bool linked;
     private bool bound;
     private bool rendering;
 
@@ -52,6 +58,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     /// Gets the authored color represented by this card.
     /// </summary>
     public ContentPackEditorField Field => this.field;
+    internal ContentPackEditorField LinkField { get; private set; }
 
     /// <summary>
     /// Connects the authored controls before the first render.
@@ -63,12 +70,16 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     /// </summary>
     /// <param name="value">The color field.</param>
     /// <param name="sampleTexture">The interface mask used to preview the selected color.</param>
+    /// <param name="defaultColor">The color shown when the field has no valid authored value.</param>
+    /// <param name="link">The optional link field and its effective state and color.</param>
     /// <param name="onSubmitted">The validated color submission.</param>
     /// <param name="onChanged">The notification after a successful change.</param>
     /// <param name="onValidationFailed">The validation failure notification.</param>
     public void Render(
         ContentPackEditorField value,
         Texture2D sampleTexture,
+        Color defaultColor,
+        (ContentPackEditorField Field, bool Linked, Color Primary) link,
         Action<ContentPackEditorField, string> onSubmitted,
         Action onChanged,
         Action<string> onValidationFailed
@@ -78,6 +89,10 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         submitted = onSubmitted ?? throw new ArgumentNullException(nameof(onSubmitted));
         changed = onChanged;
         validationFailed = onValidationFailed;
+        fallbackColor = defaultColor;
+        LinkField = link.Field;
+        primaryColor = link.Primary;
+        linked = link.Linked;
         BindControls();
         title.text = field.Caption;
         description.text = field.HelpText;
@@ -90,15 +105,17 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
                     ? 1f
                     : (float)sample.texture.width / sample.texture.height;
         }
+        RenderLink();
         RenderAcceptedValue();
         gameObject.SetActive(true);
     }
 
     /// <summary>
-    /// Places the complete color card within the scrolling form.
+    /// Places the color card and reserves room beside its title for the primary-color link.
     /// </summary>
     /// <param name="bounds">The card bounds in form coordinates.</param>
-    public void SetLayout(Rect bounds) =>
+    public void SetLayout(Rect bounds)
+    {
         UILayout.SetSourceRect(
             (RectTransform)transform,
             Mathf.RoundToInt(bounds.x),
@@ -107,12 +124,23 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
             Mathf.RoundToInt(bounds.height)
         );
 
+        const int inset = 16;
+        const int headerGap = 12;
+        RectTransform titleRect = title.rectTransform;
+        RectTransform linkRect = (RectTransform)primaryColorLink.transform;
+        linkRect.anchorMin = linkRect.anchorMax = linkRect.pivot = Vector2.one;
+        linkRect.anchoredPosition = new Vector2(-inset, titleRect.offsetMax.y);
+        float rightInset = LinkField == null ? inset : inset + linkRect.sizeDelta.x + headerGap;
+        titleRect.offsetMax = new Vector2(-rightInset, titleRect.offsetMax.y);
+    }
+
     /// <summary>
     /// Releases project references before the pooled card is hidden.
     /// </summary>
     public void Clear()
     {
         field = null;
+        LinkField = null;
         submitted = null;
         changed = null;
         validationFailed = null;
@@ -138,6 +166,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
             || saturationValue == null
             || brightnessValue == null
             || error == null
+            || primaryColorLink == null
         )
             throw new MissingReferenceException(name + " has incomplete color-picker references.");
 
@@ -145,6 +174,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         brightnessSlider.onValueChanged.AddListener(PreviewBrightnessColor);
         hexInput.onValueChanged.AddListener(PreviewHexColor);
         hexInput.onEndEdit.AddListener(CommitHexColor);
+        primaryColorLink.ValueChanged += ChangePrimaryColorLink;
         ContentEditorSliderCommit relay =
             brightnessSlider.GetComponent<ContentEditorSliderCommit>();
         if (relay == null)
@@ -161,7 +191,10 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         rendering = true;
         try
         {
-            Color color = TryParseColor(field?.Value, out Color accepted) ? accepted : Color.white;
+            Color color =
+                linked ? primaryColor
+                : TryParseColor(field?.Value, out Color accepted) ? accepted
+                : fallbackColor;
             Color.RGBToHSV(color, out float hue, out float saturation, out float brightness);
             colorWheel.SetValueWithoutNotify(hue, saturation);
             brightnessSlider.SetValueWithoutNotify(brightness);
@@ -172,6 +205,41 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
         finally
         {
             rendering = false;
+        }
+    }
+
+    /// <summary>
+    /// Shows the link checkbox and makes linked color controls read-only.
+    /// </summary>
+    private void RenderLink()
+    {
+        primaryColorLink.gameObject.SetActive(LinkField != null);
+        primaryColorLink.SetIsCheckedWithoutNotify(linked);
+        colorWheel.enabled = !linked;
+        brightnessSlider.interactable = !linked;
+        hexInput.interactable = !linked;
+    }
+
+    /// <summary>
+    /// Commits one explicit primary-color link choice and refreshes the card.
+    /// </summary>
+    /// <param name="value">Whether the card should follow the primary color.</param>
+    private void ChangePrimaryColorLink(bool value)
+    {
+        if (LinkField == null)
+            return;
+        try
+        {
+            submitted(LinkField, value ? "true" : "false");
+            linked = value;
+            RenderLink();
+            RenderAcceptedValue();
+            changed?.Invoke();
+        }
+        catch (ArgumentException exception)
+        {
+            RenderLink();
+            ShowError(exception.Message);
         }
     }
 
@@ -257,7 +325,7 @@ public sealed class ContentEditorColorPickerView : MonoBehaviour
     /// <param name="value">The proposed color.</param>
     private void CommitColor(string value)
     {
-        if (field == null || rendering)
+        if (field == null || rendering || linked)
             return;
         if (!TryParseColor(value, out Color color))
         {

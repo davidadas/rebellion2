@@ -57,10 +57,12 @@ namespace Rebellion.Gameplay
             ServicePendingRefinedMaterialRequests(game, faction);
 
             List<Building> mines = ResourceProductionQueries.GetActiveFacilities(
+                game,
                 faction,
                 BuildingType.Mine
             );
             List<Building> refineries = ResourceProductionQueries.GetActiveFacilities(
+                game,
                 faction,
                 BuildingType.Refinery
             );

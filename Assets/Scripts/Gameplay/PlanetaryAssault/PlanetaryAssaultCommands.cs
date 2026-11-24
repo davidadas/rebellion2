@@ -116,7 +116,7 @@ namespace Rebellion.Gameplay
                 Tick = _game.CurrentTick,
             };
 
-            if (!PlanetaryAssaultQueries.CanAssault(attackingFleets, defendingPlanet))
+            if (!PlanetaryAssaultQueries.CanAssault(_game, attackingFleets, defendingPlanet))
                 return result;
 
             string attackerId = attackingFleets[0].GetOwnerInstanceID();

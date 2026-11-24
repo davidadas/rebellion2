@@ -22,7 +22,9 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class GameSessionManagerTests
     {
+        private const string _suppressionShipType = "test-suppression-ship";
         private ContentPack _contentPack;
+        private string _fixtureDirectory;
         private UserGameplaySettings _gameplaySettings;
         private GameSessionManager _sessionManager;
         private SaveGameManager _saveGameManager;
@@ -35,7 +37,16 @@ namespace Rebellion.Tests.Managers
         [SetUp]
         public void SetUp()
         {
-            ContentPack source = TestContent.Pack;
+            _fixtureDirectory = Path.Combine(
+                Path.GetTempPath(),
+                nameof(GameSessionManagerTests),
+                Guid.NewGuid().ToString("N")
+            );
+            _saveDirectoryPath = Path.Combine(_fixtureDirectory, "Saves");
+            ContentPack source = TestPackFixture.Install(
+                Path.Combine(_fixtureDirectory, "Content")
+            );
+            GameDataCatalog data = source.GameData;
             _contentPack = new ContentPack(
                 source.ContentRootPath,
                 source.PackRootPath,
@@ -43,13 +54,43 @@ namespace Rebellion.Tests.Managers
                 source.Definition,
                 source.Scenario,
                 source.Factions,
-                TestGameData.WithGameEvents(source.GameData, Array.Empty<GameEvent>()),
+                new GameDataCatalog(
+                    data.GameConfig,
+                    data.GenerationConfig,
+                    data.Factions,
+                    data.PlanetSectors,
+                    data.Buildings,
+                    data.CapitalShips.Append(
+                            new CapitalShip
+                            {
+                                TypeID = _suppressionShipType,
+                                SectorSuppression = 2,
+                                CanDestroyPlanets = true,
+                            }
+                        )
+                        .ToArray(),
+                    data.Starfighters,
+                    data.Regiments,
+                    data.SpecialForces,
+                    data.Officers,
+                    Array.Empty<GameEvent>(),
+                    new[]
+                    {
+                        new MessageDefinition
+                        {
+                            ResultType = MessageResultType.Bombardment,
+                            Outcome = MessageResultOutcome.TargetLosses,
+                            PlanetOwnership = MessagePlanetOwnership.Owned,
+                            MessageType = MessageType.Conflict,
+                            Subject = "Bombardment of {system}",
+                            Body = "Bombardment damaged the defenses.",
+                        },
+                    },
+                    data.EncyclopediaEntries,
+                    data.FactionThemes,
+                    data.OfficerTraits
+                ),
                 new Dictionary<string, ContentPreloadManifest>()
-            );
-            _saveDirectoryPath = Path.Combine(
-                Path.GetTempPath(),
-                nameof(GameSessionManagerTests),
-                Guid.NewGuid().ToString("N")
             );
             _gameplaySettings = new UserGameplaySettings();
             _saveGameManager = new SaveGameManager(_saveDirectoryPath);
@@ -69,8 +110,8 @@ namespace Rebellion.Tests.Managers
         public void TearDown()
         {
             _sessionManager?.EndGame();
-            if (Directory.Exists(_saveDirectoryPath))
-                Directory.Delete(_saveDirectoryPath, true);
+            if (Directory.Exists(_fixtureDirectory))
+                Directory.Delete(_fixtureDirectory, true);
         }
 
         [Test]
@@ -449,7 +490,7 @@ namespace Rebellion.Tests.Managers
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "retained-ship",
-                TypeID = "CSEM015",
+                TypeID = _suppressionShipType,
                 CanDestroyPlanets = true,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };

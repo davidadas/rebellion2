@@ -290,9 +290,22 @@ namespace Rebellion.Gameplay
                 reporter?.GetDisplayName() ?? GetMissionParticipantName(result);
             string officerName = GetMissionOfficerName(result, game, killedResults);
             string targetName = GetMissionObjectTargetName(result, game, sabotageResults);
-            string abductionResult = GetAbductionResultText(result, killedOfficerIDs, officerName);
+            bool abductionTargetKilled =
+                result.Outcome == MissionOutcome.Success
+                && result.Mission?.ConfigKey == AbductionMission.MissionTypeID
+                && killedOfficerIDs.Contains(GetMissionTargetOfficerInstanceID(result.Mission));
+            string abductionResult = GetAbductionResultText(abductionTargetKilled, officerName);
             string assassinationResult = GetAssassinationResultText(result, killedOfficerIDs);
-            MessageDefinition definition = GetMissionDefinition(
+            MessageDefinition definition = abductionTargetKilled
+                ? GetMissionDefinition(
+                    MessageResultType.MissionReport,
+                    MessageResultOutcome.TargetKilled,
+                    GetMissionTypeID(result),
+                    completionReason,
+                    faction?.InstanceID
+                )
+                : null;
+            definition ??= GetMissionDefinition(
                 MessageResultType.MissionReport,
                 outcome,
                 GetMissionTypeID(result),
@@ -341,7 +354,7 @@ namespace Rebellion.Gameplay
                     bodyTemplate: reporter == null ? definition?.UnattributedBody : null
                 ),
                 target,
-                GetMissionNavigationTarget(result, game),
+                GetMissionNavigationTarget(result, target, game),
                 result.Mission
             );
 
@@ -1370,10 +1383,12 @@ namespace Rebellion.Gameplay
         /// Resolves the scene node opened from a completed mission message.
         /// </summary>
         /// <param name="result">The completed mission result.</param>
+        /// <param name="missionTarget">The planet where the mission was performed.</param>
         /// <param name="game">The game state used to resolve mission-specific targets.</param>
         /// <returns>The mission-specific target, first participant, or mission itself.</returns>
         private static ISceneNode GetMissionNavigationTarget(
             MissionCompletedResult result,
+            Planet missionTarget,
             GameRoot game
         )
         {
@@ -1388,6 +1403,15 @@ namespace Rebellion.Gameplay
                 );
                 if (recruitedOfficer != null)
                     return recruitedOfficer;
+            }
+
+            if (
+                result?.Outcome != MissionOutcome.Success
+                && result?.Mission is ReconnaissanceMission
+                && missionTarget != null
+            )
+            {
+                return missionTarget;
             }
 
             return (result?.Participants ?? Enumerable.Empty<IMissionParticipant>())
@@ -1632,24 +1656,13 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets the target status for a successful abduction that killed its target.
         /// </summary>
-        /// <param name="result">The completed mission result.</param>
-        /// <param name="killedOfficerIDs">Officer ids killed by results in the current batch.</param>
+        /// <param name="targetKilled">Whether the successful abduction killed its target.</param>
         /// <param name="officerName">The resolved target officer display name.</param>
         /// <returns>The target-death status, or an empty string when the target survived.</returns>
-        private static string GetAbductionResultText(
-            MissionCompletedResult result,
-            HashSet<string> killedOfficerIDs,
-            string officerName
-        )
+        private static string GetAbductionResultText(bool targetKilled, string officerName)
         {
-            if (
-                result?.Outcome != MissionOutcome.Success
-                || result.Mission?.ConfigKey != AbductionMission.MissionTypeID
-                || !killedOfficerIDs.Contains(GetMissionTargetOfficerInstanceID(result.Mission))
-            )
-            {
+            if (!targetKilled)
                 return string.Empty;
-            }
 
             string targetName = string.IsNullOrEmpty(officerName) ? "The target" : officerName;
             return $"{targetName} was killed during the attempt.";
@@ -3607,6 +3620,24 @@ namespace Rebellion.Gameplay
                     controller,
                     CreateUprisingEnded(controller, result, controller)
                 );
+                if (controller == null || result.Planet == null)
+                    continue;
+
+                FogOfWarQueries visibility = new(game);
+                foreach (Faction recipient in game.GetFactions())
+                {
+                    if (
+                        recipient.InstanceID == controller.InstanceID
+                        || !visibility.IsPlanetControlVisible(result.Planet, recipient)
+                    )
+                        continue;
+
+                    AddPoliticalDelivery(
+                        deliveries,
+                        recipient,
+                        CreateUprisingEnded(recipient, result, controller)
+                    );
+                }
             }
 
             foreach (PlanetUprisingIncidentResult result in incidentResults)
@@ -3748,7 +3779,9 @@ namespace Rebellion.Gameplay
                     { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                 },
                 result.Planet?.InstanceID,
-                AdvisorNotificationType.PositivePopularSupport,
+                faction?.InstanceID == controller?.InstanceID
+                    ? AdvisorNotificationType.PositivePopularSupport
+                    : AdvisorNotificationType.NegativePopularSupport,
                 controller
             );
         }

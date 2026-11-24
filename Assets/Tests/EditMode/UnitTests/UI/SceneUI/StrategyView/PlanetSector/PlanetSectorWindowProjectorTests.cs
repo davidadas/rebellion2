@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
-using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
@@ -27,6 +26,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
         private GalaxyPlanetSector _planetSector;
         private PlanetSectorWindowProjector _projector;
         private UIContext _uiContext;
+        private StrategyPresentationFixture _presentation;
 
         /// <summary>
         /// Sets up.
@@ -43,11 +43,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 .Add(new Faction { InstanceID = _opposingFactionId, DisplayName = "Empire" });
             _game.Summary.PlayerFactionID = _playerFactionId;
             _game.SetFactionController(_playerFactionId, "PLAYER1", PlayerControllerType.Human);
-            _uiContext = TestContent.CreateUIContext(
-                _game,
-                TestContent.CreateThemeLibrary(),
-                new EncyclopediaCatalog(Array.Empty<EncyclopediaEntry>())
-            );
+            _presentation = new StrategyPresentationFixture();
+            _uiContext = _presentation.CreateContext(_game);
             _planetSector = new GalaxyPlanetSector
             {
                 InstanceID = "sector",
@@ -56,6 +53,15 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 PositionY = 20,
             };
             _projector = new PlanetSectorWindowProjector(() => _uiContext);
+        }
+
+        /// <summary>
+        /// Disposes the fixture's sector textures.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            _presentation?.Dispose();
         }
 
         [Test]
@@ -391,6 +397,29 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             Assert.IsNull(presentation.GalacticInformationTexture);
         }
 
+        [Test]
+        public void CreateRenderData_ReservedEnergyAboveCapacity_ShowsExactConsumption()
+        {
+            Planet planet = CreatePlanet("planet", _playerFactionId, 2, 0);
+            planet.EnergyCapacity = 1;
+            planet.AllocatedEnergy = 2;
+            planet.AddTestChild(CreateBuilding(BuildingType.Defense));
+            GalaxyMapSector sector = CreateSector(
+                new GalaxyMapPlanet(_planetSector, planet, string.Empty)
+            );
+
+            PlanetSectorWindowRenderData data = _projector.CreateRenderData(
+                sector,
+                null,
+                PlanetIcon.None,
+                null,
+                PlanetIcon.None
+            );
+
+            Assert.AreEqual(2, data.Planets[0].EnergyBar.LitCells);
+            Assert.AreEqual("Energy Consumption 2/1", data.Planets[0].EnergyBar.TooltipText);
+        }
+
         [TestCase(53, 53, 11, 7)]
         [TestCase(1, 2, 16, 2)]
         [TestCase(0, 2, 16, 1)]
@@ -481,7 +510,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             _game.AttachNode(headquarters, origin);
-            GameSession session = TestContent.CreateGameSession(_game);
+            using GameSession session = TestGameData.CreateSession(_game);
             Assert.IsTrue(
                 session.GetService<HeadquartersCommands>().TryRelocate(headquarters, destination)
             );
@@ -706,7 +735,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.PlanetSector
             _game.AttachNode(_planetSector, _game.GetGalaxyMap());
             _game.AttachNode(origin, _planetSector);
             _game.AttachNode(destination, _planetSector);
-            GameSession session = TestContent.CreateGameSession(_game);
+            using GameSession session = TestGameData.CreateSession(_game);
 
             MoveDefenseWindowItem(session, item, origin, destination);
             PlanetSectorWindowRenderData data = _projector.CreateRenderData(

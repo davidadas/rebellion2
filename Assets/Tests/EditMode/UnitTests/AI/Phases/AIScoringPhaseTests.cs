@@ -20,6 +20,7 @@ namespace Rebellion.Tests.AI.Phases
     public class AIScoringPhaseTests
     {
         [Test]
+        [Category("RequiresMedia")]
         public void Execute_WithSupportedProposal_AssignsScore()
         {
             GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);

@@ -14,6 +14,17 @@ internal static class TestContent
     internal static GameDataCatalog Data => Pack.GameData;
 
     /// <summary>
+    /// Creates independent rules for tests that use the installed pack's balance settings.
+    /// </summary>
+    /// <returns>The pack's rules with difficulty modifiers cleared.</returns>
+    internal static GameConfig CreateGameConfig()
+    {
+        GameConfig config = Data.GameConfig.CreateCopy();
+        config.DifficultyModifiers.Clear();
+        return config;
+    }
+
+    /// <summary>
     /// Creates theme library.
     /// </summary>
     /// <returns>The created theme library.</returns>

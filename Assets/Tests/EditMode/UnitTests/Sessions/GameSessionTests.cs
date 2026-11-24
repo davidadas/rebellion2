@@ -1521,7 +1521,11 @@ namespace Rebellion.Tests.Gameplay
             );
             Assume.That(empire.ResearchCatalog, Is.Empty);
 
-            _ = TestContent.CreateGameSession(game);
+            CapitalShip ship = new CapitalShip { TypeID = "test-ship", DisplayName = "Test ship" };
+            using GameSession session = new GameSession(
+                game,
+                TestGameData.Create(TestConfig.Create(), capitalShips: new[] { ship })
+            );
 
             Assert.IsNotEmpty(
                 alliance.ResearchCatalog,
@@ -1661,18 +1665,13 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Officer>(remembered.InstanceID));
         }
 
-        [TestCase("OFAL003", true)]
-        [TestCase("OFAL002", false)]
-        public void Constructor_SavedOfficerWithStaleForceRules_BindsAuthoredRules(
-            string typeID,
-            bool trainer
-        )
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Constructor_SavedOfficerWithStaleForceRules_BindsAuthoredRules(bool trainer)
         {
-            Officer template = TestContent.Data.Officers.Single(officer =>
-                officer.TypeID == typeID
-            );
+            Officer template = CreateForceTemplate(trainer);
             Officer officer = EntityFactory.CreateOfficer("saved", _faction.InstanceID);
-            officer.TypeID = typeID;
+            officer.TypeID = template.TypeID;
             officer.IsJediTrainer = !trainer;
             officer.GrowsForceOnMission = !template.GrowsForceOnMission;
             officer.JediProbability = -1;
@@ -1716,9 +1715,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void Constructor_UnrecruitedOfficer_BindsForceRulesBeforeRecruitment()
         {
-            Officer template = TestContent.Data.Officers.Single(officer =>
-                officer.TypeID == "OFAL003"
-            );
+            Officer template = CreateForceTemplate(true);
             Officer officer = EntityFactory.CreateOfficer("unrecruited", _faction.InstanceID);
             officer.TypeID = template.TypeID;
             _game.GetUnrecruitedOfficers().Add(officer);
@@ -1902,7 +1899,7 @@ namespace Rebellion.Tests.Gameplay
                 hullStrength: 1000,
                 weaponPower: 100
             );
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             int decisionsRequired = 0;
             int completedTicks = 0;
             manager.Tick.CombatDecisionRequired += () => decisionsRequired++;
@@ -2010,7 +2007,7 @@ namespace Rebellion.Tests.Gameplay
             );
             game.GetFactions().Add(faction);
             game.SetFactionController(faction.InstanceID, "PLAYER", PlayerControllerType.Human);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "SHIP",
@@ -2038,6 +2035,8 @@ namespace Rebellion.Tests.Gameplay
             config.AI.Garrison.SupportThreshold = 50;
             config.AI.Garrison.GarrisonDivisor = 10;
             config.AI.Garrison.UprisingMultiplier = 2;
+            config.AI.Garrison.MinimumGarrisonTarget = 1;
+            config.AI.Garrison.ResourceFacilitiesPerGarrison = 2;
             GameRoot game = TestGame.Create(config);
             Faction faction = new Faction
             {
@@ -2162,7 +2161,10 @@ namespace Rebellion.Tests.Gameplay
                         },
                     }
                 );
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(
+                game,
+                CreateMessageDefinition(MessageResultType.OfficerInjured, MessageType.Mission)
+            );
             List<OfficerInjuredResult> injuries = new List<OfficerInjuredResult>();
             manager.Pipeline.ResultsResolved += results =>
                 injuries.AddRange(results.OfType<OfficerInjuredResult>());
@@ -2223,7 +2225,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(sector, game.GetGalaxyMap());
             game.AttachNode(planet, sector);
             game.AttachNode(officer, planet);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
 
             manager.Tick.ProcessTick();
 
@@ -2361,7 +2363,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 { -1000, 100 },
             };
-            using GameSession session = TestContent.CreateGameSession(game);
+            using GameSession session = TestGameData.CreateSession(game);
             List<GameResult> resolved = new List<GameResult>();
             session.Pipeline.ResultsResolved += resolved.AddRange;
             int tick = game.CurrentTick;
@@ -2411,7 +2413,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet, CapitalShip ship, Officer officer, Regiment target) =
                 CreateFleetMissionCaptureScene();
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
-            using GameSession session = TestContent.CreateGameSession(game);
+            using GameSession session = TestGameData.CreateSession(game);
             Assert.IsTrue(
                 session
                     .GetService<MissionCommands>()
@@ -2468,7 +2470,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(custodyPlanet, sector);
             Officer officer = EntityFactory.CreateOfficer("OFFICER", owner.InstanceID);
             game.AttachNode(officer, capturePlanet);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             IReadOnlyList<GameResult> resolved = null;
             manager.Pipeline.ResultsResolved += results => resolved = results;
 
@@ -2507,7 +2509,7 @@ namespace Rebellion.Tests.Gameplay
             custodyPlanet.IsHeadquarters = true;
             Officer leader = EntityFactory.CreateOfficer("LEADER", defender.InstanceID);
             game.AttachNode(leader, capturePlanet);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             VictoryResult declared = null;
             manager.Pipeline.VictoryDeclared += result => declared = result;
 
@@ -2548,7 +2550,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
             game.AttachNode(regiment, ship);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             IReadOnlyList<PlanetaryAssaultResult> observedResults = null;
             manager.Pipeline.PlanetaryAssaultsResolved += results => observedResults = results;
 
@@ -2660,7 +2662,7 @@ namespace Rebellion.Tests.Gameplay
             faction.AddMessage(
                 new StatusMessage(MessageType.Conflict, "Expired", "Expired") { CreatedTick = 100 }
             );
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
 
             manager.Tick.ProcessTick();
 
@@ -2713,7 +2715,7 @@ namespace Rebellion.Tests.Gameplay
             starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(starfighter, origin);
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             manager.GetService<MovementCommands>().RequestMove(starfighter, destination);
 
             Fleet blockadingFleet = EntityFactory.CreateFleet(
@@ -2738,7 +2740,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void Tick_SabotageResult_RemovesDestroyedObjectFromActorSnapshot()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);
@@ -2809,7 +2811,7 @@ namespace Rebellion.Tests.Gameplay
             mission.Initiate(1);
             mission.DetectionResolved = true;
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
 
             manager.Tick.ProcessTick();
 
@@ -2874,7 +2876,24 @@ namespace Rebellion.Tests.Gameplay
             );
             defendingFleet.GetChildren<CapitalShip>()[0].HasGravityWell = true;
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(
+                game,
+                new MessageDefinition
+                {
+                    ResultType = MessageResultType.FleetArrived,
+                    MessageType = MessageType.Fleet,
+                    Subject = "Fleet arrival",
+                    Body = "{fleet} has arrived at {system}.",
+                },
+                new MessageDefinition
+                {
+                    ResultType = MessageResultType.SpaceBattle,
+                    MessageType = MessageType.Conflict,
+                    Outcome = MessageResultOutcome.Defeat,
+                    Subject = "Battle at {system}",
+                    Body = "Combat with {opponent}.",
+                }
+            );
             manager
                 .GetService<MovementCommands>()
                 .RequestMove(new List<IMovable> { arrivingFleet }, destination);
@@ -3084,7 +3103,7 @@ namespace Rebellion.Tests.Gameplay
                     }
                 );
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             manager
                 .GetService<MovementCommands>()
                 .RequestMove(new List<IMovable> { arrivingFleet }, destination);
@@ -3123,7 +3142,7 @@ namespace Rebellion.Tests.Gameplay
                 hullStrength: 1000,
                 weaponPower: 100
             );
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             Assert.IsTrue(
                 manager
                     .GetService<MovementCommands>()
@@ -3186,7 +3205,7 @@ namespace Rebellion.Tests.Gameplay
                 weaponPower: 100
             );
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             int completedTicks = 0;
             manager.Tick.TickCompleted += () => completedTicks++;
 
@@ -3208,7 +3227,7 @@ namespace Rebellion.Tests.Gameplay
         public void Tick_PausedGame_DoesNotAdvanceTick()
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             manager.Game.SetGameSpeed(TickSpeed.Paused);
 
             manager.Tick.ProcessTick();
@@ -3259,7 +3278,7 @@ namespace Rebellion.Tests.Gameplay
                 hullStrength: 1000,
                 weaponPower: 100
             );
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             Assert.IsTrue(
                 manager
                     .GetService<MovementCommands>()
@@ -3290,7 +3309,7 @@ namespace Rebellion.Tests.Gameplay
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.GetFactions().Add(new Faction { InstanceID = "AI", DisplayName = "AI" });
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
             IEnumerator tick = manager.Tick.ProcessTickIncrementally();
             Assert.IsTrue(tick.MoveNext());
 
@@ -3387,7 +3406,13 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(
+                game,
+                CreateMessageDefinition(
+                    MessageResultType.UprisingStarted,
+                    MessageType.PopularSupport
+                )
+            );
             Assert.IsTrue(
                 manager
                     .GetService<MissionCommands>()
@@ -3479,7 +3504,13 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fleet, planet);
             game.AttachNode(ship, fleet);
 
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(
+                game,
+                CreateMessageDefinition(
+                    MessageResultType.PlanetDeclaredNeutralityBySupport,
+                    MessageType.PopularSupport
+                )
+            );
 
             Assert.IsTrue(
                 manager
@@ -3529,7 +3560,7 @@ namespace Rebellion.Tests.Gameplay
             Regiment regiment = EntityFactory.CreateRegiment("REGIMENT", owner.InstanceID);
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, planet);
-            GameSession manager = TestContent.CreateGameSession(game);
+            GameSession manager = TestGameData.CreateSession(game);
 
             bool scrapped = manager
                 .GetService<MaintenanceCommands>()
@@ -4178,6 +4209,30 @@ namespace Rebellion.Tests.Gameplay
                 MessageType = messageType,
                 Subject = resultType.ToString(),
                 Body = resultType.ToString(),
+            };
+        }
+
+        /// <summary>
+        /// Creates a Force-sensitive officer template for session tests.
+        /// </summary>
+        /// <param name="trainer">Whether the officer can train other officers.</param>
+        /// <returns>The fixture officer template.</returns>
+        private static Officer CreateForceTemplate(bool trainer)
+        {
+            return new Officer
+            {
+                TypeID = "force-template",
+                IsJediTrainer = trainer,
+                GrowsForceOnMission = trainer,
+                IsKnownJedi = trainer,
+                JediProbability = 70,
+                JediLevel = 40,
+                JediLevelVariance = 5,
+                RosterOrder = 4,
+                ForceDiscoveryConditionals = new List<GameConditional>
+                {
+                    new HasEventActivatedConditional { EventInstanceID = "force-discovery" },
+                },
             };
         }
 

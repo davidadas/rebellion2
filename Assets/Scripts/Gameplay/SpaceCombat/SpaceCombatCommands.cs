@@ -1020,7 +1020,7 @@ namespace Rebellion.Gameplay
             SpaceCombatWithdrawalPlan defenderWithdrawalPlan
         )
         {
-            bool wasBlockaded = result.Planet.IsBlockaded();
+            bool wasBlockaded = result.Planet.IsBlockaded(_game);
             List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
                 result.Planet

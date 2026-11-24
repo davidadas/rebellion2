@@ -31,7 +31,10 @@ namespace Rebellion.Tests.AI.Fleets
             bool expectedLaunch
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             ConfigureMinimalAttackRequirements(game);
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 100;
             game.Config.Movement.MinTransitTicks = 20;
@@ -103,7 +106,10 @@ namespace Rebellion.Tests.AI.Fleets
             bool expectedLaunch
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             ConfigureMinimalAttackRequirements(game);
             game.Config.Movement.MinTransitTicks = 1;
             game.Config.Movement.SameSectorMinTransitTicks = 1;
@@ -142,7 +148,10 @@ namespace Rebellion.Tests.AI.Fleets
             bool expected
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
@@ -177,7 +186,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void CanSelect_HeadquartersIntelRefreshed_AllowsAttackAgain()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet staging = AITestSceneBuilder.AddPlanet(
                 game,
@@ -207,7 +219,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithFleetNotReady_AssignsBuildingOrder()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -241,7 +256,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithStaleTargetIntelligence_AppliesUncertaintyReserve()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet staging = AITestSceneBuilder.AddPlanet(
@@ -273,7 +291,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithInboundShipArrivingAtTargetAfterFleet_LaunchesWithLaterArrival()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet staging = AITestSceneBuilder.AddPlanet(
@@ -316,7 +337,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithInboundShipNearTarget_PreservesUnfinishedLeg()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet staging = AITestSceneBuilder.AddPlanet(
@@ -367,7 +391,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithInboundShipArrivingAtTargetWithFleet_LaunchesAttack()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet staging = AITestSceneBuilder.AddPlanet(
@@ -408,7 +435,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithSharedTravelOfficerGroup_CoordinatesArrivalWithFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             game.Config.Movement.DistanceDivisor = 5;
             game.Config.Movement.MinTransitTicks = 1;
@@ -500,7 +530,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithCompletedAttackOrder_ClearsOrder()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -537,7 +570,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void CanExecute_WithFriendlyTarget_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             PlanetSector planetSector = AITestSceneBuilder.AddSector(game, "sector1");
             Planet owned = AITestSceneBuilder.AddPlanet(
                 game,
@@ -568,7 +604,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithReturningDeliveryOnlyFleet_UsesPlayerValidatedMovementOrder()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet friendly = AITestSceneBuilder.AddPlanet(
                 game,
@@ -625,7 +664,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_CaptureAndFollowOnAttack_DoesNotRevealFleetToFormerOwner()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             ConfigureMinimalAttackRequirements(game);
             game.Config.AI.EnablePlanetaryAssaults = false;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
@@ -703,7 +745,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithImpenetrableShields_ReturnsOrderToBuilding()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
@@ -731,7 +776,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithNoViableBombardmentOrAssault_ReturnsOrderToBuilding()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet target = AITestSceneBuilder.AddPlanet(game, system, "target", rebels.InstanceID);
             Fleet fleet = AddBattleFleet(game, target, empire.InstanceID);
@@ -764,7 +812,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_DefersResultsUntilTurnCompletion()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
@@ -813,7 +864,7 @@ namespace Rebellion.Tests.AI.Fleets
             bool expected
         )
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction faction, out _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet origin = AITestSceneBuilder.AddPlanet(
                 game,
@@ -850,7 +901,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_BombardmentNeutralizesTarget_CompletesOccupationOnNextTurn()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction enemy);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction faction,
+                out Faction enemy
+            );
             ConfigureMinimalAttackRequirements(game);
             game.Config.AI.EnablePlanetaryAssaults = false;
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
@@ -911,7 +965,7 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void CanExecute_OccupationTroopsRemovedAfterAssessment_ReturnsFalse()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(out Faction faction, out _);
             PlanetSector sector = AITestSceneBuilder.AddSector(game, "sector");
             Planet target = AITestSceneBuilder.AddPlanet(game, sector, "target", null);
             Fleet fleet = AddBattleFleet(game, target, faction.InstanceID, regimentCount: 1);
@@ -938,7 +992,10 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithSuccessfulPlanetaryAssault_RefreshesManufacturingBudget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction rebels
+            );
             game.Config.Combat.PlanetaryAssault.CaptureGarrisonCount = 1;
             game.Config.AI.FleetDeployment.MinimumPlanetaryAssaultSuccessPercent = 0;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");

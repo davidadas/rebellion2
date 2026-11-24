@@ -180,6 +180,22 @@ public sealed class ContentEditorXmlView : MonoBehaviour
     }
 
     /// <summary>
+    /// Opens the editable XML block containing a requested field.
+    /// </summary>
+    /// <param name="field">The field whose XML block should be selected.</param>
+    internal void SelectFieldScope(ContentPackEditorField field)
+    {
+        for (int index = 0; index < scopes.Count; index++)
+        {
+            if (field.XmlElement.AncestorsAndSelf().Contains(scopes[index].Element))
+            {
+                SelectScope(index);
+                return;
+            }
+        }
+    }
+
+    /// <summary>
     /// Requests applying a draft through the workspace's project boundary.
     /// </summary>
     private void RequestApply() => ApplyRequested?.Invoke();

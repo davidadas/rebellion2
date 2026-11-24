@@ -37,12 +37,12 @@
       </UnitTileIcons>
       <PlanetOverlayIcons>
         <Defenses>
-          <NormalImagePath>Pack/Shared/Strategy/UI/Windows/Defense/planetsector-planet-defense-up</NormalImagePath>
-          <HoverImagePath>Pack/Shared/Strategy/UI/Windows/Defense/planetsector-planet-defense-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Shared/Strategy/UI/Windows/Defense/planet-garrison-normal</NormalImagePath>
+          <HoverImagePath>Pack/Shared/Strategy/UI/Windows/Defense/planet-garrison-highlighted</HoverImagePath>
         </Defenses>
         <Buildings>
-          <NormalImagePath>Pack/Shared/Strategy/UI/Windows/Facility/planetsector-planet-facility-up</NormalImagePath>
-          <HoverImagePath>Pack/Shared/Strategy/UI/Windows/Facility/planetsector-planet-facility-pressed</HoverImagePath>
+          <NormalImagePath>Pack/Shared/Strategy/UI/Windows/Facility/planet-manufacturing-normal</NormalImagePath>
+          <HoverImagePath>Pack/Shared/Strategy/UI/Windows/Facility/planet-manufacturing-highlighted</HoverImagePath>
         </Buildings>
       </PlanetOverlayIcons>
     </PlanetOverlayTheme>

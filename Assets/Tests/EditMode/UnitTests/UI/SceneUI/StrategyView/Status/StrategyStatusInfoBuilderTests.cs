@@ -16,6 +16,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyStatusInfoBuilderTests
     {
         private const string _ownerId = "owner";
@@ -125,6 +126,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 },
                 info.Rows.Select(row => row.Left + "|" + row.Right)
             );
+        }
+
+        [Test]
+        public void Build_PlanetWithReservedEnergy_ReturnsUnreservedEnergy()
+        {
+            _planet.EnergyCapacity = 3;
+            _planet.AllocatedEnergy = 2;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            Assert.AreEqual("1", info.Rows.Single(row => row.Left == "Energy:").Right);
         }
 
         [Test]

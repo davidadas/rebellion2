@@ -15,6 +15,7 @@ using GameFleet = Rebellion.Game.Units.Fleet;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MissionsWindowProjectorTests
     {
         private const string _opposingFactionId = "FNEMP1";

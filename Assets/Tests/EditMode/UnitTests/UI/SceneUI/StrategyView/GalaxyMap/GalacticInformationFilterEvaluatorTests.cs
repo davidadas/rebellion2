@@ -97,6 +97,23 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
             Assert.Zero(marker.Index);
         }
 
+        [Test]
+        public void Evaluate_AvailableEnergyWithFullReservation_ReturnsLowestMarker()
+        {
+            Planet planet = CreatePlanet(_playerFactionId);
+            planet.EnergyCapacity = 3;
+            planet.AllocatedEnergy = 3;
+
+            GalacticInformationMarker marker = GalacticInformationFilterEvaluator.Evaluate(
+                _game,
+                planet,
+                _playerFactionId,
+                CreateFilter(GalacticInformationFilterMode.AvailableEnergy)
+            );
+
+            Assert.Zero(marker.Index);
+        }
+
         [TestCase(GalacticInformationFilterMode.Uprisings)]
         [TestCase(GalacticInformationFilterMode.AvailableEnergy)]
         [TestCase(GalacticInformationFilterMode.AvailableRawMaterial)]

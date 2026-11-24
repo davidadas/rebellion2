@@ -82,6 +82,13 @@ public sealed class ContentEditorSettingsManager
         });
 
     /// <summary>
+    /// Remembers the source folder shared by the image and layer file pickers.
+    /// </summary>
+    /// <param name="directory">The folder of the last imported image.</param>
+    internal void SaveImageImportDirectory(string directory) =>
+        Update(settings => settings.ImageImportDirectory = directory);
+
+    /// <summary>
     /// Records acknowledgement without affecting another window's presentation preferences.
     /// </summary>
     public void AcknowledgeAlphaNotice() =>
@@ -158,6 +165,7 @@ public sealed class ContentEditorSettings
     public float Zoom = 1;
     public float Split = 0.205f;
     public bool AlphaNoticeAcknowledged;
+    public string ImageImportDirectory;
 
     /// <summary>
     /// Keeps persisted values within the same limits used by the workbench.

@@ -456,12 +456,13 @@ namespace Rebellion.Tests.Game.Missions
         [Test]
         public void GetObjectiveSuccessProbability_NormalGarrisonSufficient_ReturnsSkillProbability()
         {
-            var (game, planet, mission) = BuildCompletionScene(
-                TestConfig.Create(),
-                2,
-                40,
-                subdue: true
-            );
+            GameConfig config = TestConfig.Create();
+            config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { 0, 0 },
+                { 40, 40 },
+            };
+            var (game, planet, mission) = BuildCompletionScene(config, 2, 40, subdue: true);
 
             Assert.AreEqual(
                 40,

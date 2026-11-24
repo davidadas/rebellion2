@@ -44,13 +44,14 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
 
         int iconWidth = GetIconWidth(layout, bookmark.IconTexture);
         int iconHeight = GetIconHeight(layout, bookmark.IconTexture);
-        UILayout.SetImage(
-            iconImage,
-            bookmark.IconTexture,
-            layout.IconOffsetX,
-            GetCenteredOffset(slot.height, iconHeight),
-            iconWidth,
-            iconHeight
+        RenderIcon(
+            bookmark,
+            new RectInt(
+                layout.IconOffsetX,
+                GetCenteredOffset(slot.height, iconHeight),
+                iconWidth,
+                iconHeight
+            )
         );
 
         int labelOffsetX = GetLabelOffsetX(layout, iconWidth);
@@ -87,6 +88,40 @@ public sealed class BookmarkSlotView : MonoBehaviour, IPointerClickHandler
     private void Awake()
     {
         VerifyReferences();
+    }
+
+    /// <summary>
+    /// Frames the visible portion of positioned artwork inside the bookmark's icon slot.
+    /// </summary>
+    /// <param name="bookmark">The resolved icon and optional source crop.</param>
+    /// <param name="slot">The authored space available for the icon.</param>
+    private void RenderIcon(BookmarkRenderData bookmark, RectInt slot)
+    {
+        Texture2D texture = bookmark.IconTexture;
+        RectInt crop = bookmark.IconContentBounds;
+        iconImage.uvRect = new Rect(0, 0, 1, 1);
+        if (texture != null && crop.width > 0 && crop.height > 0)
+        {
+            iconImage.uvRect = new Rect(
+                crop.x / (float)texture.width,
+                crop.y / (float)texture.height,
+                crop.width / (float)texture.width,
+                crop.height / (float)texture.height
+            );
+            float scale = Mathf.Min(
+                slot.width / (float)crop.width,
+                slot.height / (float)crop.height
+            );
+            int width = Mathf.Max(1, Mathf.RoundToInt(crop.width * scale));
+            int height = Mathf.Max(1, Mathf.RoundToInt(crop.height * scale));
+            slot = new RectInt(
+                slot.x + (slot.width - width) / 2,
+                slot.y + (slot.height - height) / 2,
+                width,
+                height
+            );
+        }
+        UILayout.SetImage(iconImage, texture, slot.x, slot.y, slot.width, slot.height);
     }
 
     /// <summary>

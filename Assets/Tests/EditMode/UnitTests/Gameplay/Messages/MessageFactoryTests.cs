@@ -601,6 +601,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(80)]
         [TestCase(100)]
+        [Category("RequiresMedia")]
         public void CreateMessages_LeiaDiscovery_UsesSingleAuthoredReport(int discovererRank)
         {
             (GameRoot game, Faction alliance, Planet origin, _) = BuildMessageScene();
@@ -2232,6 +2233,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("FNEMP1", MissionOutcome.Success, MissionCompletionReason.Success)]
         [TestCase("FNALL1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
         [TestCase("FNEMP1", MissionOutcome.Failed, MissionCompletionReason.UprisingProgress)]
+        [Category("RequiresMedia")]
         public void CreateMessages_InciteReport_UsesRecipientThemeBackground(
             string owner,
             MissionOutcome outcome,
@@ -2262,6 +2264,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase("FNALL1", "Alliance")]
         [TestCase("FNEMP1", "Empire")]
+        [Category("RequiresMedia")]
         public void CreateMessages_SubdueSuccess_UsesRestoredOrderArtwork(
             string owner,
             string faction
@@ -2297,6 +2300,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetChangedSides)]
         [TestCase(SubdueUprisingMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
         [TestCase(SabotageMission.MissionTypeID, MissionCompletionReason.TargetUnavailable)]
+        [Category("RequiresMedia")]
         public void CreateMessages_InterruptedMission_UsesRecipientThemeBackground(
             string missionType,
             MissionCompletionReason reason
@@ -2332,6 +2336,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateMessages_UprisingIncident_ReportsIntelligenceOnlyToTheRecipient()
         {
             var (game, alliance, empire, _, target) = BuildTwoFactionMessageScene();
@@ -2756,6 +2761,7 @@ namespace Rebellion.Tests.Gameplay
             MissionOutcome.Failed,
             "has joined the Empire"
         )]
+        [Category("RequiresMedia")]
         public void CreateMessages_AuthoredCompletionReason_ReturnsExpectedReport(
             string missionTypeId,
             MissionCompletionReason completionReason,
@@ -2796,6 +2802,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        [Category("RequiresMedia")]
         public void CreateMessages_DiplomacyTargetDeclaredNeutrality_ReturnsNeutralityReport()
         {
             (GameRoot game, Faction alliance, _, _, Planet target) = BuildTwoFactionMessageScene();
@@ -2975,6 +2982,54 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("body:Target Officer:has been eliminated", message.Body);
         }
 
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        public void CreateMessages_AbductionTargetState_UsesMatchingReport(
+            bool officerReports,
+            bool targetKilled
+        )
+        {
+            Message message = CreateAbductionReport(officerReports, targetKilled);
+
+            Assert.AreEqual(
+                officerReports ? "Leia Mission Report" : "Abduction Mission Report",
+                message.Title
+            );
+            if (targetKilled)
+            {
+                string attempt = officerReports ? "my" : "the";
+                Assert.AreEqual(
+                    $"Ackbar was killed during {attempt} abduction attempt at Drall.\n"
+                        + "Personnel are returning to Coruscant.",
+                    message.Body
+                );
+            }
+            else
+            {
+                StringAssert.Contains(
+                    officerReports ? "was a success." : "succeeded.",
+                    message.Body
+                );
+                StringAssert.DoesNotContain("was killed", message.Body);
+                StringAssert.EndsWith("Personnel are returning to Coruscant.", message.Body);
+            }
+        }
+
+        [TestCase(MissionOutcome.Failed, "failed")]
+        [TestCase(MissionOutcome.Foiled, "foiled")]
+        public void CreateMessages_UnsuccessfulAbductionWithKilledTarget_UsesFailureReport(
+            MissionOutcome outcome,
+            string expected
+        )
+        {
+            Message message = CreateAbductionReport(false, true, outcome);
+
+            StringAssert.Contains(expected, message.Body);
+            StringAssert.DoesNotContain("was killed", message.Body);
+        }
+
         [Test]
         public void CreateMessages_AbductionReportWithKilledTarget_ReportsTargetDeath()
         {
@@ -3129,6 +3184,62 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual("mission_report", message.BackgroundImageKey);
             Assert.AreEqual("recon-unit-image", message.OverlayImagePath);
+        }
+
+        [TestCase(MissionOutcome.Failed)]
+        [TestCase(MissionOutcome.Foiled)]
+        public void CreateMessages_UnsuccessfulReconnaissanceMission_NavigatesToMissionPlanet(
+            MissionOutcome outcome
+        )
+        {
+            (GameRoot game, Faction alliance, _, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            Mission mission = new ReconnaissanceMission
+            {
+                ConfigKey = ReconnaissanceMission.MissionTypeID,
+                DisplayName = "Reconnaissance",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            SpecialForces reconUnit = new SpecialForces
+            {
+                InstanceID = "RECON-UNIT",
+                OwnerInstanceID = alliance.InstanceID,
+            };
+            game.AttachNode(mission, target);
+            game.AttachNode(reconUnit, origin);
+            MessageResultOutcome messageOutcome =
+                outcome == MissionOutcome.Foiled
+                    ? MessageResultOutcome.Foiled
+                    : MessageResultOutcome.Failed;
+
+            Message message = FirstMessageFor(
+                CreateMessages(
+                    game,
+                    new[]
+                    {
+                        Definition(
+                            MessageResultType.MissionReport,
+                            MessageType.Mission,
+                            "title",
+                            "body",
+                            outcome: messageOutcome,
+                            missionTypeId: ReconnaissanceMission.MissionTypeID
+                        ),
+                    },
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Reconnaissance",
+                        MissionTypeID = ReconnaissanceMission.MissionTypeID,
+                        Outcome = outcome,
+                        Participants = new List<IMissionParticipant> { reconUnit },
+                    }
+                ),
+                alliance
+            );
+
+            Assert.AreEqual(target.InstanceID, message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, message.NavigationTargetInstanceID);
         }
 
         [Test]
@@ -4631,6 +4742,137 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CreateMessages_UprisingEndedOnCorePlanet_NotifiesBothFactions(
+            bool allianceControlsPlanet
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Faction controller = allianceControlsPlanet ? alliance : empire;
+            Faction opponent = allianceControlsPlanet ? empire : alliance;
+            target.OwnerInstanceID = controller.InstanceID;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{faction}:{system}",
+                        "body:{faction}:{system}",
+                        imagePaths: FactionImages(),
+                        voicePaths: new Dictionary<string, string>
+                        {
+                            { alliance.InstanceID, "alliance-audio" },
+                            { empire.InstanceID, "empire-audio" },
+                        }
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = controller }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
+            MessageDelivery friendly = deliveries.Single(item => item.Recipient == controller);
+            MessageDelivery enemy = deliveries.Single(item => item.Recipient == opponent);
+            Assert.AreEqual(
+                AdvisorNotificationType.PositivePopularSupport,
+                friendly.NotificationType
+            );
+            Assert.AreEqual(AdvisorNotificationType.NegativePopularSupport, enemy.NotificationType);
+            Assert.AreEqual($"ended:{controller.DisplayName}:Yavin", enemy.Message.Title);
+            Assert.AreEqual($"body:{controller.DisplayName}:Yavin", enemy.Message.Body);
+            Assert.AreEqual(FactionImages()[controller.InstanceID], enemy.Message.DisplayImagePath);
+            Assert.AreEqual(
+                allianceControlsPlanet ? "empire-audio" : "alliance-audio",
+                enemy.Message.BackgroundAudioPath
+            );
+            Assert.AreEqual(target.InstanceID, enemy.Message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, enemy.Message.NavigationTargetInstanceID);
+        }
+
+        [TestCase(false, false, false, 1)]
+        [TestCase(true, false, false, 1)]
+        [TestCase(true, true, true, 1)]
+        [TestCase(true, true, false, 2)]
+        public void CreateMessages_UprisingEndedOnOuterRimPlanet_OnlyNotifiesCurrentObservers(
+            bool hasFleet,
+            bool hasShip,
+            bool moving,
+            int expectedReports
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            if (hasFleet)
+            {
+                Fleet fleet = new()
+                {
+                    InstanceID = "observing-fleet",
+                    OwnerInstanceID = alliance.InstanceID,
+                    Movement = moving ? new MovementState() : null,
+                };
+                game.AttachNode(fleet, target);
+                if (hasShip)
+                    game.AttachNode(
+                        new CapitalShip
+                        {
+                            InstanceID = "observing-ship",
+                            OwnerInstanceID = alliance.InstanceID,
+                            ManufacturingStatus = ManufacturingStatus.Complete,
+                        },
+                        fleet
+                    );
+            }
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{system}",
+                        "body:{system}"
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = empire }
+            );
+
+            Assert.AreEqual(expectedReports, deliveries.Count);
+            Assert.AreEqual(1, deliveries.Count(item => item.Recipient == empire));
+            Assert.AreEqual(
+                expectedReports - 1,
+                deliveries.Count(item => item.Recipient == alliance)
+            );
+        }
+
+        [Test]
+        public void CreateMessages_UprisingEndedWithoutController_ReturnsNoReports()
+        {
+            (GameRoot game, _, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{system}",
+                        "body:{system}"
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
         [Test]
         public void CreateMessages_UprisingEndedWithOwnershipChange_SuppressesJoinedCauseMessage()
         {
@@ -4667,7 +4909,10 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Message message = FirstMessageFor(deliveries, alliance);
-            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.IsTrue(
+                deliveries.All(item => item.Message.ResultType == MessageResultType.UprisingEnded)
+            );
             Assert.AreEqual("uprising ended:Yavin", message.Title);
             Assert.AreEqual("ended:Alliance:Yavin", message.Body);
         }
@@ -5995,7 +6240,7 @@ namespace Rebellion.Tests.Gameplay
             Planet destination
         ) BuildMessageScene()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             game.GetFactions().Add(alliance);
             PlanetSector sector = new PlanetSector { InstanceID = "CORE", DisplayName = "Core" };
@@ -6023,6 +6268,141 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
+        /// Creates an abduction report using the content pack's authored message definitions.
+        /// </summary>
+        /// <param name="officerReports">Whether a main officer personally reports the outcome.</param>
+        /// <param name="targetKilled">Whether the target or an unrelated officer was killed.</param>
+        /// <param name="outcome">The mission's gameplay outcome.</param>
+        /// <returns>The abduction report delivered to the mission owner.</returns>
+        private static Message CreateAbductionReport(
+            bool officerReports,
+            bool targetKilled,
+            MissionOutcome outcome = MissionOutcome.Success
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.DisplayName = "Drall";
+            Officer targetOfficer = new Officer
+            {
+                DisplayName = "Ackbar",
+                InstanceID = "target-officer",
+                OwnerInstanceID = empire.InstanceID,
+                IsKilled = targetKilled,
+            };
+            Mission mission = new AbductionMission
+            {
+                DisplayName = "Abduction",
+                OwnerInstanceID = alliance.InstanceID,
+                TargetOfficerInstanceID = targetOfficer.InstanceID,
+            };
+            IMissionParticipant participant = officerReports
+                ? new Officer
+                {
+                    DisplayName = "Leia",
+                    InstanceID = "reporter",
+                    OwnerInstanceID = alliance.InstanceID,
+                    IsMain = true,
+                }
+                : new SpecialForces
+                {
+                    DisplayName = "Commandos",
+                    InstanceID = "reporter",
+                    OwnerInstanceID = alliance.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+            game.AttachNode(targetOfficer, target);
+            game.AttachNode(mission, target);
+            game.AttachNode((ISceneNode)participant, origin);
+            if (targetKilled)
+                game.DetachNode(targetOfficer);
+
+            return FirstMessageFor(
+                CreateMessages(
+                    game,
+                    AbductionDefinitions(),
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Abduction",
+                        Participants = new List<IMissionParticipant> { participant },
+                        Outcome = outcome,
+                        ReturnDestination = origin,
+                    },
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = targetKilled
+                            ? targetOfficer
+                            : new Officer
+                            {
+                                DisplayName = "Another officer",
+                                InstanceID = "another-officer",
+                                OwnerInstanceID = empire.InstanceID,
+                                IsKilled = true,
+                            },
+                        Context = target,
+                    }
+                ),
+                alliance
+            );
+        }
+
+        /// <summary>
+        /// Creates the complete set of report selectors exercised by the abduction scenarios.
+        /// </summary>
+        /// <returns>Self-contained abduction report definitions.</returns>
+        private static MessageDefinition[] AbductionDefinitions()
+        {
+            const string returning = "Personnel are returning to {destination}.";
+            return new[]
+            {
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} was a success. {abduction_result}\n{personnel_status}",
+                    outcome: MessageResultOutcome.Success,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} succeeded. {abduction_result}\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "{officer} was killed during my abduction attempt at {system}.\n{personnel_status}",
+                    outcome: MessageResultOutcome.TargetKilled,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "{officer} was killed during the abduction attempt at {system}.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} failed. {personnel_status}",
+                    outcome: MessageResultOutcome.Failed,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} failed.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Foiled",
+                    "My {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}",
+                    outcome: MessageResultOutcome.Foiled,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "{mission} Mission Foiled",
+                    unattributedBody: "The {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}"
+                ),
+            };
+        }
+
+        /// <summary>
         /// Builds two faction message scene.
         /// </summary>
         /// <returns>The constructed two faction message scene.</returns>
@@ -6034,7 +6414,7 @@ namespace Rebellion.Tests.Gameplay
             Planet target
         ) BuildTwoFactionMessageScene()
         {
-            GameRoot game = TestGame.Create(TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(TestConfig.Create());
             Faction alliance = new Faction { InstanceID = "FNALL1", DisplayName = "Alliance" };
             Faction empire = new Faction { InstanceID = "FNEMP1", DisplayName = "Empire" };
             game.GetFactions().Add(alliance);

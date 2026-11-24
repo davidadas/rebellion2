@@ -293,7 +293,7 @@ namespace Rebellion.AI.Proposals
                 || destination.GetOwnerInstanceID() != context.Faction.InstanceID
                 || !destination.IsColonized
                 || destination.IsDestroyed
-                || destination.IsBlockadedFor(context.Faction.InstanceID)
+                || destination.IsBlockadedFor(context.Faction.InstanceID, context.Game)
                 || !destination.CanAcceptChild(fleet)
             )
                 return false;
