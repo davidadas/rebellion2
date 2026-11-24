@@ -38,6 +38,17 @@ public sealed class BattleResultItemView : MonoBehaviour
     internal int Height => UILayout.GetSourceRect(transform as RectTransform).height;
 
     /// <summary>
+    /// Measures fitted unit artwork inside this result row's authored image slot.
+    /// </summary>
+    /// <param name="pixels">The artwork's pixel dimensions.</param>
+    /// <returns>The artwork rectangle relative to the row.</returns>
+    internal RectInt GetArtworkRect(Vector2Int pixels)
+    {
+        VerifyReferences();
+        return UILayout.GetFittedImageRect(pixels, imageSlotRect);
+    }
+
+    /// <summary>
     /// Applies base art, ordered status overlays, and the unit or empty-state label.
     /// </summary>
     /// <param name="data">The immutable result-item presentation.</param>

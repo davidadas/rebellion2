@@ -261,6 +261,14 @@ public sealed class FleetWindowRenderData
     }
 
     /// <summary>
+    /// Resolves the image-frame offset for a detail tab's unit cards.
+    /// </summary>
+    /// <param name="tab">The represented detail tab.</param>
+    /// <returns>The vertical offset in source units.</returns>
+    public static int GetDetailEntityFrameYOffset(FleetWindowTab tab) =>
+        tab == FleetWindowTab.CapitalShips ? -1 : 0;
+
+    /// <summary>
     /// Copies a required presentation collection into a read-only snapshot.
     /// </summary>
     /// <typeparam name="T">The collection element type.</typeparam>

@@ -813,6 +813,27 @@ public sealed class BattleAlertWindowView : MonoBehaviour
     }
 
     /// <summary>
+    /// Returns the background region behind the first operational unit in a standard result column.
+    /// </summary>
+    /// <param name="pixels">The unit artwork's pixel dimensions.</param>
+    /// <returns>The normalized panel-background region, independent of current scrolling.</returns>
+    public Rect GetResultArtworkBackgroundUv(Vector2Int pixels)
+    {
+        VerifyReferences();
+        RectInt image = resultStandardItemTemplate.GetArtworkRect(pixels);
+        image.position += UILayout
+            .GetSourceRect(resultStandardOperationalColumn, resultRowsScrollArea.ContentRoot)
+            .position;
+        image.position += UILayout
+            .GetSourceRect(resultRowsScrollArea.ViewportRoot, transform)
+            .position;
+        return UILayout.GetBackgroundUv(
+            image,
+            UILayout.GetSourceRect(panelBackgroundImage.rectTransform, transform)
+        );
+    }
+
+    /// <summary>
     /// Applies one completed-result table column.
     /// </summary>
     /// <param name="data">The result items to display.</param>

@@ -1974,6 +1974,36 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase("CapitalShip", "SmallDisplayImagePath")]
+        [TestCase("CapitalShip", "DisplayImagePath")]
+        [TestCase("Starfighter", "DisplayImagePath")]
+        [TestCase("Starfighter", "BattleResultImagePath")]
+        public void Render_GameplayArtworkRenamedHierarchy_PreservesTheBackground(
+            string kind,
+            string member
+        )
+        {
+            SetGameplayWindowBackgrounds();
+            SelectRecord(GetArtworkUnit(kind));
+            RenderSection("Artwork");
+            string name = "ArticleImageTemplate-Output-" + member + "-Background";
+            RawImage original = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == name);
+            Texture expected = original.texture;
+            Rect uv = original.uvRect;
+            ContentEditorArtworkWindowPreview windows =
+                view.GetComponentInChildren<ContentEditorArtworkWindowPreview>(true);
+            foreach (Transform child in windows.GetComponentsInChildren<Transform>(true))
+                child.name = "Renamed " + child.GetInstanceID();
+
+            view.Refresh();
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == name);
+            Assert.AreSame(expected, background.texture);
+            Assert.AreEqual(uv, background.uvRect);
+        }
+
         [Test]
         public void Render_OfficerArtwork_AppliesRuntimeBackgroundsToApplicableOutputs()
         {

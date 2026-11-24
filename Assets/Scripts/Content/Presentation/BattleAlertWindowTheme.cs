@@ -95,6 +95,22 @@ public class BattleAlertWindowTheme
     public WindowButtonImageTheme TakeCommandButton { get; set; }
 
     public WindowButtonImageTheme ResultCloseButton { get; set; }
+
+    /// <summary>
+    /// Resolves the completed-result list background for standard or personnel columns.
+    /// </summary>
+    /// <param name="personnel">Whether the list displays personnel.</param>
+    /// <returns>The configured list background or its established fallback.</returns>
+    public string GetResultListBackgroundImagePath(bool personnel)
+    {
+        string preferred = personnel
+            ? ResultPersonnelListBackgroundImagePath
+            : ResultListBackgroundImagePath;
+        string fallback = personnel ? ResultListBackgroundImagePath : SummaryBackgroundImagePath;
+        return !string.IsNullOrWhiteSpace(preferred) ? preferred
+            : !string.IsNullOrWhiteSpace(fallback) ? fallback
+            : null;
+    }
 }
 
 [PersistableObject]
