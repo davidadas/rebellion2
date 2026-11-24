@@ -1659,6 +1659,14 @@ namespace Rebellion.Gameplay
             string destinationOwner = destinationPlanet.GetOwnerInstanceID();
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
             bool ownershipChanged = destinationOwner != movableOwner;
+            if (movable is Starfighter starfighter)
+            {
+                return MovementQueries.HasStarfighterOwnerConflict(
+                    starfighter,
+                    destination,
+                    destinationPlanet
+                );
+            }
             if (
                 ownershipChanged
                 && movable is Building building

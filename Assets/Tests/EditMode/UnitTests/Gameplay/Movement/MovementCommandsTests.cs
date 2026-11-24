@@ -6378,6 +6378,32 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void TryRequestMove_StarfighterToEnemyUnblockadedPlanet_ReturnsFalse()
+        {
+            (
+                GameRoot game,
+                Planet origin,
+                Planet destination,
+                Officer _,
+                MovementCommands movement
+            ) = BuildScene();
+            destination.OwnerInstanceID = "rebels";
+            Starfighter starfighter = EntityFactory.CreateStarfighter("fighter", "empire");
+            starfighter.ManufacturingStatus = ManufacturingStatus.Complete;
+            game.AttachNode(starfighter, origin);
+
+            bool moved = movement.TryRequestMove(
+                new ISceneNode[] { starfighter },
+                destination,
+                "empire"
+            );
+
+            Assert.IsFalse(moved);
+            Assert.AreSame(origin, starfighter.GetParent());
+            Assert.IsNull(starfighter.Movement);
+        }
+
+        [Test]
         public void TryRequestMove_RegimentToEnemyBlockadedPlanet_ReturnsFalse()
         {
             (

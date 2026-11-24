@@ -1088,6 +1088,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Returns whether a populated destination's ownership prevents a starfighter's orbital
+        /// entry.
+        /// </summary>
+        /// <param name="starfighter">The starfighter entering orbit.</param>
+        /// <param name="destination">The destination container receiving the unit.</param>
+        /// <param name="destinationPlanet">The planet containing the destination.</param>
+        /// <returns>True when the destination is hostile and cannot receive the unit in orbit.</returns>
+        internal static bool HasStarfighterOwnerConflict(
+            Starfighter starfighter,
+            ContainerNode destination,
+            Planet destinationPlanet
+        )
+        {
+            string destinationOwner = destinationPlanet.GetOwnerInstanceID();
+            return destinationOwner != GetMovementControlOwner(starfighter)
+                && !string.IsNullOrEmpty(destinationOwner)
+                && !CanEnterHostileOrbit(starfighter, destination);
+        }
+
+        /// <summary>
         /// Selects a safe destination for an inbound unit using its relocation priorities.
         /// </summary>
         /// <param name="unit">The unit requiring a new destination.</param>
@@ -1596,6 +1616,16 @@ namespace Rebellion.Gameplay
             {
                 rejectionReason =
                     $"{unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}.";
+                return false;
+            }
+
+            if (
+                unit is Starfighter starfighter
+                && HasStarfighterOwnerConflict(starfighter, resolvedDestination, destinationPlanet)
+            )
+            {
+                rejectionReason =
+                    $"{unit.GetDisplayName()} cannot enter hostile orbit at {destinationPlanet.GetDisplayName()}.";
                 return false;
             }
 
