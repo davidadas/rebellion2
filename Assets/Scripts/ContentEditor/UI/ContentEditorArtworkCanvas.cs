@@ -23,9 +23,6 @@ public sealed class ContentEditorArtworkCanvas
     private RawImage backing;
 
     [SerializeField]
-    private RawImage subject;
-
-    [SerializeField]
     private RectTransform selection;
 
     private readonly List<RawImage> images = new();
@@ -87,8 +84,6 @@ public sealed class ContentEditorArtworkCanvas
             pan = Vector2.zero;
         }
         SetTexture(backing, frame.BaseImage);
-        SetTexture(subject, frame.SubjectOverlay);
-        subject.gameObject.SetActive(frame.SubjectOverlay != null);
         for (int i = 0; i < frame.Layers.Count; i++)
         {
             if (i == images.Count)
@@ -103,7 +98,7 @@ public sealed class ContentEditorArtworkCanvas
             }
             ArtworkEffectLayerPreview layer = frame.Layers[i];
             RawImage view = images[i];
-            view.gameObject.SetActive(layer.Texture != null && !layer.Hidden && !layer.Locked);
+            view.gameObject.SetActive(layer.Texture != null && !layer.Hidden);
             SetTexture(view, layer.Texture);
             SetBounds(view.rectTransform, layer.Bounds);
         }
@@ -112,7 +107,6 @@ public sealed class ContentEditorArtworkCanvas
             images[i].texture = null;
             images[i].gameObject.SetActive(false);
         }
-        subject.transform.SetAsLastSibling();
         selection.SetAsLastSibling();
         UpdateSelection();
         PlaceArtwork();
@@ -123,7 +117,7 @@ public sealed class ContentEditorArtworkCanvas
     /// </summary>
     internal void Clear()
     {
-        backing.texture = subject.texture = null;
+        backing.texture = null;
         foreach (RawImage image in images)
             image.texture = null;
         frame = default;
@@ -202,7 +196,7 @@ public sealed class ContentEditorArtworkCanvas
     }
 
     /// <summary>
-    /// Selects the foremost visible, editable pixel under a direct click.
+    /// Selects the foremost visible layer pixel under a direct click.
     /// </summary>
     /// <param name="eventData">The completed pointer click.</param>
     public void OnPointerClick(PointerEventData eventData)
@@ -242,7 +236,7 @@ public sealed class ContentEditorArtworkCanvas
         if (!editable)
             return;
         moving = FindLayer(selected);
-        if (moving < 0 || frame.Layers[moving].Hidden || frame.Layers[moving].Locked)
+        if (moving < 0 || frame.Layers[moving].Hidden || frame.Layers[moving].Linked)
             moving = -1;
         if (moving < 0)
             return;
@@ -294,7 +288,7 @@ public sealed class ContentEditorArtworkCanvas
     }
 
     /// <summary>
-    /// Finds a selectable visible effect at the pointer's position.
+    /// Finds a selectable visible layer at the pointer's position.
     /// </summary>
     /// <param name="position">The screen point.</param>
     /// <param name="camera">The event camera, when present.</param>
@@ -314,12 +308,7 @@ public sealed class ContentEditorArtworkCanvas
         for (int i = frame.Layers.Count - 1; i >= 0; i--)
         {
             var layer = frame.Layers[i];
-            if (
-                layer.Hidden
-                || layer.Locked
-                || layer.Texture == null
-                || !layer.Bounds.Contains(point)
-            )
+            if (layer.Hidden || layer.Texture == null || !layer.Bounds.Contains(point))
                 continue;
             Vector2 uv = (point - layer.Bounds.min) / layer.Bounds.size;
             if (layer.Texture.GetPixelBilinear(uv.x, uv.y).a > 1f / 255f)
@@ -347,7 +336,7 @@ public sealed class ContentEditorArtworkCanvas
     private void UpdateSelection()
     {
         int index = editable ? FindLayer(selected) : -1;
-        bool visible = index >= 0 && !frame.Layers[index].Locked && !frame.Layers[index].Hidden;
+        bool visible = index >= 0 && !frame.Layers[index].Hidden;
         selection.gameObject.SetActive(visible);
         if (visible)
             SetBounds(selection, frame.Layers[index].Bounds);

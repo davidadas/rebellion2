@@ -359,6 +359,83 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(data.DetailItems[0].EnrouteOverlayTexture);
         }
 
+        [Test]
+        public void Build_MovingRegiment_ReturnsBackgroundAndTransitOverlay()
+        {
+            _regiment.InTransitSmallImagePath = _starfighter.InTransitSmallImagePath;
+            _regiment.Movement = TestMovement.Create();
+            _session.SelectTab(FleetWindowTab.Regiments);
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsNotNull(data.DetailItems[0].BackgroundTexture);
+            Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void Build_MovingInjuredOfficer_SeparatesTransitAndInjuryArtwork(
+            bool preferCompact,
+            bool fleetMovement
+        )
+        {
+            _officer.InTransitSmallImagePath = preferCompact
+                ? _starfighter.SmallDisplayImagePath
+                : null;
+            _officer.InTransitImagePath = _starfighter.DisplayImagePath;
+            if (fleetMovement)
+                _fleet.Movement = TestMovement.Create();
+            else
+                _officer.Movement = TestMovement.Create();
+            _session.SelectTab(FleetWindowTab.Personnel);
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            StrategyUnitCardRenderData card = data.DetailItems[0];
+            Texture2D transit = _uiContext.GetTexture(
+                preferCompact ? _officer.InTransitSmallImagePath : _officer.InTransitImagePath
+            );
+            Assert.IsNotNull(transit);
+            Assert.AreSame(transit, card.EnrouteOverlayTexture);
+            Assert.AreSame(
+                _uiContext.GetTexture(_officer.InjuredImagePath),
+                card.DamagedOverlayTexture
+            );
+        }
+
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void Build_MovingDamagedShip_ResolvesTransitArtworkIndependently(
+            bool starfighter,
+            bool hasTransitArtwork
+        )
+        {
+            ISceneNode unit = starfighter ? _starfighter : _capitalShip;
+            ((IMovable)unit).Movement = TestMovement.Create();
+            unit.InTransitSmallImagePath = hasTransitArtwork
+                ? _starfighter.SmallDisplayImagePath
+                : null;
+            unit.InTransitImagePath = null;
+            _session.SelectTab(
+                starfighter ? FleetWindowTab.Starfighters : FleetWindowTab.CapitalShips
+            );
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            StrategyUnitCardRenderData card = data.DetailItems[0];
+            Texture2D transit = hasTransitArtwork
+                ? _uiContext.GetTexture(unit.InTransitSmallImagePath)
+                : null;
+            if (hasTransitArtwork)
+                Assert.IsNotNull(transit);
+            Assert.AreSame(transit, card.EnrouteOverlayTexture);
+            Assert.IsNotNull(card.DamagedOverlayTexture);
+        }
+
         [TestCase(FleetWindowTab.Starfighters, "4")]
         [TestCase(FleetWindowTab.Regiments, "3")]
         public void Build_EmptyCarrierTab_ReturnsMaximumCapacity(

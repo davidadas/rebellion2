@@ -118,5 +118,16 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.That(recipe.Version, Is.EqualTo(7));
         }
+
+        [Test]
+        public void UpgradeCompositionLayerVersion_LegacyRecipe_PreservesRenderingVersion()
+        {
+            var recipe = new ContentEditorArtworkRecipe { Version = 2 };
+
+            recipe.UpgradeCompositionLayerVersion();
+
+            Assert.That(recipe.Version, Is.EqualTo(ContentEditorArtworkRecipe.CurrentVersion));
+            Assert.That(recipe.RenderVersion, Is.EqualTo(2));
+        }
     }
 }

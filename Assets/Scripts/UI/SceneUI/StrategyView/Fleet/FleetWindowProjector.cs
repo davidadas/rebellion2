@@ -485,13 +485,11 @@ internal sealed class FleetWindowProjector
             return null;
         if (!enroute)
             return personnelBackground;
-
-        string path = SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath);
-        return uiContext.GetTexture(path) ?? personnelEnrouteBackground;
+        return personnelEnrouteBackground;
     }
 
     /// <summary>
-    /// Resolves a non-personnel in-transit detail overlay.
+    /// Resolves movement artwork for an in-transit detail item.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="fleet">The selected fleet.</param>
@@ -505,7 +503,6 @@ internal sealed class FleetWindowProjector
     {
         if (
             !IsItemInTransit(fleet, item)
-            || item is Regiment or Officer or SpecialForces
             || item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building }
         )
             return null;

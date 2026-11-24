@@ -312,7 +312,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         ArtworkEffectLayerPreview? firstEditable = null;
         foreach (var layer in selected.Layers)
         {
-            if (!layer.Locked)
+            if (!layer.Linked)
                 firstEditable ??= layer;
             if (layer.Index == selectedIndex)
                 selectedLayer = layer;
@@ -337,7 +337,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private void SelectLayer(int index)
     {
         selectedIndex = index;
-        actions?.Select(index);
+        actions?.Select?.Invoke(index);
         Present(false);
     }
 
@@ -388,16 +388,19 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         yInput.SetTextWithoutNotify(
             selectedLayer.HasValue ? Mathf.RoundToInt(-offset.y * size.y).ToString() : string.Empty
         );
-        bool canEdit = !comparing && selectedLayer.HasValue && !selectedLayer.Value.Locked;
-        xInput.interactable = yInput.interactable = canEdit;
-        duplicate.interactable = remove.interactable = canEdit;
+        bool canEdit = !comparing && selectedLayer.HasValue;
+        bool canEditPixels = canEdit && !selectedLayer.Value.Linked;
+        xInput.interactable = yInput.interactable = canEditPixels;
+        duplicate.interactable = remove.interactable = canEditPixels;
         forward.interactable = canEdit && GetReorderTarget(1) >= 0;
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
         importLayer.interactable = !comparing && actions.Import != null;
-        scope.text = selectedLayer?.Locked == true ? "Locked" : "Pixels";
+        scope.text = selectedLayer?.Linked == true ? "Linked source" : "Pixels";
         int? percent = selectedLayer?.ScalePercent;
-        scaleControls.gameObject.SetActive(canEdit && percent.HasValue && actions.Resize != null);
+        scaleControls.gameObject.SetActive(
+            canEditPixels && percent.HasValue && actions.Resize != null
+        );
         scaleValue.text = percent.HasValue ? $"{percent}%" : string.Empty;
         decreaseScale.interactable = percent > ContentEditorArtworkLayer.MinimumScalePercent;
         increaseScale.interactable = percent < ContentEditorArtworkLayer.MaximumScalePercent;
@@ -429,7 +432,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     /// <param name="horizontal">Whether the first axis was edited.</param>
     private void Position(string value, bool horizontal)
     {
-        if (actions == null || !selectedLayer.HasValue || selectedLayer.Value.Locked || comparing)
+        if (actions == null || !selectedLayer.HasValue || selectedLayer.Value.Linked || comparing)
             return;
         if (!int.TryParse(value, out int pixels))
         {
@@ -450,7 +453,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     /// <param name="direction">The relative draw-order movement.</param>
     private void MoveOrder(int direction)
     {
-        if (comparing || !selectedLayer.HasValue || selectedLayer.Value.Locked)
+        if (comparing || !selectedLayer.HasValue)
             return;
         int target = GetReorderTarget(direction);
         if (target >= 0)
@@ -470,7 +473,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             if (layers[index].Index != selectedIndex)
                 continue;
             int neighbor = index + direction;
-            if ((uint)neighbor < (uint)layers.Count && !layers[neighbor].Locked)
+            if ((uint)neighbor < (uint)layers.Count)
                 return layers[neighbor].Index;
             break;
         }
@@ -488,7 +491,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             comparing && current[outputIndex].IsMissing ? "No artwork assigned"
             : comparing ? "Current in pack"
             : selectedLayer?.Hidden == true ? "Selected layer is hidden"
-            : selectedLayer is { Locked: false } ? "Drag layer · Space + drag to pan"
+            : selectedLayer is { Linked: false } ? "Drag layer · Space + drag to pan"
             : "Space + drag to pan";
         canvasHint.text = $"{artworkCanvas.ZoomPercent}%   ·   {hint}";
         SetSelected(fit, artworkCanvas.IsFitted);
