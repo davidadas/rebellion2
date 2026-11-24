@@ -120,10 +120,6 @@ jobs:
             exit 1
           fi
 
-      - name: Build and verify Linux native vector library
-        if: ${{ hashFiles('Native/TacticalMath/CMakeLists.txt') != '' && hashFiles('Assets/Scripts/Tactical/Core/TacticalCombatSession.cs') != '' }}
-        run: python3 Tools/build_tactical_math.py --build-directory "$RUNNER_TEMP/tactical-math" --target linux-x64
-
       - name: Checkout media (git only, no LFS)
         if: inputs.media_sha != ''
         uses: actions/checkout@v4

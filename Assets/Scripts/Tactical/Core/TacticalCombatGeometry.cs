@@ -130,14 +130,42 @@ namespace Rebellion.Tactical
             if (angle == 0 || float.IsNaN(angle))
                 return heading;
 
-            return TacticalCombatNativeMath.Turn(
-                heading,
-                targetHeading,
-                turnRate,
-                angle,
-                elapsedMilliseconds,
-                out appliedAngle
+            double side =
+                -(double)heading.Z * targetHeading.X
+                + (double)targetHeading.Z * heading.X
+                + (double)targetHeading.Y * heading.Y;
+            double signedAngle = side < 0 || double.IsNaN(side) ? -(double)angle : angle;
+            double ratio = (double)turnRate * elapsedMilliseconds / ((double)angle * 1000);
+            if (ratio >= 1)
+            {
+                appliedAngle = (float)signedAngle;
+                return targetHeading;
+            }
+
+            double turn = ratio * signedAngle;
+            float cosine = (float)Math.Cos(turn);
+            float sine = (float)Math.Sin(turn);
+            appliedAngle = (float)turn;
+            return NormalizeTurnDirection(
+                new Vector3(
+                    (float)((double)heading.X * cosine - (double)sine * heading.Z),
+                    heading.Y,
+                    (float)((double)heading.X * sine + (double)cosine * heading.Z)
+                )
             );
+        }
+
+        /// <summary>
+        /// Normalizes a turn direction using the stored X/Z/Y magnitude.
+        /// </summary>
+        /// <param name="direction">The direction to normalize.</param>
+        /// <returns>The normalized direction, preserving a zero or unordered magnitude.</returns>
+        internal static Vector3 NormalizeTurnDirection(Vector3 direction)
+        {
+            double x = direction.X;
+            double y = direction.Y;
+            double z = direction.Z;
+            return Normalize(direction, (float)Math.Sqrt(x * x + z * z + y * y));
         }
 
         /// <summary>
@@ -288,7 +316,7 @@ namespace Rebellion.Tactical
         /// <returns>The vector's length.</returns>
         public static float GetLength(Vector3 vector)
         {
-            return TacticalCombatVectorLength.Measure(vector.X, vector.Y, vector.Z);
+            return (float)MeasureLength(vector);
         }
     }
 }

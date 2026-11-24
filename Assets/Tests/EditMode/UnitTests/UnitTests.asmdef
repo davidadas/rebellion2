@@ -28,6 +28,7 @@
         "Rebellion.Multiplayer",
         "Rebellion.Gameplay",
         "Rebellion.AI",
+        "Rebellion.Tactical.Core",
         "Rebellion.Networking.Transport"
     ],
     "overrideReferences": true,

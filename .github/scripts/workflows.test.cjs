@@ -143,21 +143,6 @@ test('PR runs omit the media checkout and content credentials', () => {
   assert.equal(steps.find(step => step.name === 'Check compiled architecture').if, undefined);
 });
 
-test('the shared runner stages optional native math after the verified merge and before Unity', () => {
-  const steps = runner.jobs.test.steps;
-  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
-  const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
-  const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
-  assert.ok(merge >= 0 && merge < native && native < unity);
-  assert.equal(
-    steps[native].if,
-    "${{ hashFiles('Native/TacticalMath/CMakeLists.txt') != '' && hashFiles('Assets/Scripts/Tactical/Core/TacticalCombatSession.cs') != '' }}",
-  );
-  assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
-  assert.match(steps[native].run, /--target linux-x64/);
-  assert.equal(steps[native].env, undefined);
-});
-
 test('PR results require actual Unity execution and target the PR check', () => {
   const job = ci.jobs['pr-result'];
   for (const dependency of ['pr-plan', 'approve-pr', 'test-pr']) {
