@@ -204,7 +204,9 @@ internal sealed class StrategyStatusInfoBuilder
         info.Rows.Add(
             new StrategyStatusRow("Popular Support:", GetPlayerSupport(planet).ToString())
         );
-        info.Rows.Add(new StrategyStatusRow("Energy:", planet.GetAvailableEnergy().ToString()));
+        info.Rows.Add(
+            new StrategyStatusRow("Energy:", StrategyPlanetEnergy.GetAvailable(planet).ToString())
+        );
         return info;
     }
 

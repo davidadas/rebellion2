@@ -206,21 +206,33 @@ namespace Rebellion.Gameplay
 
             foreach (ISceneNode unit in units)
             {
-                Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
-                if (previousOwner == newOwner)
-                    continue;
-                _game.ChangeOwnership(unit, newOwner.InstanceID);
-                results.Add(
-                    new UnitOwnershipChangedResult
-                    {
-                        Unit = unit,
-                        PreviousOwner = previousOwner,
-                        NewOwner = newOwner,
-                        Tick = _game.CurrentTick,
-                    }
-                );
+                UnitOwnershipChangedResult result = ChangeUnitOwnership(unit, newOwner);
+                if (result != null)
+                    results.Add(result);
             }
             return results;
+        }
+
+        /// <summary>
+        /// Changes one unit's owner and records the ownership transition.
+        /// </summary>
+        /// <param name="unit">The unit whose ownership changes.</param>
+        /// <param name="newOwner">The receiving faction, or null for neutral ownership.</param>
+        /// <returns>The ownership-change result, or null when the owner is unchanged.</returns>
+        internal UnitOwnershipChangedResult ChangeUnitOwnership(ISceneNode unit, Faction newOwner)
+        {
+            Faction previousOwner = _game.GetFactionByOwnerInstanceID(unit.OwnerInstanceID);
+            if (previousOwner == newOwner)
+                return null;
+
+            _game.ChangeOwnership(unit, newOwner?.InstanceID);
+            return new UnitOwnershipChangedResult
+            {
+                Unit = unit,
+                PreviousOwner = previousOwner,
+                NewOwner = newOwner,
+                Tick = _game.CurrentTick,
+            };
         }
 
         /// <summary>
@@ -533,7 +545,7 @@ namespace Rebellion.Gameplay
                 if (
                     building.ManufacturingStatus != ManufacturingStatus.Complete
                     || building.Movement != null
-                    || (newOwner == null && IsActiveMobileHeadquarters(building))
+                    || (newOwner == null && ShouldRetainOwnershipOnNeutralPlanet(building))
                 )
                     continue;
 
@@ -542,11 +554,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Determines whether a building remains the owning faction's active mobile headquarters.
+        /// Determines whether a mobile headquarters retains faction ownership on a neutral planet.
         /// </summary>
-        /// <param name="building">The building being evaluated during a control change.</param>
-        /// <returns>True when the building is its owner's active mobile headquarters.</returns>
-        private bool IsActiveMobileHeadquarters(Building building)
+        /// <param name="building">The building being evaluated during a control change or arrival.</param>
+        /// <returns>True when the building is its faction's retained mobile headquarters.</returns>
+        internal bool ShouldRetainOwnershipOnNeutralPlanet(Building building)
         {
             if (
                 building?.BuildingType != BuildingType.Headquarters
@@ -557,8 +569,7 @@ namespace Rebellion.Gameplay
             Faction owner = _game.GetFactionByOwnerInstanceID(building.OwnerInstanceID);
             return owner.Settings?.Headquarters?.IsMobile == true
                 && owner.HeadquartersUnitInstanceID == building.InstanceID
-                && !owner.HasLostHeadquarters
-                && owner.HQInstanceID == building.GetParentOfType<Planet>()?.InstanceID;
+                && !owner.HasLostHeadquarters;
         }
     }
 }

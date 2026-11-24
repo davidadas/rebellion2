@@ -5442,7 +5442,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationChangedSides_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_IncompatibleBuildingDestroyed()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5479,6 +5479,7 @@ namespace Rebellion.Tests.Gameplay
                 OwnerInstanceID = "empire",
                 BuildingType = BuildingType.Mine,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                ManufacturingFactionInstanceIDs = new List<string> { "empire" },
             };
 
             game.AttachNode(mine, destPlanet);
@@ -5505,7 +5506,89 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_BuildingInTransitDestinationBecomesNeutral_BuildingDestroyed()
+        public void ProcessTick_BuildingInTransitDestinationChangedSides_CompatibleBuildingTransfersOwnership()
+        {
+            GameConfig config = TestConfig.Create();
+            GameRoot game = TestGame.Create(config);
+            Faction empire = new Faction { InstanceID = "empire" };
+            Faction rebels = new Faction { InstanceID = "rebels" };
+            game.GetFactions().Add(empire);
+            game.GetFactions().Add(rebels);
+
+            PlanetSector sector = new PlanetSector { InstanceID = "sector1" };
+            game.AttachNode(sector, game.GetGalaxyMap());
+            Planet originPlanet = new Planet
+            {
+                InstanceID = "pA",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                PositionX = 0,
+                PositionY = 0,
+            };
+            game.AttachNode(originPlanet, sector);
+            Planet destinationPlanet = new Planet
+            {
+                InstanceID = "pB",
+                OwnerInstanceID = empire.InstanceID,
+                IsColonized = true,
+                EnergyCapacity = 10,
+                PositionX = 100,
+                PositionY = 0,
+            };
+            game.AttachNode(destinationPlanet, sector);
+            Building building = new Building
+            {
+                InstanceID = "building",
+                OwnerInstanceID = empire.InstanceID,
+                BuildingType = BuildingType.Defense,
+                ManufacturingStatus = ManufacturingStatus.Delivering,
+                ManufacturingFactionInstanceIDs = new List<string>
+                {
+                    empire.InstanceID,
+                    rebels.InstanceID,
+                },
+            };
+            game.AttachNode(building, destinationPlanet);
+            MovementCommands movement = new MovementCommands(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            movement.RequestMove(building, destinationPlanet, originPlanet);
+            game.ChangeOwnership(destinationPlanet, rebels.InstanceID);
+
+            int transitTicks = building.Movement.TransitTicks;
+            List<GameResult> results = new List<GameResult>();
+            for (int i = 0; i < transitTicks; i++)
+                results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
+
+            Assert.AreSame(building, game.GetSceneNodeByInstanceID<Building>(building.InstanceID));
+            Assert.AreSame(destinationPlanet, building.GetParent());
+            Assert.AreEqual(rebels.InstanceID, building.OwnerInstanceID);
+            Assert.AreEqual(ManufacturingStatus.Complete, building.ManufacturingStatus);
+            Assert.IsNull(building.Movement);
+            UnitOwnershipChangedResult ownershipChange = results
+                .OfType<UnitOwnershipChangedResult>()
+                .Single(result => ReferenceEquals(result.Unit, building));
+            Assert.AreSame(empire, ownershipChange.PreviousOwner);
+            Assert.AreSame(rebels, ownershipChange.NewOwner);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.IsTrue(
+                results
+                    .OfType<UnitArrivedResult>()
+                    .Any(result => ReferenceEquals(result.Unit, building))
+            );
+            Assert.IsTrue(
+                results
+                    .OfType<GameObjectDeployedResult>()
+                    .Any(result => ReferenceEquals(result.GameObject, building))
+            );
+        }
+
+        [Test]
+        public void ProcessTick_BuildingInTransitDestinationBecomesUncolonizedAndNeutral_UnrestrictedBuildingColonizesWithoutSupport()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -5533,6 +5616,7 @@ namespace Rebellion.Tests.Gameplay
                 PositionY = 0,
             };
             game.AttachNode(destinationPlanet, sector);
+            destinationPlanet.SetFullPopularSupport("empire");
             Building mine = new Building
             {
                 InstanceID = "mine1",
@@ -5550,13 +5634,25 @@ namespace Rebellion.Tests.Gameplay
             );
             movement.RequestMove(mine, destinationPlanet, originPlanet);
             game.ChangeOwnership(destinationPlanet, null);
+            destinationPlanet.IsColonized = false;
 
+            int transitTicks = mine.Movement.TransitTicks;
             List<GameResult> results = new List<GameResult>();
-            for (int i = 0; i < mine.Movement.TransitTicks; i++)
+            for (int i = 0; i < transitTicks; i++)
                 results.AddRange(new MovementTickProcessor(movement).ProcessTick(game));
 
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
-            Assert.IsTrue(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
+            Assert.AreSame(mine, game.GetSceneNodeByInstanceID<Building>(mine.InstanceID));
+            Assert.AreSame(destinationPlanet, mine.GetParent());
+            Assert.IsNull(mine.OwnerInstanceID);
+            Assert.IsNull(mine.Movement);
+            Assert.IsTrue(destinationPlanet.IsColonized);
+            Assert.IsEmpty(destinationPlanet.PopularSupport);
+            UnitOwnershipChangedResult ownershipChange = results
+                .OfType<UnitOwnershipChangedResult>()
+                .Single(result => ReferenceEquals(result.Unit, mine));
+            Assert.AreEqual("empire", ownershipChange.PreviousOwner.InstanceID);
+            Assert.IsNull(ownershipChange.NewOwner);
+            Assert.IsFalse(results.OfType<GameObjectDestroyedOnArrivalResult>().Any());
         }
 
         [Test]
