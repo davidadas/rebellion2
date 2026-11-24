@@ -145,7 +145,7 @@ namespace Rebellion.Tests.Content
         /// <returns>The created physical file.</returns>
         private static string Write(string root, string relative, string contents)
         {
-            string path = Path.Combine(root, relative);
+            string path = Path.Combine(root, relative.Replace('/', Path.DirectorySeparatorChar));
             Directory.CreateDirectory(Path.GetDirectoryName(path));
             File.WriteAllText(path, contents);
             return path;
