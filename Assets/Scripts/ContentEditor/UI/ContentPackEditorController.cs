@@ -57,6 +57,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             () => view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath)
         );
         view.ModManagerRequested += ShowModManager;
+        modManager.OperationChanged += view.RenderPackageOperation;
+        view.CancelPackageOperationRequested += modManager.Cancel;
         view.PublishingRequested += ShowPublishing;
         view.Publishing.SaveRequested += SavePublishing;
         view.Publishing.CloseRequested += ClosePublishing;
@@ -113,6 +115,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     )
                 );
             }
+            if (packPathIndex < 0)
+                ShowModManager(true);
             if (!settings.AlphaNoticeAcknowledged)
                 view.ShowAlphaNotice(AcknowledgeAlphaNotice);
         });
@@ -165,6 +169,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.RestoreTravelArtworkRequested -= RestoreTravelArtwork;
             view.ExportRequested -= ExportPack;
             view.ModManagerRequested -= ShowModManager;
+            modManager.OperationChanged -= view.RenderPackageOperation;
+            view.CancelPackageOperationRequested -= modManager.Cancel;
             view.PublishingRequested -= ShowPublishing;
             view.Publishing.SaveRequested -= SavePublishing;
             view.Publishing.CloseRequested -= ClosePublishing;
@@ -1809,7 +1815,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <summary>
     /// Opens community browsing without requiring an editable project.
     /// </summary>
-    private void ShowModManager() => modManager.Show();
+    /// <param name="installed">Whether to show the installed library or the community catalog.</param>
+    private void ShowModManager(bool installed)
+    {
+        view.SetWorkspaceNavigation(installed);
+        modManager.Show(installed);
+    }
 
     /// <summary>
     /// Opens the saved listing draft for the currently authored pack.

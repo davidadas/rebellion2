@@ -11,14 +11,17 @@ internal sealed class ContentEditorModEntry
 {
     internal ThunderstorePackage Listing { get; }
     internal InstalledModPackage Installation { get; }
+    internal ContentPackDefinition IncludedPack { get; }
+    internal bool IsActivePack { get; }
+    internal bool IsInstalled => Installation != null || IncludedPack != null;
     internal string CompatibilityIssue { get; }
-    internal string ID => Listing?.full_name ?? Installation.PackageID;
-    internal string Name => Listing?.name ?? Installation.Name;
-    internal string Author => Listing?.owner ?? Installation.Author;
+    internal string ID => Listing?.full_name ?? Installation?.PackageID ?? IncludedPack.ID;
+    internal string Name => Listing?.name ?? Installation?.Name ?? IncludedPack.DisplayName;
+    internal string Author => Listing?.owner ?? Installation?.Author ?? "Included with Rebellion 2";
     internal string Description =>
-        Listing?.Latest.description ?? Installation.Description ?? string.Empty;
+        Listing?.Latest.description ?? Installation?.Description ?? "Installed content pack.";
     internal string Version =>
-        Installation?.Version ?? Listing?.Latest.version_number ?? "Unknown version";
+        Installation?.Version ?? Listing?.Latest.version_number ?? IncludedPack?.Version ?? "Unknown version";
     internal string IconUrl => Listing?.Latest.icon;
     internal string[] Categories => Listing?.categories ?? Array.Empty<string>();
     internal long Downloads => Listing?.versions.Sum(version => version.downloads) ?? 0;
@@ -39,6 +42,8 @@ internal sealed class ContentEditorModEntry
         && latest > installed;
     internal string State =>
         !string.IsNullOrEmpty(CompatibilityIssue) ? "Needs attention"
+        : IsActivePack ? "Default content pack"
+        : IncludedPack != null ? "Included with the game"
         : HasUpdate ? "Update available"
         : Installation != null
             ? Installation.Local ? "Local"
@@ -52,15 +57,21 @@ internal sealed class ContentEditorModEntry
     /// <param name="listing">The public listing, or null for local-only content.</param>
     /// <param name="installation">The installation record, or null for an available download.</param>
     /// <param name="compatibilityIssue">The assessed installation requirement, when available.</param>
+    /// <param name="includedPack">A pack supplied by the game outside managed mod folders.</param>
+    /// <param name="isActivePack">Whether this package contains the selected default pack.</param>
     internal ContentEditorModEntry(
         ThunderstorePackage listing,
         InstalledModPackage installation,
-        string compatibilityIssue = null
+        string compatibilityIssue = null,
+        ContentPackDefinition includedPack = null,
+        bool isActivePack = false
     )
     {
         Listing = listing;
         Installation = installation;
         CompatibilityIssue = compatibilityIssue;
+        IncludedPack = includedPack;
+        IsActivePack = isActivePack;
     }
 
     /// <summary>

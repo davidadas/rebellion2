@@ -97,12 +97,19 @@ public static class ContentPackEditorPrefabBuilder
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
-        Button editorNavigation = PlainButton("Editor", menuStrip.transform, "Editor");
-        Rect((RectTransform)editorNavigation.transform, 264, 0, 72, 34);
-        Assign(view, "editorButton", editorNavigation);
-        Button mods = PlainButton("Mods", menuStrip.transform, "Mods");
-        Rect((RectTransform)mods.transform, 344, 0, 72, 34);
-        Assign(view, "modsButton", mods);
+        Button library = PlainButton("Library", menuStrip.transform, "Library");
+        Rect((RectTransform)library.transform, 264, 0, 88, 34);
+        Assign(view, "libraryButton", library);
+        Button browse = PlainButton("Browse", menuStrip.transform, "Browse");
+        Rect((RectTransform)browse.transform, 360, 0, 88, 34);
+        Assign(view, "browseButton", browse);
+        Button projects = PlainButton("Projects", menuStrip.transform, "Projects");
+        Rect((RectTransform)projects.transform, 456, 0, 96, 34);
+        Assign(view, "projectsButton", projects);
+        Button projectHome = PlainButton("ProjectHome", menuStrip.transform, "‹ Projects");
+        Rect((RectTransform)projectHome.transform, 584, 0, 104, 34);
+        Assign(view, "projectHomeButton", projectHome);
+        projectHome.gameObject.SetActive(false);
         Button publish = PlainButton("Publish", menuStrip.transform, "Publish…");
         RectTransform publishRect = (RectTransform)publish.transform;
         publishRect.anchorMin = publishRect.anchorMax = publishRect.pivot = Vector2.one;
@@ -112,6 +119,7 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
         Stretch(projectWorkspace);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
+        Assign(view, "projectInteraction", projectWorkspace.gameObject.AddComponent<CanvasGroup>());
         TextMeshProUGUI project = Label(
             "PackName",
             menuStrip.transform,
@@ -119,7 +127,7 @@ public static class ContentPackEditorPrefabBuilder
             14,
             true
         );
-        Stretch(project.rectTransform, 440, 0, 152, 0);
+        Stretch(project.rectTransform, 712, 0, 152, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);
@@ -134,7 +142,7 @@ public static class ContentPackEditorPrefabBuilder
             ContentEditorColorRole.Panel
         );
         navigationBackground.transform.SetAsFirstSibling();
-        Stretch(explorer, 20, 54, 0, 20);
+        Stretch(explorer, 20, 54, 0, 60);
         explorer.anchorMax = Vector2.up;
         explorer.offsetMax = new Vector2(316, -54);
         TextMeshProUGUI heading = Label("ContentHeading", explorer, "Content", 18);
@@ -575,13 +583,37 @@ public static class ContentPackEditorPrefabBuilder
         xmlRoot.gameObject.SetActive(false);
         BuildMap(editor, view);
 
-        TextMeshProUGUI copyright = Label("Copyright", canvasRoot, "© 2026 David Adams", 12, true);
-        copyright.alignment = TextAlignmentOptions.MidlineRight;
-        copyright.rectTransform.anchorMin = Vector2.zero;
-        copyright.rectTransform.anchorMax = Vector2.right;
-        copyright.rectTransform.pivot = Vector2.zero;
-        copyright.rectTransform.offsetMin = new Vector2(20, 2);
-        copyright.rectTransform.offsetMax = new Vector2(-24, 26);
+        Image transfers = Surface("Downloads", canvasRoot, ContentEditorColorRole.Background);
+        RectTransform transferRect = transfers.rectTransform;
+        transferRect.anchorMin = Vector2.zero;
+        transferRect.anchorMax = Vector2.right;
+        transferRect.pivot = Vector2.zero;
+        transferRect.offsetMin = Vector2.zero;
+        transferRect.offsetMax = new Vector2(0, 40);
+        Image transferDivider = Surface("Divider", transferRect, ContentEditorColorRole.Divider);
+        Stretch(transferDivider.rectTransform);
+        transferDivider.rectTransform.anchorMin = Vector2.up;
+        transferDivider.rectTransform.offsetMin = new Vector2(0, -1);
+        TextMeshProUGUI transferStatus = Label("Status", transferRect, "No active downloads", 13, true);
+        Rect(transferStatus.rectTransform, 20, 3, 430, 34);
+        Assign(view, "packageStatus", transferStatus);
+        Image track = Surface("ProgressTrack", transferRect, ContentEditorColorRole.Divider);
+        Stretch(track.rectTransform, 470, 18, 144, 18);
+        Assign(view, "packageProgressTrack", track.gameObject);
+        Image fill = Surface("Progress", track.transform, ContentEditorColorRole.Accent);
+        Stretch(fill.rectTransform);
+        fill.type = Image.Type.Filled;
+        fill.fillMethod = Image.FillMethod.Horizontal;
+        fill.fillOrigin = 0;
+        Assign(view, "packageProgress", fill);
+        track.gameObject.SetActive(false);
+        Button cancelPackage = PlainButton("CancelDownload", transferRect, "Cancel");
+        RectTransform cancelRect = (RectTransform)cancelPackage.transform;
+        cancelRect.anchorMin = cancelRect.anchorMax = cancelRect.pivot = Vector2.one;
+        cancelRect.anchoredPosition = new Vector2(-20, -3);
+        cancelRect.sizeDelta = new Vector2(104, 34);
+        Assign(view, "cancelPackageButton", cancelPackage);
+        cancelPackage.gameObject.SetActive(false);
 
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
@@ -1178,27 +1210,40 @@ public static class ContentPackEditorPrefabBuilder
     private static void BuildWelcome(Transform parent, ContentPackEditorView view)
     {
         RectTransform welcome = Layer("Welcome", parent);
-        Stretch(welcome, 0, 36);
-        RectTransform actions = Layer("Actions", welcome);
+        Stretch(welcome, 0, 36, 0, 40);
+        RectTransform actions = Layer("Projects", welcome);
         actions.anchorMin = actions.anchorMax = actions.pivot = new Vector2(0.5f, 0.5f);
-        actions.sizeDelta = new Vector2(600, 260);
-        TextMeshProUGUI title = Label("Title", actions, "Content pack editor", 30);
-        Rect(title.rectTransform, 0, 0, 600, 48);
-        title.alignment = TextAlignmentOptions.Midline;
-        TextMeshProUGUI explanation = Label(
-            "Description",
-            actions,
-            "Create your own content pack using an installed pack as a base.\nInstalled content stays unchanged.",
-            16,
-            true
-        );
-        Rect(explanation.rectTransform, 0, 66, 600, 62);
-        explanation.alignment = TextAlignmentOptions.Center;
-        explanation.textWrappingMode = TextWrappingModes.Normal;
-        Button create = Button("NewPack", actions, "New content pack");
-        Rect((RectTransform)create.transform, 54, 158, 236, 40);
-        Button open = Button("OpenPack", actions, "Open content pack");
-        Rect((RectTransform)open.transform, 310, 158, 236, 40);
+        actions.sizeDelta = new Vector2(1120, 720);
+        Assign(view, "projectHub", actions);
+        TextMeshProUGUI title = Label("Title", actions, "Projects", 36);
+        Rect(title.rectTransform, 0, 32, 640, 48);
+        title.fontStyle = FontStyles.Bold;
+        TextMeshProUGUI explanation = Label("Description", actions, "Create, edit, test and publish your own content.", 16, true);
+        Rect(explanation.rectTransform, 0, 88, 1120, 30);
+        Button create = Button("NewPack", actions, "New project");
+        Rect((RectTransform)create.transform, 768, 32, 160, 44);
+        Button open = Button("OpenPack", actions, "Open project…");
+        Rect((RectTransform)open.transform, 944, 32, 176, 44);
+        Image current = Surface("CurrentProject", actions, ContentEditorColorRole.Panel);
+        Rect(current.rectTransform, 0, 152, 1120, 144);
+        TextMeshProUGUI name = Label("Name", current.transform, string.Empty, 22);
+        Rect(name.rectTransform, 24, 24, 670, 34);
+        name.fontStyle = FontStyles.Bold;
+        TextMeshProUGUI summary = Label("Summary", current.transform, string.Empty, 15, true);
+        Rect(summary.rectTransform, 24, 68, 670, 44);
+        Button edit = Button("EditProject", current.transform, "Edit");
+        Rect((RectTransform)edit.transform, 768, 48, 144, 44);
+        Button publish = Button("PublishProject", current.transform, "Publish…");
+        Rect((RectTransform)publish.transform, 928, 48, 168, 44);
+        Assign(view, "currentProjectCard", current.gameObject);
+        Assign(view, "currentProjectName", name);
+        Assign(view, "currentProjectSummary", summary);
+        Assign(view, "editProjectButton", edit);
+        Assign(view, "publishProjectButton", publish);
+        current.gameObject.SetActive(false);
+        TextMeshProUGUI empty = Label("NoProject", actions, "Create a project or open one to begin editing.", 18, true);
+        Rect(empty.rectTransform, 0, 160, 1120, 48);
+        Assign(view, "emptyProjects", empty);
         Assign(view, "welcomePane", welcome.gameObject);
         Assign(view, "newPackButton", create);
         Assign(view, "openPackButton", open);

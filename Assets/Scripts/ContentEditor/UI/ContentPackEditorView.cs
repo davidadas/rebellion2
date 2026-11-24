@@ -25,10 +25,54 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button fileButton;
 
     [SerializeField]
-    private Button editorButton;
+    private Button projectsButton;
 
     [SerializeField]
     private Button publishButton;
+
+    [SerializeField]
+    private Button libraryButton;
+
+    [SerializeField]
+    private Button projectHomeButton;
+
+    [SerializeField]
+    private RectTransform projectHub;
+
+    [SerializeField]
+    private GameObject currentProjectCard;
+
+    [SerializeField]
+    private TextMeshProUGUI currentProjectName;
+
+    [SerializeField]
+    private TextMeshProUGUI currentProjectSummary;
+
+    [SerializeField]
+    private TextMeshProUGUI emptyProjects;
+
+    [SerializeField]
+    private Button editProjectButton;
+
+    [SerializeField]
+    private Button publishProjectButton;
+
+    [SerializeField]
+    private TextMeshProUGUI packageStatus;
+
+    [SerializeField]
+    private GameObject packageProgressTrack;
+
+    [SerializeField]
+    private Image packageProgress;
+
+    [SerializeField]
+    private Button cancelPackageButton;
+
+    [SerializeField]
+    private CanvasGroup projectInteraction;
+    private bool editingProject;
+    private bool packageOperationActive;
 
     [SerializeField]
     private TextMeshProUGUI projectLabel;
@@ -164,7 +208,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private ContentEditorModManagerView modManager;
 
     [SerializeField]
-    private Button modsButton;
+    private Button browseButton;
 
     [SerializeField]
     private GameObject notice;
@@ -253,7 +297,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action RedoRequested;
     public event Action ExportRequested;
     internal event Action PublishingRequested;
-    internal event Action ModManagerRequested;
+    internal event Action<bool> ModManagerRequested;
+    internal event Action CancelPackageOperationRequested;
     internal ContentEditorModManagerView ModManager => modManager;
     internal ContentEditorPublishingView Publishing => publishing;
     public event Action CloseRequested;
@@ -400,8 +445,22 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             workbench == null
             || workbenchLayout == null
             || fileButton == null
-            || editorButton == null
+            || projectsButton == null
             || publishButton == null
+            || libraryButton == null
+            || projectHomeButton == null
+            || projectHub == null
+            || currentProjectCard == null
+            || currentProjectName == null
+            || currentProjectSummary == null
+            || emptyProjects == null
+            || editProjectButton == null
+            || publishProjectButton == null
+            || packageStatus == null
+            || packageProgressTrack == null
+            || packageProgress == null
+            || cancelPackageButton == null
+            || projectInteraction == null
             || projectLabel == null
             || editButton == null
             || projectWorkspace == null
@@ -446,7 +505,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || packDialog == null
             || publishing == null
             || modManager == null
-            || modsButton == null
+            || browseButton == null
             || notice == null
             || noticeText == null
             || dismissNoticeButton == null
@@ -469,8 +528,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.WidthChanged += HandleFieldAreaResize;
         workbenchLayout.Changed += HandleWorkbenchChanged;
         fileButton.onClick.AddListener(ShowFileMenu);
-        modsButton.onClick.AddListener(RequestModManager);
-        editorButton.onClick.AddListener(ShowEditor);
+        browseButton.onClick.AddListener(RequestBrowse);
+        libraryButton.onClick.AddListener(RequestLibrary);
+        projectsButton.onClick.AddListener(ShowProjects);
+        projectHomeButton.onClick.AddListener(ShowProjectHub);
+        editProjectButton.onClick.AddListener(EditCurrentProject);
+        publishProjectButton.onClick.AddListener(RequestPublishing);
+        cancelPackageButton.onClick.AddListener(CancelPackageOperation);
         publishButton.onClick.AddListener(RequestPublishing);
         editButton.onClick.AddListener(ShowEditMenu);
         viewButton.onClick.AddListener(ShowViewMenu);
@@ -619,8 +683,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.ValidationFailed -= ReportFieldError;
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
-            modsButton.onClick.RemoveListener(RequestModManager);
-            editorButton.onClick.RemoveListener(ShowEditor);
+            browseButton.onClick.RemoveListener(RequestBrowse);
+            libraryButton.onClick.RemoveListener(RequestLibrary);
+            projectsButton.onClick.RemoveListener(ShowProjects);
+            projectHomeButton.onClick.RemoveListener(ShowProjectHub);
+            editProjectButton.onClick.RemoveListener(EditCurrentProject);
+            publishProjectButton.onClick.RemoveListener(RequestPublishing);
+            cancelPackageButton.onClick.RemoveListener(CancelPackageOperation);
             publishButton.onClick.RemoveListener(RequestPublishing);
             map.BackRequested -= ReturnToGalaxy;
             map.ArrangeRequested -= ArrangeMap;
@@ -755,6 +824,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             throw new InvalidOperationException(
                 "Create a new content pack instead of editing installed content."
             );
+        modManager.Hide();
+        editingProject = true;
+        SetWorkspaceNavigation(null);
+        projectHomeButton.gameObject.SetActive(true);
         projectWorkspace.SetActive(true);
         welcomePane.SetActive(false);
         editButton.interactable = true;
@@ -1062,7 +1135,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 project != null,
                 shortcut: ShortcutModifier + "+W"
             ),
-            new ContentEditorMenuCommand("Exit", () => ExitRequested?.Invoke())
+            new ContentEditorMenuCommand("Exit", () => ExitRequested?.Invoke(), isApplicationCommand: true)
         );
     }
 
@@ -1071,7 +1144,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     public void ShowNewPackDialog()
     {
-        if (!CommitFields())
+        if (!TryUseProjects() || !CommitFields())
             return;
         packDialog.Show();
     }
@@ -1079,7 +1152,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <summary>
     /// Opens the operating system's file dialog to choose a pack manifest.
     /// </summary>
-    private void RequestOpenPack() => OpenRequested?.Invoke();
+    private void RequestOpenPack()
+    {
+        if (TryUseProjects())
+            OpenRequested?.Invoke();
+    }
 
     /// <summary>
     /// Asks how to handle pending edits before replacing a project or closing the app.
@@ -1159,7 +1236,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         textRedoTarget = null;
         project = null;
         projectWorkspace.SetActive(false);
-        welcomePane.SetActive(true);
+        welcomePane.SetActive(!modManager.IsOpen);
+        editingProject = false;
+        currentProjectCard.SetActive(false);
+        emptyProjects.gameObject.SetActive(true);
+        projectHomeButton.gameObject.SetActive(false);
         editButton.interactable = false;
         publishButton.interactable = false;
         catalogs = Array.Empty<ContentPackEditorCatalog>();
@@ -1370,34 +1451,146 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         LayoutChanged?.Invoke(workbenchLayout.Zoom, workbenchLayout.Split);
 
     /// <summary>
-    /// Requests community browsing independently of the current project.
+    /// Opens the installed library through the application controller.
     /// </summary>
-    private void RequestModManager()
+    private void RequestLibrary() => ModManagerRequested?.Invoke(true);
+
+    /// <summary>
+    /// Opens community browsing through the application controller.
+    /// </summary>
+    private void RequestBrowse() => ModManagerRequested?.Invoke(false);
+
+    /// <summary>
+    /// Selects the active shared navigation item without changing any project data.
+    /// </summary>
+    /// <param name="installed">True for Library, false for Browse, or null for Projects.</param>
+    internal void SetWorkspaceNavigation(bool? installed)
     {
-        menu.TryCancel();
-        if (!modManager.IsOpen)
-            ModManagerRequested?.Invoke();
+        foreach ((Button button, bool selected) in new[] {
+            (libraryButton, installed == true),
+            (browseButton, installed == false),
+            (projectsButton, installed == null),
+        })
+            button.GetComponentInChildren<TMP_Text>().GetComponent<ContentEditorColorBinding>()
+                .SetRole(selected ? ContentEditorColorRole.Accent : ContentEditorColorRole.Text);
+        if (installed != null)
+        {
+            projectWorkspace.SetActive(false);
+            welcomePane.SetActive(false);
+            projectHomeButton.gameObject.SetActive(false);
+        }
     }
 
     /// <summary>
-    /// Returns to the open project without discarding its edits.
+    /// Restores the project's last editor or overview page.
     /// </summary>
-    private void ShowEditor()
+    private void ShowProjects()
     {
-        menu.TryCancel();
-        if (modManager.IsOpen)
-            modManager.TryLeave();
+        if (editingProject && project != null)
+            EditCurrentProject();
+        else
+            ShowProjectHub();
     }
 
     /// <summary>
-    /// Opens publishing for the current project after leaving community browsing.
+    /// Shows the open project alongside the existing New and Open actions.
+    /// </summary>
+    private void ShowProjectHub()
+    {
+        menu.TryCancel();
+        modManager.Hide();
+        editingProject = false;
+        SetWorkspaceNavigation(null);
+        projectHomeButton.gameObject.SetActive(false);
+        projectWorkspace.SetActive(false);
+        welcomePane.SetActive(true);
+        currentProjectCard.SetActive(project != null);
+        emptyProjects.gameObject.SetActive(project == null);
+        if (project != null)
+        {
+            currentProjectName.text = project.Definition.DisplayName;
+            currentProjectSummary.text = "Working project · " + project.Definition.Version;
+        }
+        OnRectTransformDimensionsChange();
+    }
+
+    /// <summary>
+    /// Returns to the current project's existing editor without recreating its controls.
+    /// </summary>
+    private void EditCurrentProject()
+    {
+        if (project == null)
+        {
+            ShowProjectHub();
+            return;
+        }
+        menu.TryCancel();
+        modManager.Hide();
+        editingProject = true;
+        SetWorkspaceNavigation(null);
+        welcomePane.SetActive(false);
+        projectWorkspace.SetActive(true);
+        projectHomeButton.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Admits authoring commands once installed content is no longer being changed.
+    /// </summary>
+    /// <returns>Whether the project command may continue.</returns>
+    private bool TryUseProjects()
+    {
+        if (packageOperationActive)
+            return false;
+        EditCurrentProject();
+        return true;
+    }
+
+    /// <summary>
+    /// Keeps the projects overview within the desktop workspace after a resize.
+    /// </summary>
+    private void OnRectTransformDimensionsChange()
+    {
+        if (projectHub == null)
+            return;
+        Rect available = ((RectTransform)transform).rect;
+        projectHub.localScale = Vector3.one * Mathf.Min(1, Mathf.Max(1, available.width - 40) / 1120, Mathf.Max(1, available.height - 100) / 720);
+    }
+
+    /// <summary>
+    /// Opens publishing for the current project through its existing controller.
     /// </summary>
     private void RequestPublishing()
     {
         menu.TryCancel();
-        if (!modManager.IsOpen || modManager.TryLeave())
+        if (TryUseProjects())
             PublishingRequested?.Invoke();
     }
+
+    /// <summary>
+    /// Shows package operations across every page while protecting project file references.
+    /// </summary>
+    /// <param name="message">The current operation or completion message.</param>
+    /// <param name="progress">The completed fraction.</param>
+    /// <param name="active">Whether package files are being changed.</param>
+    internal void RenderPackageOperation(string message, float progress, bool active)
+    {
+        packageOperationActive = active;
+        packageStatus.text = message;
+        packageProgress.fillAmount = Mathf.Clamp01(progress);
+        packageProgressTrack.SetActive(active);
+        cancelPackageButton.gameObject.SetActive(active);
+        projectInteraction.interactable = !active;
+        projectInteraction.blocksRaycasts = !active;
+        newPackButton.interactable = !active;
+        openPackButton.interactable = !active;
+        publishButton.interactable = !active && project != null;
+        publishProjectButton.interactable = !active && project != null;
+    }
+
+    /// <summary>
+    /// Requests cancellation through the application-owned package operation.
+    /// </summary>
+    private void CancelPackageOperation() => CancelPackageOperationRequested?.Invoke();
 
     /// <summary>
     /// Confirms removal using the toolkit's existing action dialog.
@@ -1548,7 +1741,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         };
         if (action == null)
             return false;
-        if (!modManager.IsOpen || modManager.TryLeave())
+        if (TryUseProjects())
             action();
         key.Use();
         return true;
@@ -2731,7 +2924,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         menu.Reset();
         if (
             command is ContentEditorMenuCommand action
-            && (!modManager.IsOpen || modManager.TryLeave())
+            && (action.IsApplicationCommand || TryUseProjects())
         )
             action.Execute();
     }
@@ -3059,6 +3252,7 @@ internal sealed class ContentEditorMenuCommand : IContextMenuCommand
     public IReadOnlyList<ContentEditorMenuCommand> Children { get; }
     public string Shortcut { get; }
     public bool IsChecked { get; }
+    public bool IsApplicationCommand { get; }
 
     /// <summary>
     /// Creates a leaf action or submenu.
@@ -3069,13 +3263,15 @@ internal sealed class ContentEditorMenuCommand : IContextMenuCommand
     /// <param name="children">The submenu entries.</param>
     /// <param name="shortcut">The optional keyboard hint.</param>
     /// <param name="isChecked">Whether this choice is selected.</param>
+    /// <param name="isApplicationCommand">Whether the command is independent of the project workspace.</param>
     internal ContentEditorMenuCommand(
         string text,
         Action action = null,
         bool enabled = true,
         IReadOnlyList<ContentEditorMenuCommand> children = null,
         string shortcut = null,
-        bool isChecked = false
+        bool isChecked = false,
+        bool isApplicationCommand = false
     )
     {
         Text = text;
@@ -3084,6 +3280,7 @@ internal sealed class ContentEditorMenuCommand : IContextMenuCommand
         Children = children ?? Array.Empty<ContentEditorMenuCommand>();
         Shortcut = shortcut;
         IsChecked = isChecked;
+        IsApplicationCommand = isApplicationCommand;
     }
 
     /// <summary>

@@ -25,12 +25,15 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private CancellationTokenSource searchRequest;
     private ThunderstorePackage[] catalog = Array.Empty<ThunderstorePackage>();
     private IReadOnlyList<InstalledModPackage> installed = Array.Empty<InstalledModPackage>();
+    private IReadOnlyList<ContentPackDefinition> packs = Array.Empty<ContentPackDefinition>();
+    private string catalogDefaultPack;
     private string selection;
     private bool installedTab;
     private int versionIndex;
     private bool quitAfterOperation;
     private bool disposed;
     internal bool IsBusy => operation != null;
+    internal event Action<string, float, bool> OperationChanged;
     private ThunderstorePackage SelectedListing =>
         catalog.FirstOrDefault(package => package.full_name == selection);
     private InstalledModPackage SelectedInstalled =>
@@ -60,7 +63,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         this.confirm = confirm;
         this.contentChanged = contentChanged;
         store = new ModPackageStore(contentRoot, client);
-        view.TabRequested += SelectTab;
+        view.ActivePackRequested += SetActivePack;
         view.RefreshRequested += Refresh;
         view.ImportRequested += Import;
         view.CloseRequested += Close;
@@ -79,15 +82,20 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
-    /// Opens immediately and refreshes the community catalog without requiring a project.
+    /// Opens a library or browsing page without requiring an authoring project.
     /// </summary>
-    internal void Show()
+    /// <param name="showInstalled">Whether to show the installed library rather than the catalog.</param>
+    internal void Show(bool showInstalled = true)
     {
+        installedTab = showInstalled;
         view.Show();
         try
         {
-            store.RecoverInterruptedInstallations();
-            ReadInstalled();
+            if (!IsBusy)
+            {
+                store.RecoverInterruptedInstallations();
+                ReadInstalled();
+            }
             if (catalog.Length == 0 && File.Exists(store.CatalogPath))
                 catalog = ThunderstoreClient.ParseCatalog(File.ReadAllText(store.CatalogPath));
             view.SetCategories(
@@ -95,7 +103,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
             );
             RenderRows(true);
             RenderDetails();
-            Refresh();
+            if (!IsBusy)
+                Refresh();
         }
         catch (Exception exception)
         {
@@ -137,20 +146,13 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private void ReadInstalled()
     {
         installed = store.GetInstalled();
+        packs = ContentPackLoader.DiscoverPacks(contentRoot);
+        catalogDefaultPack = ContentDefinitionSerializer.Deserialize<ContentCatalogDefinition>(
+            Path.Combine(contentRoot, "catalog.xml")
+        ).ActivePackID;
         compatibilityIssues.Clear();
         foreach (InstalledModPackage package in installed)
             compatibilityIssues.Add(package.PackageID, store.GetCompatibilityIssue(package));
-    }
-
-    /// <summary>
-    /// Switches between community listings and installed packages.
-    /// </summary>
-    /// <param name="value">Whether to show installed content.</param>
-    private void SelectTab(bool value)
-    {
-        installedTab = value;
-        RenderRows(true);
-        RenderDetails();
     }
 
     /// <summary>
@@ -220,27 +222,35 @@ internal sealed class ContentEditorModManagerController : IDisposable
             catalog,
             installed,
             installedTab,
-            view.Search,
-            view.Category,
-            view.Filter,
-            view.Sort
+            installedTab ? string.Empty : view.Search,
+            installedTab ? null : view.Category,
+            installedTab ? ContentEditorModFilter.All : view.Filter,
+            installedTab ? ContentEditorModSort.Name : view.Sort
         );
+        UserSettingsManager.TryReadContentSelection(out string activePack, out _, out _);
+        activePack = string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack;
+        HashSet<string> managedIDs = new(installed.SelectMany(item => item.Content).Select(item => item.ID));
+        if (installedTab)
+            entries = entries.Concat(packs.Where(pack => !managedIDs.Contains(pack.ID))
+                .Select(pack => new ContentEditorModEntry(null, null, includedPack: pack)))
+                .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase).ToArray();
+        view.RenderActivePacks(packs, activePack);
         if (!entries.Any(entry => entry.ID == selection))
         {
             selection = entries.FirstOrDefault()?.ID;
             versionIndex = 0;
         }
-        entries = entries
-            .Select(entry =>
-                compatibilityIssues.TryGetValue(entry.ID, out string issue)
-                    ? new ContentEditorModEntry(entry.Listing, entry.Installation, issue)
-                    : entry
-            )
-            .ToArray();
+        entries = entries.Select(entry => new ContentEditorModEntry(
+            entry.Listing,
+            entry.Installation,
+            compatibilityIssues.TryGetValue(entry.ID, out string issue) ? issue : null,
+            entry.IncludedPack,
+            entry.IncludedPack?.ID == activePack || entry.Installation?.Content.Any(content => content.IsPack && content.ID == activePack) == true
+        )).ToArray();
         view.RenderRows(
             entries,
             installedTab,
-            installedTab ? installed.Count : catalog.Length,
+            installedTab ? entries.Count : catalog.Length,
             resetScroll
         );
     }
@@ -255,6 +265,22 @@ internal sealed class ContentEditorModManagerController : IDisposable
             versionIndex = Mathf.Clamp(versionIndex, 0, listing.versions.Length - 1);
         ThunderstorePackageVersion release = SelectedVersion;
         InstalledModPackage current = SelectedInstalled;
+        ContentPackDefinition included = packs.FirstOrDefault(pack => pack.ID == selection);
+        if (listing == null && current == null && included != null)
+        {
+            UserSettingsManager.TryReadContentSelection(out string savedPack, out _, out _);
+            bool isDefault = included.ID == (string.IsNullOrWhiteSpace(savedPack) ? catalogDefaultPack : savedPack);
+            view.RenderDetails(
+                new ContentEditorModEntry(null, null, includedPack: included, isActivePack: isDefault),
+                isDefault ? "Default content pack" : "Included with the game",
+                string.Empty,
+                "Included with Rebellion 2.\n\nVersion: " + included.Version,
+                new List<string>(), 0, string.Empty, false,
+                isDefault ? "Active content pack" : "Set as active pack",
+                !isDefault, false, false
+            );
+            return;
+        }
         string text =
             release?.description
             ?? current?.Description
@@ -287,6 +313,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             out _,
             out string[] disabled
         );
+        activePack = string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack;
         bool pack = current?.Content.Any(content => content.IsPack) == true;
         bool enabled =
             current
@@ -447,7 +474,10 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private void Progress(string message, float value)
     {
         if (!disposed)
+        {
             view.SetStatus(message + " · " + Mathf.RoundToInt(value * 100) + "%");
+            OperationChanged?.Invoke(message, value, true);
+        }
     }
 
     /// <summary>
@@ -455,40 +485,52 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// </summary>
     private void Activate()
     {
+        InstalledModPackage current = SelectedInstalled;
+        ContentPackDefinition included = packs.FirstOrDefault(pack => pack.ID == selection);
+        string packID = current?.Content.FirstOrDefault(content => content.IsPack)?.ID ?? included?.ID;
+        if (packID != null)
+        {
+            SetActivePack(packID);
+            return;
+        }
+        if (current == null)
+            return;
         try
         {
-            InstalledModPackage current = SelectedInstalled;
-            if (current == null)
-                return;
             UserSettingsManager.TryReadContentSelection(out _, out _, out string[] disabled);
-            string[] mods = current
-                .Content.Where(content => !content.IsPack)
-                .Select(content => content.ID)
-                .ToArray();
-            bool enable = mods.Any(disabled.Contains);
-            InstalledModContent pack = current.Content.FirstOrDefault(content => content.IsPack);
-            ContentPackDefinition definition =
-                pack == null
-                    ? null
-                    : ContentPackLoader
-                        .DiscoverPacks(contentRoot)
-                        .FirstOrDefault(item => item.ID == pack.ID);
-            UserSettingsManager.UpdateContentSelection(
-                pack?.ID,
-                definition?.DefaultScenarioID,
-                mods,
-                pack != null || enable
-            );
+            string[] mods = current.Content.Select(content => content.ID).ToArray();
+            UserSettingsManager.UpdateContentSelection(null, null, mods, mods.Any(disabled.Contains));
+            RenderRows();
             RenderDetails();
-            view.SetStatus(
-                pack != null
-                    ? "Active content pack saved. This is the default for the next game startup."
-                    : "Add-on selection saved. The game will use it when content next loads."
-            );
+            view.SetStatus("Add-on selection saved. The game will use it when content next loads.");
         }
         catch (Exception exception)
         {
             view.SetStatus(exception.Message);
+        }
+    }
+
+    /// <summary>
+    /// Saves an installed pack as the startup default through the existing game settings.
+    /// </summary>
+    /// <param name="id">The installed pack selected by the player.</param>
+    private void SetActivePack(string id)
+    {
+        try
+        {
+            ContentPackDefinition pack = packs.Single(item => item.ID == id);
+            ContentPackLoader.CreatePackResolver(contentRoot, id);
+            string[] mods = installed.FirstOrDefault(item => item.Content.Any(content => content.IsPack && content.ID == id))
+                ?.Content.Where(content => !content.IsPack).Select(content => content.ID).ToArray() ?? Array.Empty<string>();
+            UserSettingsManager.UpdateContentSelection(id, pack.DefaultScenarioID, mods, true);
+            RenderRows();
+            RenderDetails();
+            view.SetStatus("Default content pack: " + pack.DisplayName);
+        }
+        catch (Exception exception)
+        {
+            view.SetStatus(exception.Message);
+            RenderRows();
         }
     }
 
@@ -566,17 +608,22 @@ internal sealed class ContentEditorModManagerController : IDisposable
             return;
         operation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
         view.SetBusy(true, changesFiles);
+        string operationResult = "No active downloads";
+        if (changesFiles)
+            OperationChanged?.Invoke("Preparing content", 0, true);
         try
         {
             await action(operation.Token);
         }
         catch (OperationCanceledException)
         {
+            operationResult = "Content operation canceled";
             if (!disposed)
                 view.SetStatus("Operation canceled. Previously installed content was retained.");
         }
         catch (Exception exception)
         {
+            operationResult = "Content operation failed. Open Library for details.";
             if (!disposed)
                 view.SetStatus(exception.Message);
         }
@@ -587,6 +634,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
             if (!disposed)
             {
                 view.SetBusy(false);
+                if (changesFiles)
+                    OperationChanged?.Invoke(operationResult, 1, false);
                 try
                 {
                     ReadInstalled();
@@ -604,11 +653,10 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
-    /// Cancels work before hiding the screen so no download continues invisibly.
+    /// Hides the page while application-owned file operations retain visible global progress.
     /// </summary>
     private void Close()
     {
-        operation?.Cancel();
         iconRequest?.Cancel();
         searchRequest?.Cancel();
         view.Hide();
@@ -617,7 +665,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// <summary>
     /// Cancels an installation while retaining its visible progress and rollback feedback.
     /// </summary>
-    private void Cancel() => operation?.Cancel();
+    internal void Cancel() => operation?.Cancel();
 
     /// <summary>
     /// Defers quitting until a running transaction has canceled or committed.
@@ -644,7 +692,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         lifetime.Dispose();
         iconRequest?.Cancel();
         iconRequest?.Dispose();
-        view.TabRequested -= SelectTab;
+        view.ActivePackRequested -= SetActivePack;
         view.RefreshRequested -= Refresh;
         view.ImportRequested -= Import;
         view.CloseRequested -= Close;

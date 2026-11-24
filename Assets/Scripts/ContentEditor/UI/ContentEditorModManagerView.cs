@@ -11,13 +11,7 @@ using UnityEngine.UI;
 public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
 {
     [SerializeField]
-    private Button browseButton;
-
-    [SerializeField]
     private RectTransform panel;
-
-    [SerializeField]
-    private Button installedButton;
 
     [SerializeField]
     private Button refreshButton;
@@ -143,10 +137,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI iconInitials;
 
     [SerializeField]
-    private Image browseMarker;
+    private TMP_Dropdown activePack;
 
     [SerializeField]
-    private Image installedMarker;
+    private GameObject defaultPackControls;
+    private string[] activePackIDs = Array.Empty<string>();
+    private bool library;
     private readonly List<ContentEditorModCardView> rows = new();
     private readonly Dictionary<string, Texture2D> icons = new(StringComparer.Ordinal);
     private ScrollRect packageScroll;
@@ -158,7 +154,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private bool bound;
     private bool busy;
 
-    internal event Action<bool> TabRequested;
+    internal event Action<string> ActivePackRequested;
     internal event Action RefreshRequested;
     internal event Action ImportRequested;
     internal event Action CloseRequested;
@@ -175,6 +171,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal event Action CriteriaChanged;
     internal event Action<string[]> IconsRequested;
     internal bool IsOpen => gameObject.activeSelf;
+    internal bool IsChangingFiles => browseLocked;
     internal string Search => search.text;
     internal string Category =>
         category.value == 0 ? null
@@ -197,8 +194,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             return;
         if (
             panel == null
-            || browseButton == null
-            || installedButton == null
             || refreshButton == null
             || importButton == null
             || closeButton == null
@@ -218,6 +213,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || icon == null
             || detailContent == null
             || emptyDetails == null
+            || activePack == null
+            || defaultPackControls == null
             || pageTitle == null
             || filterPanel == null
             || filterButton == null
@@ -240,12 +237,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || categories == null
             || packageState == null
             || iconInitials == null
-            || browseMarker == null
-            || installedMarker == null
         )
             throw new MissingReferenceException(name + " has incomplete mod-manager controls.");
-        browseButton.onClick.AddListener(Browse);
-        installedButton.onClick.AddListener(Installed);
+        activePack.onValueChanged.AddListener(SelectActivePack);
         refreshButton.onClick.AddListener(Refresh);
         importButton.onClick.AddListener(Import);
         closeButton.onClick.AddListener(Close);
@@ -290,7 +284,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         if (panel == null || !bound || !gameObject.activeInHierarchy)
             return;
         Rect available = ((RectTransform)transform).rect;
-        panel.sizeDelta = new Vector2(1120, Mathf.Max(816, available.height - 64));
+        panel.sizeDelta = new Vector2(1120, Mathf.Max(720, available.height - 64));
         foreach (RectTransform target in new[] { panel, detailPanel })
             if (target != null)
                 target.localScale =
@@ -363,17 +357,17 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         }
         for (int i = items.Count; i < rows.Count; i++)
             rows[i].gameObject.SetActive(false);
-        pageTitle.text = "Mods";
-        browseMarker.gameObject.SetActive(!installed);
-        installedMarker.gameObject.SetActive(installed);
-        browseButton
-            .GetComponentInChildren<TMP_Text>()
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(installed ? ContentEditorColorRole.Text : ContentEditorColorRole.Accent);
-        installedButton
-            .GetComponentInChildren<TMP_Text>()
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(installed ? ContentEditorColorRole.Accent : ContentEditorColorRole.Text);
+        library = installed;
+        pageTitle.text = installed ? "Library" : "Browse";
+        defaultPackControls.SetActive(installed);
+        search.gameObject.SetActive(!installed);
+        sorting.gameObject.SetActive(!installed);
+        filterButton.gameObject.SetActive(!installed);
+        clearSearchButton.gameObject.SetActive(!installed && search.text.Length > 0);
+        if (installed)
+            filterPanel.SetActive(false);
+        importButton.gameObject.SetActive(installed && !browseLocked);
+        LayoutResults(items.Count, resetScroll);
         string noun = total == 1 ? " mod" : " mods";
         resultCount.text =
             items.Count == total ? total + noun : items.Count + " of " + total + noun;
@@ -393,7 +387,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <param name="resetScroll">Whether to return the results to the top.</param>
     private void LayoutResults(int count, bool resetScroll = false)
     {
-        int contentTop = filterPanel.activeSelf ? 432 : 320;
+        int contentTop = library ? 248 : filterPanel.activeSelf ? 328 : 216;
         bool hasStatus = !string.IsNullOrEmpty(status.text);
         status.gameObject.SetActive(hasStatus);
         float statusHeight = hasStatus
@@ -410,6 +404,33 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         resultCount.rectTransform.anchoredPosition = new Vector2(0, -(contentTop - 40));
         emptyResults.rectTransform.anchoredPosition = new Vector2(0, -(contentTop + 48));
         packages.SetContentHeight(Mathf.Max(0, count * _cardHeight - 16), resetScroll);
+    }
+
+    /// <summary>
+    /// Lists installed packs without changing the saved default during rendering.
+    /// </summary>
+    /// <param name="packs">The installed content pack definitions.</param>
+    /// <param name="selectedID">The saved default pack identifier.</param>
+    internal void RenderActivePacks(IReadOnlyList<ContentPackDefinition> packs, string selectedID)
+    {
+        activePackIDs = packs.Select(pack => pack.ID).ToArray();
+        activePack.ClearOptions();
+        activePack.AddOptions(packs.Count == 0
+            ? new List<string> { "No content packs installed" }
+            : packs.Select(pack => pack.DisplayName).ToList());
+        activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
+        activePack.RefreshShownValue();
+        activePack.interactable = !busy && packs.Count > 0;
+    }
+
+    /// <summary>
+    /// Requests the default pack explicitly chosen by the player.
+    /// </summary>
+    /// <param name="index">The selected installed pack index.</param>
+    private void SelectActivePack(int index)
+    {
+        if (index >= 0 && index < activePackIDs.Length)
+            ActivePackRequested?.Invoke(activePackIDs[index]);
     }
 
     /// <summary>
@@ -483,7 +504,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(
                 !string.IsNullOrEmpty(compatibilityIssue) ? ContentEditorColorRole.Error
-                : entry?.Installation != null ? ContentEditorColorRole.Success
+                : entry?.IsInstalled == true ? ContentEditorColorRole.Success
                 : ContentEditorColorRole.Muted
             );
         iconInitials.text =
@@ -513,7 +534,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         installButton.GetComponentInChildren<TMP_Text>(true).text = installLabel;
         installButton.gameObject.SetActive(canInstall);
         activateButton.GetComponentInChildren<TMP_Text>(true).text = activateLabel;
-        activateButton.gameObject.SetActive(entry?.Installation != null);
+        activateButton.gameObject.SetActive(entry?.IsInstalled == true);
         uninstallButton.gameObject.SetActive(canRemove);
         listingButton.gameObject.SetActive(hasListing);
         folderButton.gameObject.SetActive(canRemove);
@@ -661,8 +682,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         foreach (
             Button button in new[]
             {
-                browseButton,
-                installedButton,
                 refreshButton,
                 importButton,
                 installButton,
@@ -678,8 +697,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         foreach (
             Button button in new[]
             {
-                browseButton,
-                installedButton,
                 clearSearchButton,
                 resetButton,
                 filterButton,
@@ -692,9 +709,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         installation.interactable = !browseLocked;
         sorting.interactable = !browseLocked;
         versions.interactable = !browseLocked;
-        closeButton.GetComponentInChildren<TMP_Text>(true).text = browseLocked
-            ? "Cancel operation"
-            : "‹ Back to editor";
+        activePack.interactable = !value && activePackIDs.Length > 0;
+        closeButton.gameObject.SetActive(browseLocked);
+        importButton.gameObject.SetActive(library && !browseLocked);
         refreshButton.GetComponentInChildren<TMP_Text>(true).text =
             value && !browseLocked ? "Refreshing…" : "Refresh";
         detailCloseButton.GetComponentInChildren<TMP_Text>(true).text = browseLocked
@@ -867,7 +884,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             (Category != null ? 1 : 0) + (Filter != ContentEditorModFilter.All ? 1 : 0);
         filterButton.GetComponentInChildren<TMP_Text>().text =
             activeFilters == 0 ? "Filters" : "Filters (" + activeFilters + ")";
-        clearSearchButton.gameObject.SetActive(search.text.Length > 0);
+        clearSearchButton.gameObject.SetActive(!library && search.text.Length > 0);
         resetButton.gameObject.SetActive(
             search.text.Length > 0 || Category != null || Filter != ContentEditorModFilter.All
         );
@@ -913,7 +930,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal bool HandleKeyboardShortcut(Event key)
     {
         if (
-            key?.type != EventType.KeyDown
+            library
+            || key?.type != EventType.KeyDown
             || key.keyCode != KeyCode.F
             || (!key.control && !key.command)
         )
@@ -984,8 +1002,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         if (bound)
         {
-            browseButton.onClick.RemoveListener(Browse);
-            installedButton.onClick.RemoveListener(Installed);
+            activePack.onValueChanged.RemoveListener(SelectActivePack);
             refreshButton.onClick.RemoveListener(Refresh);
             importButton.onClick.RemoveListener(Import);
             closeButton.onClick.RemoveListener(Close);
@@ -1009,16 +1026,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             ReleaseObject(texture);
         icons.Clear();
     }
-
-    /// <summary>
-    /// Requests community browsing.
-    /// </summary>
-    private void Browse() => TabRequested?.Invoke(false);
-
-    /// <summary>
-    /// Requests installed content.
-    /// </summary>
-    private void Installed() => TabRequested?.Invoke(true);
 
     /// <summary>
     /// Requests a fresh catalog.

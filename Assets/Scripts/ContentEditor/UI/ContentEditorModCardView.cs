@@ -96,7 +96,7 @@ public sealed class ContentEditorModCardView : MonoBehaviour
             "by "
             + entry.Author
             + (
-                entry.Installation != null || entry.IsDeprecated
+                entry.IsInstalled || entry.IsDeprecated
                     ? " · " + entry.State
                     : string.Empty
             );

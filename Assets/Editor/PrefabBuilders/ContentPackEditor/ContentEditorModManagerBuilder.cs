@@ -18,7 +18,7 @@ internal static class ContentEditorModManagerBuilder
     internal static ContentEditorModManagerView Build(Transform parent)
     {
         Image background = Surface("ModManager", parent, ContentEditorColorRole.Background);
-        Stretch(background.rectTransform, 0, 36, 0, 0);
+        Stretch(background.rectTransform, 0, 36, 0, 40);
         background.raycastTarget = true;
         ContentEditorModManagerView view =
             background.gameObject.AddComponent<ContentEditorModManagerView>();
@@ -26,46 +26,39 @@ internal static class ContentEditorModManagerBuilder
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(1120, 816);
         Assign(view, "panel", rect);
-        Button back = ActionButton(view, rect, "closeButton", "‹ Back to editor", 0, 0, 160, true);
-        back.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.MidlineLeft;
-        Stretch(back.GetComponentInChildren<TMP_Text>().rectTransform);
-        TextMeshProUGUI title = Caption(rect, "Title", "Mods", 0, 64, 640, 48, 36);
+        Button cancel = ActionButton(view, rect, "closeButton", "Cancel operation", 912, 32, 208, true);
+        cancel.gameObject.SetActive(false);
+        TextMeshProUGUI title = Caption(rect, "Title", "Library", 0, 32, 640, 48, 36);
         title.fontStyle = FontStyles.Bold;
         Assign(view, "pageTitle", title);
-        ActionButton(view, rect, "refreshButton", "Refresh", 768, 64, 128, true);
-        StyleSecondary(
-            ActionButton(view, rect, "importButton", "Install from file…", 912, 64, 208)
-        );
-        ActionButton(view, rect, "browseButton", "Browse", 0, 144, 120, true);
-        ActionButton(view, rect, "installedButton", "Installed", 136, 144, 120, true);
-        Image divider = Surface("TabDivider", rect, ContentEditorColorRole.Divider);
-        Rect(divider.rectTransform, 0, 192, 1120, 1);
-        foreach (string name in new[] { "browseMarker", "installedMarker" })
-        {
-            Image marker = Surface(name, rect, ContentEditorColorRole.Accent);
-            Rect(marker.rectTransform, name == "browseMarker" ? 0 : 136, 190, 120, 3);
-            Assign(view, name, marker);
-        }
+        ActionButton(view, rect, "refreshButton", "Refresh", 768, 32, 128, true);
+        StyleSecondary(ActionButton(view, rect, "importButton", "Install from file…", 912, 32, 208));
+        RectTransform defaults = Layer("DefaultPack", rect);
+        Rect(defaults, 0, 112, 1120, 72);
+        Caption(defaults, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
+        Caption(defaults, "DefaultHelp", "Used when starting the game.", 0, 32, 600, 24, 14, ContentEditorColorRole.Muted);
+        Selector(view, defaults, "activePack", 680, 0, 440, new[] { "No content packs installed" });
+        Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(
             "SearchPackages",
             rect,
             "Search mods by name, creator, or description"
         );
-        Rect((RectTransform)search.transform, 0, 216, 672, 44);
+        Rect((RectTransform)search.transform, 0, 112, 672, 44);
         Vector2 inset = search.textViewport.offsetMax;
         inset.x = -44;
         search.textViewport.offsetMax = inset;
         search.textComponent.fontSize = 16;
         ((TMP_Text)search.placeholder).fontSize = 16;
         Assign(view, "search", search);
-        ActionButton(view, rect, "clearSearchButton", "×", 624, 216, 44, true);
-        StyleSecondary(ActionButton(view, rect, "filterButton", "Filters", 688, 216, 112));
+        ActionButton(view, rect, "clearSearchButton", "×", 624, 112, 44, true);
+        StyleSecondary(ActionButton(view, rect, "filterButton", "Filters", 688, 112, 112));
         Selector(
             view,
             rect,
             "sorting",
             816,
-            216,
+            112,
             304,
             new[]
             {
@@ -94,7 +87,7 @@ internal static class ContentEditorModManagerBuilder
         );
         ScrollAreaLayout packages = Scroll("Packages", rect);
         ConfigureScrollbar(packages);
-        Stretch((RectTransform)packages.transform, 0, 320, -16, 0);
+        Stretch((RectTransform)packages.transform, 0, 248, -16, 0);
         Assign(view, "packages", packages);
         Assign(view, "rowTemplate", BuildCard(packages.ScrollArea.ContentRoot));
         TextMeshProUGUI empty = Caption(
@@ -145,7 +138,7 @@ internal static class ContentEditorModManagerBuilder
     private static void BuildFilters(Transform parent, ContentEditorModManagerView view)
     {
         Image strip = Surface("FilterPanel", parent, ContentEditorColorRole.Panel);
-        Rect(strip.rectTransform, 0, 280, 1120, 104);
+        Rect(strip.rectTransform, 0, 184, 1120, 104);
         Assign(view, "filterPanel", strip.gameObject);
         Caption(
             strip.transform,
