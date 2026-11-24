@@ -378,7 +378,58 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(scrapped);
-            Assert.IsTrue(scene.origin.IsBlockaded());
+            Assert.IsTrue(scene.origin.IsBlockaded(scene.game));
+            BlockadeChangedResult blockade = observed.Single();
+            Assert.AreSame(scene.origin, blockade.Planet);
+            Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);
+            Assert.IsTrue(blockade.Blockaded);
+        }
+
+        [Test]
+        public void TryScrap_LastDefendingPlanetaryFighter_ReportsBlockadeStart()
+        {
+            var scene = BuildCarrierScrapScene();
+            scene.game.DeleteNode(scene.carrier.GetParent());
+            Faction opponent = CreateFaction("alliance", "Alliance");
+            scene.game.GetFactions().Add(opponent);
+            scene.game.ConfigureBlockadeFactions(
+                new[] { scene.owner.InstanceID, opponent.InstanceID }
+            );
+            Fleet blockadingFleet = EntityFactory.CreateFleet(
+                "fighter-blockade",
+                opponent.InstanceID
+            );
+            scene.game.AttachNode(blockadingFleet, scene.origin);
+            scene.game.AttachNode(
+                new CapitalShip
+                {
+                    InstanceID = "fighter-blockading-ship",
+                    OwnerInstanceID = opponent.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                blockadingFleet
+            );
+            Starfighter fighter = new()
+            {
+                InstanceID = "scrapped-defender",
+                OwnerInstanceID = scene.owner.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            scene.game.AttachNode(fighter, scene.origin);
+            List<BlockadeChangedResult> observed = new();
+            using IDisposable observation = scene.resultBus.Observe<BlockadeChangedResult>(
+                observed.AddRange
+            );
+            Assert.IsFalse(scene.origin.IsBlockaded(scene.game));
+
+            bool scrapped = scene.maintenance.TryScrap(
+                new IManufacturable[] { fighter },
+                scene.owner.InstanceID
+            );
+
+            Assert.IsTrue(scrapped);
+            Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
+            Assert.IsTrue(scene.origin.IsBlockaded(scene.game));
             BlockadeChangedResult blockade = observed.Single();
             Assert.AreSame(scene.origin, blockade.Planet);
             Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);

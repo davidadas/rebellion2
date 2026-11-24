@@ -761,7 +761,13 @@ namespace Rebellion.Gameplay.Scripting
 
             officer.IsForceEligible = true;
             officer.InitializeForceValue(context.Random);
-            return;
+            context.Record(
+                new OfficerForceEligibilityChangedResult
+                {
+                    Officer = officer,
+                    Tick = context.Game.CurrentTick,
+                }
+            );
         }
 
         /// <summary>
@@ -1224,7 +1230,7 @@ namespace Rebellion.Gameplay.Scripting
                 .Select(root => root as Planet ?? root.GetParentOfType<Planet>())
                 .Where(planet => planet != null)
                 .Distinct()
-                .ToDictionary(planet => planet, planet => planet.IsBlockaded());
+                .ToDictionary(planet => planet, planet => planet.IsBlockaded(game));
             List<ISceneNode> destroyed = new List<ISceneNode>();
 
             foreach (ISceneNode root in destroyedRoots)
@@ -1416,13 +1422,14 @@ namespace Rebellion.Gameplay.Scripting
                 nameof(PlaceUnitsAction),
                 _ =>
                 {
+                    List<GameResult> results = new();
                     (
                         _movementCommands
                         ?? throw new InvalidOperationException(
                             "Movement commands are not configured."
                         )
-                    ).TryPlaceUnits(units, destinations);
-                    return new List<GameResult>();
+                    ).TryPlaceUnits(units, destinations, results);
+                    return results;
                 }
             );
         }
@@ -1507,7 +1514,18 @@ namespace Rebellion.Gameplay.Scripting
                     );
                 }
 
-                context.Game.SetNodeEnabled(node, action.State == SceneNodeState.Active);
+                bool enabled = action.State == SceneNodeState.Active;
+                if (node.IsEnabled == enabled)
+                    continue;
+                context.Game.SetNodeEnabled(node, enabled);
+                context.Record(
+                    new SceneNodeActivationChangedResult
+                    {
+                        Node = node,
+                        IsActive = enabled,
+                        Tick = context.Game.CurrentTick,
+                    }
+                );
             }
             return;
         }

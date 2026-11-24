@@ -41,7 +41,7 @@ namespace Rebellion.AI.Scorers
                 AIFacilityRemovalProposal => 0,
                 AIMaintenanceRecoveryProposal => Math.Max(
                     0,
-                    -context.Faction.ProjectedMaintenanceHeadroom
+                    -context.Faction.GetProjectedMaintenanceHeadroom(context.Game)
                 ),
                 AIManufactureProposal manufactureProposal => ScoreManufactureProposal(
                     context,

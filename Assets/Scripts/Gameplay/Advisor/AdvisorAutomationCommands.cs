@@ -93,7 +93,7 @@ namespace Rebellion.Gameplay
                 destination == null
                 || template == null
                 || producer == null
-                || template.MaintenanceCost > faction.ProjectedMaintenanceHeadroom
+                || template.MaintenanceCost > faction.GetProjectedMaintenanceHeadroom(_game)
             )
                 return false;
 
@@ -140,7 +140,7 @@ namespace Rebellion.Gameplay
             Dictionary<Planet, int> deficits = new Dictionary<Planet, int>();
             foreach (Planet planet in controlledPlanets)
             {
-                if (planet.IsBlockaded() || planet.GetParentOfType<PlanetSector>() == null)
+                if (planet.IsBlockaded(_game) || planet.GetParentOfType<PlanetSector>() == null)
                     continue;
 
                 int deficit =
@@ -263,7 +263,7 @@ namespace Rebellion.Gameplay
 
             List<Planet> eligibleProducers = controlledPlanets
                 .Where(planet =>
-                    !planet.IsBlockaded()
+                    !planet.IsBlockaded(_game)
                     && !planet.IsInUprising
                     && !planet.IsManufacturingReserved(ManufacturingType.Troop)
                     && planet.GetIdleManufacturingFacilities(ManufacturingType.Troop) > 0

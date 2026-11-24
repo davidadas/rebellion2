@@ -47,7 +47,10 @@ namespace Rebellion.Gameplay
         )
         {
             if (
-                !(opposingBlockadeAtDeparture ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID()))
+                !(
+                    opposingBlockadeAtDeparture
+                    ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID(), _game)
+                )
                 || origin.HasOperationalIonCannon()
                 || unit is not Regiment regiment
                 || _random.NextInt(0, 100) >= _game.Config.Blockade.EvacuationLossPercent

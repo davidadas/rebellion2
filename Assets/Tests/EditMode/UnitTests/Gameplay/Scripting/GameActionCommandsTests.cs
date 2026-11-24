@@ -158,7 +158,11 @@ namespace Rebellion.Tests.Gameplay.Scripting
                 State = SceneNodeState.Active,
             }.Execute(game);
 
-            Assert.IsEmpty(results);
+            SceneNodeActivationChangedResult activation = results
+                .OfType<SceneNodeActivationChangedResult>()
+                .Single();
+            Assert.AreSame(officer, activation.Node);
+            Assert.IsTrue(activation.IsActive);
             Assert.AreSame(rebelPlanet, officer.GetParent());
             Assert.IsTrue(officer.IsActive());
         }
@@ -787,8 +791,11 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.IsTrue(leia.IsForceSensitive);
             Assert.IsTrue(leia.IsForceEligible);
             Assert.AreEqual(13, leia.ForceValue);
-            Assert.IsEmpty(results);
-            eligibility.Execute(game, new FixedRandomProvider(new[] { 0.5 }));
+            Assert.AreSame(
+                leia,
+                results.OfType<OfficerForceEligibilityChangedResult>().Single().Officer
+            );
+            Assert.IsEmpty(eligibility.Execute(game, new FixedRandomProvider(new[] { 0.5 })));
 
             Assert.AreEqual(13, leia.ForceValue);
         }

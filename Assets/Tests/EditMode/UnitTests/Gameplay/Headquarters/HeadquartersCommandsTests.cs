@@ -120,12 +120,55 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(origin.InstanceID, faction.HQInstanceID);
         }
 
+        [Test]
+        public void TryRelocate_DestinationBecomesNeutral_PreservesOwnershipAndArrivalMarker()
+        {
+            (GameRoot game, Faction faction, _, Planet destination, Building headquarters) =
+                CreateGame(isMobile: true);
+            (HeadquartersCommands commands, MovementCommands movement) = CreateSystems(game);
+            GameResultBus results = new GameResultBus();
+            using HeadquartersObserver observer = new HeadquartersObserver(game);
+            observer.Connect(results);
+
+            Assert.IsTrue(commands.TryRelocate(headquarters, destination));
+            new PlanetaryControlCommands(
+                game,
+                new PlanetaryControlQueries(game),
+                new FogOfWarQueries(game)
+            ).ClearPlanetOwnership(destination);
+            TestMovement.AdvanceTo(headquarters.Movement, headquarters.Movement.TransitTicks - 1);
+
+            IReadOnlyList<GameResult> arrival = new MovementTickProcessor(movement).ProcessTick(
+                game
+            );
+            results.Publish(arrival);
+
+            Assert.AreEqual(faction.InstanceID, headquarters.OwnerInstanceID);
+            Assert.AreEqual(destination.InstanceID, faction.HQInstanceID);
+            Assert.IsTrue(destination.IsHeadquarters);
+            Assert.IsFalse(faction.HasLostHeadquarters);
+            Assert.IsTrue(new HeadquartersQueries(game).CanMove(headquarters));
+            Assert.IsFalse(arrival.OfType<UnitOwnershipChangedResult>().Any());
+        }
+
         /// <summary>
         /// Creates headquarters operations with the game's movement dependencies.
         /// </summary>
         /// <param name="game">The active game graph.</param>
         /// <returns>The headquarters command implementation.</returns>
         private static HeadquartersCommands CreateCommands(GameRoot game)
+        {
+            return CreateSystems(game).commands;
+        }
+
+        /// <summary>
+        /// Creates headquarters and movement operations that share the same movement policy.
+        /// </summary>
+        /// <param name="game">The active game graph.</param>
+        /// <returns>The headquarters and movement command implementations.</returns>
+        private static (HeadquartersCommands commands, MovementCommands movement) CreateSystems(
+            GameRoot game
+        )
         {
             MovementQueries movementQueries = new MovementQueries(game);
             MovementCommands movement = new MovementCommands(
@@ -137,7 +180,7 @@ namespace Rebellion.Tests.Gameplay
             );
             HeadquartersQueries queries = new HeadquartersQueries(game);
             movementQueries.SetCompletedBuildingMovementPolicy(queries.CanMove);
-            return new HeadquartersCommands(game, movement, queries);
+            return (new HeadquartersCommands(game, movement, queries), movement);
         }
 
         /// <summary>

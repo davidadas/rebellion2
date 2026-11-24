@@ -274,9 +274,6 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         private GameConfig.JediConfig _forceRules;
 
-        [PersistableIgnore]
-        private GameRoot _forceGame;
-
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; }
         public string EncyclopediaDescription { get; set; }
@@ -297,35 +294,11 @@ namespace Rebellion.Game.Units
         public bool IsRecruitable { get; set; }
         public List<string> RecruitingFactionInstanceIDs { get; set; }
 
-        public bool IsCaptured
-        {
-            get => _isCaptured;
-            set
-            {
-                if (_isCaptured == value)
-                    return;
-                _isCaptured = value;
-                RefreshForceDiscoveryState();
-            }
-        }
-
-        private bool _isCaptured;
+        public bool IsCaptured { get; set; }
         public string CaptorInstanceID { get; set; }
         public bool CanEscape { get; set; }
         public int NextEscapeAttemptTick { get; set; }
-        public bool IsKilled
-        {
-            get => _isKilled;
-            set
-            {
-                if (_isKilled == value)
-                    return;
-                _isKilled = value;
-                RefreshForceDiscoveryState();
-            }
-        }
-
-        private bool _isKilled;
+        public bool IsKilled { get; set; }
 
         /// <summary>
         /// Gets whether this officer's loyalty can change and permit betrayal.
@@ -344,19 +317,7 @@ namespace Rebellion.Game.Units
         public int JediProbability { get; set; }
         public int JediLevel { get; set; }
         public int JediLevelVariance { get; set; }
-        public bool IsJediTrainer
-        {
-            get => _isJediTrainer;
-            set
-            {
-                if (_isJediTrainer == value)
-                    return;
-                _isJediTrainer = value;
-                RefreshForceDiscoveryState();
-            }
-        }
-
-        private bool _isJediTrainer;
+        public bool IsJediTrainer { get; set; }
         public bool GrowsForceOnMission { get; set; }
 
         /// <summary>
@@ -385,7 +346,6 @@ namespace Rebellion.Game.Units
                 if (ForceValue == stored)
                     return;
                 _forceValue = stored;
-                RefreshForceDiscoveryState();
             }
         }
 
@@ -402,7 +362,6 @@ namespace Rebellion.Game.Units
                 if (ForceTrainingAdjustment == stored)
                     return;
                 _forceTrainingAdjustment = stored;
-                RefreshForceDiscoveryState();
             }
         }
 
@@ -410,7 +369,11 @@ namespace Rebellion.Game.Units
         public int ForceRank => unchecked((short)(ForceValue + ForceTrainingAdjustment));
 
         [PersistableIgnore]
-        public bool IsDiscoveringForceUser => _isDiscoveringForceUser;
+        public bool IsDiscoveringForceUser
+        {
+            get => _isDiscoveringForceUser;
+            internal set => _isDiscoveringForceUser = value;
+        }
 
         [PersistableMember(Name = nameof(IsDiscoveringForceUser))]
         private bool _isDiscoveringForceUser;
@@ -467,19 +430,7 @@ namespace Rebellion.Game.Units
         public int ShipResearchVariance { get; set; }
 
         // Movement Info.
-        public MovementState Movement
-        {
-            get => _movement;
-            set
-            {
-                if (ReferenceEquals(_movement, value))
-                    return;
-                _movement = value;
-                OnAvailabilityChanged();
-            }
-        }
-
-        private MovementState _movement;
+        public MovementState Movement { get; set; }
         public bool IsRetired { get; set; }
         public string MissionReturnParentInstanceID { get; set; }
         public string MissionReturnLocationInstanceID { get; set; }
@@ -716,80 +667,35 @@ namespace Rebellion.Game.Units
         internal void BindLoyaltyProtection(bool canBetray) => _canBetray = canBetray;
 
         /// <summary>
-        /// Connects Force discovery and healing to the rules injected into the owning game.
-        /// Binding does not change the officer's saved Force values.
+        /// Applies the configured Force discovery and healing thresholds.
         /// </summary>
-        /// <param name="rules">The current game's Force rules.</param>
-        /// <param name="game">The authoritative game owning the officer and its discovery clock.</param>
-        internal void BindForceRules(GameConfig.JediConfig rules, GameRoot game)
-        {
+        /// <param name="rules">The current campaign's Force rules.</param>
+        internal void BindForceRules(GameConfig.JediConfig rules) =>
             _forceRules = rules ?? throw new ArgumentNullException(nameof(rules));
-            _forceGame = game ?? throw new ArgumentNullException(nameof(game));
+
+        /// <summary>
+        /// Restores a missing deadline for a saved scanner.
+        /// </summary>
+        /// <param name="nextTick">The next scan tick assigned by the campaign.</param>
+        internal void RestoreForceDiscoveryTick(int nextTick)
+        {
+            if (IsDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
+                NextForceDiscoveryTick = nextTick;
         }
 
         /// <summary>
-        /// Disconnects live discovery scheduling when this officer leaves the game registry.
-        /// Keeps the configured rules available for healing queries.
+        /// Checks whether the officer is available to discover hidden Force users.
         /// </summary>
-        internal void UnbindForceRuntime()
-        {
-            _forceGame = null;
-        }
-
-        /// <summary>
-        /// Reconciles discovery eligibility and restores a missing deadline after registration.
-        /// </summary>
-        internal void ReconcileForceDiscoveryState()
-        {
-            if (_forceGame != null && _isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
-                NextForceDiscoveryTick = unchecked(_forceGame.CurrentTick + 1);
-            RefreshForceDiscoveryState();
-        }
-
-        /// <summary>
-        /// Refreshes discovery after this officer changes physical containment or assignment.
-        /// </summary>
-        protected override void OnHierarchyChanged()
-        {
-            base.OnHierarchyChanged();
-            RefreshForceDiscoveryState();
-        }
-
-        /// <summary>
-        /// Refreshes discovery after an active or transit state changes in the containing subtree.
-        /// </summary>
-        protected override void OnAvailabilityChanged()
-        {
-            base.OnAvailabilityChanged();
-            RefreshForceDiscoveryState();
-        }
-
-        /// <summary>
-        /// Updates retained discovery eligibility and arms a newly enabled scanner for the next tick.
-        /// Availability changes evaluate the current rank even when it is zero.
-        /// </summary>
-        private void RefreshForceDiscoveryState()
-        {
-            if (_forceGame == null)
-                return;
-
-            bool shouldDiscover =
-                IsJediTrainer
-                && ForceRank >= _forceRules.DiscoveringForceUserThreshold
-                && !IsCaptured
-                && !IsKilled
-                && !IsOnMission()
-                && ((IMovable)this).GetTransitMovement() == null
-                && IsActive();
-            if (_isDiscoveringForceUser == shouldDiscover)
-                return;
-
-            _isDiscoveringForceUser = shouldDiscover;
-            NextForceDiscoveryTick = shouldDiscover ? unchecked(_forceGame.CurrentTick + 1) : 0;
-            ForceDiscoveryOrder = shouldDiscover ? _forceGame.AllocateForceDiscoveryOrder() : 0;
-            if (shouldDiscover)
-                _forceGame.RecordForceDiscoveryStarted(this);
-        }
+        /// <param name="threshold">The campaign's minimum Force rank for a trainer to scan.</param>
+        /// <returns>Whether this officer can scan at the current location.</returns>
+        internal bool CanDiscoverForceUsers(int threshold) =>
+            IsJediTrainer
+            && ForceRank >= threshold
+            && !IsCaptured
+            && !IsKilled
+            && !IsOnMission()
+            && ((IMovable)this).GetTransitMovement() == null
+            && IsActive();
 
         /// <summary>
         /// Grants a trait from one stable gameplay source without duplicating that assignment.
