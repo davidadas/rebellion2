@@ -43,11 +43,6 @@ namespace Rebellion.Game
         private GalaxyMap _galaxy;
         private string[] _blockadeFactionIds = Array.Empty<string>();
 
-        /// <summary>
-        /// Reports an officer whose retained discovery state has just become enabled.
-        /// </summary>
-        internal event Action<Officer> ForceDiscoveryStarted;
-
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
         private GameSummary _summary = new GameSummary();
@@ -194,9 +189,6 @@ namespace Rebellion.Game
         [PersistableIgnore]
         private readonly List<Officer> _registeredOfficers = new List<Officer>();
 
-        [PersistableIgnore]
-        private long _forceDiscoveryOrder;
-
         /// <summary>
         /// Gets the registered officer roster, including disabled officers, without traversing the scene.
         /// Callers must finish enumeration before adding or removing registered officers.
@@ -307,7 +299,7 @@ namespace Rebellion.Game
 
             Config = config;
             foreach (Officer officer in _registeredOfficers)
-                officer.BindForceRules(config.Jedi, this);
+                officer.BindForceRules(config.Jedi);
         }
 
         /// <summary>
@@ -579,7 +571,6 @@ namespace Rebellion.Game
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -702,7 +693,6 @@ namespace Rebellion.Game
             ISceneNode parent = node.GetParent();
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
             node.SetParent(null);
 
@@ -963,20 +953,12 @@ namespace Rebellion.Game
         {
             EnsureRuntimeIdentifier((BaseGameEntity)node);
             if (node is Officer officerToBind && Config != null)
-                officerToBind.BindForceRules(Config.Jedi, this);
+                officerToBind.BindForceRules(Config.Jedi);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
                 if (node is Officer officer)
-                {
                     _registeredOfficers.Add(officer);
-                    _forceDiscoveryOrder = Math.Max(
-                        _forceDiscoveryOrder,
-                        officer.ForceDiscoveryOrder
-                    );
-                    if (officer.IsDiscoveringForceUser && officer.ForceDiscoveryOrder == 0)
-                        officer.ForceDiscoveryOrder = AllocateForceDiscoveryOrder();
-                }
             }
             catch (ArgumentException)
             {
@@ -984,8 +966,6 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            if (node is Officer registeredOfficer)
-                registeredOfficer.ReconcileForceDiscoveryState();
         }
 
         /// <summary>
@@ -996,36 +976,7 @@ namespace Rebellion.Game
         {
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
-            {
-                officer.UnbindForceRuntime();
                 _registeredOfficers.Remove(officer);
-            }
-        }
-
-        /// <summary>
-        /// Records a completed discovery-state transition for the connected runtime.
-        /// </summary>
-        /// <param name="officer">The officer whose scanner became enabled.</param>
-        internal void RecordForceDiscoveryStarted(Officer officer)
-        {
-            ForceDiscoveryStarted?.Invoke(officer);
-        }
-
-        /// <summary>
-        /// Allocates the next insertion order for a discovery scan, including recurring scans.
-        /// Restored officer orders advance this counter as the scene registry is rebuilt.
-        /// </summary>
-        /// <returns>An order greater than every previously registered or scheduled scan.</returns>
-        internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
-
-        /// <summary>
-        /// Disconnects a removed officer before containment changes can schedule new work.
-        /// </summary>
-        /// <param name="node">The node leaving the game registry.</param>
-        private static void DisconnectOfficerRuntime(ISceneNode node)
-        {
-            if (node is Officer officer)
-                officer.UnbindForceRuntime();
         }
 
         /// <summary>
@@ -1033,13 +984,7 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            foreach (Officer officer in _registeredOfficers)
-                officer.UnbindForceRuntime();
-            NodesByInstanceID.Clear();
-            _registeredOfficers.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
-
+            ClearSceneRegistration();
             InitializeSceneRoot(Galaxy);
         }
 
@@ -1050,11 +995,20 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            NodesByInstanceID.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
+            ClearSceneRegistration();
             InitializeSceneRoot(galaxy);
             return galaxy;
+        }
+
+        /// <summary>
+        /// Disconnects the current scene before rebuilding its registration and ownership indexes.
+        /// </summary>
+        private void ClearSceneRegistration()
+        {
+            NodesByInstanceID.Clear();
+            _registeredOfficers.Clear();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
         }
 
         /// <summary>

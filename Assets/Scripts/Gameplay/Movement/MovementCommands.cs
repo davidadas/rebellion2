@@ -146,8 +146,13 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="units">The units that must be placed together.</param>
         /// <param name="destinations">Candidate destinations in preference order.</param>
+        /// <param name="results">The batch receiving the completed placements, if provided.</param>
         /// <returns>True when a destination accepts the complete group.</returns>
-        internal bool TryPlaceUnits(List<IMovable> units, IReadOnlyList<ContainerNode> destinations)
+        internal bool TryPlaceUnits(
+            List<IMovable> units,
+            IReadOnlyList<ContainerNode> destinations,
+            ICollection<GameResult> results = null
+        )
         {
             if (units == null || destinations == null)
                 return false;
@@ -155,7 +160,9 @@ namespace Rebellion.Gameplay
             string rejectionReason = null;
             foreach (ContainerNode candidate in destinations)
             {
-                if (TryPlaceGroup(units, candidate, out rejectionReason))
+                if (
+                    TryPlaceGroup(units, candidate, results ?? _pendingResults, out rejectionReason)
+                )
                     return true;
             }
 
@@ -745,7 +752,7 @@ namespace Rebellion.Gameplay
         /// Restores movement states temporarily cleared during return-group validation.
         /// </summary>
         /// <param name="interruptedMovements">The units and movement states to restore.</param>
-        private static void RestoreMovement(
+        private void RestoreMovement(
             IReadOnlyDictionary<IMovable, MovementState> interruptedMovements
         )
         {
@@ -1168,11 +1175,13 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="units">The units to place together.</param>
         /// <param name="destination">The shared requested destination.</param>
+        /// <param name="results">The batch receiving the completed placements.</param>
         /// <param name="rejectionReason">The reason placement was rejected, or null when accepted.</param>
         /// <returns>True when the complete group was placed.</returns>
         private bool TryPlaceGroup(
             List<IMovable> units,
             ContainerNode destination,
+            ICollection<GameResult> results,
             out string rejectionReason
         )
         {
@@ -1214,8 +1223,9 @@ namespace Rebellion.Gameplay
 
             for (int index = 0; index < liveUnits.Count; index++)
             {
-                ISceneNode unit = liveUnits[index];
+                IMovable unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
+                bool changed = unit.GetParent() != resolvedDestination || unit.Movement != null;
                 if (unit.GetParent() == null)
                 {
                     if (_game.NodesByInstanceID.ContainsKey(unit.InstanceID))
@@ -1223,8 +1233,10 @@ namespace Rebellion.Gameplay
                     _game.AttachNode(unit, resolvedDestination);
                 }
                 else
-                    MoveNode(unit, resolvedDestination, _pendingResults);
-                liveUnits[index].Movement = null;
+                    MoveNode(unit, resolvedDestination, results);
+                unit.Movement = null;
+                if (changed)
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
             }
 
             return true;
@@ -2443,6 +2455,7 @@ namespace Rebellion.Gameplay
 
             if (unit.GetParent() == destination)
             {
+                bool endedTransit = unit.Movement != null;
                 unit.Movement = null;
                 CompleteManufacturingDelivery(unit, results);
                 if (!string.IsNullOrWhiteSpace(sourceEventInstanceID))
@@ -2453,6 +2466,8 @@ namespace Rebellion.Gameplay
                         results,
                         sourceEventInstanceID
                     );
+                else if (endedTransit)
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
                 AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
@@ -2472,6 +2487,8 @@ namespace Rebellion.Gameplay
                         results,
                         sourceEventInstanceID
                     );
+                else
+                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
                 AddBlockadeChangedResult(originPlanet, wasBlockaded, results);
                 return true;
             }
