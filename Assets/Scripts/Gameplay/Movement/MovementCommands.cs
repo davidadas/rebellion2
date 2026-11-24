@@ -710,15 +710,29 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Places mission participants and passengers at the mission planet without initiating return travel.
+        /// Resolves the location that can receive a participant after a scripted withdrawal.
+        /// </summary>
+        /// <param name="participant">The participant ending the assignment.</param>
+        /// <param name="missionPlanet">The planet where the assignment takes place.</param>
+        /// <returns>The local planet or an eligible return destination.</returns>
+        internal ContainerNode ResolveScriptedWithdrawalDestination(
+            IMissionParticipant participant,
+            Planet missionPlanet
+        ) =>
+            participant is Officer { IsCaptured: true } || missionPlanet.CanAcceptChild(participant)
+                ? missionPlanet
+                : _queries.ResolveMissionReturnDestination(participant);
+
+        /// <summary>
+        /// Places mission participants and passengers at a destination without initiating return travel.
         /// </summary>
         /// <param name="participants">The participants and passengers remaining at the mission location.</param>
-        /// <param name="missionPlanet">The planet where the mission ended.</param>
+        /// <param name="destination">The location receiving the departing participants.</param>
         /// <param name="results">The owning operation's movement results.</param>
-        /// <returns>Units that could not be placed at the mission planet.</returns>
+        /// <returns>Units that could not be placed at the destination.</returns>
         internal List<IMovable> CompleteMissionAtLocation(
             IReadOnlyList<IMovable> participants,
-            Planet missionPlanet,
+            ContainerNode destination,
             ICollection<GameResult> results
         )
         {
@@ -727,13 +741,15 @@ namespace Rebellion.Gameplay
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
 
+            Planet destinationPlanet =
+                destination as Planet ?? destination?.GetParentOfType<Planet>();
             List<IMovable> strandedUnits = new List<IMovable>();
             foreach (IMovable participant in participants)
             {
                 if (
                     participant == null
-                    || missionPlanet?.IsDestroyed != false
-                    || !missionPlanet.CanAcceptChild(participant)
+                    || destinationPlanet?.IsDestroyed != false
+                    || !destination.CanAcceptChild(participant)
                 )
                 {
                     if (participant != null)
@@ -741,7 +757,7 @@ namespace Rebellion.Gameplay
                     continue;
                 }
 
-                MoveNode(participant, missionPlanet, results);
+                MoveNode(participant, destination, results);
                 participant.Movement = null;
             }
 
