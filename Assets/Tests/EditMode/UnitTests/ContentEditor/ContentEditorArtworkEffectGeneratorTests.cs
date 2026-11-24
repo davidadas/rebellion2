@@ -223,6 +223,146 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void CreateDefaultLayers_ShipTravel_SeparatesBackgroundUnitAndEffects()
+        {
+            Texture2D background = new(_width, _height, TextureFormat.RGBA32, false);
+            try
+            {
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background
+                );
+
+                ContentEditorArtworkLayerRole[] roles = frame
+                    .CreateDefaultLayers()
+                    .Select(layer => layer.Role)
+                    .ToArray();
+
+                Assert.That(roles[0], Is.EqualTo(ContentEditorArtworkLayerRole.Background));
+                Assert.That(roles[1], Is.EqualTo(ContentEditorArtworkLayerRole.Subject));
+                Assert.That(roles.Skip(2), Is.All.EqualTo(ContentEditorArtworkLayerRole.Effect));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
+        public void GetLayerBounds_LinkedUnitWithStoredTransform_UsesTheSourceFrame()
+        {
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null
+            );
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+                Offset = new Vector2(0.25f, -0.25f),
+                ScalePercent = 200,
+            };
+            var source = frame.GetLayer(unit);
+
+            RectInt bounds = frame.GetLayerBounds(unit, source.Bounds);
+
+            Assert.That(bounds, Is.EqualTo(new RectInt(0, 0, _width, _height)));
+        }
+
+        [Test]
+        public void Bake_ShipEffectBelowUnit_CutsEffectOutOfUnitSilhouette()
+        {
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+
+            Color32[] pixels = DecodePixels(frame.Bake(new[] { effect, unit }));
+
+            Assert.That(pixels[24 * _width + 40].a, Is.Zero);
+            Assert.That(pixels[4 * _width + 4].a, Is.EqualTo(byte.MaxValue));
+        }
+
+        [Test]
+        public void Bake_ShipEffectAboveUnit_PreservesEffectOverUnitSilhouette()
+        {
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+
+            Color32[] pixels = DecodePixels(frame.Bake(new[] { unit, effect }));
+
+            Assert.That(pixels[24 * _width + 40].a, Is.EqualTo(byte.MaxValue));
+        }
+
+        [Test]
+        public void Bake_ShipBackgroundMovedAboveUnit_ExportsTheReorderedBackground()
+        {
+            Texture2D background = new(_width, _height, TextureFormat.RGBA32, false);
+            background.SetPixels(
+                Enumerable.Repeat(new Color(0.15f, 0.3f, 0.45f, 1f), _width * _height).ToArray()
+            );
+            background.Apply(false);
+            try
+            {
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background
+                );
+                var unit = new ContentEditorArtworkLayer
+                {
+                    Role = ContentEditorArtworkLayerRole.Subject,
+                };
+                var linkedBackground = new ContentEditorArtworkLayer
+                {
+                    Role = ContentEditorArtworkLayerRole.Background,
+                };
+
+                Color32[] pixels = DecodePixels(frame.Bake(new[] { unit, linkedBackground }));
+
+                Assert.That(pixels[24 * _width + 40].a, Is.EqualTo(byte.MaxValue));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
         public void Bake_ExistingShipOverlay_PreservesTheArtworkAndExposesSeparateLayers()
         {
             string imported = WriteEffectImage(
@@ -943,7 +1083,7 @@ namespace Rebellion.Tests.ContentEditor
                 false,
                 null
             );
-            Assert.IsNotNull(frame.SubjectOverlay);
+            Assert.IsNotNull(frame.SubjectLayer);
             Assert.AreEqual(3, frame.DefaultLayerCount);
             var layer = frame.GetLayer(new ContentEditorArtworkLayer { Source = 0 });
             Assert.IsNotNull(layer.Texture);
@@ -1191,6 +1331,28 @@ namespace Rebellion.Tests.ContentEditor
                 texture.Apply(false);
                 File.WriteAllBytes(path, texture.EncodeToPNG());
                 return path;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        /// <summary>
+        /// Encodes one frame-sized solid image for an imported-layer fixture.
+        /// </summary>
+        /// <param name="color">The color assigned to every pixel.</param>
+        /// <returns>The encoded PNG.</returns>
+        private static byte[] WriteSolidLayer(Color32 color)
+        {
+            Texture2D texture = new(_width, _height, TextureFormat.RGBA32, false);
+            try
+            {
+                Color32[] pixels = new Color32[_width * _height];
+                Array.Fill(pixels, color);
+                texture.SetPixels32(pixels);
+                texture.Apply(false);
+                return texture.EncodeToPNG();
             }
             finally
             {

@@ -13,7 +13,7 @@ internal readonly struct ArtworkEffectLayerPreview
     internal Rect Bounds { get; }
     internal Vector2 Offset { get; }
     internal bool Hidden { get; }
-    internal bool Locked { get; }
+    internal bool Linked { get; }
     internal int? ScalePercent { get; }
 
     /// <summary>
@@ -25,7 +25,7 @@ internal readonly struct ArtworkEffectLayerPreview
     /// <param name="bounds">Its current normalized canvas rectangle.</param>
     /// <param name="offset">The layer's authored movement from its original position.</param>
     /// <param name="hidden">Whether the layer is excluded from the exported card.</param>
-    /// <param name="locked">Whether the layer represents fixed composition artwork.</param>
+    /// <param name="linked">Whether the layer is supplied by the runtime composition.</param>
     /// <param name="scalePercent">The current scale percentage for a resizable effect.</param>
     internal ArtworkEffectLayerPreview(
         int index,
@@ -34,7 +34,7 @@ internal readonly struct ArtworkEffectLayerPreview
         Rect bounds,
         Vector2 offset = default,
         bool hidden = false,
-        bool locked = false,
+        bool linked = false,
         int? scalePercent = null
     )
     {
@@ -44,7 +44,7 @@ internal readonly struct ArtworkEffectLayerPreview
         Bounds = bounds;
         Offset = offset;
         Hidden = hidden;
-        Locked = locked;
+        Linked = linked;
         ScalePercent = scalePercent;
     }
 }
@@ -56,7 +56,6 @@ internal readonly struct ArtworkEffectPreviewFrame
 {
     internal string Caption { get; }
     internal Texture2D BaseImage { get; }
-    internal Texture2D SubjectOverlay { get; }
     internal IReadOnlyList<ArtworkEffectLayerPreview> Layers { get; }
     internal Vector2Int Size => new(BaseImage.width, BaseImage.height);
     internal bool IsMissing { get; }
@@ -66,20 +65,17 @@ internal readonly struct ArtworkEffectPreviewFrame
     /// </summary>
     /// <param name="caption">The output's label.</param>
     /// <param name="baseImage">The fixed gameplay background.</param>
-    /// <param name="subjectOverlay">The optional unit drawn above the transit effects.</param>
     /// <param name="layers">The effects in back-to-front order, including any used only by another output.</param>
     /// <param name="isMissing">Whether the pack has no assigned image for this output.</param>
     internal ArtworkEffectPreviewFrame(
         string caption,
         Texture2D baseImage,
-        Texture2D subjectOverlay,
         IReadOnlyList<ArtworkEffectLayerPreview> layers,
         bool isMissing = false
     )
     {
         Caption = caption;
         BaseImage = baseImage;
-        SubjectOverlay = subjectOverlay;
         Layers = layers.Where(layer => layer.Texture != null).ToArray();
         IsMissing = isMissing;
     }

@@ -359,6 +359,19 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.IsNull(data.DetailItems[0].EnrouteOverlayTexture);
         }
 
+        [Test]
+        public void Build_MovingRegiment_ReturnsBackgroundAndTransitOverlay()
+        {
+            _regiment.InTransitSmallImagePath = _starfighter.InTransitSmallImagePath;
+            _regiment.Movement = TestMovement.Create();
+            _session.SelectTab(FleetWindowTab.Regiments);
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            Assert.IsNotNull(data.DetailItems[0].BackgroundTexture);
+            Assert.IsNotNull(data.DetailItems[0].EnrouteOverlayTexture);
+        }
+
         [TestCase(FleetWindowTab.Starfighters, "4")]
         [TestCase(FleetWindowTab.Regiments, "3")]
         public void Build_EmptyCarrierTab_ReturnsMaximumCapacity(

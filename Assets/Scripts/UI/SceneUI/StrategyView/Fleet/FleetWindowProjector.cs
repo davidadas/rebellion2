@@ -485,9 +485,7 @@ internal sealed class FleetWindowProjector
             return null;
         if (!enroute)
             return personnelBackground;
-
-        string path = SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath);
-        return uiContext.GetTexture(path) ?? personnelEnrouteBackground;
+        return personnelEnrouteBackground;
     }
 
     /// <summary>
@@ -505,14 +503,11 @@ internal sealed class FleetWindowProjector
     {
         if (
             !IsItemInTransit(fleet, item)
-            || item is Regiment or Officer or SpecialForces
             || item is IManufacturable { ManufacturingStatus: ManufacturingStatus.Building }
         )
             return null;
 
-        return uiContext.GetTexture(
-            SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
-        );
+        return uiContext.GetEntityStatusTexture(item, true);
     }
 
     /// <summary>
