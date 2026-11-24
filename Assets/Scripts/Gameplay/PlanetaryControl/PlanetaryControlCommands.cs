@@ -516,13 +516,9 @@ namespace Rebellion.Gameplay
             Faction newOwner
         )
         {
-            PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             List<Faction> observers = _game
                 .GetFactions()
-                .Where(faction =>
-                    sector?.SectorType == PlanetSectorType.Core
-                    || _fogOfWarQueries.IsPlanetVisible(planet, faction)
-                )
+                .Where(faction => _fogOfWarQueries.IsPlanetControlVisible(planet, faction))
                 .ToList();
 
             if (previousOwner != null && !observers.Contains(previousOwner))

@@ -3620,6 +3620,24 @@ namespace Rebellion.Gameplay
                     controller,
                     CreateUprisingEnded(controller, result, controller)
                 );
+                if (controller == null || result.Planet == null)
+                    continue;
+
+                FogOfWarQueries visibility = new(game);
+                foreach (Faction recipient in game.GetFactions())
+                {
+                    if (
+                        recipient.InstanceID == controller.InstanceID
+                        || !visibility.IsPlanetControlVisible(result.Planet, recipient)
+                    )
+                        continue;
+
+                    AddPoliticalDelivery(
+                        deliveries,
+                        recipient,
+                        CreateUprisingEnded(recipient, result, controller)
+                    );
+                }
             }
 
             foreach (PlanetUprisingIncidentResult result in incidentResults)
@@ -3761,7 +3779,9 @@ namespace Rebellion.Gameplay
                     { "system", result.Planet?.GetDisplayName() ?? string.Empty },
                 },
                 result.Planet?.InstanceID,
-                AdvisorNotificationType.PositivePopularSupport,
+                faction?.InstanceID == controller?.InstanceID
+                    ? AdvisorNotificationType.PositivePopularSupport
+                    : AdvisorNotificationType.NegativePopularSupport,
                 controller
             );
         }
