@@ -6186,7 +6186,7 @@ namespace Rebellion.Tests.Gameplay
             return FirstMessageFor(
                 CreateMessages(
                     game,
-                    TestContent.Data.MessageDefinitions,
+                    AbductionDefinitions(),
                     new MissionCompletedResult
                     {
                         Mission = mission,
@@ -6211,6 +6211,61 @@ namespace Rebellion.Tests.Gameplay
                 ),
                 alliance
             );
+        }
+
+        /// <summary>
+        /// Creates the complete set of report selectors exercised by the abduction scenarios.
+        /// </summary>
+        /// <returns>Self-contained abduction report definitions.</returns>
+        private static MessageDefinition[] AbductionDefinitions()
+        {
+            const string returning = "Personnel are returning to {destination}.";
+            return new[]
+            {
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} was a success. {abduction_result}\n{personnel_status}",
+                    outcome: MessageResultOutcome.Success,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} succeeded. {abduction_result}\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "{officer} was killed during my abduction attempt at {system}.\n{personnel_status}",
+                    outcome: MessageResultOutcome.TargetKilled,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "{officer} was killed during the abduction attempt at {system}.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} failed. {personnel_status}",
+                    outcome: MessageResultOutcome.Failed,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} failed.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Foiled",
+                    "My {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}",
+                    outcome: MessageResultOutcome.Foiled,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "{mission} Mission Foiled",
+                    unattributedBody: "The {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}"
+                ),
+            };
         }
 
         /// <summary>
