@@ -47,6 +47,8 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
+        private GameRoot _blockadeGame;
+
         /// <summary>
         /// Reports completed support changes to the session's notification observer.
         /// </summary>
@@ -57,7 +59,15 @@ namespace Rebellion.Game.Galaxy
 
         // Planet Properties.
         public bool IsColonized { get; set; }
+
         public int PlanetDataId { get; set; }
+
+        /// <summary>
+        /// Gets or sets the retained faction selector for space-combat arrival presentation.
+        /// Zero records no activation, one and two identify the two authored combat factions,
+        /// and three records neutral ownership.
+        /// </summary>
+        public int SpaceCombatEntryFaction { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
         public int AllocatedEnergy { get; set; }
@@ -110,6 +120,18 @@ namespace Rebellion.Game.Galaxy
 
         [PersistableMember(Name = "Starfighters")]
         private List<Starfighter> _starfighters = new List<Starfighter>();
+
+        /// <summary>
+        /// Gets the direct fleet collection for indexed runtime orbital queries without copying it.
+        /// The view includes disabled children and must not be retained across scene mutations.
+        /// </summary>
+        internal IReadOnlyList<Fleet> DirectOrbitalFleets => _fleets;
+
+        /// <summary>
+        /// Gets the direct fighter collection for indexed runtime orbital queries without copying it.
+        /// The view includes disabled children and must not be retained across scene mutations.
+        /// </summary>
+        internal IReadOnlyList<Starfighter> DirectOrbitalStarfighters => _starfighters;
 
         [PersistableMember(Name = "Missions")]
         private List<Mission> _missions = new List<Mission>();
@@ -167,6 +189,7 @@ namespace Rebellion.Game.Galaxy
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
             copy.PlanetDataId = PlanetDataId;
+            copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
             copy.AllocatedEnergy = AllocatedEnergy;
@@ -228,16 +251,25 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
+        /// Binds authoritative orbital queries while this exact planet is registered in a game.
+        /// Detached copies retain no live game reference.
+        /// </summary>
+        /// <param name="game">The owning live game, or null when the planet is unregistered.</param>
+        internal void BindBlockadeGame(GameRoot game) => _blockadeGame = game;
+
+        /// <summary>
         /// Checks if the planet is blockaded.
-        /// An owned planet is blockaded when a stationary hostile fleet has an operational
-        /// capital ship and no equivalent defending fleet is present. A neutral planet is
-        /// blockaded by any such fleet in orbit.
+        /// In a configured two-faction campaign, ready orbital presence from both factions
+        /// prevents a blockade. Other faction domains retain fleet-based ownership rules.
+        /// A neutral planet can be blockaded only while it has a civilian population.
         /// </summary>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
         public bool IsBlockaded()
         {
-            if (IsDestroyed)
+            if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
+            if (_blockadeGame?.TryCalculateSpaceCombatBlockade(this, out bool blockaded) == true)
+                return blockaded;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
                 f.Movement == null
@@ -1363,7 +1395,8 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns true if this planet can accept the child. Destroyed planets reject manufactured
         /// surface units. Fleets and Missions are always
-        /// accepted. Uncolonized planets accept regiments and facilities under construction;
+        /// accepted. Starfighters may remain at a surviving planet independently of its surface
+        /// ownership or colonization. Uncolonized planets accept regiments and facilities under construction;
         /// an owned uncolonized planet with a stationed friendly unit also accepts its owner's
         /// other surface units. Colonized planets accept surface children when ownership and
         /// capacity rules permit them.
@@ -1390,9 +1423,8 @@ namespace Rebellion.Game.Galaxy
                 case SpecialForces specialForces:
                     return CanHostOwnedUnits()
                         && specialForces.GetOwnerInstanceID() == GetOwnerInstanceID();
-                case Starfighter starfighter:
-                    return CanHostOwnedUnits()
-                        && starfighter.GetOwnerInstanceID() == GetOwnerInstanceID();
+                case Starfighter _:
+                    return true;
                 case Building building:
                     return (
                             IsColonized

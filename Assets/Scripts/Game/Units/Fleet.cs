@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -248,20 +249,20 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns the number of complete, stationary capital ships in this fleet.
+        /// Returns the number of active, complete, stationary capital ships owned by this fleet's faction.
         /// </summary>
         /// <returns>The operational capital ship count.</returns>
         public int GetOperationalCapitalShipCount()
         {
-            return GetChildren<CapitalShip>()
-                .Count(ship =>
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                );
+            int count = 0;
+            foreach (CapitalShip ship in GetChildren<CapitalShip>())
+                if (SpaceCombatReadiness.IsCapitalReady(ship, this))
+                    count++;
+            return count;
         }
 
         /// <summary>
-        /// Returns true when this fleet has complete, stationary capital ships.
+        /// Returns true when this fleet has a ready capital ship owned by its faction.
         /// </summary>
         /// <returns>True when at least one operational capital ship is present.</returns>
         public bool HasOperationalCapitalShips()

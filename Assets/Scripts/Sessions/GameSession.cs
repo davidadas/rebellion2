@@ -203,6 +203,11 @@ namespace Rebellion.Gameplay
 
             PrepareGameReplacement();
             Game = game;
+            Game.ConfigureSpaceCombatEntries(
+                Game.Summary.StartingFactionIDs is { Length: > 0 } factionIds
+                    ? factionIds
+                    : Game.GetFactions().Select(faction => faction?.InstanceID).ToArray()
+            );
             EnsureGameConfiguration();
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();

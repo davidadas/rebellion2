@@ -255,7 +255,9 @@ namespace Rebellion.Gameplay
         {
             ISceneNode node = item;
             Planet location = node?.GetParentOfType<Planet>();
-            bool? wasBlockaded = item is CapitalShip ? location?.IsBlockaded() : null;
+            bool? wasBlockaded = item is CapitalShip or Starfighter
+                ? location?.IsBlockaded()
+                : null;
             Planet garrisonPlanet =
                 item is Regiment regiment
                 && regiment.ManufacturingStatus == ManufacturingStatus.Complete
