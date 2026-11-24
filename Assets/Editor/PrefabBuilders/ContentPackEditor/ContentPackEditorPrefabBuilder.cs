@@ -97,9 +97,18 @@ public static class ContentPackEditorPrefabBuilder
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
+        Button editorNavigation = PlainButton("Editor", menuStrip.transform, "Editor");
+        Rect((RectTransform)editorNavigation.transform, 264, 0, 72, 34);
+        Assign(view, "editorButton", editorNavigation);
         Button mods = PlainButton("Mods", menuStrip.transform, "Mods");
-        Rect((RectTransform)mods.transform, 264, 0, 64, 34);
+        Rect((RectTransform)mods.transform, 344, 0, 72, 34);
         Assign(view, "modsButton", mods);
+        Button publish = PlainButton("Publish", menuStrip.transform, "Publish…");
+        RectTransform publishRect = (RectTransform)publish.transform;
+        publishRect.anchorMin = publishRect.anchorMax = publishRect.pivot = Vector2.one;
+        publishRect.anchoredPosition = new Vector2(-16, 0);
+        publishRect.sizeDelta = new Vector2(112, 34);
+        Assign(view, "publishButton", publish);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
         Stretch(projectWorkspace);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
@@ -110,7 +119,7 @@ public static class ContentPackEditorPrefabBuilder
             14,
             true
         );
-        Stretch(project.rectTransform, 348, 0, 24, 0);
+        Stretch(project.rectTransform, 440, 0, 152, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);

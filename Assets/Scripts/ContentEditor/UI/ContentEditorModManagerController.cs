@@ -19,6 +19,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private readonly Action<string, Action> confirm;
     private readonly Action contentChanged;
     private readonly CancellationTokenSource lifetime = new();
+    private readonly Dictionary<string, string> compatibilityIssues = new(StringComparer.Ordinal);
     private CancellationTokenSource operation;
     private CancellationTokenSource iconRequest;
     private CancellationTokenSource searchRequest;
@@ -63,7 +64,9 @@ internal sealed class ContentEditorModManagerController : IDisposable
         view.RefreshRequested += Refresh;
         view.ImportRequested += Import;
         view.CloseRequested += Close;
+        view.CancelRequested += Cancel;
         view.InstallRequested += Install;
+        view.QuickInstallRequested += InstallLatest;
         view.ActivateRequested += Activate;
         view.UninstallRequested += Uninstall;
         view.ListingRequested += OpenListing;
@@ -84,7 +87,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         try
         {
             store.RecoverInterruptedInstallations();
-            installed = store.GetInstalled();
+            ReadInstalled();
             if (catalog.Length == 0 && File.Exists(store.CatalogPath))
                 catalog = ThunderstoreClient.ParseCatalog(File.ReadAllText(store.CatalogPath));
             view.SetCategories(
@@ -112,7 +115,6 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 string selectedRelease = SelectedVersion?.version_number;
                 catalog = result.Packages;
                 store.SaveCatalog(result.Json);
-                installed = store.GetInstalled();
                 view.SetCategories(
                     catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
                 );
@@ -124,10 +126,21 @@ internal sealed class ContentEditorModManagerController : IDisposable
                             version => version.version_number == selectedRelease
                         )
                     );
-                view.SetStatus("Community catalog is up to date.");
+                view.SetStatus(string.Empty);
             },
             false
         );
+
+    /// <summary>
+    /// Assesses the installed inventory once after refreshes and file operations, keeping search free of disk reads.
+    /// </summary>
+    private void ReadInstalled()
+    {
+        installed = store.GetInstalled();
+        compatibilityIssues.Clear();
+        foreach (InstalledModPackage package in installed)
+            compatibilityIssues.Add(package.PackageID, store.GetCompatibilityIssue(package));
+    }
 
     /// <summary>
     /// Switches between community listings and installed packages.
@@ -178,11 +191,12 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// <param name="id">The stable distribution identity.</param>
     private void Select(string id)
     {
-        if (selection == id)
-            return;
-        selection = id;
-        versionIndex = 0;
-        RenderRows();
+        if (selection != id)
+        {
+            selection = id;
+            versionIndex = 0;
+            RenderRows();
+        }
         RenderDetails();
     }
 
@@ -216,9 +230,15 @@ internal sealed class ContentEditorModManagerController : IDisposable
             selection = entries.FirstOrDefault()?.ID;
             versionIndex = 0;
         }
+        entries = entries
+            .Select(entry =>
+                compatibilityIssues.TryGetValue(entry.ID, out string issue)
+                    ? new ContentEditorModEntry(entry.Listing, entry.Installation, issue)
+                    : entry
+            )
+            .ToArray();
         view.RenderRows(
             entries,
-            selection,
             installedTab,
             installedTab ? installed.Count : catalog.Length,
             resetScroll
@@ -239,32 +259,20 @@ internal sealed class ContentEditorModManagerController : IDisposable
             release?.description
             ?? current?.Description
             ?? "Select a package to see its description, available versions, and installation options.";
-        string issue = current == null ? string.Empty : store.GetCompatibilityIssue(current);
+        string issue =
+            current != null
+            && compatibilityIssues.TryGetValue(current.PackageID, out string compatibilityIssue)
+                ? compatibilityIssue
+                : string.Empty;
         if (current != null)
         {
             text += "\n\nInstalled release: " + current.Version;
-            foreach (InstalledModContent content in current.Content)
-                text +=
-                    "\n\n"
-                    + (content.IsPack ? "Content pack: " : "Add-on: ")
-                    + content.DisplayName
-                    + "\nContent ID: "
-                    + content.ID
-                    + "\nContent version: "
-                    + content.Version
-                    + (
-                        string.IsNullOrEmpty(content.BasePackID)
-                            ? string.Empty
-                            : "\nRequires: "
-                                + content.BasePackID
-                                + (
-                                    string.IsNullOrEmpty(content.BasePackVersion)
-                                        ? string.Empty
-                                        : " " + content.BasePackVersion
-                                )
-                    );
-            if (!string.IsNullOrEmpty(issue))
-                text += "\n\n" + issue;
+            foreach (
+                InstalledModContent content in current.Content.Where(content =>
+                    content.Version != current.Version
+                )
+            )
+                text += "\nContent version: " + content.Version;
         }
         if (release != null)
         {
@@ -286,10 +294,14 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 .All(content => !disabled.Contains(content.ID)) == true;
         bool selected =
             pack && current.Content.Any(content => content.IsPack && content.ID == activePack);
+        if (pack)
+            text += selected
+                ? "\n\nUsed by default when starting the game."
+                : "\n\nSet as active to use this pack by default.";
         string activateLabel = pack
             ? selected
-                ? "Selected for game"
-                : "Use content pack"
+                ? "Active content pack"
+                : "Set as active pack"
             : enabled
                 ? "Disable add-on"
                 : "Enable add-on";
@@ -297,13 +309,29 @@ internal sealed class ContentEditorModManagerController : IDisposable
         if (inUse)
             text +=
                 "\n\nUsed by the open project. Close the project before replacing or removing these files.";
+        string stateText =
+            current == null
+                ? listing?.is_deprecated == true
+                    ? "Deprecated"
+                    : "Available"
+                : !string.IsNullOrEmpty(issue)
+                    ? "Needs attention"
+                    : pack
+                        ? selected
+                            ? "Active content pack"
+                            : "Installed"
+                        : enabled
+                            ? "Enabled"
+                            : "Disabled";
         view.RenderDetails(
             listing == null && current == null ? null : new ContentEditorModEntry(listing, current),
+            stateText,
+            issue,
             text,
             listing?.versions.Select(item => item.version_number).ToList() ?? new List<string>(),
             versionIndex,
-            current == null ? "Install package"
-                : current.Version == release?.version_number ? "Reinstall package"
+            current == null ? "Install"
+                : current.Version == release?.version_number ? "Reinstall"
                 : "Install version " + release?.version_number,
             release != null && !inUse,
             activateLabel,
@@ -369,6 +397,20 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
+    /// Installs the latest online version from a browse result without another confirmation step.
+    /// </summary>
+    /// <param name="id">The chosen package identity.</param>
+    private void InstallLatest(string id)
+    {
+        if (IsBusy || disposed)
+            return;
+        selection = id;
+        versionIndex = 0;
+        RenderDetails();
+        Install();
+    }
+
+    /// <summary>
     /// Imports a ZIP selected through the toolkit's existing native dialog.
     /// </summary>
     private void Import()
@@ -393,7 +435,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             await store.InstallLocalAsync(path, protectedIDs(), Progress, token);
             installedTab = true;
             contentChanged();
-            view.SetStatus("Content archive installed.");
+            view.SetStatus("Mod installed from file.");
         });
     }
 
@@ -438,7 +480,11 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 pack != null || enable
             );
             RenderDetails();
-            view.SetStatus("Selection saved. The game will use it when content next loads.");
+            view.SetStatus(
+                pack != null
+                    ? "Active content pack saved. This is the default for the next game startup."
+                    : "Add-on selection saved. The game will use it when content next loads."
+            );
         }
         catch (Exception exception)
         {
@@ -543,7 +589,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 view.SetBusy(false);
                 try
                 {
-                    installed = store.GetInstalled();
+                    ReadInstalled();
                     RenderRows();
                     RenderDetails();
                 }
@@ -562,15 +608,16 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// </summary>
     private void Close()
     {
-        if (IsBusy)
-        {
-            operation.Cancel();
-            return;
-        }
+        operation?.Cancel();
         iconRequest?.Cancel();
         searchRequest?.Cancel();
         view.Hide();
     }
+
+    /// <summary>
+    /// Cancels an installation while retaining its visible progress and rollback feedback.
+    /// </summary>
+    private void Cancel() => operation?.Cancel();
 
     /// <summary>
     /// Defers quitting until a running transaction has canceled or committed.
@@ -601,7 +648,9 @@ internal sealed class ContentEditorModManagerController : IDisposable
         view.RefreshRequested -= Refresh;
         view.ImportRequested -= Import;
         view.CloseRequested -= Close;
+        view.CancelRequested -= Cancel;
         view.InstallRequested -= Install;
+        view.QuickInstallRequested -= InstallLatest;
         view.ActivateRequested -= Activate;
         view.UninstallRequested -= Uninstall;
         view.ListingRequested -= OpenListing;

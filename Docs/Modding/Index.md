@@ -220,18 +220,20 @@ facility research artwork. Player HUD artwork is under each faction's
 ### Managing community mods
 
 Open **Mods** in the content pack editor's menu bar. A project does not need to be open.
-Use **Discover** to search the Rebellion 2 Thunderstore community, select a release, and install it
-with its declared package dependencies. The release selector also allows installing an older
-published version. **Import ZIP…** accepts native content archives from disk.
+The shared menu bar stays available; choose **Editor** to return to the current project.
+Use **Browse** to search the Rebellion 2 Thunderstore community. **Install** on a listing installs
+its latest release and declared package dependencies. Open its details to choose another version. The release selector also allows installing an older
+published version. **Install from file…** installs a mod ZIP from your computer.
 
 Search matches every entered word across names, creators, descriptions, and categories, ignoring
 spacing, punctuation, and accents. Use **Ctrl+F** (**Command+F** on Mac) to focus search. Filter by
-category or installation status, and sort by relevance, downloads, update date, creation date, or
-name. **Clear filters** resets the query and filters while retaining your chosen sorting.
+category or installation status under **Filters**, and sort by relevance, downloads, likes, update
+date, creation date, or name. Cards show community likes and total downloads across all releases.
+**Clear filters** resets the query and filters while retaining your chosen sorting.
 
 **Installed** includes downloaded packages and manually installed content. Select a content pack
-with **Use content pack**, or enable and disable add-ons. This updates the game's existing content
-selection; the game uses it when content next loads. Close the game before changing installed
+with **Set as active pack**, or enable and disable add-ons. The active pack is the default when
+starting the game. Close the game before changing installed
 files. Missing base packs and incompatible base versions appear in the package details. Official
 content packs remain managed by the launcher.
 
@@ -243,7 +245,7 @@ versions authored in `pack.xml` or `mod.xml`; saves still require their recorded
 
 ### Exporting a content pack for Thunderstore
 
-In the content pack editor, open **File > Publishing...**. Enter a package name, short description,
+Open an editable project, then choose **Publish…** in the shared toolbar or **File > Publish...**. Enter a package name, short description,
 readme, and an optional website. Choose a 256 × 256 PNG icon. The **Release** page uses the pack's
 version and accepts release notes and Thunderstore dependencies, one `Team-Package-1.2.0` reference
 per line. The required base content pack is still declared in `pack.xml`; it is not automatically

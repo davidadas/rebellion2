@@ -15,6 +15,7 @@ public sealed class ThunderstorePackage
     public string date_created;
     public string[] categories;
     public bool is_deprecated;
+    public int rating_score;
     public ThunderstorePackageVersion[] versions;
 
     public ThunderstorePackageVersion Latest => versions?.FirstOrDefault();

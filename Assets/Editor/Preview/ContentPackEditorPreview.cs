@@ -34,6 +34,10 @@ public static class ContentPackEditorPreview
     {
         PreviewRenderUtility preview = new PreviewRenderUtility();
         ContentEditorModManagerController manager = null;
+        string workingFolder = Path.Combine(
+            Path.GetTempPath(),
+            "mod-manager-preview-" + Guid.NewGuid().ToString("N")
+        );
         int result = 1;
         try
         {
@@ -58,7 +62,9 @@ public static class ContentPackEditorPreview
             canvas.renderMode = RenderMode.ScreenSpaceCamera;
             canvas.worldCamera = camera;
             canvas.planeDistance = 100;
-            root.GetComponent<CanvasScaler>().referenceResolution = new Vector2(1600, 900);
+            CanvasScaler scaler = root.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ConstantPixelSize;
+            scaler.scaleFactor = EditorGUIUtility.pixelsPerPoint;
             camera.aspect = 1600f / 900;
             ContentPackEditorView view = root.GetComponent<ContentPackEditorView>();
             string contentRoot = ContentPackLoader.ResolveContentRootPath();
@@ -74,13 +80,18 @@ public static class ContentPackEditorPreview
             manager.Show();
             while (manager.IsBusy)
                 await Task.Yield();
-            RawImage icon = view
-                .ModManager.GetComponentsInChildren<RawImage>(true)
-                .Single(image => image.name == "PackageIcon");
+            RawImage[] artwork = view
+                .ModManager.GetComponentsInChildren<RawImage>()
+                .Where(image => image.name == "Artwork")
+                .ToArray();
             DateTime iconDeadline = DateTime.UtcNow.AddSeconds(10);
-            while (!icon.enabled && DateTime.UtcNow < iconDeadline)
+            while (artwork.Any(image => !image.enabled) && DateTime.UtcNow < iconDeadline)
                 await Task.Yield();
             Canvas.ForceUpdateCanvases();
+            preview.BeginStaticPreview(new Rect(0, 0, 1600, 900));
+            preview.Render(true);
+            Object.DestroyImmediate(preview.EndStaticPreview());
+            view.ModManager.SetStatus(string.Empty);
             foreach (
                 ContentEditorColorMode mode in new[]
                 {
@@ -98,21 +109,136 @@ public static class ContentPackEditorPreview
             }
             view.SetColorMode(ContentEditorColorMode.Dark);
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager.png");
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .First(button =>
+                    button.name == "PackageCard(Clone)" && button.gameObject.activeSelf
+                )
+                .onClick.Invoke();
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-details.png");
+            TMP_Dropdown releaseVersions = view
+                .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
+                .Single(dropdown => dropdown.name == "versions");
+            GameObject versionPopup = Object.Instantiate(
+                releaseVersions.template.gameObject,
+                releaseVersions.transform,
+                false
+            );
+            Canvas popupCanvas = versionPopup.GetComponent<Canvas>();
+            if (popupCanvas == null)
+                popupCanvas = versionPopup.AddComponent<Canvas>();
+            popupCanvas.overrideSorting = true;
+            popupCanvas.sortingOrder = 30000;
+            versionPopup
+                .GetComponentsInChildren<TMP_Text>(true)
+                .Single(label => label.name == "Item Label")
+                .text = releaseVersions.options[releaseVersions.value].text;
+            versionPopup.GetComponentInChildren<Toggle>(true).isOn = true;
+            versionPopup.SetActive(true);
+            Vector3[] fieldCorners = new Vector3[4];
+            Vector3[] popupCorners = new Vector3[4];
+            ((RectTransform)releaseVersions.transform).GetWorldCorners(fieldCorners);
+            ((RectTransform)versionPopup.transform).GetWorldCorners(popupCorners);
+            Debug.Log("Version dropdown gap: " + (fieldCorners[0].y - popupCorners[1].y));
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-version-options.png"
+            );
+            Object.DestroyImmediate(versionPopup);
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "detailCloseButton")
+                .onClick.Invoke();
+
             TMP_Dropdown sort = view
                 .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
                 .Single(dropdown => dropdown.name == "sorting");
             sort.value = (int)ContentEditorModSort.Downloads;
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-downloads.png");
+            sort.value = (int)ContentEditorModSort.Likes;
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-likes.png");
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "filterButton")
+                .onClick.Invoke();
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-filters.png");
             TMP_Dropdown category = view
                 .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
                 .Single(dropdown => dropdown.name == "category");
             category.value = 1;
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-category.png");
             category.value = 0;
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "filterButton")
+                .onClick.Invoke();
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "installedButton")
+                .onClick.Invoke();
+            SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-installed.png");
+            Button manage = view
+                .ModManager.GetComponentsInChildren<Button>()
+                .FirstOrDefault(button =>
+                    button.name == "PrimaryAction"
+                    && button.GetComponentInChildren<TMP_Text>().text == "Manage"
+                );
+            if (manage != null)
+            {
+                manage.onClick.Invoke();
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Mod-manager-installed-details.png"
+                );
+                view.ModManager.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "detailCloseButton")
+                    .onClick.Invoke();
+            }
+            view.ModManager.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "browseButton")
+                .onClick.Invoke();
             TMP_InputField search = view.ModManager.GetComponentInChildren<TMP_InputField>(true);
             search.text = "no such package";
             await Task.Delay(250);
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-empty.png");
+            search.text = string.Empty;
+            await Task.Delay(250);
+            ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                ContentPackLoader.GetDefaultPackID(contentRoot),
+                workingFolder,
+                "navigation-preview",
+                "Navigation preview",
+                "1.0.0"
+            );
+            using ContentAssets assets = ContentPackEditorStorage.CreateAssets(project);
+            using ContentPackEditorWorkspaceController workspace = new(view);
+            workspace.RenderProject(project, assets);
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-project-navigation.png"
+            );
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Editor")
+                .onClick.Invoke();
+            if (view.ModManager.IsOpen)
+                throw new InvalidOperationException("Editor navigation left the mod manager open.");
+            manager.Show();
+            while (manager.IsBusy)
+                await Task.Yield();
+            bool publishingRequested = false;
+            view.PublishingRequested += () => publishingRequested = true;
+            Button publish = view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Publish");
+            if (!publish.interactable)
+                throw new InvalidOperationException(
+                    "Publishing is unavailable for an editable project."
+                );
+            publish.onClick.Invoke();
+            if (!publishingRequested || view.ModManager.IsOpen)
+                throw new InvalidOperationException("Publishing did not leave the mod manager.");
+            Debug.Log(
+                "Shared navigation returned to the project and requested publishing successfully."
+            );
+            RenderPublishing(preview, root, view, project);
 
             Debug.Log(
                 "Mod manager preview: "
@@ -128,6 +254,8 @@ public static class ContentPackEditorPreview
         {
             manager?.Dispose();
             preview.Cleanup();
+            if (Directory.Exists(workingFolder))
+                Directory.Delete(workingFolder, true);
             if (Application.isBatchMode)
                 EditorApplication.Exit(result);
         }

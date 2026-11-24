@@ -25,6 +25,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button fileButton;
 
     [SerializeField]
+    private Button editorButton;
+
+    [SerializeField]
+    private Button publishButton;
+
+    [SerializeField]
     private TextMeshProUGUI projectLabel;
 
     [SerializeField]
@@ -394,6 +400,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             workbench == null
             || workbenchLayout == null
             || fileButton == null
+            || editorButton == null
+            || publishButton == null
             || projectLabel == null
             || editButton == null
             || projectWorkspace == null
@@ -462,6 +470,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         workbenchLayout.Changed += HandleWorkbenchChanged;
         fileButton.onClick.AddListener(ShowFileMenu);
         modsButton.onClick.AddListener(RequestModManager);
+        editorButton.onClick.AddListener(ShowEditor);
+        publishButton.onClick.AddListener(RequestPublishing);
         editButton.onClick.AddListener(ShowEditMenu);
         viewButton.onClick.AddListener(ShowViewMenu);
         testButton.onClick.AddListener(ShowTestMenu);
@@ -610,6 +620,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             workbenchLayout.Changed -= HandleWorkbenchChanged;
             menu.CommandSelected -= HandleMenuSelection;
             modsButton.onClick.RemoveListener(RequestModManager);
+            editorButton.onClick.RemoveListener(ShowEditor);
+            publishButton.onClick.RemoveListener(RequestPublishing);
             map.BackRequested -= ReturnToGalaxy;
             map.ArrangeRequested -= ArrangeMap;
             map.Selected -= SelectMapRecord;
@@ -746,6 +758,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projectWorkspace.SetActive(true);
         welcomePane.SetActive(false);
         editButton.interactable = true;
+        publishButton.interactable = !value.IsInstalled;
         selectionDialog.Hide();
         HideValidationIssues();
         confirmation.TryCancel();
@@ -1039,8 +1052,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 project != null
             ),
             new ContentEditorMenuCommand(
-                "Publishing...",
-                () => PublishingRequested?.Invoke(),
+                "Publish...",
+                RequestPublishing,
                 project?.IsInstalled == false
             ),
             new ContentEditorMenuCommand(
@@ -1148,6 +1161,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(true);
         editButton.interactable = false;
+        publishButton.interactable = false;
         catalogs = Array.Empty<ContentPackEditorCatalog>();
         recordList.Clear();
         navigation.Reset();
@@ -1361,7 +1375,28 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private void RequestModManager()
     {
         menu.TryCancel();
-        ModManagerRequested?.Invoke();
+        if (!modManager.IsOpen)
+            ModManagerRequested?.Invoke();
+    }
+
+    /// <summary>
+    /// Returns to the open project without discarding its edits.
+    /// </summary>
+    private void ShowEditor()
+    {
+        menu.TryCancel();
+        if (modManager.IsOpen)
+            modManager.TryLeave();
+    }
+
+    /// <summary>
+    /// Opens publishing for the current project after leaving community browsing.
+    /// </summary>
+    private void RequestPublishing()
+    {
+        menu.TryCancel();
+        if (!modManager.IsOpen || modManager.TryLeave())
+            PublishingRequested?.Invoke();
     }
 
     /// <summary>
@@ -1475,8 +1510,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 key.Use();
             return handled;
         }
-        if (modManager.IsOpen && workbench.interactable)
-            return modManager.HandleKeyboardShortcut(key);
+        if (modManager.IsOpen && workbench.interactable && modManager.HandleKeyboardShortcut(key))
+            return true;
         if (artworkWorkspace.gameObject.activeSelf && workbench.interactable)
             return !confirmation.gameObject.activeSelf
                 && artworkWorkspace.HandleKeyboardShortcut(key);
@@ -1484,7 +1519,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !workbench.interactable
             || packDialog.IsOpen
             || publishing.IsOpen
-            || modManager.IsOpen
             || selectionDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
@@ -1514,7 +1548,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         };
         if (action == null)
             return false;
-        action();
+        if (!modManager.IsOpen || modManager.TryLeave())
+            action();
         key.Use();
         return true;
     }
@@ -2694,7 +2729,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private void HandleMenuSelection(IContextMenuCommand command)
     {
         menu.Reset();
-        if (command is ContentEditorMenuCommand action)
+        if (
+            command is ContentEditorMenuCommand action
+            && (!modManager.IsOpen || modManager.TryLeave())
+        )
             action.Execute();
     }
 

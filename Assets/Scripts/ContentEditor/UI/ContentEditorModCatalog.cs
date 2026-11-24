@@ -11,6 +11,7 @@ internal sealed class ContentEditorModEntry
 {
     internal ThunderstorePackage Listing { get; }
     internal InstalledModPackage Installation { get; }
+    internal string CompatibilityIssue { get; }
     internal string ID => Listing?.full_name ?? Installation.PackageID;
     internal string Name => Listing?.name ?? Installation.Name;
     internal string Author => Listing?.owner ?? Installation.Author;
@@ -21,6 +22,12 @@ internal sealed class ContentEditorModEntry
     internal string IconUrl => Listing?.Latest.icon;
     internal string[] Categories => Listing?.categories ?? Array.Empty<string>();
     internal long Downloads => Listing?.versions.Sum(version => version.downloads) ?? 0;
+    internal int Likes => Listing?.rating_score ?? 0;
+    internal string LikeCount => Likes.ToString("N0") + (Likes == 1 ? " like" : " likes");
+    internal string DownloadCount =>
+        Downloads.ToString("N0") + (Downloads == 1 ? " download" : " downloads");
+    internal string Popularity =>
+        Listing == null ? string.Empty : LikeCount + " · " + DownloadCount;
     internal DateTimeOffset Updated => ReadDate(Listing?.date_updated);
     internal DateTimeOffset Created => ReadDate(Listing?.date_created);
     internal bool IsDeprecated => Listing?.is_deprecated == true;
@@ -31,7 +38,8 @@ internal sealed class ContentEditorModEntry
         && System.Version.TryParse(Installation.Version, out System.Version installed)
         && latest > installed;
     internal string State =>
-        HasUpdate ? "Update available"
+        !string.IsNullOrEmpty(CompatibilityIssue) ? "Needs attention"
+        : HasUpdate ? "Update available"
         : Installation != null
             ? Installation.Local ? "Local"
                 : "Installed"
@@ -43,10 +51,16 @@ internal sealed class ContentEditorModEntry
     /// </summary>
     /// <param name="listing">The public listing, or null for local-only content.</param>
     /// <param name="installation">The installation record, or null for an available download.</param>
-    internal ContentEditorModEntry(ThunderstorePackage listing, InstalledModPackage installation)
+    /// <param name="compatibilityIssue">The assessed installation requirement, when available.</param>
+    internal ContentEditorModEntry(
+        ThunderstorePackage listing,
+        InstalledModPackage installation,
+        string compatibilityIssue = null
+    )
     {
         Listing = listing;
         Installation = installation;
+        CompatibilityIssue = compatibilityIssue;
     }
 
     /// <summary>
@@ -135,6 +149,7 @@ internal static class ContentEditorModCatalog
             ContentEditorModSort.Downloads => matches.OrderByDescending(item =>
                 item.Entry.Downloads
             ),
+            ContentEditorModSort.Likes => matches.OrderByDescending(item => item.Entry.Likes),
             ContentEditorModSort.Updated => matches.OrderByDescending(item => item.Entry.Updated),
             ContentEditorModSort.Newest => matches.OrderByDescending(item => item.Entry.Created),
             ContentEditorModSort.Name => matches.OrderBy(
@@ -237,4 +252,5 @@ internal enum ContentEditorModSort
     Updated,
     Newest,
     Name,
+    Likes,
 }

@@ -499,17 +499,16 @@ public sealed class ModPackageStore
             throw new InvalidDataException(
                 "The archive identity does not match the selected Thunderstore release."
             );
-        string[] roots;
-        if (HasDefinition(extracted))
-            roots = new[] { extracted };
-        else
-            roots = Directory
-                .EnumerateDirectories(extracted)
-                .SelectMany(folder =>
-                    Path.GetFileName(folder) == "Mods"
-                        ? Directory.EnumerateDirectories(folder)
-                        : new[] { folder }
-                )
+        string[] roots = HasDefinition(extracted)
+            ? new[] { extracted }
+            : new[]
+            {
+                extracted,
+                Path.Combine(extracted, "Mods"),
+                Path.Combine(extracted, "Content", "Packs"),
+            }
+                .Where(Directory.Exists)
+                .SelectMany(Directory.EnumerateDirectories)
                 .Where(HasDefinition)
                 .ToArray();
         if (roots.Length == 0)

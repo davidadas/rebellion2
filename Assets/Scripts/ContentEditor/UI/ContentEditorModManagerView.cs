@@ -77,7 +77,28 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI pageTitle;
 
     [SerializeField]
-    private TextMeshProUGUI pageSubtitle;
+    private GameObject detailOverlay;
+
+    [SerializeField]
+    private GameObject filterPanel;
+
+    [SerializeField]
+    private Button filterButton;
+
+    [SerializeField]
+    private RectTransform detailPanel;
+
+    [SerializeField]
+    private Button detailCloseButton;
+
+    [SerializeField]
+    private TextMeshProUGUI detailStatus;
+
+    [SerializeField]
+    private TextMeshProUGUI requirement;
+
+    [SerializeField]
+    private Image installInset;
 
     [SerializeField]
     private GameObject detailContent;
@@ -132,7 +153,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private string selectedIconUrl;
     private string requestedIcons;
     private bool browseLocked;
-    private const int _cardHeight = 164;
+    private const int _cardHeight = 160;
+    private const int _columns = 1;
     private bool bound;
     private bool busy;
 
@@ -140,7 +162,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal event Action RefreshRequested;
     internal event Action ImportRequested;
     internal event Action CloseRequested;
+    internal event Action CancelRequested;
     internal event Action InstallRequested;
+    internal event Action<string> QuickInstallRequested;
     internal event Action ActivateRequested;
     internal event Action UninstallRequested;
     internal event Action ListingRequested;
@@ -195,7 +219,14 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || detailContent == null
             || emptyDetails == null
             || pageTitle == null
-            || pageSubtitle == null
+            || filterPanel == null
+            || filterButton == null
+            || detailOverlay == null
+            || detailPanel == null
+            || detailCloseButton == null
+            || detailStatus == null
+            || requirement == null
+            || installInset == null
             || category == null
             || installation == null
             || sorting == null
@@ -218,6 +249,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         refreshButton.onClick.AddListener(Refresh);
         importButton.onClick.AddListener(Import);
         closeButton.onClick.AddListener(Close);
+        detailCloseButton.onClick.AddListener(DismissDetails);
+        filterButton.onClick.AddListener(ToggleFilters);
         installButton.onClick.AddListener(Install);
         activateButton.onClick.AddListener(Activate);
         uninstallButton.onClick.AddListener(Uninstall);
@@ -244,6 +277,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
         requestedIcons = null;
+        detailOverlay.SetActive(false);
+        filterPanel.SetActive(false);
         OnRectTransformDimensionsChange();
     }
 
@@ -252,15 +287,20 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// </summary>
     private void OnRectTransformDimensionsChange()
     {
-        if (panel == null || !gameObject.activeInHierarchy)
+        if (panel == null || !bound || !gameObject.activeInHierarchy)
             return;
         Rect available = ((RectTransform)transform).rect;
-        float scale = Mathf.Min(
-            1,
-            Mathf.Max(1, available.width - 40) / panel.rect.width,
-            Mathf.Max(1, available.height - 40) / panel.rect.height
-        );
-        panel.localScale = Vector3.one * scale;
+        panel.sizeDelta = new Vector2(1120, Mathf.Max(816, available.height - 64));
+        foreach (RectTransform target in new[] { panel, detailPanel })
+            if (target != null)
+                target.localScale =
+                    Vector3.one
+                    * Mathf.Min(
+                        1,
+                        Mathf.Max(1, available.width - 40) / target.rect.width,
+                        Mathf.Max(1, available.height - 40) / target.rect.height
+                    );
+        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
     }
 
     /// <summary>
@@ -269,47 +309,61 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal void Hide() => gameObject.SetActive(false);
 
     /// <summary>
+    /// Returns to the editor unless an installation must first finish or be canceled.
+    /// </summary>
+    /// <returns>Whether the host may continue navigation.</returns>
+    internal bool TryLeave()
+    {
+        if (browseLocked)
+        {
+            SetStatus("Finish or cancel the current operation before leaving Mods.");
+            return false;
+        }
+        CloseRequested?.Invoke();
+        return true;
+    }
+
+    /// <summary>
     /// Reuses package cards while retaining selection and scroll position across ordinary updates.
     /// </summary>
     /// <param name="items">The matching packages in display order.</param>
-    /// <param name="selected">The selected package identity.</param>
     /// <param name="installed">Whether the installed tab is selected.</param>
     /// <param name="total">The unfiltered package count.</param>
     /// <param name="resetScroll">Whether changed search criteria require returning to the top.</param>
     internal void RenderRows(
         IReadOnlyList<ContentEditorModEntry> items,
-        string selected,
         bool installed,
         int total,
         bool resetScroll
     )
     {
+        LayoutResults(items.Count, resetScroll);
         for (int i = 0; i < items.Count; i++)
         {
             if (i == rows.Count)
                 rows.Add(Instantiate(rowTemplate, packages.ScrollArea.ContentRoot));
             ContentEditorModCardView row = rows[i];
             RectTransform rect = (RectTransform)row.transform;
-            rect.anchorMin = new Vector2(0, 1);
-            rect.anchorMax = Vector2.one;
-            rect.pivot = new Vector2(0, 1);
-            rect.offsetMin = new Vector2(0, -i * _cardHeight - _cardHeight + 8);
-            rect.offsetMax = new Vector2(0, -i * _cardHeight);
+            float width = (packages.ScrollArea.ViewportWidth - 16 * (_columns - 1)) / _columns;
+            rect.anchorMin = rect.anchorMax = Vector2.up;
+            rect.pivot = Vector2.up;
+            rect.sizeDelta = new Vector2(width, _cardHeight - 16);
+            rect.anchoredPosition = new Vector2(
+                i % _columns * (width + 16),
+                -(i / _columns) * _cardHeight
+            );
             row.Render(
                 items[i],
-                items[i].ID == selected,
                 !browseLocked,
+                !busy,
                 SelectPackage,
+                InstallPackage,
                 FindIcon(items[i].IconUrl)
             );
         }
         for (int i = items.Count; i < rows.Count; i++)
             rows[i].gameObject.SetActive(false);
-        packages.SetContentHeight(items.Count * _cardHeight, resetScroll);
-        pageTitle.text = installed ? "Installed mods" : "Discover community mods";
-        pageSubtitle.text = installed
-            ? "Manage your content packs and add-ons."
-            : "Browse the Rebellion 2 community on Thunderstore.";
+        pageTitle.text = "Mods";
         browseMarker.gameObject.SetActive(!installed);
         installedMarker.gameObject.SetActive(installed);
         browseButton
@@ -320,15 +374,42 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             .GetComponentInChildren<TMP_Text>()
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(installed ? ContentEditorColorRole.Accent : ContentEditorColorRole.Text);
-        string noun = total == 1 ? " package" : " packages";
+        string noun = total == 1 ? " mod" : " mods";
         resultCount.text =
             items.Count == total ? total + noun : items.Count + " of " + total + noun;
         emptyResults.gameObject.SetActive(items.Count == 0);
         emptyResults.text =
             total == 0 && installed
-                ? "Your library is empty\n\nInstall a community package or import a ZIP to get started."
-                : "No matching packages\n\nTry fewer words or clear your filters.";
+                ? "No mods installed yet.\n\nBrowse community mods or install a mod ZIP from your computer."
+                : "No mods found.\n\nTry a shorter search or clear your filters.";
+        UpdateClearControls();
         RequestIcons();
+    }
+
+    /// <summary>
+    /// Keeps the workspace stable while filters change the available result area.
+    /// </summary>
+    /// <param name="count">The number of matching cards.</param>
+    /// <param name="resetScroll">Whether to return the results to the top.</param>
+    private void LayoutResults(int count, bool resetScroll = false)
+    {
+        int contentTop = filterPanel.activeSelf ? 432 : 320;
+        bool hasStatus = !string.IsNullOrEmpty(status.text);
+        status.gameObject.SetActive(hasStatus);
+        float statusHeight = hasStatus
+            ? Mathf.Clamp(
+                status.GetPreferredValues(status.text, panel.rect.width, float.PositiveInfinity).y,
+                24,
+                64
+            )
+            : 0;
+        status.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, statusHeight);
+        RectTransform viewport = (RectTransform)packages.transform;
+        viewport.offsetMin = new Vector2(viewport.offsetMin.x, hasStatus ? statusHeight + 16 : 0);
+        viewport.offsetMax = new Vector2(viewport.offsetMax.x, -contentTop);
+        resultCount.rectTransform.anchoredPosition = new Vector2(0, -(contentTop - 40));
+        emptyResults.rectTransform.anchoredPosition = new Vector2(0, -(contentTop + 48));
+        packages.SetContentHeight(Mathf.Max(0, count * _cardHeight - 16), resetScroll);
     }
 
     /// <summary>
@@ -355,7 +436,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// Renders one package with independently selected distribution versions.
     /// </summary>
     /// <param name="entry">The selected package and its public metadata, or null for an empty result.</param>
-    /// <param name="text">The description, native identities, dependencies, and compatibility.</param>
+    /// <param name="stateText">The current availability, activation, or compatibility state.</param>
+    /// <param name="compatibilityIssue">The installation requirement preventing use, or an empty string.</param>
+    /// <param name="text">The description, native identities, and dependencies.</param>
     /// <param name="releases">Available distribution versions.</param>
     /// <param name="selectedVersion">The selected release index.</param>
     /// <param name="installLabel">The install, update, or reinstall action label.</param>
@@ -366,6 +449,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <param name="hasListing">Whether a public listing exists.</param>
     internal void RenderDetails(
         ContentEditorModEntry entry,
+        string stateText,
+        string compatibilityIssue,
         string text,
         List<string> releases,
         int selectedVersion,
@@ -381,7 +466,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         emptyDetails.gameObject.SetActive(entry == null);
         heading.text = entry?.Name ?? "Select a package";
         creator.text = entry == null ? string.Empty : "by " + entry.Author;
-        popularity.text = entry?.Listing == null ? "—" : entry.Downloads.ToString("N0");
+        popularity.text = entry?.Popularity ?? string.Empty;
         updated.text =
             entry?.Listing == null
                 ? "Local content"
@@ -391,13 +476,15 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                         System.Globalization.CultureInfo.InvariantCulture
                     );
         categories.text = entry == null ? string.Empty : string.Join(" · ", entry.Categories);
-        packageState.text = entry?.State ?? string.Empty;
+        packageState.text = entry == null ? string.Empty : stateText;
+        requirement.text = compatibilityIssue;
+        requirement.gameObject.SetActive(!string.IsNullOrEmpty(compatibilityIssue));
         packageState
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(
-                entry?.HasUpdate == true
-                    ? ContentEditorColorRole.Accent
-                    : ContentEditorColorRole.Muted
+                !string.IsNullOrEmpty(compatibilityIssue) ? ContentEditorColorRole.Error
+                : entry?.Installation != null ? ContentEditorColorRole.Success
+                : ContentEditorColorRole.Muted
             );
         iconInitials.text =
             entry == null
@@ -408,8 +495,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         icon.enabled = icon.texture != null;
         iconInitials.gameObject.SetActive(!icon.enabled);
         detailText.text = text;
+        details.SetContentHeight(detailText.rectTransform.rect.height);
         float width = Mathf.Max(1, details.ScrollArea.ViewportWidth);
-        float height = detailText.GetPreferredValues(text, width, float.PositiveInfinity).y + 16;
+        float height = Mathf.Ceil(
+            detailText.GetPreferredValues(text, width, float.PositiveInfinity).y
+        );
         detailText.rectTransform.sizeDelta = new Vector2(width, height);
         details.SetContentHeight(height, true);
         versions.ClearOptions();
@@ -418,14 +508,16 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         );
         versions.SetValueWithoutNotify(Mathf.Max(0, selectedVersion));
         versions.RefreshShownValue();
+        versions.gameObject.SetActive(canInstall);
         versions.interactable = !browseLocked && releases.Count > 0;
         installButton.GetComponentInChildren<TMP_Text>(true).text = installLabel;
         installButton.gameObject.SetActive(canInstall);
         activateButton.GetComponentInChildren<TMP_Text>(true).text = activateLabel;
-        activateButton.gameObject.SetActive(canActivate);
+        activateButton.gameObject.SetActive(entry?.Installation != null);
         uninstallButton.gameObject.SetActive(canRemove);
         listingButton.gameObject.SetActive(hasListing);
         folderButton.gameObject.SetActive(canRemove);
+        LayoutDetails();
         foreach (
             Button button in new[]
             {
@@ -437,14 +529,125 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             }
         )
             button.interactable = !busy;
+        activateButton.interactable = !busy && canActivate;
         RequestIcons();
+    }
+
+    /// <summary>
+    /// Fits package actions and feedback without leaving empty rows for unavailable commands.
+    /// </summary>
+    private void LayoutDetails()
+    {
+        if (!detailContent.activeSelf)
+        {
+            detailPanel.sizeDelta = new Vector2(detailPanel.sizeDelta.x, 320);
+            OnRectTransformDimensionsChange();
+            return;
+        }
+        bool hasCategories = !string.IsNullOrEmpty(categories.text);
+        categories.gameObject.SetActive(hasCategories);
+        float descriptionTop = hasCategories ? 208 : 176;
+        ((RectTransform)details.transform).anchoredPosition = new Vector2(32, -descriptionTop);
+        float textWidth = Mathf.Max(1, details.ScrollArea.ViewportWidth);
+        float descriptionHeight = Mathf.Clamp(
+            Mathf.Ceil(
+                detailText.GetPreferredValues(detailText.text, textWidth, float.PositiveInfinity).y
+            ),
+            24,
+            200
+        );
+        ((RectTransform)details.transform).SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            descriptionHeight
+        );
+        float contentBottom = descriptionTop + descriptionHeight;
+        if (requirement.gameObject.activeSelf)
+        {
+            float requirementHeight = Mathf.Max(
+                24,
+                requirement
+                    .GetPreferredValues(
+                        requirement.text,
+                        requirement.rectTransform.rect.width,
+                        float.PositiveInfinity
+                    )
+                    .y
+            );
+            requirement.rectTransform.anchoredPosition = new Vector2(32, -(contentBottom + 16));
+            requirement.rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                requirementHeight
+            );
+            contentBottom += requirementHeight + 16;
+        }
+        bool installed = activateButton.gameObject.activeSelf;
+        bool canInstall = installButton.gameObject.activeSelf;
+        float primaryTop = contentBottom + (installed ? 24 : 40);
+        float releaseTop = installed ? primaryTop + 76 : primaryTop;
+        ((RectTransform)activateButton.transform).anchoredPosition = new Vector2(32, -primaryTop);
+        ((RectTransform)versions.transform).anchoredPosition = new Vector2(32, -releaseTop);
+        ((RectTransform)installButton.transform).anchoredPosition = new Vector2(232, -releaseTop);
+        installInset.gameObject.SetActive(installed);
+        installButton
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(installed ? ContentEditorColorRole.Divider : ContentEditorColorRole.Accent);
+        installButton
+            .GetComponentInChildren<TMP_Text>()
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(installed ? ContentEditorColorRole.Text : ContentEditorColorRole.Background);
+        float bottom =
+            canInstall ? releaseTop + 44
+            : installed ? primaryTop + 44
+            : contentBottom;
+        float linksTop = bottom + 16;
+        ((RectTransform)listingButton.transform).anchoredPosition = new Vector2(32, -linksTop);
+        ((RectTransform)folderButton.transform).anchoredPosition = new Vector2(
+            listingButton.gameObject.activeSelf ? 256 : 32,
+            -linksTop
+        );
+        ((RectTransform)uninstallButton.transform).anchoredPosition = new Vector2(628, -linksTop);
+        if (
+            listingButton.gameObject.activeSelf
+            || folderButton.gameObject.activeSelf
+            || uninstallButton.gameObject.activeSelf
+        )
+            bottom = linksTop + 44;
+        bool hasStatus = !string.IsNullOrEmpty(detailStatus.text);
+        detailStatus.gameObject.SetActive(hasStatus);
+        float statusHeight = hasStatus
+            ? Mathf.Max(
+                24,
+                detailStatus
+                    .GetPreferredValues(
+                        detailStatus.text,
+                        detailStatus.rectTransform.rect.width,
+                        float.PositiveInfinity
+                    )
+                    .y
+            )
+            : 0;
+        detailStatus.rectTransform.anchoredPosition = new Vector2(32, -(bottom + 16));
+        detailStatus.rectTransform.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            statusHeight
+        );
+        detailPanel.sizeDelta = new Vector2(
+            detailPanel.sizeDelta.x,
+            bottom + 32 + (hasStatus ? statusHeight + 16 : 0)
+        );
+        OnRectTransformDimensionsChange();
     }
 
     /// <summary>
     /// Displays operation feedback within the manager.
     /// </summary>
     /// <param name="text">The current operation or actionable failure.</param>
-    internal void SetStatus(string text) => status.text = text;
+    internal void SetStatus(string text)
+    {
+        status.text = text;
+        detailStatus.text = text;
+        LayoutDetails();
+    }
 
     /// <summary>
     /// Keeps cancellation available while preventing concurrent filesystem operations.
@@ -471,9 +674,16 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         )
             button.interactable = !value;
         foreach (ContentEditorModCardView row in rows)
-            row.SetInteractable(!browseLocked);
+            row.SetInteractable(!browseLocked, !value);
         foreach (
-            Button button in new[] { browseButton, installedButton, clearSearchButton, resetButton }
+            Button button in new[]
+            {
+                browseButton,
+                installedButton,
+                clearSearchButton,
+                resetButton,
+                filterButton,
+            }
         )
             button.interactable = !browseLocked;
         clearSearchButton.interactable = !browseLocked && search.text.Length > 0;
@@ -482,7 +692,14 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         installation.interactable = !browseLocked;
         sorting.interactable = !browseLocked;
         versions.interactable = !browseLocked;
-        closeButton.GetComponentInChildren<TMP_Text>(true).text = value ? "Cancel" : "Close";
+        closeButton.GetComponentInChildren<TMP_Text>(true).text = browseLocked
+            ? "Cancel operation"
+            : "‹ Back to editor";
+        refreshButton.GetComponentInChildren<TMP_Text>(true).text =
+            value && !browseLocked ? "Refreshing…" : "Refresh";
+        detailCloseButton.GetComponentInChildren<TMP_Text>(true).text = browseLocked
+            ? "Cancel"
+            : "Close";
     }
 
     /// <summary>
@@ -552,11 +769,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         return rows.Where(
                 (row, index) =>
                     row.gameObject.activeSelf
-                    && index * _cardHeight < bottom
-                    && (index + 1) * _cardHeight > top
+                    && index / _columns * _cardHeight < bottom
+                    && (index / _columns + 1) * _cardHeight > top
             )
             .Select(row => row.Entry?.IconUrl)
-            .Append(selectedIconUrl)
+            .Append(detailOverlay.activeSelf ? selectedIconUrl : null)
             .Where(url => !string.IsNullOrEmpty(url))
             .Distinct(StringComparer.Ordinal)
             .OrderBy(url => url, StringComparer.Ordinal);
@@ -587,13 +804,84 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// Forwards the current card's stable identity without recreating its button listener.
     /// </summary>
     /// <param name="id">The selected package identity.</param>
-    private void SelectPackage(string id) => SelectionChanged?.Invoke(id);
+    private void SelectPackage(string id)
+    {
+        HideFilters();
+        detailOverlay.SetActive(true);
+        detailOverlay.transform.SetAsLastSibling();
+        SelectionChanged?.Invoke(id);
+        RequestIcons();
+    }
+
+    /// <summary>
+    /// Opens installation feedback and requests the latest release for the chosen package.
+    /// </summary>
+    /// <param name="id">The package to install or update.</param>
+    private void InstallPackage(string id)
+    {
+        HideFilters();
+        detailOverlay.SetActive(true);
+        detailOverlay.transform.SetAsLastSibling();
+        QuickInstallRequested?.Invoke(id);
+        RequestIcons();
+    }
+
+    /// <summary>
+    /// Dismisses package details while routing an active operation through cancellation.
+    /// </summary>
+    private void DismissDetails()
+    {
+        if (browseLocked)
+            Close();
+        else
+        {
+            detailOverlay.SetActive(false);
+            RequestIcons();
+        }
+    }
+
+    /// <summary>
+    /// Opens filter choices only when the user asks to refine the catalog.
+    /// </summary>
+    private void ToggleFilters()
+    {
+        filterPanel.SetActive(!filterPanel.activeSelf);
+        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
+    }
+
+    /// <summary>
+    /// Collapses filter choices without changing their selected values.
+    /// </summary>
+    private void HideFilters()
+    {
+        filterPanel.SetActive(false);
+        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
+    }
+
+    /// <summary>
+    /// Shows clearing actions only while a query or filter is active.
+    /// </summary>
+    private void UpdateClearControls()
+    {
+        int activeFilters =
+            (Category != null ? 1 : 0) + (Filter != ContentEditorModFilter.All ? 1 : 0);
+        filterButton.GetComponentInChildren<TMP_Text>().text =
+            activeFilters == 0 ? "Filters" : "Filters (" + activeFilters + ")";
+        clearSearchButton.gameObject.SetActive(search.text.Length > 0);
+        resetButton.gameObject.SetActive(
+            search.text.Length > 0 || Category != null || Filter != ContentEditorModFilter.All
+        );
+    }
 
     /// <summary>
     /// Applies a filter or sort selection immediately.
     /// </summary>
     /// <param name="value">The changed selector index.</param>
-    private void ChangeCriteria(int value) => CriteriaChanged?.Invoke();
+    private void ChangeCriteria(int value)
+    {
+        UpdateClearControls();
+        CriteriaChanged?.Invoke();
+    }
 
     /// <summary>
     /// Clears the query while retaining the user's current filters and ordering.
@@ -613,6 +901,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         search.SetTextWithoutNotify(string.Empty);
         category.SetValueWithoutNotify(0);
         installation.SetValueWithoutNotify(0);
+        UpdateClearControls();
         CriteriaChanged?.Invoke();
     }
 
@@ -629,6 +918,14 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || (!key.control && !key.command)
         )
             return false;
+        if (browseLocked)
+        {
+            key.Use();
+            return true;
+        }
+        HideFilters();
+        if (detailOverlay.activeSelf)
+            DismissDetails();
         search.Select();
         search.ActivateInputField();
         key.Use();
@@ -649,6 +946,16 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                 dropdown.Hide();
                 return true;
             }
+        if (detailOverlay.activeSelf)
+        {
+            DismissDetails();
+            return true;
+        }
+        if (filterPanel.activeSelf)
+        {
+            HideFilters();
+            return true;
+        }
         if (search.isFocused && search.text.Length > 0)
         {
             ClearSearch();
@@ -682,6 +989,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             refreshButton.onClick.RemoveListener(Refresh);
             importButton.onClick.RemoveListener(Import);
             closeButton.onClick.RemoveListener(Close);
+            detailCloseButton.onClick.RemoveListener(DismissDetails);
+            filterButton.onClick.RemoveListener(ToggleFilters);
             installButton.onClick.RemoveListener(Install);
             activateButton.onClick.RemoveListener(Activate);
             uninstallButton.onClick.RemoveListener(Uninstall);
@@ -722,9 +1031,15 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void Import() => ImportRequested?.Invoke();
 
     /// <summary>
-    /// Requests cancellation or dismissal.
+    /// Dispatches the displayed cancel or return action without hiding an active installation.
     /// </summary>
-    private void Close() => CloseRequested?.Invoke();
+    private void Close()
+    {
+        if (browseLocked)
+            CancelRequested?.Invoke();
+        else
+            CloseRequested?.Invoke();
+    }
 
     /// <summary>
     /// Requests the selected release.
@@ -758,6 +1073,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void Find(string value)
     {
         clearSearchButton.interactable = !browseLocked && value.Length > 0;
+        UpdateClearControls();
         SearchChanged?.Invoke(value);
     }
 
