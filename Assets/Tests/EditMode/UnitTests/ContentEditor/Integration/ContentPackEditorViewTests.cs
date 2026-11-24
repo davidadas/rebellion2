@@ -20,6 +20,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
 {
     [TestFixture]
     [Category("Integration")]
+    [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
         [TestCase(false)]
@@ -1009,6 +1010,103 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void SelectPage_NeutralTheme_OpensTheEditableSectorPreview()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+
+            SelectPage(page);
+
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            Assert.IsNotNull(preview);
+            Assert.IsNotEmpty(preview.GetComponentsInChildren<ContentEditorArtworkEditTarget>());
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>().Any(button => button.name == "Tab0")
+            );
+        }
+
+        [Test]
+        public void SelectPage_NeutralThemeWithHud_HidesPlayerStrategyView()
+        {
+            ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(
+                project.GetCatalogs()
+            );
+            neutral.Element.Add(
+                new XElement(
+                    nameof(FactionTheme.TacticalHUDLayout),
+                    new XElement(
+                        nameof(TacticalHUDLayout.ImagePath),
+                        "Pack/Factions/Alliance/Strategy/UI/Hud/background"
+                    )
+                )
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+
+            SelectPage(page);
+
+            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
+            CollectionAssert.DoesNotContain(
+                surfaces.options.Select(option => option.text).ToArray(),
+                "Strategy view"
+            );
+        }
+
+        [Test]
+        public void SelectPage_NeutralGalaxyMapIcons_ShowsEditableStarMarkers()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.NeutralThemePageKey));
+            TMP_Dropdown surfaces = view.GetComponentsInChildren<TMP_Dropdown>()
+                .Single(dropdown => dropdown.name == "ArtworkViewSelector");
+
+            int index = surfaces.options.FindIndex(option => option.text == "Galaxy map icons");
+            Assert.GreaterOrEqual(index, 0);
+            surfaces.value = index;
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(PlanetIcons.Small),
+                    nameof(PlanetIcons.Medium),
+                    nameof(PlanetIcons.Large),
+                    nameof(PlanetIcons.XL),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Where(field => field.Field.MediaType == ContentPackEditorMediaType.Image)
+                    .Select(field => field.Field.MemberName)
+            );
+        }
+
+        [Test]
+        public void ShowField_NeutralThemeCoordinate_OpensAdvancedXml()
+        {
+            ContentPackEditorRecord neutral = ContentEditorPresentation.GetNeutralThemeRecord(
+                project.GetCatalogs()
+            );
+            ContentPackEditorField coordinate = neutral
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == "X" && field.Group == nameof(FactionTheme.GalaxyBackground)
+                );
+
+            view.ShowField(coordinate, "Check this coordinate.");
+
+            ContentEditorXmlView xml = view.GetComponentInChildren<ContentEditorXmlView>();
+            Assert.IsNotNull(xml);
+            StringAssert.Contains("<SourcePosition>", xml.Text);
+        }
+
+        [Test]
         public void RenderProject_FactionTabs_SeparateAuthoringTasks()
         {
             foreach (
@@ -1064,9 +1162,12 @@ namespace Rebellion.Tests.ContentEditor.Integration
                         .ToArray();
                 }
                 if (section == "Colors")
-                    Assert.AreEqual(
-                        fields.Length,
-                        view.GetComponentsInChildren<ContentEditorColorPickerView>().Length
+                    CollectionAssert.AreEquivalent(
+                        fields.Select(field => field.MemberName),
+                        view.GetComponentsInChildren<ContentEditorColorPickerView>()
+                            .SelectMany(picker => new[] { picker.Field, picker.LinkField })
+                            .Where(field => field != null)
+                            .Select(field => field.MemberName)
                     );
                 else
                     Assert.AreEqual(

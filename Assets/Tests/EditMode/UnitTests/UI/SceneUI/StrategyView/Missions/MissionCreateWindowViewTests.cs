@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MissionCreateWindowViewTests
     {
         private const string _prefabPath =

@@ -20,7 +20,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_DepartureStartsBlockade_RefreshesManufacturingBudget()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet resourcePlanet = AITestSceneBuilder.AddPlanet(
                 game,
@@ -78,7 +82,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithReadyDefenseFleet_MovesFleetToHeadquarters()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 100;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
@@ -114,7 +122,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithInsufficientDefenseFleet_MovesFleetToHeadquarters()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
@@ -157,7 +169,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_WithThreatenedOwnedPlanet_MovesFleetToPlanet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction rebels);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction rebels,
+                TestConfig.Create()
+            );
             game.Config.AI.FleetDeployment.AttackStrengthPercentOfStrongestHostileFleet = 125;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
@@ -201,7 +217,11 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void Execute_AfterPlanetThreatEnds_ClearsDefenseOrder()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction empire,
+                out Faction _,
+                TestConfig.Create()
+            );
             PlanetSector system = AITestSceneBuilder.AddSector(game, "sys1");
             Planet fleetPlanet = AITestSceneBuilder.AddPlanet(
                 game,

@@ -15,6 +15,7 @@ namespace Rebellion.Tests.Gameplay
     {
         [TestCase(79, 9)]
         [TestCase(80, 8)]
+        [Category("RequiresMedia")]
         public void ProcessTick_AuthoredHealingThreshold_UsesConfiguredForceBoundary(
             int rank,
             int expectedInjury

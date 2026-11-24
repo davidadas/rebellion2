@@ -141,6 +141,34 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(themes.Document.IsDirty);
         }
 
+        [TestCase("facility-research", true)]
+        [TestCase("diplomacy", false)]
+        public void IsFactionInterfaceField_NeutralMissionArtwork_FollowsTheSharedKeys(
+            string asset,
+            bool shared
+        )
+        {
+            ContentPackEditorCatalog themes = Catalog(
+                "neutral",
+                "<FactionThemes><FactionTheme><FactionInstanceID>DEFAULT</FactionInstanceID>"
+                    + "<MissionIcons><Icons>"
+                    + "<MissionIconTheme><Key>ResearchFacilityDesign</Key>"
+                    + "<LargeImagePath>Pack/Shared/facility-research</LargeImagePath></MissionIconTheme>"
+                    + "<MissionIconTheme><Key>Diplomacy</Key>"
+                    + "<LargeImagePath>Pack/Shared/diplomacy</LargeImagePath></MissionIconTheme>"
+                    + "</Icons></MissionIcons></FactionTheme></FactionThemes>"
+            );
+            ContentPackEditorField field = themes
+                .Records.Single()
+                .GetFields()
+                .Single(item => item.Value == "Pack/Shared/" + asset);
+
+            Assert.AreEqual(
+                shared,
+                ContentEditorContentSections.IsFactionInterfaceField(field, neutral: true)
+            );
+        }
+
         [Test]
         public void FactionArtworkFields_InterfaceStateImages_IncludesAndCategorizesEveryState()
         {

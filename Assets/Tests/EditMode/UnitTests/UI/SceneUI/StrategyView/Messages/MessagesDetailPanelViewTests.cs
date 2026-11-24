@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Messages
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class MessagesDetailPanelViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/MessagesWindow.prefab";

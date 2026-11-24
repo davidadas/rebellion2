@@ -11,6 +11,7 @@ using Rebellion.Game.UIState;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class BookmarkControllerTests
     {
         private const string _playerFactionId = "FNALL1";
@@ -102,7 +103,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Bookmarks
             Assert.IsTrue(data[0].Active);
             Assert.AreEqual("Coruscant", data[0].Label);
             Assert.AreSame(
-                _uiContext.GetTexture(
+                _uiContext.GetSmoothTexture(
                     _uiContext.GetTheme(null).StrategyBookmarkIcons.FleetImagePath
                 ),
                 data[0].IconTexture

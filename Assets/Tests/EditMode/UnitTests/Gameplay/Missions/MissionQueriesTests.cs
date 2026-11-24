@@ -1854,7 +1854,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void GetMissionOdds_InciteStrongGarrison_ReturnsZeroForBothRiskDetailLevels()
+        public void GetMissionOdds_InciteStrongGarrison_ReturnsAttemptChanceWhileOperationalOddsRemainZero()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
                 BuildMissionOddsScene("rebels");
@@ -1871,17 +1871,50 @@ namespace Rebellion.Tests.Gameplay
             );
 
             MissionOdds displayed = queries.GetMissionOdds(context);
-            MissionOdds operational = queries.GetMissionOdds(context, includePersonnelLoss: false);
+            MissionOdds concise = queries.GetMissionOdds(context, includePersonnelLoss: false);
+            MissionOdds operational = queries.GetOperationalMissionOdds(context);
 
-            Assert.AreEqual(0, displayed.ObjectiveSuccessProbability);
+            Assert.AreEqual(100, displayed.ObjectiveSuccessProbability);
             Assert.AreEqual(
                 displayed.ObjectiveSuccessProbability,
-                operational.ObjectiveSuccessProbability
+                concise.ObjectiveSuccessProbability
             );
+            Assert.Zero(operational.ObjectiveSuccessProbability);
         }
 
         [Test]
-        public void GetMissionOdds_IncitePartialControlChance_CombinesSkillAndIncidentProbabilities()
+        public void GetMissionOdds_SubdueInsufficientGarrison_ReturnsAttemptChanceWhileOperationalOddsRemainZero()
+        {
+            (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
+                BuildMissionOddsScene("empire");
+            game.Config.ProbabilityTables.Mission.SubdueUprising = new Dictionary<int, int>
+            {
+                { -1000, 65 },
+            };
+            game.Config.Uprising.SubdueOwnedSupportBase = 1;
+            game.Config.Uprising.SubdueOwnedSupportRange = 0;
+            target.PopularSupport = new Dictionary<string, int>
+            {
+                { "empire", 10 },
+                { "rebels", 90 },
+            };
+            game.AttachNode(CreateCompletedRegiment("garrison", "empire"), target);
+            target.BeginUprising();
+            MissionContext context = CreateContext(
+                SubdueUprisingMission.MissionTypeID,
+                officer,
+                target
+            );
+
+            MissionOdds displayed = queries.GetMissionOdds(context);
+            MissionOdds operational = queries.GetOperationalMissionOdds(context);
+
+            Assert.AreEqual(65, displayed.ObjectiveSuccessProbability);
+            Assert.Zero(operational.ObjectiveSuccessProbability);
+        }
+
+        [Test]
+        public void GetMissionOdds_IncitePartialControlChance_ReturnsAttemptProbability()
         {
             (GameRoot game, Planet _, Planet target, Officer officer, MissionQueries queries) =
                 BuildMissionOddsScene("rebels");
@@ -1890,17 +1923,6 @@ namespace Rebellion.Tests.Gameplay
                 { -1000, 50 },
             };
             game.Config.ProbabilityTables.Mission.Foil = new Dictionary<int, int> { { -1000, 0 } };
-            game.Config.AI.Garrison.SupportThreshold = 60;
-            game.Config.Uprising.DiceRange = 1;
-            game.Config.Uprising.DiceAddend = 0;
-            game.Config.Uprising.MissionLeadershipDivisor = 10;
-            game.Config.Uprising.InciteMissionSupportShift = -10;
-            game.Config.Uprising.PrimaryConsequenceTable = new Dictionary<int, int>
-            {
-                { int.MinValue, 0 },
-                { 10, 2 },
-            };
-            game.Config.Uprising.SecondaryConsequenceTable.Clear();
             officer.SetBaseRating(SkillRating.Leadership, 100);
             target.PopularSupport = new Dictionary<string, int>
             {
@@ -1913,8 +1935,8 @@ namespace Rebellion.Tests.Gameplay
                 CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
             );
 
-            Assert.AreEqual(37.5, odds.ObjectiveSuccessProbability, 0.000001);
-            Assert.AreEqual(37.5, odds.OverallSuccessProbability, 0.000001);
+            Assert.AreEqual(50, odds.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(50, odds.OverallSuccessProbability, 0.000001);
         }
 
         [Test]
@@ -1924,8 +1946,11 @@ namespace Rebellion.Tests.Gameplay
                 BuildMissionOddsScene("rebels");
             game.Config.ProbabilityTables.Mission.InciteUprising = new Dictionary<int, int>
             {
-                { -1000, 100 },
+                { -1000, 20 },
+                { 40, 40 },
             };
+            officer.SetBaseRating(SkillRating.Leadership, 100);
+            game.Config.Uprising.SuppressionRegiments.Add("guard", "rebels");
             target.PopularSupport = new Dictionary<string, int>
             {
                 { "rebels", 60 },
@@ -1934,7 +1959,11 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Uprising.InciteMissionSupportShift = -10;
             game.Config.SupportShift.OwnershipTransferThreshold = 60;
             for (int index = 0; index < 20; index++)
-                game.AttachNode(CreateCompletedRegiment($"guard-{index}", "rebels"), target);
+            {
+                Regiment regiment = CreateCompletedRegiment($"guard-{index}", "rebels");
+                regiment.TypeID = "guard";
+                game.AttachNode(regiment, target);
+            }
             Planet observed = (Planet)target.CreateCopy();
             observed.SetParent(target.GetParent());
 
@@ -1945,8 +1974,8 @@ namespace Rebellion.Tests.Gameplay
                 CreateContext(InciteUprisingMission.MissionTypeID, officer, target)
             );
 
-            Assert.AreEqual(100, visible.ObjectiveSuccessProbability);
-            Assert.AreEqual(0, live.ObjectiveSuccessProbability);
+            Assert.AreEqual(40, visible.ObjectiveSuccessProbability, 0.000001);
+            Assert.AreEqual(20, live.ObjectiveSuccessProbability, 0.000001);
             Assert.AreEqual(20, target.GetRegimentCount());
             Assert.AreEqual(60, target.GetPopularSupport("rebels"));
         }

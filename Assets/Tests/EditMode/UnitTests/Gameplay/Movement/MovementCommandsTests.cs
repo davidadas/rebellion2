@@ -1341,7 +1341,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void RequestMove_SameSectorDestination_CanUseLocalTransitMinimum()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -1391,7 +1391,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void RequestMove_DifferentSystemDestination_UsesGlobalTransitMinimum()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -2563,7 +2563,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void RequestMove_OfficerOnCapitalShipInFleet_CanMoveToMission()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
 
@@ -5170,7 +5170,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void ProcessTick_FleetMovesBeforeUnitArrives_UnitStillEnRoute()
         {
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -6814,7 +6814,7 @@ namespace Rebellion.Tests.Gameplay
             MovementCommands movement
         ) BuildScene(GameConfig config = null)
         {
-            GameRoot game = TestGame.Create(config ?? TestContent.Data.GameConfig);
+            GameRoot game = TestGame.Create(config ?? TestConfig.Create());
 
             Faction empire = new Faction { InstanceID = "empire" };
             game.GetFactions().Add(empire);

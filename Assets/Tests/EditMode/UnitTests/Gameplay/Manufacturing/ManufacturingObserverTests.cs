@@ -31,7 +31,7 @@ namespace Rebellion.Tests.Gameplay
         public void SetUp()
         {
             // Create game with galaxy
-            GameConfig config = TestContent.Data.GameConfig;
+            GameConfig config = TestConfig.Create();
             _game = TestGame.Create(config);
             GalaxyMap galaxy = _game.Galaxy;
 

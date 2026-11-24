@@ -11,6 +11,7 @@ using UnityEngine.EventSystems;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.GalaxyMap
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class GalacticInformationDisplayControllerTests
     {
         private const string _playerFactionId = "FNALL1";

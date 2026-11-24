@@ -9,6 +9,7 @@ using Object = UnityEngine.Object;
 namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class LoadingScreenControllerTests
     {
         /// <summary>

@@ -148,7 +148,7 @@ internal sealed class DefenseWindowProjector
             throw new ArgumentNullException(nameof(session));
 
         return selected
-            ? GetFactionColor(GetRequiredUIContext(), session.Planet?.OwnerFactionId)
+            ? GetHighlightTextColor(GetRequiredUIContext(), session.Planet?.OwnerFactionId)
             : _white;
     }
 
@@ -303,7 +303,7 @@ internal sealed class DefenseWindowProjector
         bool selected = selectedItems?.Contains(index) == true;
         return new StrategyUnitCardRenderData(
             name: item?.GetDisplayName(),
-            nameColor: selected ? GetFactionColor(uiContext, ownerFactionId) : _white,
+            nameColor: selected ? GetHighlightTextColor(uiContext, ownerFactionId) : _white,
             showName: true,
             useAlternateNameLayout: false,
             backgroundTexture: GetItemBackgroundTexture(uiContext, theme, item),
@@ -412,10 +412,10 @@ internal sealed class DefenseWindowProjector
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="ownerFactionId">The represented planet owner.</param>
-    /// <returns>The configured faction color.</returns>
-    private static Color32 GetFactionColor(UIContext uiContext, string ownerFactionId)
+    /// <returns>The configured highlight text color.</returns>
+    private static Color32 GetHighlightTextColor(UIContext uiContext, string ownerFactionId)
     {
-        return uiContext.GetTheme(ownerFactionId)?.GetPrimaryColor() ?? Color.white;
+        return uiContext.GetTheme(ownerFactionId)?.GetHighlightTextColor() ?? Color.white;
     }
 
     /// <summary>

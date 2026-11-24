@@ -32,11 +32,9 @@ internal static class ContentEditorArtworkWorkspaceBuilder
             panel,
             ContentEditorColorRole.Panel
         ).rectTransform;
-        RectTransform sidebar = Surface(
-            "LayerInspector",
-            panel,
-            ContentEditorColorRole.Panel
-        ).rectTransform;
+        Image inspector = Surface("LayerInspector", panel, ContentEditorColorRole.Panel);
+        inspector.raycastTarget = true;
+        RectTransform sidebar = inspector.rectTransform;
         RectTransform canvasBar = Surface(
             "CanvasBar",
             panel,
@@ -75,6 +73,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
 
         Assign(view, "layerCaption", Label("LayersHeading", sidebar, "Layers", 18));
         Assign(view, "add", Secondary("AddArtworkLayer", sidebar, "Add layer"));
+        Assign(view, "importLayer", Secondary("ImportArtworkLayer", sidebar, "Add image…"));
         ScrollAreaLayout scroll = Scroll("ArtworkLayers", sidebar);
         Assign(view, "layerScroll", scroll);
         Assign(view, "rowTemplate", BuildLayerRow(sidebar));

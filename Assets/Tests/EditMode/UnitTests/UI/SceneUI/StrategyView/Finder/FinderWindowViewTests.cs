@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class FinderWindowViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/FinderWindow.prefab";

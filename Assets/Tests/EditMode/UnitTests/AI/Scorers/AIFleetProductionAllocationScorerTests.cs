@@ -19,12 +19,16 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void ScoreAssembly_WithDifferentCombatStrength_PrioritizesWeakerFleet()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.FleetDeployment.MinimumBattleFleetCount = 1;
             game.Config.AI.FleetDeployment.PlanetsPerBattleFleet = 100;
             game.Config.AI.FleetDeployment.MinimumAttackStrength = 1000;
             game.Config.AI.FleetDeployment.MinimumMobileCombatStrength = 1000;
             game.Config.AI.FleetDeployment.MobileCombatStrengthPerPlanet = 1;
+            game.Config.AI.Infrastructure.FleetAllocationUtility.AssemblyWeakness.Weight = 1;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet planet = AITestSceneBuilder.AddPlanet(game, system, "planet", empire.InstanceID);
             Fleet weaker = AddFleet(game, planet, empire.InstanceID, "weaker", 100);
@@ -43,9 +47,18 @@ namespace Rebellion.Tests.AI.Fleets
         [Test]
         public void ScoreDefenseNeed_WithStrengthGap_EvaluatesConfiguredCurve()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction empire, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateFleetPlanningGame(
+                out Faction empire,
+                out Faction _
+            );
             game.Config.AI.FleetDeployment.MinimumDefenseStrength = 1000;
             game.Config.AI.FleetDeployment.DefenseAllocationUtility.ReinforcementNeed.Weight = 1;
+            game.Config
+                .AI
+                .FleetDeployment
+                .DefenseAllocationUtility
+                .ReinforcementNeed
+                .SaturationValue = 10000;
             PlanetSector system = AITestSceneBuilder.AddSector(game, "system");
             Planet headquarters = AITestSceneBuilder.AddPlanet(
                 game,

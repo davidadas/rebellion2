@@ -200,15 +200,13 @@ public static class ContentPackEditorPrefabBuilder
             (RectTransform)duplicate.transform
         ).anchorMax = Vector2.one;
         ((RectTransform)duplicate.transform).anchoredPosition = new Vector2(-208, -36);
-        Button resetSection = PlainButton("ResetSection", editor, "Reset section");
-        Rect((RectTransform)resetSection.transform, 0, 36, 124, 32);
-        ((RectTransform)resetSection.transform).anchorMin = (
-            (RectTransform)resetSection.transform
-        ).anchorMax = Vector2.one;
-        ((RectTransform)resetSection.transform).anchoredPosition = new Vector2(-344, -36);
+        Button resetSection = PlainButton("ResetSection", editor, "Reset to defaults");
+        UILayout.SetTopRightRect((RectTransform)resetSection.transform, 220, 36, 124, 32);
         resetSection
             .gameObject.AddComponent<HelpTooltipView>()
-            .Configure("Remove every override in this section and use the inherited defaults.");
+            .Configure(
+                "Clear the overrides shown here and use the inherited or built-in defaults."
+            );
         resetSection.gameObject.SetActive(false);
         Button delete = PlainButton("Delete", editor, "Delete");
         Rect((RectTransform)delete.transform, 0, 36, 84, 32);
@@ -407,6 +405,7 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorArtworkWindowPreview artworkWindowPreview =
             artworkWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
         StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(artworkWindowSurface.transform);
+        BuildStrategyPreviewZoom(fields.ScrollArea.ContentRoot, artworkWindowPreview);
         artworkWindowSurface.gameObject.SetActive(false);
         Assign(form, "artworkWindowPreview", artworkWindowPreview);
         RawImage artworkDisabledWindowSurface = Layer(
@@ -702,7 +701,7 @@ public static class ContentPackEditorPrefabBuilder
     private static ContentEditorColorPickerView BuildColorPicker(Transform parent)
     {
         RectTransform root = Layer("ColorPickerTemplate", parent);
-        Rect(root, 0, 0, 560, 264);
+        Rect(root, 0, 0, 560, 296);
         Image background = root.gameObject.AddComponent<Image>();
         background.raycastTarget = false;
         BindColor(background, ContentEditorColorRole.Panel);
@@ -770,6 +769,12 @@ public static class ContentPackEditorPrefabBuilder
         error.color = new Color32(255, 127, 127, 255);
         BindColor(error, ContentEditorColorRole.Error);
         SetTopStretch(error.rectTransform, 350, 232, 16, 24);
+        UICheckboxView primaryColorLink = Checkbox(root);
+        primaryColorLink.name = "UsePrimaryColor";
+        Rect((RectTransform)primaryColorLink.transform, 16, 256, 180, 26);
+        TextMeshProUGUI linkLabel = primaryColorLink.GetComponentInChildren<TextMeshProUGUI>();
+        linkLabel.text = "Use primary color";
+        Rect(linkLabel.rectTransform, 34, 0, 146, 26);
 
         Assign(picker, "title", title);
         Assign(picker, "description", description);
@@ -782,7 +787,36 @@ public static class ContentPackEditorPrefabBuilder
         Assign(picker, "saturationValue", saturationValue);
         Assign(picker, "brightnessValue", brightnessValue);
         Assign(picker, "error", error);
+        Assign(picker, "primaryColorLink", primaryColorLink);
         return picker;
+    }
+
+    /// <summary>
+    /// Authors the Strategy preview's viewport controls beside the composed artwork.
+    /// </summary>
+    /// <param name="parent">The scrolling form root.</param>
+    /// <param name="preview">The preview controlled by this toolbar.</param>
+    private static void BuildStrategyPreviewZoom(
+        Transform parent,
+        ContentEditorArtworkWindowPreview preview
+    )
+    {
+        RectTransform toolbar = Layer("StrategyPreviewZoom", parent);
+        Button zoomOut = Button("ZoomOut", toolbar, "\u2212");
+        Rect((RectTransform)zoomOut.transform, 0, 0, 38, 34);
+        TextMeshProUGUI percentage = Label("ZoomPercentage", toolbar, "100%", 16);
+        percentage.alignment = TextAlignmentOptions.Center;
+        Rect(percentage.rectTransform, 46, 0, 58, 34);
+        Button zoomIn = Button("ZoomIn", toolbar, "+");
+        Rect((RectTransform)zoomIn.transform, 112, 0, 38, 34);
+        Button fit = Button("FitPreview", toolbar, "Fit to view");
+        Rect((RectTransform)fit.transform, 160, 0, 94, 34);
+        Assign(preview, "zoomToolbar", toolbar);
+        Assign(preview, "zoomOut", zoomOut);
+        Assign(preview, "zoomIn", zoomIn);
+        Assign(preview, "zoomLabel", percentage);
+        Assign(preview, "fitZoom", fit);
+        toolbar.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -1430,11 +1464,17 @@ public static class ContentPackEditorPrefabBuilder
             -134,
             110
         );
+        UICheckboxView cutSelection = Checkbox(panel.transform);
+        cutSelection.name = "IncludeCut";
+        TextMeshProUGUI cutCaption = cutSelection.GetComponentInChildren<TextMeshProUGUI>();
+        cutCaption.fontSize = 15;
+        Stretch(cutCaption.rectTransform, 32, 0, 0, 0);
+        cutSelection.gameObject.SetActive(false);
         TextMeshProUGUI layerInstructions = Label("LayerInstructions", panel.transform, "", 15);
-        Stretch(layerInstructions.rectTransform, 24, 67, 500, 0);
+        layerInstructions.rectTransform.anchorMin = Vector2.zero;
         layerInstructions.rectTransform.anchorMax = Vector2.right;
         layerInstructions.rectTransform.offsetMin = new Vector2(24, 67);
-        layerInstructions.rectTransform.offsetMax = new Vector2(-500, 102);
+        layerInstructions.rectTransform.offsetMax = new Vector2(-24, 102);
         layerInstructions.gameObject.SetActive(false);
         Assign(preview, "layerInstructions", layerInstructions);
         Assign(preview, "image", image);
@@ -1443,6 +1483,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(preview, "artworkSlot", slot);
         Assign(preview, "previewPanel", panel.rectTransform);
         Assign(preview, "applyButton", apply);
+        Assign(preview, "cutSelectionTemplate", cutSelection);
         Assign(view, "imagePreview", preview);
         overlay.gameObject.SetActive(false);
     }

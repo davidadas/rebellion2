@@ -19,6 +19,7 @@ using Rebellion.Util.Mathematics;
 
 namespace Rebellion.Tests.AI.Demands
 {
+    [Category("RequiresMedia")]
     public sealed class AIProductionDemandGeneratorTests
     {
         [TestCase(ManufacturingStatus.Building)]

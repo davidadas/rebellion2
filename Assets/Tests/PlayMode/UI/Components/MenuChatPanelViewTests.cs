@@ -9,6 +9,7 @@ using UnityEngine.TestTools;
 namespace Rebellion.Tests.UI.Components
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class MenuChatPanelViewTests
     {
         private GameObject _canvas;

@@ -41,6 +41,12 @@ public sealed class ContentPackEditorField
         !IsIdentity && Document.CanInherit(element, Container, attribute?.Name);
     public bool IsInherited =>
         CanInherit && Document.IsSettingInherited(element, attribute?.Name, Container);
+    internal bool IsFactionColor =>
+        record.Kind == nameof(FactionTheme) && Group == nameof(FactionTheme.ColorScheme);
+    internal bool CanResetToDefault =>
+        CanInherit
+            ? !IsInherited && (!IsFactionColor || element.Parent != null)
+            : IsFactionColor && !string.IsNullOrWhiteSpace(Value);
     public ContentPackEditorDocument Document => record.Catalog.Document;
     public string MemberName => attribute?.Name.LocalName ?? element.Name.LocalName;
     public bool IsFactionReference =>

@@ -7,6 +7,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Windows
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class StrategyWindowLayerViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/StrategyViewRoot.prefab";

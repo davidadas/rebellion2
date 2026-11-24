@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public class DefenseWindowViewTests
     {
         private const string _prefabPath = "Assets/Prefabs/UI/StrategyView/DefenseWindow.prefab";

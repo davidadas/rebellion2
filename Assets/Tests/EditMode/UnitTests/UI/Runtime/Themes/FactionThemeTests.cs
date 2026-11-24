@@ -198,5 +198,62 @@ namespace Rebellion.Tests.UI.Runtime.Themes
 
             Assert.AreEqual(first, second);
         }
+
+        [Test]
+        public void GetHighlightTextColor_ExplicitHighlight_UsesItIndependentlyOfPrimary()
+        {
+            FactionTheme theme = new()
+            {
+                FactionPrimaryColorHex = "FF0000",
+                ColorScheme = new FactionColorScheme
+                {
+                    PrimaryColorHex = "00FF00",
+                    HighlightTextColorHex = "0000FF",
+                },
+            };
+
+            Assert.AreEqual(Color.blue, theme.GetHighlightTextColor());
+        }
+
+        [Test]
+        public void GetHighlightTextColor_OnlyPrimaryOverridden_KeepsTheBaseHighlight()
+        {
+            FactionTheme theme = new()
+            {
+                FactionPrimaryColorHex = "FF0000",
+                ColorScheme = new FactionColorScheme { PrimaryColorHex = "00FF00" },
+            };
+
+            Assert.AreEqual(Color.red, theme.GetHighlightTextColor());
+        }
+
+        [Test]
+        public void GetHighlightTextColor_StandaloneThemeWithOnlyPrimary_UsesDefaultText()
+        {
+            FactionTheme theme = new()
+            {
+                ColorScheme = new FactionColorScheme { PrimaryColorHex = "00FF00" },
+            };
+
+            Assert.AreEqual(Color.white, theme.GetHighlightTextColor());
+        }
+
+        [TestCase(FactionMaskColor.SelectionColorHex)]
+        [TestCase(FactionMaskColor.InactiveWindowTitleColorHex)]
+        [TestCase(FactionMaskColor.ActiveBuildingPaneColorHex)]
+        public void GetMaskTint_UnconfiguredMask_KeepsTheArtworkUntinted(FactionMaskColor mask)
+        {
+            FactionTheme theme = new()
+            {
+                ColorScheme = new FactionColorScheme
+                {
+                    PrimaryColorHex = "FF0000",
+                    HighlightTextColorHex = "00FF00",
+                    ActiveWindowTitleColorHex = "0000FF",
+                },
+            };
+
+            Assert.IsNull(theme.GetMaskTint(mask));
+        }
     }
 }

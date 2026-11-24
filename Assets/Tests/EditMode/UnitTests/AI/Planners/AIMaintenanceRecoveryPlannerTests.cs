@@ -18,7 +18,11 @@ namespace Rebellion.Tests.AI.Planners
         [Test]
         public void Plan_HardBonusCoversCommittedCosts_ReturnsNoProposals()
         {
-            GameRoot game = AITestSceneBuilder.CreateGame(out Faction faction, out Faction _);
+            GameRoot game = AITestSceneBuilder.CreateGame(
+                out Faction faction,
+                out Faction _,
+                TestConfig.Create()
+            );
             game.Summary = new GameSummary { Difficulty = GameDifficulty.Hard };
             game.SetFactionController(faction.InstanceID, "ai", PlayerControllerType.AI);
             game.Config.DifficultyModifiers[GameDifficulty.Hard] = new DifficultyModifiers

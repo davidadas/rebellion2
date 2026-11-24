@@ -11,6 +11,7 @@ using UnityEngine;
 namespace Rebellion.Tests.Content
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class GenerationConfigSchemaTests
     {
         [TestCase("string")]

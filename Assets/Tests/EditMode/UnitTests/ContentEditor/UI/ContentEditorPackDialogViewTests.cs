@@ -9,6 +9,7 @@ using UnityEngine.UI;
 namespace Rebellion.Tests.ContentEditor.UI
 {
     [TestFixture]
+    [Category("RequiresMedia")]
     public sealed class ContentEditorPackDialogViewTests
     {
         private string folder;
@@ -26,7 +27,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Path.GetTempPath(),
                 "editor-dialog-" + Guid.NewGuid().ToString("N")
             );
-            project = ContentEditorTestData.CreateProject(folder);
+            project = ContentEditorTestData.CreateProject(folder, TestContent.Pack);
             canvas = new GameObject("Dialog test", typeof(RectTransform), typeof(Canvas));
             canvas.GetComponent<Canvas>().renderMode = RenderMode.WorldSpace;
             ((RectTransform)canvas.transform).sizeDelta = new Vector2(1600, 900);
