@@ -129,6 +129,17 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
         }
 
         [Test]
+        public void Build_PlanetWithReservedEnergy_ReturnsUnreservedEnergy()
+        {
+            _planet.EnergyCapacity = 3;
+            _planet.AllocatedEnergy = 2;
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, _planet));
+
+            Assert.AreEqual("1", info.Rows.Single(row => row.Left == "Energy:").Right);
+        }
+
+        [Test]
         public void Build_DestroyedPlanet_HidesOperationalStatusRows()
         {
             _planet.IsDestroyed = true;

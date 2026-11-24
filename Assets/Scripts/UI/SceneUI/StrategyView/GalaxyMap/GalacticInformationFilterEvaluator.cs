@@ -126,7 +126,9 @@ public static class GalacticInformationFilterEvaluator
                 viewerFactionId
             ),
             GalacticInformationFilterMode.Uprisings => Convert.ToInt32(planet.IsInUprising),
-            GalacticInformationFilterMode.AvailableEnergy => planet.GetAvailableEnergy(),
+            GalacticInformationFilterMode.AvailableEnergy => StrategyPlanetEnergy.GetAvailable(
+                planet
+            ),
             GalacticInformationFilterMode.AvailableRawMaterial =>
                 planet.GetUnminedResourceNodeCount(),
             GalacticInformationFilterMode.Mines => planet.GetBuildingTypeCount(BuildingType.Mine),

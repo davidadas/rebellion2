@@ -405,6 +405,12 @@ namespace Rebellion.Gameplay
             viewPlanet.OwnerInstanceID = masterPlanet.OwnerInstanceID;
             viewPlanet.PopularSupport = new Dictionary<string, int>(masterPlanet.PopularSupport);
             viewPlanet.NumRawResourceNodes = masterPlanet.NumRawResourceNodes;
+            if (masterPlanet.OwnerInstanceID == faction.InstanceID)
+                viewPlanet.AllocatedEnergy = masterPlanet.GetEnergyUsed();
+            else if (planetSnapshot?.HasIntelligence(PlanetIntelligenceCategory.Planet) == true)
+                viewPlanet.AllocatedEnergy = planetSnapshot.AllocatedEnergy;
+            else
+                viewPlanet.AllocatedEnergy = 0;
 
             IEnumerable<Officer> officers = activeMasterChildren
                 .OfType<Officer>()
