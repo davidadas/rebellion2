@@ -32,8 +32,6 @@ public static class EosTacticalIntegrationPlayerBuild
     private const string _harnessDefine = "REBELLION_EOS_TACTICAL_TEST";
     private const string _harnessSourceRoot = "Assets/Tests/Runtime";
     private const string _builderSourceRoot = "Assets/Editor/Simulation/Multiplayer";
-    private const string _nativeLibraryPath =
-        "Assets/Plugins/TacticalMath/win-x64/RebellionTacticalMath.dll";
     private const string _playerName = "EosTacticalIntegration";
     private const string _identityKey = "SimulationBuild";
 
@@ -258,22 +256,14 @@ public static class EosTacticalIntegrationPlayerBuild
     }
 
     /// <summary>
-    /// Requires current external content, the Windows native math plug-in, and local EOS configuration.
+    /// Requires current external content and local EOS configuration.
     /// </summary>
-    /// <param name="manifest">Receives nonsecret content and native-library identities.</param>
+    /// <param name="manifest">Receives the nonsecret content identity.</param>
     private static void VerifyExternalInputs(BuildManifest manifest)
     {
         manifest.contentRoot = ContentPackLoader.OpenActive().ContentRootPath;
         if (!File.Exists(Path.Combine(manifest.contentRoot, "catalog.xml")))
             throw new FileNotFoundException("The active external content catalog is missing.");
-        if (
-            !File.Exists(_nativeLibraryPath)
-            || AssetImporter.GetAtPath(_nativeLibraryPath) is not PluginImporter native
-            || !native.GetCompatibleWithPlatform(BuildTarget.StandaloneWindows64)
-        )
-            throw new FileNotFoundException(
-                "The Windows tactical math plug-in is missing or disabled."
-            );
         string configurationDirectory = Path.Combine(Application.streamingAssetsPath, "EOS");
         if (
             !Directory.Exists(configurationDirectory)
@@ -283,7 +273,6 @@ public static class EosTacticalIntegrationPlayerBuild
                 "Install the local EOS configuration in the ignored StreamingAssets/EOS directory before building."
             );
         manifest.mediaRevision = File.ReadAllText(".github/media-revision").Trim();
-        manifest.nativeMathHash = HashFile(_nativeLibraryPath);
     }
 
     /// <summary>
@@ -334,7 +323,7 @@ public static class EosTacticalIntegrationPlayerBuild
     }
 
     /// <summary>
-    /// Confirms the opt-in harness and exact native library reached the completed player.
+    /// Confirms the opt-in harness, tactical assembly, and EOS SDK reached the completed player.
     /// </summary>
     /// <param name="manifest">Receives the built artifact hashes.</param>
     /// <param name="outputDirectory">The disposable player output directory.</param>
@@ -348,13 +337,9 @@ public static class EosTacticalIntegrationPlayerBuild
         manifest.builtHarnessAssemblyHash = HashFile(
             Path.Combine(data, "Managed", _harnessAssemblyName + ".dll")
         );
-        string library = Directory
-            .GetFiles(data, "RebellionTacticalMath.dll", SearchOption.AllDirectories)
-            .Single();
-        if (HashFile(library) != manifest.nativeMathHash)
-            throw new InvalidOperationException(
-                "The built tactical math library does not match the verified local plug-in."
-            );
+        manifest.builtTacticalAssemblyHash = HashFile(
+            Path.Combine(data, "Managed", "Rebellion.Tactical.Core.dll")
+        );
         manifest.eosSdkHash = HashFile(
             Directory
                 .GetFiles(data, "EOSSDK-Win64-Shipping.dll", SearchOption.AllDirectories)
@@ -433,7 +418,7 @@ public static class EosTacticalIntegrationPlayerBuild
         public string playerHash;
         public string builtGameModelAssemblyHash;
         public string builtHarnessAssemblyHash;
-        public string nativeMathHash;
+        public string builtTacticalAssemblyHash;
         public string eosSdkHash;
     }
 }
