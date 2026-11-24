@@ -141,6 +141,39 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(themes.Document.IsDirty);
         }
 
+        [Test]
+        public void FactionArtworkFields_ThemeWithoutMedallion_OffersModelUntilEdited()
+        {
+            ContentPackEditorCatalog themes = Catalog(
+                "themes",
+                "<FactionThemes><FactionTheme><FactionInstanceID>FNTEST</FactionInstanceID></FactionTheme></FactionThemes>"
+            );
+            ContentPackEditorRecord theme = themes.Records.Single();
+
+            ContentPackEditorField medallion = ContentEditorContentSections
+                .FactionArtworkFields(theme)
+                .Single(field =>
+                    field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
+                );
+
+            Assert.AreEqual(ContentPackEditorMediaType.Model, medallion.MediaType);
+            Assert.IsTrue(ContentEditorContentSections.IsFactionMainMenuField(medallion));
+            Assert.IsTrue(ContentEditorContentSections.IsFactionInterfaceField(medallion));
+            Assert.AreEqual(
+                "Main menu",
+                ContentEditorContentSections.FactionArtworkCategory(medallion)
+            );
+            Assert.IsFalse(themes.Document.IsDirty);
+
+            medallion.SetValue("Pack/Models/custom-medallion");
+
+            Assert.AreEqual(
+                "Pack/Models/custom-medallion",
+                theme.Element.Element(nameof(FactionTheme.MainMenuMedallionModelPath)).Value
+            );
+            Assert.IsTrue(themes.Document.IsDirty);
+        }
+
         [TestCase("facility-research", true)]
         [TestCase("diplomacy", false)]
         public void IsFactionInterfaceField_NeutralMissionArtwork_FollowsTheSharedKeys(

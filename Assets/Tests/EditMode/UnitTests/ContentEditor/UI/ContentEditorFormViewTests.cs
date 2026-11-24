@@ -3222,7 +3222,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_FactionArtwork_ListedFieldsHaveMatchingPreviewTargets()
+        public void Render_FactionArtwork_PreviewableFieldsHaveMatchingPreviewTargets()
         {
             ContentEditorNavigation navigation = new();
             navigation.Render(project.GetCatalogs());
@@ -3241,6 +3241,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 string[] missing = view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Select(field => field.Field)
                     .Where(field => ContentEditorContentSections.IsFactionInterfaceField(field))
+                    .Where(field => field.MediaType == ContentPackEditorMediaType.Image)
                     .Where(field =>
                         !represented.Any(candidate =>
                             candidate.XmlElement == field.XmlElement

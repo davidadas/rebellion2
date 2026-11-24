@@ -603,6 +603,40 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void RenderFactions_CustomMedallionModel_ReplacesOnlyConfiguredModel()
+        {
+            Array bindings = GetBindings("factionLaunchBindings");
+            ContentModelBinding firstModel = GetBindingValue<ContentModelBinding>(
+                bindings.GetValue(0),
+                "MedallionModel"
+            );
+            ContentModelBinding secondModel = GetBindingValue<ContentModelBinding>(
+                bindings.GetValue(1),
+                "MedallionModel"
+            );
+            string secondAuthoredAddress = secondModel.Address;
+            FactionThemeLibrary themes = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = "CUSTOM1",
+                        MainMenuMedallionModelPath = "Pack/Models/custom-medallion",
+                    },
+                    new FactionTheme { FactionInstanceID = "CUSTOM2" },
+                }
+            );
+
+            _view.RenderFactions(new[] { "CUSTOM1", "CUSTOM2" }, themes);
+
+            Assert.AreEqual("Pack/Models/custom-medallion", firstModel.Address);
+            Assert.AreEqual(secondAuthoredAddress, secondModel.Address);
+            Assert.AreEqual("CUSTOM1", GetBindingValue<string>(bindings.GetValue(0), "FactionId"));
+            Assert.AreEqual("CUSTOM2", GetBindingValue<string>(bindings.GetValue(1), "FactionId"));
+        }
+
+        [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
             object binding = GetBindings("audioCueBindings").GetValue(0);

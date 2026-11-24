@@ -49,6 +49,29 @@ public sealed class ContentModelBinding : MonoBehaviour
     public Task Ready => loadTask ??= LoadModelAsync(cancellation.Token);
 
     /// <summary>
+    /// Replaces the authored content address before the model begins loading.
+    /// </summary>
+    /// <param name="contentAddress">The application- or pack-relative model address.</param>
+    /// <param name="normalize">Whether to scale the replacement model to a unit diameter.</param>
+    public void SetAddress(string contentAddress, bool normalize = false)
+    {
+        if (string.IsNullOrWhiteSpace(contentAddress))
+            throw new ArgumentException(
+                "A content model address is required.",
+                nameof(contentAddress)
+            );
+        if (loadTask != null)
+        {
+            throw new InvalidOperationException(
+                "A content model address cannot change after loading has started."
+            );
+        }
+
+        address = contentAddress.Trim();
+        normalizeToUnitDiameter = normalize;
+    }
+
+    /// <summary>
     /// Assigns the model address and the posing applied to it after it loads.
     /// </summary>
     /// <param name="contentAddress">The application- or pack-relative model address.</param>

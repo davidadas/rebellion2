@@ -147,6 +147,11 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
         try
         {
             bootstrap = AppBootstrap.EnsureExists();
+            ContentPack contentPack = bootstrap.GetContentPack();
+            view.RenderFactions(
+                contentPack.Scenario.PlayableFactionIDs,
+                new FactionThemeLibrary(contentPack.GameData.FactionThemes)
+            );
             Task contentTask = bootstrap.InitializeMainMenuSceneAsync();
             Task modelTask = Task.WhenAll(
                 view.transform.root.GetComponentsInChildren<ContentModelBinding>(true)
@@ -157,10 +162,8 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
                 return;
 
             _iconPreviews.Initialize();
-            ContentPack contentPack = bootstrap.GetContentPack();
             view.InitializeContent(bootstrap.GetContentAssets());
             view.RenderVictoryCondition(currentVictoryCondition);
-            view.RenderFactions(contentPack.Scenario.PlayableFactionIDs);
             view.ResetNewGameSettingsPresentation();
             AudioManager audioManager = bootstrap.GetAudioManager();
             audioManager.PreloadSfx(view.GetAudioCuePaths());

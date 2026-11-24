@@ -82,22 +82,31 @@ public sealed class MainMenuView : MonoBehaviour
         [SerializeField]
         private string factionId;
 
+        [SerializeField]
+        private ContentModelBinding medallionModel;
+
         public Button Button => button;
 
         public string FactionId => factionId;
 
+        public ContentModelBinding MedallionModel => medallionModel;
+
         /// <summary>
         /// Gets whether the binding has a button and faction identifier.
         /// </summary>
-        public bool IsConfigured => button != null && !string.IsNullOrWhiteSpace(factionId);
+        public bool IsConfigured =>
+            button != null && medallionModel != null && !string.IsNullOrWhiteSpace(factionId);
 
         /// <summary>
         /// Applies a faction identifier to this binding.
         /// </summary>
         /// <param name="id">The configured faction identifier.</param>
-        public void Configure(string id)
+        /// <param name="medallionModelPath">The optional replacement medallion model.</param>
+        public void Configure(string id, string medallionModelPath)
         {
             factionId = id;
+            if (!string.IsNullOrWhiteSpace(medallionModelPath))
+                medallionModel.SetAddress(medallionModelPath, normalize: true);
         }
     }
 
@@ -435,10 +444,13 @@ public sealed class MainMenuView : MonoBehaviour
     /// Populates the authored launch positions from the active scenario's playable factions.
     /// </summary>
     /// <param name="factionIDs">The playable faction identifiers in display order.</param>
-    internal void RenderFactions(IReadOnlyList<string> factionIDs)
+    /// <param name="themes">The active faction presentation themes.</param>
+    internal void RenderFactions(IReadOnlyList<string> factionIDs, FactionThemeLibrary themes)
     {
         if (factionIDs == null)
             throw new ArgumentNullException(nameof(factionIDs));
+        if (themes == null)
+            throw new ArgumentNullException(nameof(themes));
         if (factionIDs.Count > factionLaunchBindings.Length)
         {
             throw new InvalidOperationException(
@@ -455,7 +467,9 @@ public sealed class MainMenuView : MonoBehaviour
             if (!active)
                 continue;
 
-            binding.Configure(factionIDs[index]);
+            string factionId = factionIDs[index];
+            FactionTheme theme = themes.GetTheme(factionId);
+            binding.Configure(factionId, theme.MainMenuMedallionModelPath);
         }
     }
 

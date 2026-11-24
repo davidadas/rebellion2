@@ -337,6 +337,8 @@ internal static class ContentPackEditorFieldMetadata
             return "Percentage of normal personnel travel time: 100 is unchanged; 50 halves the duration.";
         if (field.MemberName == "LeadershipBonusPercent")
             return "Percentage added to the officer's base leadership while the trait is active.";
+        if (field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath))
+            return "A GLB model displayed as this faction's rotating main-menu medallion. The model is centered and scaled to fit automatically.";
         if (field.Record.Kind == "Regiment" && field.MemberName == "InTransitSmallImagePath")
             return "An optional effect drawn over this troop in the Defense window while it is in transit.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
@@ -429,6 +431,7 @@ internal static class ContentPackEditorFieldMetadata
             "FallbackNamePoolID" => "Fallback pool",
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
             "BackgroundImagePath" => "Background override",
+            nameof(FactionTheme.MainMenuMedallionModelPath) => "Main menu medallion",
             "PrimaryColorHex" => "Primary faction color",
             "HighlightTextColorHex" => "Highlight text color",
             "SelectionColorHex" => "Selection frames",

@@ -2860,6 +2860,7 @@ public static class MainMenuPrefabBuilder
     {
         GameObject iconRigs = new GameObject(_iconRigsName);
         iconRigs.transform.SetParent(root.transform, false);
+        Dictionary<string, ContentModelBinding> factionMedallions = new(StringComparer.Ordinal);
 
         BuildSharedLighting(iconRigs);
 
@@ -2873,7 +2874,9 @@ public static class MainMenuPrefabBuilder
                 face.RtHeight
             );
 
-            BuildRig(iconRigs, renderTexture, face, i);
+            ContentModelBinding model = BuildRig(iconRigs, renderTexture, face, i);
+            if (face.FactionId is "Faction1" or "Faction2")
+                factionMedallions.Add(face.ButtonName, model);
 
             Transform button = FindDeep(root.transform, face.ButtonName);
             if (button == null)
@@ -2897,12 +2900,44 @@ public static class MainMenuPrefabBuilder
 
         MainMenuView view = FindRequiredComponent<MainMenuView>(root);
         SerializedObject serializedView = new SerializedObject(view);
+        WriteFactionMedallionBindings(
+            serializedView.FindProperty("factionLaunchBindings"),
+            factionMedallions
+        );
         serializedView.FindProperty("newGameSettingsSpinner").objectReferenceValue = FindDeep(
                 root.transform,
                 "IconRig_GameSetup"
             )
             .GetComponentInChildren<AutoRotate>(true);
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Associates each faction launch slot with the model rendered inside its authored medallion rig.
+    /// </summary>
+    /// <param name="bindings">The serialized faction launch bindings.</param>
+    /// <param name="modelsByButtonName">The medallion models keyed by their launch button names.</param>
+    private static void WriteFactionMedallionBindings(
+        SerializedProperty bindings,
+        IReadOnlyDictionary<string, ContentModelBinding> modelsByButtonName
+    )
+    {
+        for (int index = 0; index < bindings.arraySize; index++)
+        {
+            SerializedProperty binding = bindings.GetArrayElementAtIndex(index);
+            Button button = binding.FindPropertyRelative("button").objectReferenceValue as Button;
+            if (
+                button == null
+                || !modelsByButtonName.TryGetValue(button.name, out ContentModelBinding model)
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Faction launch binding {index} has no authored medallion model."
+                );
+            }
+
+            binding.FindPropertyRelative("medallionModel").objectReferenceValue = model;
+        }
     }
 
     /// <summary>
@@ -3180,7 +3215,8 @@ public static class MainMenuPrefabBuilder
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
     /// <param name="face">The face describing spin, scale, and tilt.</param>
     /// <param name="index">The slot index, used to offset the rig so cameras stay isolated.</param>
-    private static void BuildRig(
+    /// <returns>The model binding rendered by the completed rig.</returns>
+    private static ContentModelBinding BuildRig(
         GameObject parent,
         RenderTexture renderTexture,
         Face face,
@@ -3206,17 +3242,16 @@ public static class MainMenuPrefabBuilder
         // centering. Rig spacing isolates each camera, so no dedicated render layer is needed.
         GameObject modelNode = new GameObject("Model");
         modelNode.transform.SetParent(pivot.transform, false);
-        modelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                ToModelAddress(face.ModelPath),
-                face.ModelScale,
-                face.Tilt,
-                overwrite: true,
-                normalize: face.NormalizeModel,
-                center: true,
-                layer: -1
-            );
+        ContentModelBinding model = modelNode.AddComponent<ContentModelBinding>();
+        model.SetModel(
+            ToModelAddress(face.ModelPath),
+            face.ModelScale,
+            face.Tilt,
+            overwrite: true,
+            normalize: face.NormalizeModel,
+            center: true,
+            layer: -1
+        );
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -3255,6 +3290,8 @@ public static class MainMenuPrefabBuilder
                 new Color(0.9f, 0.94f, 1f)
             );
         }
+
+        return model;
     }
 
     /// <summary>

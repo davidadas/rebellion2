@@ -3717,7 +3717,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 .ToArray();
         }
         else
-            renderedFields = Array.Empty<ContentPackEditorField>();
+            renderedFields = category.Fields;
 
         ContentPackEditorField[] visibleFields = category
             .Fields.Where(field => renderedFields.Any(rendered => SameField(rendered, field)))
@@ -4248,6 +4248,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
     )
     {
         factionArtworkFieldTops[field.XmlElement] = y;
+        if (ContentEditorContentSections.IsFactionMainMenuField(field))
+        {
+            y += PlaceLabel(field.Caption, labelIndex++, 4, y, width - 8, false, field.HelpText);
+            y += PlaceField(field, fieldIndex++, 4, y, width - 8, 0);
+            return y + 12;
+        }
         if (ContentEditorContentSections.IsAdvisorPlacementField(field))
         {
             string portrait =

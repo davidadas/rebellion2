@@ -61,6 +61,7 @@ internal static class ContentEditorContentSections
         "Facilities and construction",
         "Fleet window",
         "Galactic information",
+        "Main menu",
         "Messages",
         "Missions",
         "Planet sector",
@@ -85,7 +86,10 @@ internal static class ContentEditorContentSections
         : neutral
             ? IsFactionInterfaceField(field, neutral: true) ? "Interfaces"
                 : "Advanced"
-        : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
+        : IsFactionArtworkField(field)
+        || IsFactionMainMenuField(field)
+        || IsAdvisorPlacementField(field)
+            ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
         : field.MemberName == "DisallowedMissionTypeIDs" ? "Rules"
@@ -121,6 +125,16 @@ internal static class ContentEditorContentSections
                         ?.Value
                 )
         );
+
+    /// <summary>
+    /// Identifies the faction model used by its launch control on the main menu.
+    /// </summary>
+    /// <param name="field">A faction-theme field.</param>
+    /// <returns>Whether the field selects the main-menu medallion model.</returns>
+    internal static bool IsFactionMainMenuField(ContentPackEditorField field) =>
+        field.Record.Kind == nameof(FactionTheme)
+        && field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
+        && field.MediaType == ContentPackEditorMediaType.Model;
 
     /// <summary>
     /// Identifies faction backgrounds retained for unit artwork workflows.
@@ -229,7 +243,7 @@ internal static class ContentEditorContentSections
         ContentPackEditorField field,
         bool neutral = false
     ) =>
-        !neutral && IsAdvisorPlacementField(field)
+        !neutral && (IsAdvisorPlacementField(field) || IsFactionMainMenuField(field))
         || IsFactionArtworkField(field, neutral)
             && !IsFactionBackgroundField(field)
             && !IsUnusedUnitTileField(field)
@@ -364,6 +378,32 @@ internal static class ContentEditorContentSections
                 )
             );
         }
+        if (
+            !neutral
+            && !fields.Any(field =>
+                field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
+            )
+        )
+        {
+            string member = nameof(FactionTheme.MainMenuMedallionModelPath);
+            XElement element = theme.Element.Element(member) ?? new XElement(member);
+            fields.Add(
+                new ContentPackEditorField(
+                    theme,
+                    element,
+                    member,
+                    attach: () =>
+                    {
+                        if (element.Parent == null)
+                            theme.Element.Add(element);
+                    },
+                    valueTypeOverride: typeof(string),
+                    caption: "Main menu medallion",
+                    sectionPath: new[] { "Main menu" },
+                    parentOverride: theme.Element
+                )
+            );
+        }
         fields.AddRange(FactionColorFields(theme));
         return fields;
     }
@@ -485,6 +525,8 @@ internal static class ContentEditorContentSections
     {
         if (field.Group == nameof(FactionTheme.ArtworkDefaults))
             return "Default backgrounds";
+        if (IsFactionMainMenuField(field))
+            return "Main menu";
         XElement top = field
             .XmlElement.AncestorsAndSelf()
             .FirstOrDefault(element => element.Parent == field.Record.Element);
@@ -783,6 +825,7 @@ internal static class ContentEditorContentSections
             "Encyclopedia" => "Encyclopedia navigation, controls, frames, and category artwork.",
             "Galactic information" =>
                 "Galactic-information categories, frames, close controls, and finder artwork.",
+            "Main menu" => "The rotating faction medallion used to start a new campaign.",
             "Advisor" => "Advisor animations, reports, objectives, and briefing artwork.",
             "Shell and dialogs" =>
                 "Faction-owned save-slot identity and confirmation-dialog artwork. Shared controls and color-driven masks are configured elsewhere.",
