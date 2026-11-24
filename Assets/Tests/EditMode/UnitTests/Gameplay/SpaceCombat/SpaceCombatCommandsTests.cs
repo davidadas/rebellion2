@@ -4390,26 +4390,6 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNull(empireFleet.Movement);
         }
 
-        [TestCase(0, 1)]
-        [TestCase(1, 0)]
-        [TestCase(2, 1)]
-        [TestCase(3, 1)]
-        public void BeginTacticalCombat_RetainedEntryFaction_CapturesEnteringForce(
-            int factionSelector,
-            int expectedFaction
-        )
-        {
-            (_, SpaceCombatCommands commands, CapitalShip attacker) = CreateTacticalEncounter();
-            attacker.GetParentOfType<Planet>().SpaceCombatEntryFaction = factionSelector;
-
-            TacticalCombatSession battle = commands.BeginTacticalCombat();
-
-            Assert.AreEqual(
-                expectedFaction,
-                battle.GetSide(battle.EnteringSide.Value).FactionIndex
-            );
-        }
-
         [Test]
         public void BeginTacticalCombat_AuthoredEncounter_KeepsCampaignPendingAndUnitsUnchanged()
         {

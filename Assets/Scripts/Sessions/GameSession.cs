@@ -209,7 +209,7 @@ namespace Rebellion.Gameplay
 
             PrepareGameReplacement();
             Game = game;
-            Game.ConfigureSpaceCombatEntries(_gameData.TacticalCombat);
+            Game.ConfigureBlockadeFactions(_gameData.TacticalCombat);
             EnsureGameConfiguration();
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();

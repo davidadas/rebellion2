@@ -107,7 +107,7 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Captures an explicitly selected entering side and its ordered presentation members.
         /// </summary>
-        /// <param name="enteringSide">The side captured by strategic presence transitions.</param>
+        /// <param name="enteringSide">The local player's side in this battle.</param>
         /// <param name="members">Members in display-group order, then group member order.</param>
         /// <param name="lane">The entering side's authored display lane.</param>
         /// <param name="presentation">The owner of the affected rendering objects.</param>

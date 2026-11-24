@@ -211,8 +211,7 @@ namespace Rebellion.Tests.Tactical
             int reads = 0;
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
-                CreateShip("b", 100, 0),
-                enteringSide: CombatSide.Attacker
+                CreateShip("b", 100, 0)
             );
             session.ConfigureClockedAdvance(() =>
             {
@@ -268,24 +267,32 @@ namespace Rebellion.Tests.Tactical
             );
         }
 
-        [TestCase(CombatSide.Attacker, 0)]
-        [TestCase(CombatSide.Defender, 1000000)]
-        public void BeginArrival_CapturedEnteringForce_PresentsOnlyItsMembers(
-            CombatSide enteringSide,
-            int expectedIndex
+        [TestCase(CombatSide.Attacker, 0, false)]
+        [TestCase(CombatSide.Defender, 1000000, false)]
+        [TestCase(CombatSide.Attacker, 0, true)]
+        [TestCase(CombatSide.Defender, 1000000, true)]
+        public void BeginArrival_LocalPlayerSide_PresentsOnlyItsMembers(
+            CombatSide playerSide,
+            int expectedIndex,
+            bool replica
         )
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
                 CreateShip("b", 100, 0),
-                enteringSide: enteringSide
+                player: playerSide
             );
+            if (replica)
+                session.ConfigureSynchronizedReplica();
             ArrivalPresentation presentation = new();
             session.BeginArrival(presentation);
 
-            session.Advance(50);
+            Action<float> advance = replica
+                ? milliseconds => session.AdvanceSynchronizedArrival(milliseconds)
+                : session.Advance;
+            advance(50);
             Assert.IsEmpty(presentation.ResetIndices);
-            session.Advance(50);
+            advance(50);
 
             CollectionAssert.AreEqual(new[] { expectedIndex }, presentation.ResetIndices);
         }
@@ -295,8 +302,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
-                CreateShip("b", 100, 0),
-                enteringSide: CombatSide.Attacker
+                CreateShip("b", 100, 0)
             );
             Vector3 before = session.Units[0].Position;
             session.BeginArrival(new ArrivalPresentation());
@@ -314,8 +320,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
-                CreateShip("b", 100, 0),
-                enteringSide: CombatSide.Attacker
+                CreateShip("b", 100, 0)
             );
             ArrivalPresentation presentation = new();
             session.BeginArrival(presentation);
@@ -334,8 +339,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
-                CreateShip("b", 100, 0),
-                enteringSide: CombatSide.Attacker
+                CreateShip("b", 100, 0)
             );
             session.IsPaused = true;
             session.BeginArrival(new ArrivalPresentation());
@@ -346,19 +350,6 @@ namespace Rebellion.Tests.Tactical
             Assert.IsFalse(session.IsArriving);
             Assert.IsTrue(session.IsPaused);
             Assert.AreEqual(3, session.SystemTime);
-        }
-
-        [Test]
-        public void BeginArrival_UncapturedEnteringForce_RejectsPresentation()
-        {
-            TacticalCombatSession session = CreateSession(
-                CreateShip("a", 100, 0),
-                CreateShip("b", 100, 0)
-            );
-
-            Assert.Throws<InvalidOperationException>(() =>
-                session.BeginArrival(new ArrivalPresentation())
-            );
         }
 
         [TestCase(TacticalWeaponType.LaserCannon, true)]
@@ -3248,15 +3239,13 @@ namespace Rebellion.Tests.Tactical
         /// <param name="definition">The optional authored notification bank.</param>
         /// <param name="player">The player-controlled side.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
-        /// <param name="enteringSide">The explicitly captured entering force, when arrival is exercised.</param>
         /// <returns>The isolated tactical encounter.</returns>
         private static TacticalCombatSession CreateSession(
             CapitalShip attacker,
             CapitalShip defender,
             TacticalCombatDefinition definition = null,
             CombatSide player = CombatSide.Attacker,
-            IReadOnlyList<string> personnelHostInstanceIDs = null,
-            CombatSide? enteringSide = null
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             TacticalCombatUnit first = new(
@@ -3279,14 +3268,7 @@ namespace Rebellion.Tests.Tactical
                 Heading = -Vector3.UnitZ,
                 DesiredHeading = -Vector3.UnitZ,
             };
-            return CreateEncounter(
-                first,
-                second,
-                definition,
-                player,
-                personnelHostInstanceIDs,
-                enteringSide
-            );
+            return CreateEncounter(first, second, definition, player, personnelHostInstanceIDs);
         }
 
         /// <summary>
@@ -3297,15 +3279,13 @@ namespace Rebellion.Tests.Tactical
         /// <param name="definition">The optional authored notification bank.</param>
         /// <param name="player">The player-controlled side.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
-        /// <param name="enteringSide">The explicitly captured entering force, when arrival is exercised.</param>
         /// <returns>The isolated tactical encounter.</returns>
         private static TacticalCombatSession CreateEncounter(
             TacticalCombatUnit first,
             TacticalCombatUnit second,
             TacticalCombatDefinition definition,
             CombatSide player,
-            IReadOnlyList<string> personnelHostInstanceIDs = null,
-            CombatSide? enteringSide = null
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             TacticalCombatGroup firstGroup = new(1, new[] { first }, Vector3.UnitZ);
@@ -3348,8 +3328,7 @@ namespace Rebellion.Tests.Tactical
                 TacticalCombatPlanner.Attach,
                 definition,
                 presentationClock: () => 0,
-                personnelHostInstanceIDs: personnelHostInstanceIDs,
-                enteringSide: enteringSide
+                personnelHostInstanceIDs: personnelHostInstanceIDs
             );
         }
 

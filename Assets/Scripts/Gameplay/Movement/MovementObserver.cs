@@ -314,7 +314,6 @@ namespace Rebellion.Gameplay
             ICollection<GameResult> results
         )
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             if (origin == null)
                 return;
 
@@ -421,7 +420,6 @@ namespace Rebellion.Gameplay
             ICollection<GameResult> results
         )
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             if (fleet == null || origin == null)
                 return;
 

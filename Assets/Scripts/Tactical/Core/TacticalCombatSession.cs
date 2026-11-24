@@ -91,7 +91,6 @@ namespace Rebellion.Tactical
             : _scheduler == null ? _systemTime
             : unchecked((int)_scheduler.SystemTime);
         public bool IsComplete { get; private set; }
-        public CombatSide? EnteringSide { get; }
         public bool IsArriving => _arrival?.IsComplete == false;
         public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
         public CombatSide Winner { get; private set; } = CombatSide.Draw;
@@ -178,7 +177,6 @@ namespace Rebellion.Tactical
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
         /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
-        /// <param name="enteringSide">The force selected by retained space-presence activation for arrival presentation.</param>
         public TacticalCombatSession(
             IReadOnlyList<TacticalCombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
@@ -193,8 +191,7 @@ namespace Rebellion.Tactical
             TacticalCombatEnvironmentDefinition environment = null,
             ITacticalCombatSceneryRandom sceneryRandom = null,
             Func<uint> presentationClock = null,
-            IReadOnlyList<string> personnelHostInstanceIDs = null,
-            CombatSide? enteringSide = null
+            IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
@@ -214,7 +211,6 @@ namespace Rebellion.Tactical
             Environment = environment;
             SceneryRandom = sceneryRandom;
             PlayerSide = playerSide;
-            EnteringSide = enteringSide;
             BattleDepth = battleDepth;
             Navigation = new TacticalCombatNavigation(battleDepth);
             string playerFactionID = definition

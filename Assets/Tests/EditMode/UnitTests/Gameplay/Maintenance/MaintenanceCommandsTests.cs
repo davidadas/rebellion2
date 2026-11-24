@@ -393,7 +393,7 @@ namespace Rebellion.Tests.Gameplay
             scene.game.DeleteNode(scene.carrier.GetParent());
             Faction opponent = CreateFaction("alliance", "Alliance");
             scene.game.GetFactions().Add(opponent);
-            scene.game.ConfigureSpaceCombatEntries(
+            scene.game.ConfigureBlockadeFactions(
                 new TacticalCombatDefinition
                 {
                     Factions = new List<TacticalCombatFactionDefinition>

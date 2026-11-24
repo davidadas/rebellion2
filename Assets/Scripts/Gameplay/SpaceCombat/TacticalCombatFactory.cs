@@ -414,11 +414,7 @@ namespace Rebellion.Gameplay
                             ? unchecked((int)scenerySeed.Value)
                             : TacticalCombatSeed.FromClock(_localClock())
                 ),
-                personnelHostInstanceIDs: personnelHostInstanceIDs,
-                enteringSide: factionDefinitions[0].FactionIndex
-                == (planet.SpaceCombatEntryFaction == 1 ? 0 : 1)
-                    ? CombatSide.Attacker
-                    : CombatSide.Defender
+                personnelHostInstanceIDs: personnelHostInstanceIDs
             );
             _game.ActiveBattle = battle;
             return session;

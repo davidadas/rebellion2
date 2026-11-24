@@ -7,15 +7,11 @@ namespace Rebellion.Tactical
     public sealed partial class TacticalCombatSession
     {
         /// <summary>
-        /// Starts the captured entering force's presentation before admitting battle commands or clocks.
+        /// Starts the local player's arrival presentation before admitting battle commands or clocks.
         /// </summary>
         /// <param name="presentation">The renderer that owns arrival poses and the pause-control strobe.</param>
         public void BeginArrival(ITacticalCombatArrivalPresentation presentation)
         {
-            if (!EnteringSide.HasValue)
-                throw new InvalidOperationException(
-                    "The encounter has no captured entering force."
-                );
             if (_arrival != null || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Arrival can only begin once before combat starts."
@@ -24,7 +20,7 @@ namespace Rebellion.Tactical
             List<TacticalCombatArrivalMember> members = new();
             foreach (TacticalCombatGroup group in _groups)
             {
-                if (group.Side != EnteringSide.Value)
+                if (group.Side != PlayerSide)
                     continue;
                 foreach (TacticalCombatUnit unit in group.Members)
                     members.Add(
@@ -40,9 +36,9 @@ namespace Rebellion.Tactical
                     );
             }
             _arrival = new TacticalCombatArrival(
-                EnteringSide.Value,
+                PlayerSide,
                 members,
-                GetSide(EnteringSide.Value).Forward,
+                GetSide(PlayerSide).Forward,
                 presentation,
                 messageID => Audio.EnqueueNotification(messageID)
             );

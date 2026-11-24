@@ -7472,7 +7472,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="game">The game containing the two factions.</param>
         private static void ConfigureBlockadeFactions(GameRoot game)
         {
-            game.ConfigureSpaceCombatEntries(
+            game.ConfigureBlockadeFactions(
                 new TacticalCombatDefinition
                 {
                     Factions = new List<TacticalCombatFactionDefinition>

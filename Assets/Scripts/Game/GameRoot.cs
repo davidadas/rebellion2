@@ -41,9 +41,8 @@ namespace Rebellion.Game
 
         // Scene graph.
         private GalaxyMap _galaxy;
-        private readonly SpaceCombatEntryTracker _spaceCombatEntries = new();
         private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
-        private TacticalCombatDefinition _spaceCombatDefinition;
+        private TacticalCombatDefinition _blockadeDefinition;
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -313,13 +312,12 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Binds authored combat faction indexes without changing retained planet entry values.
+        /// Sets the authored faction mapping used by blockade queries.
         /// </summary>
         /// <param name="definition">The active content pack's combat definitions.</param>
-        internal void ConfigureSpaceCombatEntries(TacticalCombatDefinition definition)
+        internal void ConfigureBlockadeFactions(TacticalCombatDefinition definition)
         {
-            _spaceCombatEntries.Configure(definition.Factions);
-            _spaceCombatDefinition = definition;
+            _blockadeDefinition = definition;
         }
 
         /// <summary>
@@ -329,72 +327,7 @@ namespace Rebellion.Game
         /// <param name="blockaded">The current blockade state when the faction domain is supported.</param>
         /// <returns>Whether the current campaign and definitions identify the exact faction pair.</returns>
         internal bool TryCalculateSpaceCombatBlockade(Planet planet, out bool blockaded) =>
-            SpaceCombatBlockadeRules.TryCalculate(
-                this,
-                _spaceCombatDefinition,
-                planet,
-                out blockaded
-            );
-
-        /// <summary>
-        /// Checks the readiness index for an active fleet opposing a registered planet's owner.
-        /// </summary>
-        /// <param name="planet">The registered planet whose current fleets are inspected.</param>
-        /// <returns>Whether a ready opposing fleet is present.</returns>
-        internal bool HasReadyOpposingFleet(Planet planet) =>
-            _spaceCombatEntries.HasReadyOpposingFleet(planet);
-
-        /// <summary>
-        /// Captures both requested factions' current direct orbital presence at one live planet.
-        /// This reads current readiness during open scene updates without changing entry history.
-        /// </summary>
-        /// <param name="planet">The exact planet instance registered in this game.</param>
-        /// <param name="firstOwnerInstanceId">The first nonempty, non-neutral faction identity.</param>
-        /// <param name="secondOwnerInstanceId">The distinct second nonempty faction identity.</param>
-        /// <returns>Whether each faction currently has a ready direct fleet or fighter.</returns>
-        internal (bool FirstSide, bool SecondSide) CaptureSpaceCombatPresence(
-            Planet planet,
-            string firstOwnerInstanceId,
-            string secondOwnerInstanceId
-        )
-        {
-            if (planet == null)
-                throw new ArgumentNullException(nameof(planet));
-            if (
-                string.IsNullOrEmpty(planet.InstanceID)
-                || !NodesByInstanceID.TryGetValue(planet.InstanceID, out ISceneNode registered)
-                || !ReferenceEquals(registered, planet)
-            )
-                throw new ArgumentException(
-                    "The planet must be registered in this game.",
-                    nameof(planet)
-                );
-            if (string.IsNullOrEmpty(firstOwnerInstanceId))
-                throw new ArgumentException(
-                    "A faction identity is required.",
-                    nameof(firstOwnerInstanceId)
-                );
-            if (
-                string.IsNullOrEmpty(secondOwnerInstanceId)
-                || secondOwnerInstanceId == firstOwnerInstanceId
-            )
-                throw new ArgumentException(
-                    "A distinct second faction identity is required.",
-                    nameof(secondOwnerInstanceId)
-                );
-            return _spaceCombatEntries.CapturePresence(
-                planet,
-                firstOwnerInstanceId,
-                secondOwnerInstanceId
-            );
-        }
-
-        /// <summary>
-        /// Commits combat presence after related containment and transit changes are complete.
-        /// </summary>
-        /// <returns>A scope that commits the final state of this scene update.</returns>
-        internal SpaceCombatEntryTracker.UpdateScope BeginSceneUpdate() =>
-            _spaceCombatEntries.BeginUpdate();
+            SpaceCombatBlockadeRules.TryCalculate(this, _blockadeDefinition, planet, out blockaded);
 
         /// <summary>
         /// Gets the game configuration.
@@ -634,7 +567,6 @@ namespace Rebellion.Game
         /// <param name="node">The subtree root to delete.</param>
         public void DeleteNode(ISceneNode node)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
             if (node.GetParent() == null)
@@ -683,7 +615,6 @@ namespace Rebellion.Game
         /// </param>
         public void ChangeOwnership(ISceneNode node, string ownerInstanceId)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
 
@@ -748,7 +679,6 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be attached.</exception>
         public void AttachNode(ISceneNode node, ISceneNode parent)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             // If the node already has a parent, throw an exception.
             if (node.GetParent() != null)
             {
@@ -777,7 +707,6 @@ namespace Rebellion.Game
         /// <exception cref="SceneAccessException">Thrown when the node is not allowed to be detached.</exception>
         public void DetachNode(ISceneNode node)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node.GetParent() == null)
             {
                 throw new InvalidOperationException(
@@ -809,7 +738,6 @@ namespace Rebellion.Game
         /// <exception cref="InvalidOperationException">Thrown when the destination rejects the node.</exception>
         public void MoveNode(ISceneNode node, ISceneNode newParent)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             if (node == null)
                 throw new ArgumentNullException(nameof(node));
             if (newParent == null)
@@ -864,8 +792,6 @@ namespace Rebellion.Game
                 throw new ArgumentNullException(nameof(assignments));
             if (assignments.Count == 0)
                 return;
-
-            using SpaceCombatEntryTracker.UpdateScope update = BeginSceneUpdate();
             List<StarfighterHostAssignment> changes = new(assignments.Count);
             List<Planet> origins = UnitPresenceChanged == null ? null : new(assignments.Count);
             HashSet<Starfighter> fighters = new();
@@ -1188,7 +1114,6 @@ namespace Rebellion.Game
             }
             if (node is Officer registeredOfficer)
                 registeredOfficer.ReconcileForceDiscoveryState();
-            _spaceCombatEntries.Register(node);
             if (node is Planet planet)
                 planet.BindBlockadeGame(this);
         }
@@ -1201,7 +1126,6 @@ namespace Rebellion.Game
         {
             if (node is Planet planet)
                 planet.BindBlockadeGame(null);
-            _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
             _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
             if (node is Officer officer)
@@ -1243,7 +1167,6 @@ namespace Rebellion.Game
         public void RebuildSceneState()
         {
             ClearBlockadeBindings();
-            _spaceCombatEntries.Clear();
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
             NodesByInstanceID.Clear();
@@ -1287,9 +1210,6 @@ namespace Rebellion.Game
         /// <param name="root">The root.</param>
         private void InitializeSceneRoot(ISceneNode root)
         {
-            using SpaceCombatEntryTracker.UpdateScope update = _spaceCombatEntries.BeginUpdate(
-                restoring: true
-            );
             ((BaseSceneNode)root).TraverseIncludingDisabled(
                 (ISceneNode node) =>
                 {

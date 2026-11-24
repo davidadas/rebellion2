@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.SpaceCombat
@@ -14,7 +15,7 @@ namespace Rebellion.Game.SpaceCombat
         /// Reads current faction identities and orbital readiness without retaining a stale domain.
         /// Unsupported faction domains remain owned by the planet's existing fleet predicate.
         /// </summary>
-        /// <param name="game">The game owning the registered planet and readiness index.</param>
+        /// <param name="game">The game owning the registered orbital units.</param>
         /// <param name="definition">The current authored tactical faction mapping.</param>
         /// <param name="planet">The exact registered planet whose orbital state is inspected.</param>
         /// <param name="blockaded">The current blockade state when this domain applies.</param>
@@ -37,23 +38,66 @@ namespace Rebellion.Game.SpaceCombat
                 || !string.IsNullOrEmpty(planet.OwnerInstanceID)
                     && planet.OwnerInstanceID != first
                     && planet.OwnerInstanceID != second
-                || string.IsNullOrEmpty(planet.InstanceID)
-                || !game.NodesByInstanceID.TryGetValue(planet.InstanceID, out ISceneNode registered)
-                || !ReferenceEquals(registered, planet)
+                || !IsRegistered(game, planet)
             )
                 return false;
 
-            (bool firstPresent, bool secondPresent) = game.CaptureSpaceCombatPresence(
-                planet,
-                first,
-                second
-            );
-            if (firstPresent && secondPresent)
+            bool firstPresent = false;
+            bool secondPresent = false;
+            bool hasOpposingFleet = false;
+            foreach (Fleet fleet in planet.DirectOrbitalFleets)
+            {
+                if (
+                    !fleet.IsEnabled
+                    || fleet.Movement != null
+                    || !IsRegistered(game, fleet)
+                    || !fleet.HasOperationalCapitalShips()
+                )
+                    continue;
+
+                string owner = fleet.OwnerInstanceID;
+                firstPresent |= owner == first;
+                secondPresent |= owner == second;
+                if (firstPresent && secondPresent)
+                    return true;
+
+                hasOpposingFleet |=
+                    (owner ?? "") != (planet.OwnerInstanceID ?? "") && fleet.IsActive();
+            }
+
+            if (!hasOpposingFleet)
                 return true;
 
-            blockaded = game.HasReadyOpposingFleet(planet);
+            foreach (Starfighter fighter in planet.DirectOrbitalStarfighters)
+            {
+                if (
+                    !fighter.IsEnabled
+                    || fighter.ManufacturingStatus != ManufacturingStatus.Complete
+                    || fighter.Movement != null
+                    || !IsRegistered(game, fighter)
+                )
+                    continue;
+
+                firstPresent |= fighter.OwnerInstanceID == first;
+                secondPresent |= fighter.OwnerInstanceID == second;
+                if (firstPresent && secondPresent)
+                    return true;
+            }
+
+            blockaded = true;
             return true;
         }
+
+        /// <summary>
+        /// Checks whether this exact scene node is registered in the campaign.
+        /// </summary>
+        /// <param name="game">The campaign owning the scene registry.</param>
+        /// <param name="node">The planet or orbital unit to check.</param>
+        /// <returns>True when the registered instance is the supplied node.</returns>
+        private static bool IsRegistered(GameRoot game, ISceneNode node) =>
+            !string.IsNullOrEmpty(node.InstanceID)
+            && game.NodesByInstanceID.TryGetValue(node.InstanceID, out ISceneNode registered)
+            && ReferenceEquals(registered, node);
 
         /// <summary>
         /// Validates the two current campaign identities against distinct authored tactical indexes.

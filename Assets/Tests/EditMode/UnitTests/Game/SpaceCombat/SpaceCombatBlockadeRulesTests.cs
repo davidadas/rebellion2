@@ -120,6 +120,28 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.IsFalse(_planet.IsBlockaded());
         }
 
+        [Test]
+        public void IsBlockaded_UnregisteredFighter_DoesNotSuppressBlockade()
+        {
+            _game.DetachNode(_fighter);
+            _planet.AddChild(_fighter);
+
+            Assert.IsTrue(_planet.IsBlockaded());
+        }
+
+        [Test]
+        public void IsBlockaded_CapitalChangesOwner_RechecksFleetReadiness()
+        {
+            _game.DeleteNode(_fighter);
+            Assert.IsTrue(_planet.IsBlockaded());
+
+            _game.ChangeOwnership(_enemyShip, "alpha");
+            Assert.IsFalse(_planet.IsBlockaded());
+
+            _game.ChangeOwnership(_enemyShip, "beta");
+            Assert.IsTrue(_planet.IsBlockaded());
+        }
+
         [TestCase("fleet")]
         [TestCase("planet")]
         [TestCase("sector")]
@@ -187,21 +209,13 @@ namespace Rebellion.Tests.Game.SpaceCombat
         }
 
         [Test]
-        public void IsBlockaded_NestedSceneUpdates_ReadsImmediatePresenceWithoutCommittingEntry()
+        public void IsBlockaded_FighterDepartsAndReturns_ReadsCurrentOrbit()
         {
-            _planet.SpaceCombatEntryFaction = 2;
-            using (_game.BeginSceneUpdate())
-            {
-                _fighter.Movement = new MovementState();
-                Assert.IsTrue(_planet.IsBlockaded());
-                using (_game.BeginSceneUpdate())
-                {
-                    _fighter.Movement = null;
-                    Assert.IsFalse(_planet.IsBlockaded());
-                    Assert.AreEqual(2, _planet.SpaceCombatEntryFaction);
-                }
-                Assert.AreEqual(2, _planet.SpaceCombatEntryFaction);
-            }
+            _fighter.Movement = new MovementState();
+            Assert.IsTrue(_planet.IsBlockaded());
+
+            _fighter.Movement = null;
+            Assert.IsFalse(_planet.IsBlockaded());
         }
 
         [TestCase("add")]

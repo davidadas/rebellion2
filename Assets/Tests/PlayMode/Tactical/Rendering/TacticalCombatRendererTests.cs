@@ -732,7 +732,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 yield return null;
             preparation.GetAwaiter().GetResult();
             TacticalCombatUnit unit = encounter.Units.First(item =>
-                item.Side == encounter.EnteringSide && !item.IsFighter
+                item.Side == encounter.PlayerSide && !item.IsFighter
             );
             Vector3N originalPosition = unit.Position;
             Transform root = view
@@ -2317,8 +2317,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 TacticalCombatPlanner.Attach,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
-                new TacticalCombatSceneryRandom(random, () => 1),
-                enteringSide: CombatSide.Attacker
+                new TacticalCombatSceneryRandom(random, () => 1)
             );
         }
 
@@ -2411,8 +2410,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 TacticalCombatPlanner.Attach,
                 catalog.TacticalCombat,
                 catalog.TacticalCombat.Environments[1],
-                new TacticalCombatSceneryRandom(random, () => 1),
-                enteringSide: CombatSide.Attacker
+                new TacticalCombatSceneryRandom(random, () => 1)
             );
         }
 
