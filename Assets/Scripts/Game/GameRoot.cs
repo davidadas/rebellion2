@@ -305,11 +305,7 @@ namespace Rebellion.Game
 
             Config = config;
             foreach (Officer officer in _registeredOfficers)
-            {
                 officer.BindForceRules(config.Jedi);
-                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
-                officer.ForceDiscoveryStateChanged += UpdateForceDiscoverySchedule;
-            }
         }
 
         /// <summary>
@@ -557,7 +553,6 @@ namespace Rebellion.Game
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
@@ -580,6 +575,7 @@ namespace Rebellion.Game
             if (node.IsEnabled == enabled)
                 return;
             node.IsEnabled = enabled;
+            ReconcileForceDiscoveryIn(node);
             if (UnitPresenceChanged != null)
             {
                 Planet planet = GetContainingPlanet(node);
@@ -680,7 +676,6 @@ namespace Rebellion.Game
             ISceneNode parent = node.GetParent();
             Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
 
-            ((BaseSceneNode)node).TraverseIncludingDisabled(DisconnectOfficerRuntime);
             parent.RemoveChild(node);
             node.SetParent(null);
 
@@ -731,6 +726,7 @@ namespace Rebellion.Game
             {
                 newParent.AddChild(node);
                 node.SetParent(newParent);
+                ReconcileForceDiscoveryIn(node);
             }
             catch
             {
@@ -962,11 +958,8 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            if (node is Officer registeredOfficer && Config != null)
-            {
-                registeredOfficer.ForceDiscoveryStateChanged += UpdateForceDiscoverySchedule;
+            if (node is Officer registeredOfficer)
                 ReconcileForceDiscoveryState(registeredOfficer);
-            }
         }
 
         /// <summary>
@@ -977,10 +970,7 @@ namespace Rebellion.Game
         {
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
-            {
-                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
                 _registeredOfficers.Remove(officer);
-            }
         }
 
         /// <summary>
@@ -989,17 +979,20 @@ namespace Rebellion.Game
         /// <param name="officer">The registered officer whose scan state is reconciled.</param>
         internal void ReconcileForceDiscoveryState(Officer officer)
         {
-            if (Config != null)
-                officer.ReconcileForceDiscoveryState(unchecked(CurrentTick + 1));
-        }
+            if (
+                Config == null
+                || string.IsNullOrEmpty(officer.InstanceID)
+                || !NodesByInstanceID.TryGetValue(officer.InstanceID, out ISceneNode registered)
+                || !ReferenceEquals(registered, officer)
+            )
+                return;
 
-        /// <summary>
-        /// Updates the officer's scan schedule before reporting a newly enabled scanner.
-        /// </summary>
-        /// <param name="officer">The officer whose discovery eligibility changed.</param>
-        private void UpdateForceDiscoverySchedule(Officer officer)
-        {
-            bool enabled = officer.IsDiscoveringForceUser;
+            officer.RestoreForceDiscoveryTick(unchecked(CurrentTick + 1));
+            bool enabled = officer.CanDiscoverForceUsers(Config.Jedi.DiscoveringForceUserThreshold);
+            if (officer.IsDiscoveringForceUser == enabled)
+                return;
+
+            officer.IsDiscoveringForceUser = enabled;
             officer.NextForceDiscoveryTick = enabled ? unchecked(CurrentTick + 1) : 0;
             officer.ForceDiscoveryOrder = enabled ? AllocateForceDiscoveryOrder() : 0;
             if (enabled)
@@ -1014,13 +1007,34 @@ namespace Rebellion.Game
         internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
 
         /// <summary>
-        /// Disconnects a removed officer before containment changes can schedule new work.
+        /// Changes a unit's movement and reconciles Force discovery for officers aboard it.
         /// </summary>
-        /// <param name="node">The node leaving the game registry.</param>
-        private void DisconnectOfficerRuntime(ISceneNode node)
+        /// <param name="unit">The unit whose movement changes.</param>
+        /// <param name="movement">The new movement, or null when stationary.</param>
+        internal void SetMovement(IMovable unit, MovementState movement)
+        {
+            if (ReferenceEquals(unit.Movement, movement))
+                return;
+
+            unit.Movement = movement;
+            if (unit is Officer or Fleet or CapitalShip)
+                ReconcileForceDiscoveryIn(unit);
+        }
+
+        /// <summary>
+        /// Reconciles Force scans when an officer or its containing subtree changes.
+        /// </summary>
+        /// <param name="node">The node whose containment or availability changed.</param>
+        private void ReconcileForceDiscoveryIn(ISceneNode node)
         {
             if (node is Officer officer)
-                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
+                ReconcileForceDiscoveryState(officer);
+            else if (node is ContainerNode && _registeredOfficers.Count != 0)
+                ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
+                {
+                    if (child is Officer passenger)
+                        ReconcileForceDiscoveryState(passenger);
+                });
         }
 
         /// <summary>
@@ -1049,8 +1063,6 @@ namespace Rebellion.Game
         /// </summary>
         private void ClearSceneRegistration()
         {
-            foreach (Officer officer in _registeredOfficers)
-                DisconnectOfficerRuntime(officer);
             NodesByInstanceID.Clear();
             _registeredOfficers.Clear();
             foreach (Faction faction in _factions)

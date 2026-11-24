@@ -380,6 +380,7 @@ namespace Rebellion.Gameplay.Scripting
                 else
                 {
                     officer.ReleaseFromCaptivity();
+                    context.Game.ReconcileForceDiscoveryState(officer);
                 }
 
                 results.Add(
@@ -704,6 +705,7 @@ namespace Rebellion.Gameplay.Scripting
                 if (increase == 0)
                     continue;
                 officer.ForceValue = checked(stored + increase);
+                context.Game.ReconcileForceDiscoveryState(officer);
                 context.Record(
                     new ForceExperienceResult
                     {
@@ -761,6 +763,7 @@ namespace Rebellion.Gameplay.Scripting
 
             officer.IsForceEligible = true;
             officer.InitializeForceValue(context.Random);
+            context.Game.ReconcileForceDiscoveryState(officer);
             return;
         }
 

@@ -1761,6 +1761,7 @@ namespace Rebellion.Game.Missions
 
             int previousForceRank = officer.ForceRank;
             officer.ForceTrainingAdjustment += bonus;
+            game.ReconcileForceDiscoveryState(officer);
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {bonus} training adjustment from {trainer.GetDisplayName()} (rank {officer.ForceRank})"
             );
@@ -2336,6 +2337,7 @@ namespace Rebellion.Game.Missions
             if (target == null)
                 return new List<GameResult>();
             target.ReleaseFromCaptivity();
+            game.ReconcileForceDiscoveryState(target);
 
             return new List<GameResult>
             {

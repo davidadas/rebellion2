@@ -808,7 +808,7 @@ namespace Rebellion.Gameplay
         {
             foreach (IMovable unit in units)
             {
-                unit.Movement = null;
+                _game.SetMovement(unit, null);
                 if (unit is Officer officer)
                 {
                     if (!officer.IsCaptured)

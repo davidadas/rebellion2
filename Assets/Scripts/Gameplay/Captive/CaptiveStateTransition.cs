@@ -60,17 +60,20 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="officer">The officer being released.</param>
         /// <param name="context">The planet where the release occurred.</param>
+        /// <param name="game">The campaign that owns discovery scheduling.</param>
         /// <param name="tick">The tick when the release occurred.</param>
         /// <param name="captorInstanceId">The faction that held the officer.</param>
         /// <returns>The resulting capture-state change.</returns>
         internal static OfficerCaptureStateResult Release(
             Officer officer,
             Planet context,
+            GameRoot game,
             int tick,
             string captorInstanceId
         )
         {
             officer.ReleaseFromCaptivity();
+            game.ReconcileForceDiscoveryState(officer);
 
             return new OfficerCaptureStateResult
             {

@@ -58,6 +58,7 @@ namespace Rebellion.Gameplay
 
             int previousForceRank = officer.ForceRank;
             officer.ForceValue += growth;
+            _game.ReconcileForceDiscoveryState(officer);
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
             );
@@ -262,6 +263,7 @@ namespace Rebellion.Gameplay
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
             candidate.InitializeForceValue(_provider);
+            _game.ReconcileForceDiscoveryState(candidate);
             int currentForceRank = candidate.ForceRank;
 
             results.Add(

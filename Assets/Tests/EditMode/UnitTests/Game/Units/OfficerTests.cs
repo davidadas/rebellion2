@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -24,6 +25,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceValue = rank;
+            game.ReconcileForceDiscoveryState(officer);
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -43,6 +45,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceTrainingAdjustment = adjustment;
+            game.ReconcileForceDiscoveryState(officer);
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -54,9 +57,10 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsCaptured_ActiveScanner_CancelsDiscoveryImmediately()
         {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
 
             officer.IsCaptured = true;
+            game.ReconcileForceDiscoveryState(officer);
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -67,9 +71,11 @@ namespace Rebellion.Tests.Game.Units
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             officer.IsCaptured = true;
+            game.ReconcileForceDiscoveryState(officer);
             game.CurrentTick = 70;
 
             officer.IsCaptured = false;
+            game.ReconcileForceDiscoveryState(officer);
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -79,10 +85,10 @@ namespace Rebellion.Tests.Game.Units
         public void Movement_CompletedBetweenTicks_ArmsFromActualCompletionTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.Movement = TestMovement.Create();
+            game.SetMovement(officer, TestMovement.Create());
             game.CurrentTick = 70;
 
-            officer.Movement = null;
+            game.SetMovement(officer, null);
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -92,23 +98,23 @@ namespace Rebellion.Tests.Game.Units
         public void IsEnabled_ReenabledScanner_ArmsFromActualTick()
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
-            officer.IsEnabled = false;
+            game.SetNodeEnabled(officer, false);
             game.CurrentTick = 70;
 
-            officer.IsEnabled = true;
+            game.SetNodeEnabled(officer, true);
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
         }
 
         [Test]
-        public void SetParent_AssignedToMission_CancelsDiscoveryImmediately()
+        public void MoveNode_AssignedToMission_CancelsDiscoveryImmediately()
         {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             Mission mission = new SabotageMission { InstanceID = "mission" };
 
-            mission.AddChild(officer);
-            officer.SetParent(mission);
+            game.AttachNode(mission, officer.GetParent());
+            game.MoveNode(officer, mission);
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -125,16 +131,15 @@ namespace Rebellion.Tests.Game.Units
                 InstanceID = "ship",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            fleet.AddChild(ship);
-            ship.SetParent(fleet);
-            ship.AddChild(officer);
-            officer.SetParent(ship);
+            game.AttachNode(fleet, officer.GetParent());
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
             IMovable transport = fleetTransit ? fleet : ship;
-            transport.Movement = TestMovement.Create();
+            game.SetMovement(transport, TestMovement.Create());
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             game.CurrentTick = 70;
 
-            transport.Movement = null;
+            game.SetMovement(transport, null);
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -143,16 +148,18 @@ namespace Rebellion.Tests.Game.Units
         [Test]
         public void IsEnabled_ContainingShipBecomesInactive_CancelsPassengerDiscovery()
         {
-            (_, Officer officer) = RegisterDiscoveryOfficer(80);
+            (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             CapitalShip ship = new()
             {
                 InstanceID = "ship",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.AddChild(officer);
-            officer.SetParent(ship);
+            Fleet fleet = new() { InstanceID = "fleet" };
+            game.AttachNode(fleet, officer.GetParent());
+            game.AttachNode(ship, fleet);
+            game.MoveNode(officer, ship);
 
-            ship.IsEnabled = false;
+            game.SetNodeEnabled(ship, false);
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -1026,7 +1033,11 @@ namespace Rebellion.Tests.Game.Units
                 IsJediTrainer = true,
                 ForceValue = rank,
             };
-            game.AddSceneNodeByInstanceID(officer);
+            PlanetSector sector = new() { InstanceID = "discovery-sector" };
+            Planet planet = new() { InstanceID = "discovery-planet", IsColonized = true };
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(officer, planet);
             return (game, officer);
         }
 

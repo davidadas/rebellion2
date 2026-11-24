@@ -355,7 +355,7 @@ namespace Rebellion.Gameplay
             if (occupant is not Officer officer)
                 return;
 
-            officer.Movement = null;
+            _game.SetMovement(officer, null);
             string captorInstanceId = origin.GetOwnerInstanceID();
             if (captorInstanceId == officer.GetOwnerInstanceID())
             {
@@ -364,6 +364,7 @@ namespace Rebellion.Gameplay
                         CaptiveStateTransition.Release(
                             officer,
                             origin,
+                            _game,
                             _game.CurrentTick,
                             officer.CaptorInstanceID
                         )
