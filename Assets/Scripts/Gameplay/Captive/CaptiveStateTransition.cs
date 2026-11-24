@@ -73,7 +73,7 @@ namespace Rebellion.Gameplay
         )
         {
             officer.ReleaseFromCaptivity();
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
 
             return new OfficerCaptureStateResult
             {

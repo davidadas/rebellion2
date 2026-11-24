@@ -977,7 +977,7 @@ namespace Rebellion.Game.Units
             bool captureStateChanged = !IsCaptured;
             IsCaptured = true;
             if (captureStateChanged)
-                game.ReconcileForceDiscoveryState(this);
+                game.NotifyUnitStateChanged(this);
             CaptorInstanceID = captorInstanceId;
             if (captureStateChanged && !CanEscape)
             {

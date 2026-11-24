@@ -44,7 +44,7 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(officer));
 
             officer.IsEnabled = false;
-            _game.ReconcileForceDiscoveryState(officer);
+            _game.NotifyUnitStateChanged(officer);
             officer.IsKilled = true;
             _game.SetMovement(officer, null);
         }

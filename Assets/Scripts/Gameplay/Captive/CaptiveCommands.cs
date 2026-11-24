@@ -182,7 +182,7 @@ namespace Rebellion.Gameplay
         {
             string captorInstanceID = officer.CaptorInstanceID;
             officer.IsCaptured = false;
-            _game.ReconcileForceDiscoveryState(officer);
+            _game.NotifyUnitStateChanged(officer);
             officer.CaptorInstanceID = null;
 
             Faction faction = _game.GetFactionByOwnerInstanceID(officer.OwnerInstanceID);
@@ -194,7 +194,7 @@ namespace Rebellion.Gameplay
             )
             {
                 officer.IsCaptured = true;
-                _game.ReconcileForceDiscoveryState(officer);
+                _game.NotifyUnitStateChanged(officer);
                 officer.CaptorInstanceID = captorInstanceID;
                 return null;
             }

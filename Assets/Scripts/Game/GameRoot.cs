@@ -38,13 +38,14 @@ namespace Rebellion.Game
         /// </summary>
         internal event Action<ISceneNode, Planet, Planet> UnitPresenceChanged;
 
+        /// <summary>
+        /// Reports a unit state change that observers process synchronously.
+        /// The boolean indicates whether the change can affect its descendants.
+        /// </summary>
+        internal event Action<ISceneNode, bool> UnitStateChanged;
+
         // Scene graph.
         private GalaxyMap _galaxy;
-
-        /// <summary>
-        /// Reports an officer whose retained discovery state has just become enabled.
-        /// </summary>
-        internal event Action<Officer> ForceDiscoveryStarted;
 
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
@@ -191,9 +192,6 @@ namespace Rebellion.Game
 
         [PersistableIgnore]
         private readonly List<Officer> _registeredOfficers = new List<Officer>();
-
-        [PersistableIgnore]
-        private long _forceDiscoveryOrder;
 
         /// <summary>
         /// Gets the registered officer roster, including disabled officers, without traversing the scene.
@@ -575,7 +573,7 @@ namespace Rebellion.Game
             if (node.IsEnabled == enabled)
                 return;
             node.IsEnabled = enabled;
-            ReconcileForceDiscoveryIn(node);
+            NotifyUnitStateChanged(node, includeDescendants: true);
             if (UnitPresenceChanged != null)
             {
                 Planet planet = GetContainingPlanet(node);
@@ -726,7 +724,6 @@ namespace Rebellion.Game
             {
                 newParent.AddChild(node);
                 node.SetParent(newParent);
-                ReconcileForceDiscoveryIn(node);
             }
             catch
             {
@@ -734,6 +731,7 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
+            NotifyUnitStateChanged(node, includeDescendants: true);
             if (UnitPresenceChanged != null)
                 UnitPresenceChanged(node, origin, GetContainingPlanet(node));
         }
@@ -942,15 +940,7 @@ namespace Rebellion.Game
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
                 if (node is Officer officer)
-                {
                     _registeredOfficers.Add(officer);
-                    _forceDiscoveryOrder = Math.Max(
-                        _forceDiscoveryOrder,
-                        officer.ForceDiscoveryOrder
-                    );
-                    if (officer.IsDiscoveringForceUser && officer.ForceDiscoveryOrder == 0)
-                        officer.ForceDiscoveryOrder = AllocateForceDiscoveryOrder();
-                }
             }
             catch (ArgumentException)
             {
@@ -958,8 +948,7 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            if (node is Officer registeredOfficer)
-                ReconcileForceDiscoveryState(registeredOfficer);
+            NotifyUnitStateChanged(node);
         }
 
         /// <summary>
@@ -974,40 +963,15 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Reconciles a registered officer's discovery state and restores a missing deadline.
+        /// Reports a completed change to a registered unit's state.
         /// </summary>
-        /// <param name="officer">The registered officer whose scan state is reconciled.</param>
-        internal void ReconcileForceDiscoveryState(Officer officer)
-        {
-            if (
-                Config == null
-                || string.IsNullOrEmpty(officer.InstanceID)
-                || !NodesByInstanceID.TryGetValue(officer.InstanceID, out ISceneNode registered)
-                || !ReferenceEquals(registered, officer)
-            )
-                return;
-
-            officer.RestoreForceDiscoveryTick(unchecked(CurrentTick + 1));
-            bool enabled = officer.CanDiscoverForceUsers(Config.Jedi.DiscoveringForceUserThreshold);
-            if (officer.IsDiscoveringForceUser == enabled)
-                return;
-
-            officer.IsDiscoveringForceUser = enabled;
-            officer.NextForceDiscoveryTick = enabled ? unchecked(CurrentTick + 1) : 0;
-            officer.ForceDiscoveryOrder = enabled ? AllocateForceDiscoveryOrder() : 0;
-            if (enabled)
-                ForceDiscoveryStarted?.Invoke(officer);
-        }
+        /// <param name="node">The unit or container being changed.</param>
+        /// <param name="includeDescendants">Whether the change may affect contained units.</param>
+        internal void NotifyUnitStateChanged(ISceneNode node, bool includeDescendants = false) =>
+            UnitStateChanged?.Invoke(node, includeDescendants);
 
         /// <summary>
-        /// Allocates the next insertion order for a discovery scan, including recurring scans.
-        /// Restored officer orders advance this counter as the scene registry is rebuilt.
-        /// </summary>
-        /// <returns>An order greater than every previously registered or scheduled scan.</returns>
-        internal long AllocateForceDiscoveryOrder() => ++_forceDiscoveryOrder;
-
-        /// <summary>
-        /// Changes a unit's movement and reconciles Force discovery for officers aboard it.
+        /// Changes a unit's movement and notifies scene observers.
         /// </summary>
         /// <param name="unit">The unit whose movement changes.</param>
         /// <param name="movement">The new movement, or null when stationary.</param>
@@ -1017,24 +981,7 @@ namespace Rebellion.Game
                 return;
 
             unit.Movement = movement;
-            if (unit is Officer or Fleet or CapitalShip)
-                ReconcileForceDiscoveryIn(unit);
-        }
-
-        /// <summary>
-        /// Reconciles Force scans when an officer or its containing subtree changes.
-        /// </summary>
-        /// <param name="node">The node whose containment or availability changed.</param>
-        private void ReconcileForceDiscoveryIn(ISceneNode node)
-        {
-            if (node is Officer officer)
-                ReconcileForceDiscoveryState(officer);
-            else if (node is ContainerNode && _registeredOfficers.Count != 0)
-                ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
-                {
-                    if (child is Officer passenger)
-                        ReconcileForceDiscoveryState(passenger);
-                });
+            NotifyUnitStateChanged(unit, includeDescendants: true);
         }
 
         /// <summary>

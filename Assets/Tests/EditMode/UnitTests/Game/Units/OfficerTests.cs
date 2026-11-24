@@ -6,6 +6,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
@@ -14,6 +15,18 @@ namespace Rebellion.Tests.Game.Units
     [TestFixture]
     public class OfficerTests
     {
+        private JediCommands _discoveryCommands;
+
+        /// <summary>
+        /// Disconnects the discovery observer used by the test.
+        /// </summary>
+        [TearDown]
+        public void TearDown()
+        {
+            _discoveryCommands?.Dispose();
+            _discoveryCommands = null;
+        }
+
         [TestCase(79, false)]
         [TestCase(80, true)]
         [TestCase(81, true)]
@@ -25,7 +38,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceValue = rank;
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -45,7 +58,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(50);
 
             officer.ForceTrainingAdjustment = adjustment;
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
 
             Assert.AreEqual(expectedDiscovery, officer.IsDiscoveringForceUser);
             Assert.AreEqual(
@@ -60,7 +73,7 @@ namespace Rebellion.Tests.Game.Units
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
 
             officer.IsCaptured = true;
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
 
             Assert.IsFalse(officer.IsDiscoveringForceUser);
             Assert.Zero(officer.NextForceDiscoveryTick);
@@ -71,11 +84,11 @@ namespace Rebellion.Tests.Game.Units
         {
             (GameRoot game, Officer officer) = RegisterDiscoveryOfficer(80);
             officer.IsCaptured = true;
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
             game.CurrentTick = 70;
 
             officer.IsCaptured = false;
-            game.ReconcileForceDiscoveryState(officer);
+            game.NotifyUnitStateChanged(officer);
 
             Assert.IsTrue(officer.IsDiscoveringForceUser);
             Assert.AreEqual(71, officer.NextForceDiscoveryTick);
@@ -1022,11 +1035,12 @@ namespace Rebellion.Tests.Game.Units
         /// </summary>
         /// <param name="rank">The trainer's initial Force rank.</param>
         /// <returns>The game and its registered trainer.</returns>
-        private static (GameRoot Game, Officer Officer) RegisterDiscoveryOfficer(int rank)
+        private (GameRoot Game, Officer Officer) RegisterDiscoveryOfficer(int rank)
         {
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.Jedi.DiscoveringForceUserThreshold = 80;
             game.CurrentTick = 42;
+            _discoveryCommands = new JediCommands(game, new FixedRNG());
             Officer officer = new()
             {
                 InstanceID = "discovery-officer",

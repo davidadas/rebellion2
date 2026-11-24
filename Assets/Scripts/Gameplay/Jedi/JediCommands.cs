@@ -28,6 +28,7 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly IRandomNumberProvider _provider;
         private readonly List<GameResult> _pendingDiscoveryResults = new();
+        private long _forceDiscoveryOrder;
 
         /// <summary>
         /// Creates a new JediCommands.
@@ -38,7 +39,8 @@ namespace Rebellion.Gameplay
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _provider = provider ?? throw new ArgumentNullException(nameof(provider));
-            _game.ForceDiscoveryStarted += RecordDiscoveryStarted;
+            ReconcileDiscoveryState();
+            _game.UnitStateChanged += ObserveUnitStateChange;
         }
 
         /// <summary>
@@ -58,7 +60,7 @@ namespace Rebellion.Gameplay
 
             int previousForceRank = officer.ForceRank;
             officer.ForceValue += growth;
-            _game.ReconcileForceDiscoveryState(officer);
+            _game.NotifyUnitStateChanged(officer);
             GameLogger.Log(
                 $"{officer.GetDisplayName()} gained {growth} ForceValue after evading capture (now {officer.ForceValue})"
             );
@@ -74,11 +76,11 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Disconnects the model's discovery-transition producer from this runtime.
+        /// Stops observing scene changes when this runtime is disposed.
         /// </summary>
         public void Dispose()
         {
-            _game.ForceDiscoveryStarted -= RecordDiscoveryStarted;
+            _game.UnitStateChanged -= ObserveUnitStateChange;
         }
 
         /// <summary>
@@ -93,7 +95,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Records a model transition without postponing its timer or eligibility update.
+        /// Records the start of a discovery scan at the current rank and campaign tick.
         /// </summary>
         /// <param name="officer">The officer whose scanner was enabled.</param>
         private void RecordDiscoveryStarted(Officer officer)
@@ -115,8 +117,70 @@ namespace Rebellion.Gameplay
         internal void ReconcileDiscoveryState()
         {
             foreach (Officer officer in _game.RegisteredOfficers)
-                _game.ReconcileForceDiscoveryState(officer);
+                _forceDiscoveryOrder = Math.Max(_forceDiscoveryOrder, officer.ForceDiscoveryOrder);
+
+            foreach (Officer officer in _game.RegisteredOfficers)
+                ReconcileForceDiscoveryState(officer);
             _pendingDiscoveryResults.Clear();
+        }
+
+        /// <summary>
+        /// Updates scanners affected by a completed change in the scene.
+        /// </summary>
+        /// <param name="node">The officer or container that changed.</param>
+        /// <param name="includeDescendants">Whether to check officers within that container.</param>
+        private void ObserveUnitStateChange(ISceneNode node, bool includeDescendants)
+        {
+            if (node is Officer officer)
+                ReconcileForceDiscoveryState(officer);
+            else if (
+                includeDescendants
+                && node is ContainerNode container
+                && _game.RegisteredOfficers.Count != 0
+            )
+                container.TraverseIncludingDisabled(child =>
+                {
+                    if (child is Officer passenger)
+                        ReconcileForceDiscoveryState(passenger);
+                });
+        }
+
+        /// <summary>
+        /// Applies discovery eligibility and schedules or cancels the officer's scan.
+        /// </summary>
+        /// <param name="officer">The officer whose Force or availability changed.</param>
+        private void ReconcileForceDiscoveryState(Officer officer)
+        {
+            if (
+                _game.Config == null
+                || !ReferenceEquals(
+                    _game.GetSceneNodeByInstanceID<Officer>(
+                        officer.InstanceID,
+                        includeDisabled: true
+                    ),
+                    officer
+                )
+            )
+                return;
+
+            _forceDiscoveryOrder = Math.Max(_forceDiscoveryOrder, officer.ForceDiscoveryOrder);
+            int nextTick = unchecked(_game.CurrentTick + 1);
+            officer.RestoreForceDiscoveryTick(nextTick);
+            bool enabled = officer.CanDiscoverForceUsers(
+                _game.Config.Jedi.DiscoveringForceUserThreshold
+            );
+            if (officer.IsDiscoveringForceUser == enabled)
+            {
+                if (enabled && officer.ForceDiscoveryOrder == 0)
+                    officer.ForceDiscoveryOrder = ++_forceDiscoveryOrder;
+                return;
+            }
+
+            officer.IsDiscoveringForceUser = enabled;
+            officer.NextForceDiscoveryTick = enabled ? nextTick : 0;
+            officer.ForceDiscoveryOrder = enabled ? ++_forceDiscoveryOrder : 0;
+            if (enabled)
+                RecordDiscoveryStarted(officer);
         }
 
         /// <summary>
@@ -176,7 +240,7 @@ namespace Rebellion.Gameplay
                     continue;
 
                 scan.Scanner.NextForceDiscoveryTick = unchecked(scan.Tick + 1);
-                scan.Scanner.ForceDiscoveryOrder = _game.AllocateForceDiscoveryOrder();
+                scan.Scanner.ForceDiscoveryOrder = ++_forceDiscoveryOrder;
                 scans.Add(
                     (
                         scan.Scanner.NextForceDiscoveryTick,
@@ -263,7 +327,7 @@ namespace Rebellion.Gameplay
             int previousForceRank = candidate.ForceRank;
             candidate.IsForceEligible = true;
             candidate.InitializeForceValue(_provider);
-            _game.ReconcileForceDiscoveryState(candidate);
+            _game.NotifyUnitStateChanged(candidate);
             int currentForceRank = candidate.ForceRank;
 
             results.Add(
