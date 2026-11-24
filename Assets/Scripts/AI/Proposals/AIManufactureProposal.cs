@@ -571,7 +571,8 @@ namespace Rebellion.AI.Proposals
                     CurrentOrder,
                     ResourcesToReclaim.Count == 0
                         ? null
-                        : ResourcesToReclaim.Cast<IManufacturable>().ToArray()
+                        : ResourcesToReclaim.Cast<IManufacturable>().ToArray(),
+                    context.Game
                 )
             )
                 return false;

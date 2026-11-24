@@ -99,7 +99,8 @@ namespace Rebellion.Gameplay
                     template,
                     destination,
                     count,
-                    ownerInstanceId
+                    ownerInstanceId,
+                    game: _game
                 )
             )
                 return false;
@@ -157,12 +158,12 @@ namespace Rebellion.Gameplay
                 int addedCount = count - activeOrder.Quantity;
                 return addedCount <= 0
                     || (
-                        HasDestinationCapacity(producer, destination, template, addedCount)
+                        HasDestinationCapacity(_game, producer, destination, template, addedCount)
                         && HasMaintenanceHeadroom(faction, template, addedCount)
                     );
             }
 
-            if (!HasDestinationCapacity(producer, destination, template, count, activeItems))
+            if (!HasDestinationCapacity(_game, producer, destination, template, count, activeItems))
                 return false;
 
             return HasMaintenanceHeadroom(
@@ -277,6 +278,7 @@ namespace Rebellion.Gameplay
         /// <param name="ownerInstanceId">The faction requesting the order.</param>
         /// <param name="replacedOrder">An unfinished order assumed to be removed before construction.</param>
         /// <param name="removedItems">Additional units assumed to be removed before construction.</param>
+        /// <param name="game">The campaign evaluating the destination blockade.</param>
         /// <returns>True when the order is structurally valid without considering maintenance.</returns>
         public static bool CanAcceptManufacturingOrder(
             Planet producer,
@@ -285,7 +287,8 @@ namespace Rebellion.Gameplay
             int count,
             string ownerInstanceId,
             IManufacturable replacedOrder = null,
-            IReadOnlyCollection<IManufacturable> removedItems = null
+            IReadOnlyCollection<IManufacturable> removedItems = null,
+            GameRoot game = null
         )
         {
             IReadOnlyCollection<IManufacturable> released = removedItems;
@@ -300,7 +303,7 @@ namespace Rebellion.Gameplay
                     destination,
                     count,
                     ownerInstanceId
-                ) && HasDestinationCapacity(producer, destination, template, count, released);
+                ) && HasDestinationCapacity(game, producer, destination, template, count, released);
         }
 
         /// <summary>
@@ -311,8 +314,10 @@ namespace Rebellion.Gameplay
         /// <param name="template">The unit or facility template to manufacture.</param>
         /// <param name="count">The number of copies to queue.</param>
         /// <param name="replacedItems">The active lane items removed before capacity is consumed.</param>
+        /// <param name="game">The campaign evaluating the destination blockade.</param>
         /// <returns>True when the destination has sufficient capacity.</returns>
         private static bool HasDestinationCapacity(
+            GameRoot game,
             Planet producer,
             ISceneNode destination,
             IManufacturable template,
@@ -340,7 +345,7 @@ namespace Rebellion.Gameplay
                     Regiment _ => true,
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits()
-                        && !planet.IsBlockadedFor(ownerInstanceId),
+                        && !planet.IsBlockadedFor(ownerInstanceId, game),
                     Building building => planet.GetAvailableEnergy()
                         + CountReplacedItems<Building>(
                             replacedItems,
@@ -640,7 +645,8 @@ namespace Rebellion.Gameplay
 
             int blockadePercent = producer.GetBlockadeProductionModifier(
                 game.Config.Blockade.CapitalShipProductionPenaltyPercent,
-                game.Config.Blockade.FighterProductionPenaltyPercent
+                game.Config.Blockade.FighterProductionPenaltyPercent,
+                game
             );
             int difficultyPercent = game.GetDifficultyModifier(
                 producer.GetOwnerInstanceID()

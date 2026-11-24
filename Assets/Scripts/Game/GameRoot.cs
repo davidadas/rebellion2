@@ -5,6 +5,7 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -40,6 +41,7 @@ namespace Rebellion.Game
 
         // Scene graph.
         private GalaxyMap _galaxy;
+        private string[] _blockadeFactionIds = Array.Empty<string>();
 
         /// <summary>
         /// Reports an officer whose retained discovery state has just become enabled.
@@ -307,6 +309,30 @@ namespace Rebellion.Game
             foreach (Officer officer in _registeredOfficers)
                 officer.BindForceRules(config.Jedi, this);
         }
+
+        /// <summary>
+        /// Sets the faction pair used by campaign blockade queries.
+        /// </summary>
+        /// <param name="factionIds">The faction identities in starting order.</param>
+        internal void ConfigureBlockadeFactions(IReadOnlyList<string> factionIds)
+        {
+            _blockadeFactionIds =
+                factionIds?.Count == 2
+                && !string.IsNullOrEmpty(factionIds[0])
+                && !string.IsNullOrEmpty(factionIds[1])
+                && factionIds[0] != factionIds[1]
+                    ? new[] { factionIds[0], factionIds[1] }
+                    : Array.Empty<string>();
+        }
+
+        /// <summary>
+        /// Evaluates a registered planet using the current two-faction orbital rules when applicable.
+        /// </summary>
+        /// <param name="planet">The authoritative planet registered in this game.</param>
+        /// <param name="blockaded">The current blockade state when the faction domain is supported.</param>
+        /// <returns>Whether the current campaign and definitions identify the exact faction pair.</returns>
+        internal bool TryCalculateSpaceCombatBlockade(Planet planet, out bool blockaded) =>
+            SpaceCombatBlockadeRules.TryCalculate(this, _blockadeFactionIds, planet, out blockaded);
 
         /// <summary>
         /// Gets the game configuration.

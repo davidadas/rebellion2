@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.Galaxy
 {
@@ -933,23 +934,27 @@ namespace Rebellion.Tests.Game.Galaxy
         }
 
         [Test]
-        public void AddStarfighter_InvalidOwner_ThrowsException()
+        public void AddChild_OpposingStarfighterOwner_PreservesBothOwners()
         {
-            Starfighter starfighter = new Starfighter { OwnerInstanceID = "INVALID" };
+            Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNEMP1" };
 
-            Assert.Throws<SceneAccessException>(
-                () => _planet.AddChild(starfighter),
-                "Adding a starfighter with a mismatched OwnerInstanceID should throw a SceneAccessException."
-            );
+            _planet.AddChild(starfighter);
+
+            CollectionAssert.Contains(_planet.GetChildren<Starfighter>(), starfighter);
+            Assert.AreEqual("FNALL1", _planet.OwnerInstanceID);
+            Assert.AreEqual("FNEMP1", starfighter.OwnerInstanceID);
         }
 
         [Test]
-        public void AddStarfighter_UncolonizedPlanet_ThrowsException()
+        public void AddChild_UncolonizedPlanet_RetainsStarfighterWithoutColonizing()
         {
             _planet.IsColonized = false;
             Starfighter starfighter = new Starfighter { OwnerInstanceID = "FNALL1" };
 
-            Assert.Throws<SceneAccessException>(() => _planet.AddChild(starfighter));
+            _planet.AddChild(starfighter);
+
+            CollectionAssert.Contains(_planet.GetChildren<Starfighter>(), starfighter);
+            Assert.IsFalse(_planet.IsColonized);
         }
 
         [Test]
@@ -1073,6 +1078,41 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.AddChild(CreateOperationalFleet("FNALL1"));
 
             Assert.IsTrue(_planet.IsBlockaded());
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        public void IsBlockaded_UncolonizedNeutralPlanet_ReturnsFalse(string owner)
+        {
+            _planet.OwnerInstanceID = owner;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            Assert.IsFalse(_planet.IsBlockadedFor("ENEMY"));
+        }
+
+        [Test]
+        public void IsBlockaded_UncolonizedOwnedPlanetWithHostileFleet_ReturnsTrue()
+        {
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("ENEMY"));
+
+            Assert.IsTrue(_planet.IsBlockaded());
+        }
+
+        [Test]
+        public void IsBlockaded_NeutralPlanetPopulationChanges_UsesCurrentPopulation()
+        {
+            _planet.OwnerInstanceID = null;
+            _planet.IsColonized = false;
+            _planet.AddChild(CreateOperationalFleet("FNALL1"));
+
+            Assert.IsFalse(_planet.IsBlockaded());
+            _planet.IsColonized = true;
+            Assert.IsTrue(_planet.IsBlockaded());
+            _planet.IsColonized = false;
+            Assert.IsFalse(_planet.IsBlockaded());
         }
 
         [Test]
