@@ -4742,6 +4742,137 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void CreateMessages_UprisingEndedOnCorePlanet_NotifiesBothFactions(
+            bool allianceControlsPlanet
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            Faction controller = allianceControlsPlanet ? alliance : empire;
+            Faction opponent = allianceControlsPlanet ? empire : alliance;
+            target.OwnerInstanceID = controller.InstanceID;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{faction}:{system}",
+                        "body:{faction}:{system}",
+                        imagePaths: FactionImages(),
+                        voicePaths: new Dictionary<string, string>
+                        {
+                            { alliance.InstanceID, "alliance-audio" },
+                            { empire.InstanceID, "empire-audio" },
+                        }
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = controller }
+            );
+
+            Assert.AreEqual(2, deliveries.Count);
+            MessageDelivery friendly = deliveries.Single(item => item.Recipient == controller);
+            MessageDelivery enemy = deliveries.Single(item => item.Recipient == opponent);
+            Assert.AreEqual(
+                AdvisorNotificationType.PositivePopularSupport,
+                friendly.NotificationType
+            );
+            Assert.AreEqual(AdvisorNotificationType.NegativePopularSupport, enemy.NotificationType);
+            Assert.AreEqual($"ended:{controller.DisplayName}:Yavin", enemy.Message.Title);
+            Assert.AreEqual($"body:{controller.DisplayName}:Yavin", enemy.Message.Body);
+            Assert.AreEqual(FactionImages()[controller.InstanceID], enemy.Message.DisplayImagePath);
+            Assert.AreEqual(
+                allianceControlsPlanet ? "empire-audio" : "alliance-audio",
+                enemy.Message.BackgroundAudioPath
+            );
+            Assert.AreEqual(target.InstanceID, enemy.Message.EventLocationInstanceID);
+            Assert.AreEqual(target.InstanceID, enemy.Message.NavigationTargetInstanceID);
+        }
+
+        [TestCase(false, false, false, 1)]
+        [TestCase(true, false, false, 1)]
+        [TestCase(true, true, true, 1)]
+        [TestCase(true, true, false, 2)]
+        public void CreateMessages_UprisingEndedOnOuterRimPlanet_OnlyNotifiesCurrentObservers(
+            bool hasFleet,
+            bool hasShip,
+            bool moving,
+            int expectedReports
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.OuterRim;
+            if (hasFleet)
+            {
+                Fleet fleet = new()
+                {
+                    InstanceID = "observing-fleet",
+                    OwnerInstanceID = alliance.InstanceID,
+                    Movement = moving ? new MovementState() : null,
+                };
+                game.AttachNode(fleet, target);
+                if (hasShip)
+                    game.AttachNode(
+                        new CapitalShip
+                        {
+                            InstanceID = "observing-ship",
+                            OwnerInstanceID = alliance.InstanceID,
+                            ManufacturingStatus = ManufacturingStatus.Complete,
+                        },
+                        fleet
+                    );
+            }
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{system}",
+                        "body:{system}"
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target, Faction = empire }
+            );
+
+            Assert.AreEqual(expectedReports, deliveries.Count);
+            Assert.AreEqual(1, deliveries.Count(item => item.Recipient == empire));
+            Assert.AreEqual(
+                expectedReports - 1,
+                deliveries.Count(item => item.Recipient == alliance)
+            );
+        }
+
+        [Test]
+        public void CreateMessages_UprisingEndedWithoutController_ReturnsNoReports()
+        {
+            (GameRoot game, _, _, _, Planet target) = BuildTwoFactionMessageScene();
+            target.OwnerInstanceID = null;
+
+            List<MessageDelivery> deliveries = CreateMessages(
+                game,
+                new[]
+                {
+                    Definition(
+                        MessageResultType.UprisingEnded,
+                        MessageType.PopularSupport,
+                        "ended:{system}",
+                        "body:{system}"
+                    ),
+                },
+                new PlanetUprisingEndedResult { Planet = target }
+            );
+
+            Assert.IsEmpty(deliveries);
+        }
+
         [Test]
         public void CreateMessages_UprisingEndedWithOwnershipChange_SuppressesJoinedCauseMessage()
         {
@@ -4778,7 +4909,10 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Message message = FirstMessageFor(deliveries, alliance);
-            Assert.AreEqual(1, deliveries.Count);
+            Assert.AreEqual(2, deliveries.Count);
+            Assert.IsTrue(
+                deliveries.All(item => item.Message.ResultType == MessageResultType.UprisingEnded)
+            );
             Assert.AreEqual("uprising ended:Yavin", message.Title);
             Assert.AreEqual("ended:Alliance:Yavin", message.Body);
         }
