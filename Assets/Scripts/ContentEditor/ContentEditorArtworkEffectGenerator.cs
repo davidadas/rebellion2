@@ -972,8 +972,6 @@ internal static class ContentEditorArtworkEffectGenerator
         /// <param name="result">The composed layers below the unit.</param>
         private void MaskBehindSubject(Color[] result)
         {
-            if (!useSubjectMask)
-                return;
             for (int index = 0; index < result.Length; index++)
                 result[index].a *= 1f - subject[index].a;
         }

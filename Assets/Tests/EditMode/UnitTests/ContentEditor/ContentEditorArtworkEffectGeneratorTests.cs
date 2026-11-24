@@ -325,6 +325,43 @@ namespace Rebellion.Tests.ContentEditor
             Assert.That(pixels[24 * _width + 40].a, Is.EqualTo(byte.MaxValue));
         }
 
+        [TestCase("ShipTravel", false)]
+        [TestCase("ShipTravel", true)]
+        [TestCase("Damage", false)]
+        [TestCase("Damage", true)]
+        [TestCase("PersonnelTravel", false)]
+        [TestCase("PersonnelTravel", true)]
+        [TestCase("RegimentTravel", false)]
+        [TestCase("RegimentTravel", true)]
+        public void Bake_OpaqueSubjectLayer_PreservesEffectOrdering(string format, bool effectAbove)
+        {
+            string source = WriteEffectImage((_, _) => new Color32(31, 72, 81, 255));
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                source,
+                null,
+                Enum.Parse<ContentEditorArtworkEffectStyle>(format),
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+            var subject = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+
+            Color32[] pixels = DecodePixels(
+                frame.Bake(effectAbove ? new[] { subject, effect } : new[] { effect, subject })
+            );
+
+            Assert.That(
+                pixels.Select(pixel => pixel.a),
+                Is.All.EqualTo(effectAbove ? byte.MaxValue : (byte)0)
+            );
+        }
+
         [Test]
         public void Bake_ShipBackgroundMovedAboveUnit_ExportsTheReorderedBackground()
         {

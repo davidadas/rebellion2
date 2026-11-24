@@ -489,7 +489,7 @@ internal sealed class FleetWindowProjector
     }
 
     /// <summary>
-    /// Resolves a non-personnel in-transit detail overlay.
+    /// Resolves movement artwork for an in-transit detail item.
     /// </summary>
     /// <param name="uiContext">The current presentation context.</param>
     /// <param name="fleet">The selected fleet.</param>
@@ -507,7 +507,9 @@ internal sealed class FleetWindowProjector
         )
             return null;
 
-        return uiContext.GetEntityStatusTexture(item, true);
+        return uiContext.GetTexture(
+            SelectStatusPath(item.InTransitSmallImagePath, item.InTransitImagePath)
+        );
     }
 
     /// <summary>
