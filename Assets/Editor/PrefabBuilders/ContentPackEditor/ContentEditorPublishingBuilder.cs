@@ -85,14 +85,26 @@ internal static class ContentEditorPublishingBuilder
         };
         for (int i = 0; i < fields.Length; i++)
             Assign(view, fieldNames[i], fields[i]);
-        TextMeshProUGUI review = Label("ReviewText", stages[2].transform, string.Empty, 17);
-        Rect(review.rectTransform, 0, 0, 650, 410);
+        Transform reviewStage = stages[2].transform;
+        Rect(Label("TeamLabel", reviewStage, "Publishing team", 14).rectTransform, 0, 0, 650, 24);
+        TMP_Dropdown team = Dropdown("PublishingTeam", reviewStage);
+        Rect((RectTransform)team.transform, 0, 30, 650, 36);
+        team.template.anchoredPosition = Vector2.zero;
+        Assign(view, "_team", team);
+        TextMeshProUGUI review = Label("ReviewText", reviewStage, string.Empty, 16);
+        Rect(review.rectTransform, 0, 84, 650, 312);
         review.alignment = TextAlignmentOptions.TopLeft;
         review.textWrappingMode = TextWrappingModes.Normal;
         Assign(view, "_review", review);
-        Button community = Button("OpenThunderstore", stages[2].transform, "Open Thunderstore");
-        Rect((RectTransform)community.transform, 0, 410, 200, 36);
+        Button export = Button("ExportPackage", reviewStage, "Export ZIP…");
+        Rect((RectTransform)export.transform, 0, 410, 200, 36);
+        Assign(view, "_exportButton", export);
+        Button community = PlainButton("OpenThunderstore", reviewStage, "Open Thunderstore");
+        Rect((RectTransform)community.transform, 216, 410, 220, 36);
         Assign(view, "_communityButton", community);
+        Button connection = PlainButton("ThunderstoreConnection", rect, "Connect Thunderstore…");
+        Rect((RectTransform)connection.transform, 726, 96, 286, 36);
+        Assign(view, "_connectionButton", connection);
         Rect(
             Label("PreviewHeading", rect, "Listing preview", 15, true).rectTransform,
             726,
@@ -118,8 +130,17 @@ internal static class ContentEditorPublishingBuilder
         TextMeshProUGUI status = Label("PublishingStatus", rect, string.Empty, 15);
         Rect(status.rectTransform, 28, 608, 984, 54);
         status.alignment = TextAlignmentOptions.TopLeft;
+        status.richText = false;
         status.textWrappingMode = TextWrappingModes.Normal;
         Assign(view, "_status", status);
+        Image progressTrack = Surface("UploadProgress", rect, ContentEditorColorRole.Divider);
+        Rect(progressTrack.rectTransform, 28, 664, 984, 3);
+        Image progress = Surface("Fill", progressTrack.transform, ContentEditorColorRole.Accent);
+        Stretch(progress.rectTransform);
+        progress.rectTransform.anchorMax = Vector2.up;
+        Assign(view, "_progressTrack", progressTrack.gameObject);
+        Assign(view, "_progress", progress);
+        progressTrack.gameObject.SetActive(false);
         Button save = Button("SaveDraft", rect, "Save draft");
         Rect((RectTransform)save.transform, 28, 674, 144, 36);
         Assign(view, "_saveButton", save);
@@ -129,8 +150,59 @@ internal static class ContentEditorPublishingBuilder
         Button next = Button("ContinuePublishing", rect, "Continue to release");
         Rect((RectTransform)next.transform, 774, 674, 238, 36);
         Assign(view, "_nextButton", next);
+        BuildConnection(overlay.transform, view);
         overlay.gameObject.SetActive(false);
         return view;
+    }
+
+    /// <summary>
+    /// Creates masked session credentials separately from saved release metadata.
+    /// </summary>
+    /// <param name="parent">The owning publishing overlay.</param>
+    /// <param name="view">The publishing presentation receiving its controls.</param>
+    private static void BuildConnection(Transform parent, ContentEditorPublishingView view)
+    {
+        Image overlay = Surface("Connection", parent, new Color(0, 0, 0, 0.7f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        Image panel = Surface("ConnectionPanel", overlay.transform, ContentEditorColorRole.Panel);
+        RectTransform rect = panel.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(640, 380);
+        Rect(Label("Heading", rect, "Connect Thunderstore", 24).rectTransform, 28, 20, 584, 36);
+        TextMeshProUGUI help = Label(
+            "Help",
+            rect,
+            "Create a service account under your Thunderstore team, then paste its token here. The connection lasts for this session.",
+            15,
+            true
+        );
+        Rect(help.rectTransform, 28, 72, 584, 64);
+        help.textWrappingMode = TextWrappingModes.Normal;
+        TMP_InputField token = Input("ThunderstoreToken", rect, "Team service-account token");
+        Rect((RectTransform)token.transform, 28, 150, 584, 40);
+        token.contentType = TMP_InputField.ContentType.Password;
+        token.characterLimit = 4096;
+        Assign(view, "_token", token);
+        Button tokenHelp = PlainButton("GetToken", rect, "Get a token…");
+        Rect((RectTransform)tokenHelp.transform, 20, 204, 160, 32);
+        Assign(view, "_tokenHelpButton", tokenHelp);
+        Button disconnect = PlainButton("DisconnectThunderstore", rect, "Disconnect");
+        Rect((RectTransform)disconnect.transform, 464, 204, 148, 32);
+        Assign(view, "_disconnectButton", disconnect);
+        TextMeshProUGUI status = Label("ConnectionStatus", rect, string.Empty, 14);
+        Rect(status.rectTransform, 28, 248, 584, 56);
+        status.textWrappingMode = TextWrappingModes.Normal;
+        status.richText = false;
+        Assign(view, "_connectionStatus", status);
+        Button close = Button("CloseConnection", rect, "Back");
+        Rect((RectTransform)close.transform, 344, 320, 120, 36);
+        Assign(view, "_connectionCloseButton", close);
+        Button connect = Button("ConnectThunderstore", rect, "Connect");
+        Rect((RectTransform)connect.transform, 480, 320, 132, 36);
+        Assign(view, "_connectButton", connect);
+        Assign(view, "_connectionPanel", overlay.gameObject);
+        overlay.gameObject.SetActive(false);
     }
 
     /// <summary>

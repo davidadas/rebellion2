@@ -69,6 +69,45 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private RawImage _icon;
+
+    [SerializeField]
+    private Button _connectionButton;
+
+    [SerializeField]
+    private Button _connectButton;
+
+    [SerializeField]
+    private Button _disconnectButton;
+
+    [SerializeField]
+    private Button _tokenHelpButton;
+
+    [SerializeField]
+    private Button _connectionCloseButton;
+
+    [SerializeField]
+    private Button _exportButton;
+
+    [SerializeField]
+    private TMP_InputField _token;
+
+    [SerializeField]
+    private TMP_Dropdown _team;
+
+    [SerializeField]
+    private GameObject _connectionPanel;
+
+    [SerializeField]
+    private TextMeshProUGUI _connectionStatus;
+
+    [SerializeField]
+    private GameObject _progressTrack;
+
+    [SerializeField]
+    private Image _progress;
+    private string[] _teams = Array.Empty<string>();
+    private string _preferredTeam;
+    private bool _busy;
     private Texture2D _iconTexture;
     private string _iconPath;
     private ContentPackDefinition _definition;
@@ -79,6 +118,11 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     internal event Action CloseRequested;
     internal event Action BrowseIconRequested;
     internal event Action ExportRequested;
+    internal event Action PublishRequested;
+    internal event Action<string> ConnectRequested;
+    internal event Action DisconnectRequested;
+    internal event Action TokenHelpRequested;
+    internal event Action CancelRequested;
     internal event Action CommunityRequested;
     internal bool IsOpen => gameObject.activeSelf;
     private IEnumerable<TMP_InputField> Fields =>
@@ -119,6 +163,18 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             || _status == null
             || _iconLabel == null
             || _icon == null
+            || _connectionButton == null
+            || _connectButton == null
+            || _disconnectButton == null
+            || _tokenHelpButton == null
+            || _connectionCloseButton == null
+            || _exportButton == null
+            || _token == null
+            || _team == null
+            || _connectionPanel == null
+            || _connectionStatus == null
+            || _progressTrack == null
+            || _progress == null
         )
             throw new MissingReferenceException(name + " has incomplete publishing controls.");
         foreach (TMP_InputField field in Fields)
@@ -131,6 +187,12 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         _closeButton.onClick.AddListener(RequestClose);
         _browseButton.onClick.AddListener(RequestIcon);
         _communityButton.onClick.AddListener(RequestCommunity);
+        _connectionButton.onClick.AddListener(ShowConnection);
+        _connectButton.onClick.AddListener(RequestConnection);
+        _disconnectButton.onClick.AddListener(RequestDisconnect);
+        _tokenHelpButton.onClick.AddListener(RequestTokenHelp);
+        _connectionCloseButton.onClick.AddListener(RequestClose);
+        _exportButton.onClick.AddListener(RequestExport);
         _bound = true;
     }
 
@@ -151,6 +213,12 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             _closeButton.onClick.RemoveListener(RequestClose);
             _browseButton.onClick.RemoveListener(RequestIcon);
             _communityButton.onClick.RemoveListener(RequestCommunity);
+            _connectionButton.onClick.RemoveListener(ShowConnection);
+            _connectButton.onClick.RemoveListener(RequestConnection);
+            _disconnectButton.onClick.RemoveListener(RequestDisconnect);
+            _tokenHelpButton.onClick.RemoveListener(RequestTokenHelp);
+            _connectionCloseButton.onClick.RemoveListener(RequestClose);
+            _exportButton.onClick.RemoveListener(RequestExport);
         }
         ReleaseIcon();
     }
@@ -164,6 +232,9 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     {
         BindControls();
         _definition = definition;
+        _preferredTeam = settings.TeamName;
+        _connectionPanel.SetActive(false);
+        RenderConnection(_teams);
         _packageName.SetTextWithoutNotify(settings.PackageName ?? string.Empty);
         _description.SetTextWithoutNotify(settings.Description ?? string.Empty);
         _website.SetTextWithoutNotify(settings.WebsiteUrl ?? string.Empty);
@@ -186,6 +257,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     internal ContentEditorPublishingSettings ReadSettings() =>
         new ContentEditorPublishingSettings
         {
+            TeamName = _teams.Length > 0 ? _teams[_team.value] : _preferredTeam ?? string.Empty,
             PackageName = _packageName.text.Trim(),
             Description = _description.text.Trim(),
             WebsiteUrl = _website.text.Trim(),
@@ -224,6 +296,10 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     internal void ShowStatus(string message, bool isError = false)
     {
         _status.text = message;
+        _connectionStatus.text = message;
+        _connectionStatus
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(isError ? ContentEditorColorRole.Error : ContentEditorColorRole.Text);
         _status
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(isError ? ContentEditorColorRole.Error : ContentEditorColorRole.Text);
@@ -280,7 +356,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             _stepButtons[i].interactable = i != step;
         }
         _nextButton.GetComponentInChildren<TMP_Text>().text =
-            step == 2 ? "Export package..."
+            step == 2 ? "Publish release"
             : step == 1 ? "Review release"
             : "Continue to release";
         RenderPreview();
@@ -293,8 +369,10 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     {
         if (_step < 2)
             SetStep(_step + 1);
+        else if (_teams.Length == 0)
+            ShowConnection();
         else
-            ExportRequested?.Invoke();
+            PublishRequested?.Invoke();
     }
 
     /// <summary>
@@ -305,7 +383,18 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     /// <summary>
     /// Requests a close after retaining the current publishing draft.
     /// </summary>
-    private void RequestClose() => CloseRequested?.Invoke();
+    private void RequestClose()
+    {
+        if (_busy)
+            CancelRequested?.Invoke();
+        else if (_connectionPanel.activeSelf)
+        {
+            _connectionPanel.SetActive(false);
+            ClearToken();
+        }
+        else
+            CloseRequested?.Invoke();
+    }
 
     /// <summary>
     /// Requests a native file picker for a package icon.
@@ -341,15 +430,135 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         _review.text =
             "Package\n"
             + _packageName.text
-            + "\n\nRelease version\n"
+            + " · "
             + _definition.Version
             + "\n\nRequired base pack\n"
             + (string.IsNullOrEmpty(_definition.BasePackID) ? "None" : _definition.BasePackID)
             + "\n\nRequired Thunderstore packages\n"
             + dependencies
             + "\n\nIncludes your pack files, icon, readme, and release notes."
-            + "\nContent validation runs when you export.";
+            + "\nContent validation runs before publishing or export.";
     }
+
+    /// <summary>
+    /// Presents connected publishing teams without retaining the entered credential in a field.
+    /// </summary>
+    /// <param name="teams">The active teams authorized by the session.</param>
+    internal void RenderConnection(string[] teams)
+    {
+        BindControls();
+        _teams = teams;
+        _team.ClearOptions();
+        _team.AddOptions(
+            teams.Length == 0
+                ? new List<string> { "Connect Thunderstore to choose a team" }
+                : new List<string>(teams)
+        );
+        _team.SetValueWithoutNotify(Math.Max(0, Array.IndexOf(teams, _preferredTeam)));
+        _team.RefreshShownValue();
+        _team.interactable = !_busy && teams.Length > 0;
+        _connectionButton.GetComponentInChildren<TMP_Text>().text =
+            teams.Length == 0 ? "Connect Thunderstore…" : "Thunderstore connected";
+        _disconnectButton.gameObject.SetActive(teams.Length > 0);
+        if (teams.Length > 0)
+        {
+            _connectionPanel.SetActive(false);
+            ClearToken();
+        }
+    }
+
+    /// <summary>
+    /// Points the release review toward the package being published.
+    /// </summary>
+    /// <param name="available">Whether the controller has a reviewed package URL.</param>
+    internal void SetPublished(bool available) =>
+        _communityButton.GetComponentInChildren<TMP_Text>().text = available
+            ? "View package page"
+            : "Open Thunderstore";
+
+    /// <summary>
+    /// Keeps cancellation available while protecting the release fields during a network operation.
+    /// </summary>
+    /// <param name="busy">Whether publishing owns the draft.</param>
+    internal void SetBusy(bool busy)
+    {
+        _busy = busy;
+        foreach (TMP_InputField field in Fields)
+            field.interactable = !busy;
+        for (int i = 0; i < _stepButtons.Length; i++)
+            _stepButtons[i].interactable = !busy && i != _step;
+        foreach (
+            Button button in new[]
+            {
+                _nextButton,
+                _saveButton,
+                _browseButton,
+                _connectionButton,
+                _connectButton,
+                _disconnectButton,
+                _exportButton,
+            }
+        )
+            button.interactable = !busy;
+        _token.interactable = !busy;
+        _team.interactable = !busy && _teams.Length > 0;
+        _closeButton.GetComponentInChildren<TMP_Text>().text = busy ? "Cancel" : "Close";
+        _connectionCloseButton.GetComponentInChildren<TMP_Text>().text = busy ? "Cancel" : "Back";
+        _progressTrack.SetActive(busy);
+        if (busy)
+            _progress.rectTransform.anchorMax = new Vector2(0, 1);
+    }
+
+    /// <summary>
+    /// Displays streamed upload progress on the owning publishing page.
+    /// </summary>
+    /// <param name="message">The current publishing phase.</param>
+    /// <param name="progress">The completed upload fraction.</param>
+    internal void ShowProgress(string message, float progress)
+    {
+        if (!_busy)
+            return;
+        _progress.rectTransform.anchorMax = new Vector2(Mathf.Clamp01(progress), 1);
+        ShowStatus(message);
+    }
+
+    /// <summary>
+    /// Opens the session connection controls without changing the release draft.
+    /// </summary>
+    private void ShowConnection()
+    {
+        _connectionPanel.SetActive(true);
+        _connectionStatus.text = string.Empty;
+    }
+
+    /// <summary>
+    /// Clears the credential field and its undo history after connection or dismissal.
+    /// </summary>
+    private void ClearToken()
+    {
+        _token.SetTextWithoutNotify(string.Empty);
+        _token.GetComponent<TextInputHistory>()?.ClearHistory();
+    }
+
+    /// <summary>
+    /// Requests authentication with the masked token entered by the author.
+    /// </summary>
+    private void RequestConnection() => ConnectRequested?.Invoke(_token.text);
+
+    /// <summary>
+    /// Releases the authenticated session through its owning controller.
+    /// </summary>
+    private void RequestDisconnect() => DisconnectRequested?.Invoke();
+
+    /// <summary>
+    /// Opens the account page where a team service-account token can be created.
+    /// </summary>
+    private void RequestTokenHelp() => TokenHelpRequested?.Invoke();
+
+    /// <summary>
+    /// Requests a portable archive without publishing it.
+    /// </summary>
+    private void RequestExport() => ExportRequested?.Invoke();
 
     /// <summary>
     /// Releases the preview texture without retaining it between publishing sessions.

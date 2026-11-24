@@ -77,7 +77,13 @@ public static class ContentPackEditorPreview
                 view.ConfirmModRemoval,
                 () => { }
             );
-            manager.Show();
+            view.ModManagerRequested += installed =>
+            {
+                view.SetWorkspaceNavigation(installed);
+                manager.Show(installed);
+            };
+            view.SetWorkspaceNavigation(false);
+            manager.Show(false);
             while (manager.IsBusy)
                 await Task.Yield();
             RawImage[] artwork = view
@@ -169,8 +175,8 @@ public static class ContentPackEditorPreview
             view.ModManager.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "filterButton")
                 .onClick.Invoke();
-            view.ModManager.GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "installedButton")
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Library")
                 .onClick.Invoke();
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-installed.png");
             Button manage = view
@@ -191,8 +197,8 @@ public static class ContentPackEditorPreview
                     .Single(button => button.name == "detailCloseButton")
                     .onClick.Invoke();
             }
-            view.ModManager.GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "browseButton")
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Browse")
                 .onClick.Invoke();
             TMP_InputField search = view.ModManager.GetComponentInChildren<TMP_InputField>(true);
             search.text = "no such package";
@@ -217,13 +223,46 @@ public static class ContentPackEditorPreview
                 "_screenshots/ContentEditor/Mod-manager-project-navigation.png"
             );
             view.GetComponentsInChildren<Button>(true)
-                .Single(button => button.name == "Editor")
+                .Single(button => button.name == "Tab3")
                 .onClick.Invoke();
-            if (view.ModManager.IsOpen)
-                throw new InvalidOperationException("Editor navigation left the mod manager open.");
-            manager.Show();
-            while (manager.IsBusy)
-                await Task.Yield();
+            ContentEditorXmlView xml = view.GetComponentInChildren<ContentEditorXmlView>(true);
+            TMP_InputField draftInput = xml.GetComponentInChildren<TMP_InputField>(true);
+            string originalXml = xml.Text;
+            string draft = originalXml + "\n";
+            draftInput.text = draft;
+            foreach (string destination in new[] { "Library", "Browse" })
+            {
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == destination)
+                    .onClick.Invoke();
+                while (manager.IsBusy)
+                    await Task.Yield();
+                view.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "Projects")
+                    .onClick.Invoke();
+                if (
+                    view.ModManager.IsOpen
+                    || !xml.gameObject.activeInHierarchy
+                    || xml.Text != draft
+                )
+                    throw new InvalidOperationException(
+                        "Returning from "
+                            + destination
+                            + " did not preserve the editor page and draft."
+                    );
+            }
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-project-resumed.png"
+            );
+            Debug.Log(
+                "Library and Browse round trips preserved the advanced editor and its unapplied draft."
+            );
+            draftInput.text = originalXml;
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Tab0")
+                .onClick.Invoke();
             bool publishingRequested = false;
             view.PublishingRequested += () => publishingRequested = true;
             Button publish = view.GetComponentsInChildren<Button>(true)
@@ -382,6 +421,17 @@ public static class ContentPackEditorPreview
                 .onClick.Invoke();
             SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-" + stage + ".png");
         }
+        view.Publishing.GetComponentsInChildren<Button>(true)
+            .Single(button => button.name == "ThunderstoreConnection")
+            .onClick.Invoke();
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Connection.png");
+        view.Publishing.RenderConnection(new[] { "ExampleTeam" });
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Connected.png");
+        view.Publishing.SetBusy(true);
+        view.Publishing.ShowProgress("Uploading package… 60%", 0.54f);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Uploading.png");
+        view.Publishing.SetBusy(false);
+        view.Publishing.RenderConnection(Array.Empty<string>());
         view.Publishing.Hide();
     }
 

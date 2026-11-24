@@ -84,51 +84,74 @@ public static class ContentPackEditorPrefabBuilder
         Image menuStrip = Surface("MenuBar", canvasRoot, ContentEditorColorRole.Background);
         Stretch(menuStrip.rectTransform);
         menuStrip.rectTransform.anchorMin = Vector2.up;
-        menuStrip.rectTransform.offsetMin = new Vector2(0, -36);
+        menuStrip.rectTransform.offsetMin = new Vector2(0, -28);
         string[] headings = { "File", "Edit", "View", "Test" };
         string[] members = { "fileButton", "editButton", "viewButton", "testButton" };
         MenuBarHeadingView[] menuHeadings = new MenuBarHeadingView[headings.Length];
         for (int i = 0; i < headings.Length; i++)
         {
             Button button = PlainButton(headings[i], menuStrip.transform, headings[i]);
-            Rect((RectTransform)button.transform, 12 + i * 62, 0, 60, 34);
+            Rect((RectTransform)button.transform, 12 + i * 52, 0, 50, 28);
+            button.GetComponentInChildren<TMP_Text>().fontSize = 13;
             Assign(view, members[i], button);
             MenuBarHeadingView menuHeading = button.gameObject.AddComponent<MenuBarHeadingView>();
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
-        Button library = PlainButton("Library", menuStrip.transform, "Library");
-        Rect((RectTransform)library.transform, 264, 0, 88, 34);
+        Image navigation = Surface("Navigation", canvasRoot, ContentEditorColorRole.Panel);
+        Stretch(navigation.rectTransform);
+        navigation.rectTransform.anchorMin = Vector2.up;
+        navigation.rectTransform.offsetMin = new Vector2(0, -76);
+        navigation.rectTransform.offsetMax = new Vector2(0, -28);
+        Image navigationRule = Surface(
+            "Divider",
+            navigation.transform,
+            ContentEditorColorRole.Divider
+        );
+        Stretch(navigationRule.rectTransform);
+        navigationRule.rectTransform.anchorMax = Vector2.right;
+        navigationRule.rectTransform.offsetMax = new Vector2(0, 1);
+        Button library = PlainButton("Library", navigation.transform, "Library");
+        Rect((RectTransform)library.transform, 16, 0, 104, 48);
         Assign(view, "libraryButton", library);
-        Button browse = PlainButton("Browse", menuStrip.transform, "Browse");
-        Rect((RectTransform)browse.transform, 360, 0, 88, 34);
+        Button browse = PlainButton("Browse", navigation.transform, "Browse");
+        Rect((RectTransform)browse.transform, 120, 0, 104, 48);
         Assign(view, "browseButton", browse);
-        Button projects = PlainButton("Projects", menuStrip.transform, "Projects");
-        Rect((RectTransform)projects.transform, 456, 0, 96, 34);
+        Button projects = PlainButton("Projects", navigation.transform, "Projects");
+        Rect((RectTransform)projects.transform, 224, 0, 112, 48);
         Assign(view, "projectsButton", projects);
-        Button projectHome = PlainButton("ProjectHome", menuStrip.transform, "‹ Projects");
-        Rect((RectTransform)projectHome.transform, 584, 0, 104, 34);
-        Assign(view, "projectHomeButton", projectHome);
-        projectHome.gameObject.SetActive(false);
-        Button publish = PlainButton("Publish", menuStrip.transform, "Publish…");
+        Image navigationSelection = Surface(
+            "Selection",
+            projects.transform,
+            ContentEditorColorRole.Accent
+        );
+        navigationSelection.raycastTarget = false;
+        navigationSelection.rectTransform.anchorMin = Vector2.zero;
+        navigationSelection.rectTransform.anchorMax = Vector2.right;
+        navigationSelection.rectTransform.offsetMin = new Vector2(16, 0);
+        navigationSelection.rectTransform.offsetMax = new Vector2(-16, 2);
+        Assign(view, "navigationIndicator", navigationSelection.rectTransform);
+        Button publish = Button("Publish", navigation.transform, "Publish…");
         RectTransform publishRect = (RectTransform)publish.transform;
         publishRect.anchorMin = publishRect.anchorMax = publishRect.pivot = Vector2.one;
-        publishRect.anchoredPosition = new Vector2(-16, 0);
-        publishRect.sizeDelta = new Vector2(112, 34);
+        publishRect.anchoredPosition = new Vector2(-20, -8);
+        publishRect.sizeDelta = new Vector2(112, 32);
         Assign(view, "publishButton", publish);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
-        Stretch(projectWorkspace);
+        Stretch(projectWorkspace, 0, 40, 0, 0);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
         Assign(view, "projectInteraction", projectWorkspace.gameObject.AddComponent<CanvasGroup>());
         TextMeshProUGUI project = Label(
             "PackName",
-            menuStrip.transform,
+            navigation.transform,
             "No content pack open",
             14,
             true
         );
-        Stretch(project.rectTransform, 712, 0, 152, 0);
+        Stretch(project.rectTransform, 368, 0, 152, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
+        project.overflowMode = TextOverflowModes.Ellipsis;
+        project.textWrappingMode = TextWrappingModes.NoWrap;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);
         Stretch(rule.rectTransform, 12, 36, 12);
@@ -594,7 +617,13 @@ public static class ContentPackEditorPrefabBuilder
         Stretch(transferDivider.rectTransform);
         transferDivider.rectTransform.anchorMin = Vector2.up;
         transferDivider.rectTransform.offsetMin = new Vector2(0, -1);
-        TextMeshProUGUI transferStatus = Label("Status", transferRect, "No active downloads", 13, true);
+        TextMeshProUGUI transferStatus = Label(
+            "Status",
+            transferRect,
+            "No active downloads",
+            13,
+            true
+        );
         Rect(transferStatus.rectTransform, 20, 3, 430, 34);
         Assign(view, "packageStatus", transferStatus);
         Image track = Surface("ProgressTrack", transferRect, ContentEditorColorRole.Divider);
@@ -1210,7 +1239,7 @@ public static class ContentPackEditorPrefabBuilder
     private static void BuildWelcome(Transform parent, ContentPackEditorView view)
     {
         RectTransform welcome = Layer("Welcome", parent);
-        Stretch(welcome, 0, 36, 0, 40);
+        Stretch(welcome, 0, 76, 0, 40);
         RectTransform actions = Layer("Projects", welcome);
         actions.anchorMin = actions.anchorMax = actions.pivot = new Vector2(0.5f, 0.5f);
         actions.sizeDelta = new Vector2(1120, 720);
@@ -1218,7 +1247,13 @@ public static class ContentPackEditorPrefabBuilder
         TextMeshProUGUI title = Label("Title", actions, "Projects", 36);
         Rect(title.rectTransform, 0, 32, 640, 48);
         title.fontStyle = FontStyles.Bold;
-        TextMeshProUGUI explanation = Label("Description", actions, "Create, edit, test and publish your own content.", 16, true);
+        TextMeshProUGUI explanation = Label(
+            "Description",
+            actions,
+            "Create, edit, test and publish your own content.",
+            16,
+            true
+        );
         Rect(explanation.rectTransform, 0, 88, 1120, 30);
         Button create = Button("NewPack", actions, "New project");
         Rect((RectTransform)create.transform, 768, 32, 160, 44);
@@ -1241,7 +1276,13 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "editProjectButton", edit);
         Assign(view, "publishProjectButton", publish);
         current.gameObject.SetActive(false);
-        TextMeshProUGUI empty = Label("NoProject", actions, "Create a project or open one to begin editing.", 18, true);
+        TextMeshProUGUI empty = Label(
+            "NoProject",
+            actions,
+            "Create a project or open one to begin editing.",
+            18,
+            true
+        );
         Rect(empty.rectTransform, 0, 160, 1120, 48);
         Assign(view, "emptyProjects", empty);
         Assign(view, "welcomePane", welcome.gameObject);

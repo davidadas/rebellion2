@@ -18,7 +18,7 @@ internal static class ContentEditorModManagerBuilder
     internal static ContentEditorModManagerView Build(Transform parent)
     {
         Image background = Surface("ModManager", parent, ContentEditorColorRole.Background);
-        Stretch(background.rectTransform, 0, 36, 0, 40);
+        Stretch(background.rectTransform, 0, 76, 0, 40);
         background.raycastTarget = true;
         ContentEditorModManagerView view =
             background.gameObject.AddComponent<ContentEditorModManagerView>();
@@ -26,17 +26,38 @@ internal static class ContentEditorModManagerBuilder
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(1120, 816);
         Assign(view, "panel", rect);
-        Button cancel = ActionButton(view, rect, "closeButton", "Cancel operation", 912, 32, 208, true);
+        Button cancel = ActionButton(
+            view,
+            rect,
+            "closeButton",
+            "Cancel operation",
+            912,
+            32,
+            208,
+            true
+        );
         cancel.gameObject.SetActive(false);
         TextMeshProUGUI title = Caption(rect, "Title", "Library", 0, 32, 640, 48, 36);
         title.fontStyle = FontStyles.Bold;
         Assign(view, "pageTitle", title);
         ActionButton(view, rect, "refreshButton", "Refresh", 768, 32, 128, true);
-        StyleSecondary(ActionButton(view, rect, "importButton", "Install from file…", 912, 32, 208));
+        StyleSecondary(
+            ActionButton(view, rect, "importButton", "Install from file…", 912, 32, 208)
+        );
         RectTransform defaults = Layer("DefaultPack", rect);
         Rect(defaults, 0, 112, 1120, 72);
         Caption(defaults, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
-        Caption(defaults, "DefaultHelp", "Used when starting the game.", 0, 32, 600, 24, 14, ContentEditorColorRole.Muted);
+        Caption(
+            defaults,
+            "DefaultHelp",
+            "Used when starting the game.",
+            0,
+            32,
+            600,
+            24,
+            14,
+            ContentEditorColorRole.Muted
+        );
         Selector(view, defaults, "activePack", 680, 0, 440, new[] { "No content packs installed" });
         Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(

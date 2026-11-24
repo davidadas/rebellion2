@@ -19,6 +19,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorProject project;
     private ContentPackEditorWorkspaceController workspace;
     private ContentEditorModManagerController modManager;
+    private ThunderstorePublisher publisher;
+    private string publishedPackageUrl;
     private ContentAssets assets;
     private ContentAssets applicationAssets;
     private bool quitApproved;
@@ -39,6 +41,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         if (view == null)
             throw new MissingReferenceException("ContentPackEditorController has no view.");
         workspace = new ContentPackEditorWorkspaceController(view);
+        publisher = new ThunderstorePublisher();
         contentRootPath = ContentPackLoader.ResolveContentRootPath();
         view.CreateRequested += CreatePack;
         view.OpenRequested += ChooseOpenPack;
@@ -65,6 +68,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.Publishing.BrowseIconRequested += BrowsePublishingIcon;
         view.Publishing.ExportRequested += ExportThunderstorePackage;
         view.Publishing.CommunityRequested += OpenThunderstore;
+        view.Publishing.PublishRequested += PublishThunderstorePackage;
+        view.Publishing.ConnectRequested += ConnectThunderstore;
+        view.Publishing.DisconnectRequested += DisconnectThunderstore;
+        view.Publishing.TokenHelpRequested += OpenThunderstoreTeams;
+        view.Publishing.CancelRequested += CancelPublishingOperation;
         view.ValidateRequested += ValidatePack;
         view.QuickValidationRequested += QuickValidatePack;
         view.MapLayoutRequested += ArrangeMap;
@@ -155,6 +163,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         operationCancellation?.Cancel();
         modManager?.Dispose();
+        publisher?.Dispose();
         Application.wantsToQuit -= CanQuit;
         if (view != null)
         {
@@ -177,6 +186,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.Publishing.BrowseIconRequested -= BrowsePublishingIcon;
             view.Publishing.ExportRequested -= ExportThunderstorePackage;
             view.Publishing.CommunityRequested -= OpenThunderstore;
+            view.Publishing.PublishRequested -= PublishThunderstorePackage;
+            view.Publishing.ConnectRequested -= ConnectThunderstore;
+            view.Publishing.DisconnectRequested -= DisconnectThunderstore;
+            view.Publishing.TokenHelpRequested -= OpenThunderstoreTeams;
+            view.Publishing.CancelRequested -= CancelPublishingOperation;
             view.ValidateRequested -= ValidatePack;
             view.QuickValidationRequested -= QuickValidatePack;
             view.MapLayoutRequested -= ArrangeMap;
@@ -1833,6 +1847,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             ContentEditorPublishingSettings settings = ContentEditorPublishingStorage.Load(project);
             view.Publishing.Show(project.Definition, settings);
+            view.Publishing.RenderConnection(publisher.Teams);
+            publishedPackageUrl = null;
+            view.Publishing.SetPublished(false);
             RenderPublishingIcon(settings.IconPath);
         });
     }
@@ -1841,7 +1858,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// Opens the Rebellion 2 community page without uploading or changing any remote package.
     /// </summary>
     private void OpenThunderstore() =>
-        Application.OpenURL("https://thunderstore.io/c/rebellion-2/");
+        Application.OpenURL(publishedPackageUrl ?? ThunderstoreClient.CommunityUrl);
 
     /// <summary>
     /// Retains the listing draft independently of game-definition edits.
@@ -1909,6 +1926,130 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.Publishing.SetIcon(
             path,
             string.IsNullOrEmpty(path) ? null : ContentEditorPublishingStorage.ReadIcon(path)
+        );
+    }
+
+    /// <summary>
+    /// Validates a service-account connection without writing its credential to project storage.
+    /// </summary>
+    /// <param name="token">The credential entered in the masked connection field.</param>
+    private async void ConnectThunderstore(string token)
+    {
+        await RunOperationAsync(
+            async cancellationToken =>
+            {
+                view.Publishing.ShowStatus("Connecting to Thunderstore…");
+                await publisher.ConnectAsync(token, cancellationToken);
+                if (this != null)
+                {
+                    view.Publishing.RenderConnection(publisher.Teams);
+                    view.Publishing.ShowStatus(
+                        "Connected. Choose a publishing team on the review page."
+                    );
+                }
+            },
+            publishing: true
+        );
+    }
+
+    /// <summary>
+    /// Clears the publishing session while retaining the release draft.
+    /// </summary>
+    private void DisconnectThunderstore()
+    {
+        publisher.Disconnect();
+        view.Publishing.RenderConnection(publisher.Teams);
+        view.Publishing.ShowStatus("Disconnected from Thunderstore.");
+    }
+
+    /// <summary>
+    /// Opens team settings for creating a publishing service account.
+    /// </summary>
+    private void OpenThunderstoreTeams() =>
+        Application.OpenURL("https://thunderstore.io/settings/teams/");
+
+    /// <summary>
+    /// Requests cancellation through the owner of the active publishing operation.
+    /// </summary>
+    private void CancelPublishingOperation() => operationCancellation?.Cancel();
+
+    /// <summary>
+    /// Validates the current snapshot and publishes its archive to the selected team.
+    /// </summary>
+    private async void PublishThunderstorePackage()
+    {
+        await RunOperationAsync(
+            async cancellationToken =>
+            {
+                if (!view.CommitFields())
+                    return;
+                ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
+                settings.Validate(project.Definition);
+                if (!publisher.Teams.Contains(settings.TeamName, StringComparer.Ordinal))
+                    throw new InvalidOperationException(
+                        "Connect Thunderstore and choose a publishing team."
+                    );
+                settings = PersistPublishingDraft();
+                string archive = Path.Combine(
+                    Path.GetTempPath(),
+                    "rebellion2-publish-" + Guid.NewGuid().ToString("N") + ".zip"
+                );
+                try
+                {
+                    IReadOnlyList<string> warnings =
+                        await ThunderstorePackageExporter.WriteArchiveAsync(
+                            project,
+                            settings,
+                            archive,
+                            ReportValidationProgress,
+                            cancellationToken
+                        );
+                    publishedPackageUrl = ThunderstorePublisher.GetPackageUrl(
+                        settings.TeamName,
+                        settings.PackageName,
+                        project.Definition.Version
+                    );
+                    view.Publishing.SetPublished(true);
+                    Progress<float> progress = new Progress<float>(value =>
+                    {
+                        if (this != null)
+                            view.Publishing.ShowProgress(
+                                value < 0.95f
+                                    ? "Uploading package… " + Math.Round(value / 0.9f * 100) + "%"
+                                    : "Publishing release…",
+                                value
+                            );
+                    });
+                    string url = await publisher.PublishAsync(
+                        archive,
+                        settings.TeamName,
+                        settings.PackageName,
+                        project.Definition.Version,
+                        progress,
+                        cancellationToken
+                    );
+                    if (this != null)
+                    {
+                        publishedPackageUrl = url;
+                        view.RenderValidationResult(
+                            "Published "
+                                + settings.TeamName
+                                + "/"
+                                + settings.PackageName
+                                + " "
+                                + project.Definition.Version
+                                + ".",
+                            warnings
+                        );
+                    }
+                }
+                finally
+                {
+                    if (File.Exists(archive))
+                        File.Delete(archive);
+                }
+            },
+            publishing: true
         );
     }
 
@@ -2130,14 +2271,21 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// Owns a cancellable validation/export operation and restores input before any deferred quit.
     /// </summary>
     /// <param name="operation">The operation receiving its cancellation token.</param>
+    /// <param name="publishing">Whether the publishing dialog owns its input and cancel controls.</param>
     /// <returns>The completion of execution and workspace cleanup.</returns>
-    private async Task RunOperationAsync(Func<CancellationToken, Task> operation)
+    private async Task RunOperationAsync(
+        Func<CancellationToken, Task> operation,
+        bool publishing = false
+    )
     {
         if (operationCancellation != null)
             return;
         using CancellationTokenSource cancellation = new CancellationTokenSource();
         operationCancellation = cancellation;
-        view.SetBusy(true);
+        if (publishing)
+            view.Publishing.SetBusy(true);
+        else
+            view.SetBusy(true);
         try
         {
             await operation(cancellation.Token);
@@ -2157,7 +2305,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
             operationCancellation = null;
             if (this != null)
             {
-                view.SetBusy(false);
+                if (publishing)
+                    view.Publishing.SetBusy(false);
+                else
+                    view.SetBusy(false);
                 if (quitAfterOperation)
                 {
                     quitAfterOperation = false;

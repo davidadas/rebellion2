@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 [Serializable]
 internal sealed class ContentEditorPublishingSettings
 {
+    public string TeamName = string.Empty;
     public string PackageName = string.Empty;
     public string Description = string.Empty;
     public string WebsiteUrl = string.Empty;

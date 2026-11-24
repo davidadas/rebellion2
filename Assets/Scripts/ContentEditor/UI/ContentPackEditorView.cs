@@ -34,7 +34,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button libraryButton;
 
     [SerializeField]
-    private Button projectHomeButton;
+    private RectTransform navigationIndicator;
 
     [SerializeField]
     private RectTransform projectHub;
@@ -448,7 +448,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || projectsButton == null
             || publishButton == null
             || libraryButton == null
-            || projectHomeButton == null
+            || navigationIndicator == null
             || projectHub == null
             || currentProjectCard == null
             || currentProjectName == null
@@ -530,8 +530,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         fileButton.onClick.AddListener(ShowFileMenu);
         browseButton.onClick.AddListener(RequestBrowse);
         libraryButton.onClick.AddListener(RequestLibrary);
-        projectsButton.onClick.AddListener(ShowProjects);
-        projectHomeButton.onClick.AddListener(ShowProjectHub);
+        projectsButton.onClick.AddListener(EditCurrentProject);
         editProjectButton.onClick.AddListener(EditCurrentProject);
         publishProjectButton.onClick.AddListener(RequestPublishing);
         cancelPackageButton.onClick.AddListener(CancelPackageOperation);
@@ -685,8 +684,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.CommandSelected -= HandleMenuSelection;
             browseButton.onClick.RemoveListener(RequestBrowse);
             libraryButton.onClick.RemoveListener(RequestLibrary);
-            projectsButton.onClick.RemoveListener(ShowProjects);
-            projectHomeButton.onClick.RemoveListener(ShowProjectHub);
+            projectsButton.onClick.RemoveListener(EditCurrentProject);
             editProjectButton.onClick.RemoveListener(EditCurrentProject);
             publishProjectButton.onClick.RemoveListener(RequestPublishing);
             cancelPackageButton.onClick.RemoveListener(CancelPackageOperation);
@@ -737,6 +735,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (
             !menu.Open
             || menuAnchor == button
+            || !button.interactable
             || menuAnchor != fileButton
                 && menuAnchor != editButton
                 && menuAnchor != viewButton
@@ -827,7 +826,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         modManager.Hide();
         editingProject = true;
         SetWorkspaceNavigation(null);
-        projectHomeButton.gameObject.SetActive(true);
         projectWorkspace.SetActive(true);
         welcomePane.SetActive(false);
         editButton.interactable = true;
@@ -1135,7 +1133,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 project != null,
                 shortcut: ShortcutModifier + "+W"
             ),
-            new ContentEditorMenuCommand("Exit", () => ExitRequested?.Invoke(), isApplicationCommand: true)
+            new ContentEditorMenuCommand(
+                "Exit",
+                () => ExitRequested?.Invoke(),
+                isApplicationCommand: true
+            )
         );
     }
 
@@ -1238,9 +1240,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(!modManager.IsOpen);
         editingProject = false;
+        projectLabel.gameObject.SetActive(false);
+        publishButton.gameObject.SetActive(false);
+        testButton.interactable = false;
         currentProjectCard.SetActive(false);
         emptyProjects.gameObject.SetActive(true);
-        projectHomeButton.gameObject.SetActive(false);
         editButton.interactable = false;
         publishButton.interactable = false;
         catalogs = Array.Empty<ContentPackEditorCatalog>();
@@ -1466,30 +1470,36 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="installed">True for Library, false for Browse, or null for Projects.</param>
     internal void SetWorkspaceNavigation(bool? installed)
     {
-        foreach ((Button button, bool selected) in new[] {
-            (libraryButton, installed == true),
-            (browseButton, installed == false),
-            (projectsButton, installed == null),
-        })
-            button.GetComponentInChildren<TMP_Text>().GetComponent<ContentEditorColorBinding>()
-                .SetRole(selected ? ContentEditorColorRole.Accent : ContentEditorColorRole.Text);
+        menu.TryCancel();
+        bool authoring = installed == null && editingProject;
+        projectLabel.gameObject.SetActive(authoring);
+        publishButton.gameObject.SetActive(authoring);
+        editButton.interactable = authoring;
+        testButton.interactable = authoring;
+        foreach (
+            (Button button, bool selected) in new[]
+            {
+                (libraryButton, installed == true),
+                (browseButton, installed == false),
+                (projectsButton, installed == null),
+            }
+        )
+        {
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>();
+            label
+                .GetComponent<ContentEditorColorBinding>()
+                .SetRole(
+                    selected ? ContentEditorColorRole.Accent : ContentEditorColorRole.TextButton
+                );
+            label.fontStyle = selected ? FontStyles.Bold : FontStyles.Normal;
+            if (selected)
+                navigationIndicator.SetParent(button.transform, false);
+        }
         if (installed != null)
         {
             projectWorkspace.SetActive(false);
             welcomePane.SetActive(false);
-            projectHomeButton.gameObject.SetActive(false);
         }
-    }
-
-    /// <summary>
-    /// Restores the project's last editor or overview page.
-    /// </summary>
-    private void ShowProjects()
-    {
-        if (editingProject && project != null)
-            EditCurrentProject();
-        else
-            ShowProjectHub();
     }
 
     /// <summary>
@@ -1501,7 +1511,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         modManager.Hide();
         editingProject = false;
         SetWorkspaceNavigation(null);
-        projectHomeButton.gameObject.SetActive(false);
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(true);
         currentProjectCard.SetActive(project != null);
@@ -1530,7 +1539,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         SetWorkspaceNavigation(null);
         welcomePane.SetActive(false);
         projectWorkspace.SetActive(true);
-        projectHomeButton.gameObject.SetActive(true);
     }
 
     /// <summary>
@@ -1553,7 +1561,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (projectHub == null)
             return;
         Rect available = ((RectTransform)transform).rect;
-        projectHub.localScale = Vector3.one * Mathf.Min(1, Mathf.Max(1, available.width - 40) / 1120, Mathf.Max(1, available.height - 100) / 720);
+        projectHub.localScale =
+            Vector3.one
+            * Mathf.Min(
+                1,
+                Mathf.Max(1, available.width - 40) / 1120,
+                Mathf.Max(1, available.height - 100) / 720
+            );
     }
 
     /// <summary>
@@ -1791,7 +1805,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                             SetColorMode(mode);
                             ColorModeChanged?.Invoke(mode);
                         },
-                        isChecked: mode == ColorMode
+                        isChecked: mode == ColorMode,
+                        isApplicationCommand: true
                     ))
                     .ToArray()
             )

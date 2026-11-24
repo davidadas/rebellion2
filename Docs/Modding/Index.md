@@ -251,7 +251,7 @@ version and accepts release notes and Thunderstore dependencies, one `Team-Packa
 per line. The required base content pack is still declared in `pack.xml`; it is not automatically
 distributed as a Thunderstore dependency.
 
-Select **Review release**, then **Export package...**. The editor validates the current project
+Select **Review release**, then **Export ZIP…**. The editor validates the current project
 snapshot and writes the Thunderstore metadata alongside `Mods/<pack ID>/pack.xml` and the pack's
 local files. Unedited inherited content is excluded. Validation failure or cancellation preserves
 an existing archive. Exporting does not save pending game-definition edits to the working project.
@@ -260,7 +260,19 @@ an existing archive. Exporting does not save pending game-definition edits to th
 the publishing dialog also saves the draft. Publishing drafts are excluded from ordinary pack
 exports, Thunderstore packages, and editor test-game snapshots.
 
-Upload the resulting archive at [the Rebellion 2 Thunderstore community](https://thunderstore.io/c/rebellion-2/).
+To publish directly, choose **Connect Thunderstore…** in the publishing dialog. Open **Get a token**,
+choose your Thunderstore team, and create a service account. Paste its token into the masked field
+and select **Connect**. The connection is kept for the current toolkit session; the token is never
+saved in the project or included in an export.
+
+On **Review**, choose the publishing team and select **Publish release**. The toolkit validates the
+snapshot, uploads the archive with progress, and submits the release to the Rebellion 2 community.
+Use **Cancel** or Escape to stop an operation. If a connection fails after submission, publication
+may still complete; check **View package page** before trying again. An already-published version
+cannot be overwritten: increment the content pack version to publish another release.
+
+**Export ZIP…** remains available for uploading manually at
+[the Rebellion 2 Thunderstore community](https://thunderstore.io/c/rebellion-2/).
 For manual installation, extract its `Mods` folder beside the installed `Content` folder. This
 workflow exports selectable content packs; add-on mods still use the separate `mod.xml` format
 described above. The editor does not upload releases or install community packages automatically.
