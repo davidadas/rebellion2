@@ -60,12 +60,6 @@ namespace Rebellion.Game.Galaxy
 
         public int PlanetDataId { get; set; }
 
-        /// <summary>
-        /// Gets or sets the retained faction selector for space-combat arrival presentation.
-        /// Zero records no activation, one and two identify the two authored combat factions,
-        /// and three records neutral ownership.
-        /// </summary>
-        public int SpaceCombatEntryFaction { get; set; }
         public int NumRawResourceNodes { get; set; }
         public int EnergyCapacity { get; set; }
         public int AllocatedEnergy { get; set; }
@@ -120,13 +114,13 @@ namespace Rebellion.Game.Galaxy
         private List<Starfighter> _starfighters = new List<Starfighter>();
 
         /// <summary>
-        /// Gets the direct fleet collection for indexed runtime orbital queries without copying it.
+        /// Gets the direct fleet collection for orbital queries without copying it.
         /// The view includes disabled children and must not be retained across scene mutations.
         /// </summary>
         internal IReadOnlyList<Fleet> DirectOrbitalFleets => _fleets;
 
         /// <summary>
-        /// Gets the direct fighter collection for indexed runtime orbital queries without copying it.
+        /// Gets the direct fighter collection for orbital queries without copying it.
         /// The view includes disabled children and must not be retained across scene mutations.
         /// </summary>
         internal IReadOnlyList<Starfighter> DirectOrbitalStarfighters => _starfighters;
@@ -187,7 +181,6 @@ namespace Rebellion.Game.Galaxy
             Planet copy = (Planet)destination;
             copy.IsColonized = IsColonized;
             copy.PlanetDataId = PlanetDataId;
-            copy.SpaceCombatEntryFaction = SpaceCombatEntryFaction;
             copy.NumRawResourceNodes = NumRawResourceNodes;
             copy.EnergyCapacity = EnergyCapacity;
             copy.AllocatedEnergy = AllocatedEnergy;

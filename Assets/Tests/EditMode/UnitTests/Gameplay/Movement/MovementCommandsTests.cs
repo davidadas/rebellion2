@@ -7440,7 +7440,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="game">The game containing the two factions.</param>
         private static void ConfigureBlockadeFactions(GameRoot game)
         {
-            game.ConfigureSpaceCombatEntries(new[] { "empire", "rebels" });
+            game.ConfigureBlockadeFactions(new[] { "empire", "rebels" });
         }
 
         /// <summary>

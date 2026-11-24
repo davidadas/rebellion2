@@ -305,7 +305,6 @@ namespace Rebellion.Gameplay
         /// <param name="origin">The production planet the unit departs from visually.</param>
         internal void RequestMove(IMovable unit, ContainerNode destination, Planet origin)
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
             if (destination == null)
@@ -1205,7 +1204,6 @@ namespace Rebellion.Gameplay
 
             for (int index = 0; index < liveUnits.Count; index++)
             {
-                using var sceneUpdate = _game.BeginSceneUpdate();
                 ISceneNode unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
                 if (unit.GetParent() == null)
@@ -1549,7 +1547,6 @@ namespace Rebellion.Gameplay
             Fleet arrivedFleet
         )
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             bool? wasBlockaded = CaptureBlockadeState(movable, destinationPlanet);
             string movementGroupID = movable.Movement?.MovementGroupID;
             string sourceEventInstanceID = movable.Movement?.SourceEventInstanceID;
@@ -2024,7 +2021,6 @@ namespace Rebellion.Gameplay
             bool preferFriendlyPlanets = false
         )
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
             if (results == null)
@@ -2176,7 +2172,6 @@ namespace Rebellion.Gameplay
         /// <param name="rejectedDestination">The planet that refused the unit.</param>
         private void HandleArrivalRejection(IMovable movable, Planet rejectedDestination)
         {
-            using var sceneUpdate = _game.BeginSceneUpdate();
             string ownerID = MovementQueries.GetMovementControlOwner(movable);
             if (string.IsNullOrEmpty(ownerID))
             {
@@ -2330,7 +2325,6 @@ namespace Rebellion.Gameplay
         )
         {
             rejectionReason = null;
-            using var sceneUpdate = _game.BeginSceneUpdate();
             Planet destinationPlanet = MovementQueries.RequireDestinationPlanet(destination);
 
             Planet originPlanet = unit.GetParentOfType<Planet>();

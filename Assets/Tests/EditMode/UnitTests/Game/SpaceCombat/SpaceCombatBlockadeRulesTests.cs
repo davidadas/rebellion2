@@ -176,21 +176,13 @@ namespace Rebellion.Tests.Game.SpaceCombat
         }
 
         [Test]
-        public void IsBlockaded_NestedSceneUpdates_ReadsImmediatePresenceWithoutCommittingEntry()
+        public void IsBlockaded_FighterDepartsAndReturns_ReadsCurrentOrbit()
         {
-            _planet.SpaceCombatEntryFaction = 2;
-            using (_game.BeginSceneUpdate())
-            {
-                _fighter.Movement = new MovementState();
-                Assert.IsTrue(_planet.IsBlockaded(_game));
-                using (_game.BeginSceneUpdate())
-                {
-                    _fighter.Movement = null;
-                    Assert.IsFalse(_planet.IsBlockaded(_game));
-                    Assert.AreEqual(2, _planet.SpaceCombatEntryFaction);
-                }
-                Assert.AreEqual(2, _planet.SpaceCombatEntryFaction);
-            }
+            _fighter.Movement = new MovementState();
+            Assert.IsTrue(_planet.IsBlockaded(_game));
+
+            _fighter.Movement = null;
+            Assert.IsFalse(_planet.IsBlockaded(_game));
         }
 
         [TestCase("add")]
@@ -241,7 +233,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             string second
         )
         {
-            _game.ConfigureSpaceCombatEntries(new[] { first, second });
+            _game.ConfigureBlockadeFactions(new[] { first, second });
 
             Assert.IsTrue(_planet.IsBlockaded(_game));
         }
