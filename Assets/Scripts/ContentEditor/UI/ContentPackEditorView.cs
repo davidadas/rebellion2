@@ -289,9 +289,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         bool
     > ArtworkEffectRequested;
     public event Action SaveRequested;
-    internal event Action RestoreTravelArtworkRequested;
     public event Action ValidateRequested;
-    internal event Action QuickValidationRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
     public event Action UndoRequested;
     public event Action RedoRequested;
@@ -1102,20 +1100,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 shortcut: ShortcutModifier + "+S"
             ),
             new ContentEditorMenuCommand(
-                "Restore missing travel artwork",
-                () => RestoreTravelArtworkRequested?.Invoke(),
-                project != null
-            ),
-            new ContentEditorMenuCommand(
-                "Quick validation",
-                () => QuickValidationRequested?.Invoke(),
-                project != null,
-                shortcut: ShortcutModifier + "+Shift+V"
-            ),
-            new ContentEditorMenuCommand(
                 "Validate pack",
                 () => ValidateRequested?.Invoke(),
-                project != null
+                project != null,
+                shortcut: ShortcutModifier + "+Shift+V"
             ),
             new ContentEditorMenuCommand(
                 "Export pack...",
@@ -1744,7 +1732,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             KeyCode.Z => () => UndoRequested?.Invoke(),
             KeyCode.Y => () => RedoRequested?.Invoke(),
             KeyCode.S => () => SaveRequested?.Invoke(),
-            KeyCode.V when key.shift && project != null => () => QuickValidationRequested?.Invoke(),
+            KeyCode.V when key.shift && project != null => () => ValidateRequested?.Invoke(),
             KeyCode.O => RequestOpenPack,
             KeyCode.N => ShowNewPackDialog,
             KeyCode.W => () => CloseRequested?.Invoke(),
@@ -2431,30 +2419,59 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal Texture2D GetShipEffectBackground() => form.GetShipEffectBackground();
 
     /// <summary>
-    /// Shows the exact output cuts with the same backgrounds as the unit artwork gallery.
+    /// Resolves the starfield to include in a generated encyclopedia image.
+    /// </summary>
+    /// <param name="field">The ship's encyclopedia image field.</param>
+    /// <returns>The unit's readable override or faction default, when configured.</returns>
+    internal Texture2D GetShipEncyclopediaCutBackground(ContentPackEditorField field) =>
+        form.GetShipEncyclopediaCutBackground(field.Record);
+
+    /// <summary>
+    /// Shows the composed output cuts with a stationary background behind each movable image.
     /// </summary>
     /// <param name="cuts">The destination fields and owned preview textures.</param>
-    /// <param name="apply">The action that saves the displayed cuts.</param>
+    /// <param name="selected">The choices retained while the generated images are repositioned.</param>
+    /// <param name="apply">The action that saves the selected cut indices.</param>
     /// <param name="move">Moves one preview by a normalized displacement.</param>
+    /// <param name="encyclopediaBackground">The readable background to include in the ship's saved encyclopedia cut.</param>
     internal void ShowArtworkCuts(
         IReadOnlyList<(ContentPackEditorField Field, Texture2D Texture)> cuts,
-        Action apply,
-        Action<int, Vector2> move = null
+        IList<bool> selected,
+        Action<IReadOnlyList<int>> apply,
+        Action<int, Vector2> move = null,
+        Texture2D encyclopediaBackground = null
     )
     {
         var previews = cuts.Select(cut =>
             {
                 Vector2Int dimensions = new(cut.Texture.width, cut.Texture.height);
-                var background = form.GetArtworkCutBackground(cut.Field, dimensions);
+                bool isShipEncyclopedia = ContentEditorUnitArtworkLayout.IsShipEncyclopediaCut(
+                    cut.Field
+                );
+                var background = isShipEncyclopedia
+                    ? (
+                        Texture: encyclopediaBackground,
+                        Uv: encyclopediaBackground == null
+                            ? default
+                            : ContentEditorArtworkCrop.GetCenteredUvRect(
+                                new Vector2Int(
+                                    encyclopediaBackground.width,
+                                    encyclopediaBackground.height
+                                ),
+                                dimensions
+                            )
+                    )
+                    : form.GetArtworkCutBackground(cut.Field, dimensions);
                 return (
                     ContentEditorFormView.GetArtworkOutputCaption(cut.Field, dimensions),
                     cut.Texture,
                     background.Texture,
-                    background.Uv
+                    background.Uv,
+                    isShipEncyclopedia && encyclopediaBackground != null
                 );
             })
             .ToArray();
-        imagePreview.ShowCuts(previews, apply, move);
+        imagePreview.ShowCuts(previews, selected, apply, move);
     }
 
     /// <summary>
@@ -2500,6 +2517,58 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (CommitFields())
             ImportRequested?.Invoke(field);
+    }
+
+    /// <summary>
+    /// Routes a dropped image to the visible artwork draft or image slot at the drop position.
+    /// </summary>
+    /// <param name="position">The drop point in Unity screen pixels.</param>
+    /// <param name="paths">The files delivered by the operating system.</param>
+    /// <param name="import">The normal import action for an image field.</param>
+    /// <returns>Whether the editor routed the drop.</returns>
+    internal bool TryImportDroppedImage(
+        Vector2 position,
+        IReadOnlyList<string> paths,
+        Action<ContentPackEditorField, string> import
+    )
+    {
+        EventSystem events = EventSystem.current;
+        if (
+            events == null
+            || !workbench.interactable
+            || packDialog.IsOpen
+            || selectionDialog.IsOpen
+            || confirmation.gameObject.activeSelf
+            || imagePreview.gameObject.activeSelf
+        )
+            return false;
+        List<RaycastResult> hits = new();
+        events.RaycastAll(new PointerEventData(events) { position = position }, hits);
+        GameObject target = hits.Count == 0 ? null : hits[0].gameObject;
+        if (target == null)
+            return false;
+        if (paths.Count != 1)
+        {
+            RenderStatus("Drop one image at a time.", true);
+            return false;
+        }
+        if (artworkWorkspace.gameObject.activeInHierarchy)
+        {
+            if (artworkWorkspace.TryImportDroppedImage(target.transform, paths[0]))
+                return true;
+        }
+        else
+        {
+            ContentPackEditorField field = form.FindImageDropField(target);
+            if (field != null)
+            {
+                if (CommitFields())
+                    import(field, paths[0]);
+                return true;
+            }
+        }
+        RenderStatus("Drop an image onto an image slot or the artwork draft canvas.", true);
+        return false;
     }
 
     /// <summary>
@@ -3239,8 +3308,21 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             && form.GetOverriddenFields().Count > 0;
         resetSectionButton.gameObject.SetActive(canReset);
         resetSectionButton.interactable = canReset;
-        resetSectionButton.GetComponentInChildren<TMP_Text>(true).text =
-            section == "Colors" ? "Reset colors" : "Reset section";
+        if (!canReset)
+            return;
+        string scope = section switch
+        {
+            "General" => "settings",
+            "Interfaces" => "interface",
+            "Default backgrounds" => "backgrounds",
+            _ => section.ToLowerInvariant(),
+        };
+        TMP_Text label = resetSectionButton.GetComponentInChildren<TMP_Text>();
+        label.text = $"Reset {scope}";
+        ((RectTransform)resetSectionButton.transform).SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            Mathf.Max(124, Mathf.Ceil(label.GetPreferredValues(label.text).x) + 16)
+        );
     }
 
     /// <summary>

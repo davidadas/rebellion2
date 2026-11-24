@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Gameplay
             );
             MissionObserver observer = new(TestSystems.GetMissionResolver(commands));
 
-            observer.HandleResults(
+            List<GameResult> results = observer.HandleResults(
                 new[]
                 {
                     new OfficerInjuredResult
@@ -58,6 +58,11 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
+            MissionOfficersReleasedResult release = results
+                .OfType<MissionOfficersReleasedResult>()
+                .Single();
+            Assert.AreEqual(mission.InstanceID, release.MissionInstanceID);
+            CollectionAssert.AreEqual(new[] { injured }, release.Officers);
             Assert.AreSame(planet, injured.GetParent());
             Assert.AreSame(mission, officer.GetParent());
             Assert.AreSame(planet, mission.GetParent());

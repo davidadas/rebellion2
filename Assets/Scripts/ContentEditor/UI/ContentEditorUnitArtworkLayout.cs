@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using UnityEngine;
 
 /// <summary>
 /// Defines the persisted output and state-specific artwork fields shown for each unit.
@@ -126,16 +127,80 @@ internal static class ContentEditorUnitArtworkLayout
         !IsHeadquartersIcon(record);
 
     /// <summary>
-    /// Checks whether a field can supply or receive a standard artwork cut.
+    /// Checks whether a field can supply pixels for a standard artwork cut.
     /// </summary>
     /// <param name="field">The unit image field being evaluated.</param>
     /// <returns>True for an ordinary fixed-size image in the unit's artwork workflow.</returns>
-    internal static bool IsStandardCut(ContentPackEditorField field) =>
+    internal static bool IsCutSource(ContentPackEditorField field) =>
         SupportsStandardCuts(field.Record)
         && SupportsMember(field.Record, field.MemberName)
         && field.MemberName != BackgroundMember
         && !IsStateSpecific(field.MemberName)
         && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _);
+
+    /// <summary>
+    /// Checks whether a field can receive generated artwork.
+    /// </summary>
+    /// <param name="field">The unit image field being evaluated.</param>
+    /// <returns>True for standard cut destinations, excluding ship message images.</returns>
+    internal static bool IsCutTarget(ContentPackEditorField field) =>
+        IsCutSource(field)
+        && (
+            field.Record.Kind is not ("CapitalShip" or "Starfighter")
+            || field.MemberName != "MessageImagePath"
+        );
+
+    /// <summary>
+    /// Identifies a ship illustration that is framed on its encyclopedia canvas.
+    /// </summary>
+    /// <param name="field">The artwork output being evaluated.</param>
+    /// <returns>True for the encyclopedia slot of a capital ship or starfighter.</returns>
+    internal static bool IsShipEncyclopediaCut(ContentPackEditorField field) =>
+        field.Record.Kind is "CapitalShip" or "Starfighter"
+        && field.MemberName == "EncyclopediaImagePath";
+
+    /// <summary>
+    /// Identifies the large report and encyclopedia illustrations for a unit.
+    /// </summary>
+    /// <param name="field">The artwork field being evaluated.</param>
+    /// <returns>Whether the field belongs in the illustrations gallery.</returns>
+    internal static bool IsIllustration(ContentPackEditorField field) =>
+        field.MemberName is "MessageImagePath" or "EncyclopediaImagePath";
+
+    /// <summary>
+    /// Finds the output size when two artwork slots support a cut at the source's resolution.
+    /// </summary>
+    /// <param name="source">The unit image supplying pixels.</param>
+    /// <param name="target">The unit image slot receiving the cut.</param>
+    /// <param name="sourceSize">The decoded width and height of the source image.</param>
+    /// <param name="dimensions">The pixel dimensions of the eligible output.</param>
+    /// <returns>True when the target can be generated at the source resolution.</returns>
+    internal static bool TryGetCutDimensions(
+        ContentPackEditorField source,
+        ContentPackEditorField target,
+        Vector2Int sourceSize,
+        out Vector2Int dimensions
+    )
+    {
+        dimensions = default;
+        return target.Record.Element == source.Record.Element
+            && target.MemberName != source.MemberName
+            && IsCutSource(source)
+            && IsCutTarget(target)
+            && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(target, out dimensions)
+            && (
+                ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, dimensions)
+                || (
+                    IsShipEncyclopediaCut(target)
+                    && source.MemberName == "DisplayImagePath"
+                    && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                        source,
+                        out Vector2Int displaySize
+                    )
+                    && ContentEditorArtworkCutGenerator.CanFitSource(sourceSize, displaySize)
+                )
+            );
+    }
 
     /// <summary>
     /// Gets the stable workflow position of one artwork member.

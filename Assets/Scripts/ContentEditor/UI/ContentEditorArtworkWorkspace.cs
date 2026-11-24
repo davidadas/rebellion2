@@ -108,6 +108,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private Button add;
 
     [SerializeField]
+    private Button importLayer;
+
+    [SerializeField]
     private Button duplicate;
 
     [SerializeField]
@@ -147,6 +150,24 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private bool bound;
 
     internal bool HasUnsavedChanges => gameObject.activeSelf && dirty;
+
+    /// <summary>
+    /// Adds a dropped file to the active draft when it lands in the canvas or layer inspector.
+    /// </summary>
+    /// <param name="target">The visible control beneath the drop.</param>
+    /// <param name="path">The dropped image file.</param>
+    /// <returns>Whether the draft received the file.</returns>
+    internal bool TryImportDroppedImage(Transform target, string path)
+    {
+        if (
+            comparing
+            || actions?.ImportDroppedImage == null
+            || (!target.IsChildOf(artworkCanvas.transform) && !target.IsChildOf(sidebar))
+        )
+            return false;
+        actions.ImportDroppedImage(path);
+        return true;
+    }
 
     /// <summary>
     /// Opens or refreshes the artwork editor while preserving the active output and canvas.
@@ -217,6 +238,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         fit.onClick.AddListener(artworkCanvas.Fit);
         actual.onClick.AddListener(artworkCanvas.ActualPixels);
         add.onClick.AddListener(() => actions?.Add());
+        importLayer.onClick.AddListener(() => actions?.Import?.Invoke());
         duplicate.onClick.AddListener(() => actions?.Duplicate());
         remove.onClick.AddListener(() => actions?.Remove());
         forward.onClick.AddListener(() => MoveOrder(1));
@@ -290,7 +312,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         ArtworkEffectLayerPreview? firstEditable = null;
         foreach (var layer in selected.Layers)
         {
-            if (!layer.Locked)
+            if (!layer.Linked)
                 firstEditable ??= layer;
             if (layer.Index == selectedIndex)
                 selectedLayer = layer;
@@ -315,7 +337,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private void SelectLayer(int index)
     {
         selectedIndex = index;
-        actions?.Select(index);
+        actions?.Select?.Invoke(index);
         Present(false);
     }
 
@@ -351,7 +373,6 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         for (int i = 0; i < frame.Layers.Count; i++)
             if (frame.Layers[i].Index == selectedIndex)
                 layerScroll.ScrollArea.RevealContentRect((frame.Layers.Count - i - 1) * 51, 46);
-        layerCaption.text = frame.Layers.Count == 0 ? "No layers" : "Layers";
     }
 
     /// <summary>
@@ -367,15 +388,19 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         yInput.SetTextWithoutNotify(
             selectedLayer.HasValue ? Mathf.RoundToInt(-offset.y * size.y).ToString() : string.Empty
         );
-        bool canEdit = !comparing && selectedLayer.HasValue && !selectedLayer.Value.Locked;
-        xInput.interactable = yInput.interactable = canEdit;
-        duplicate.interactable = remove.interactable = canEdit;
+        bool canEdit = !comparing && selectedLayer.HasValue;
+        bool canEditPixels = canEdit && !selectedLayer.Value.Linked;
+        xInput.interactable = yInput.interactable = canEditPixels;
+        duplicate.interactable = remove.interactable = canEditPixels;
         forward.interactable = canEdit && GetReorderTarget(1) >= 0;
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
-        scope.text = selectedLayer?.Locked == true ? "Locked" : "Pixels";
+        importLayer.interactable = !comparing && actions.Import != null;
+        scope.text = selectedLayer?.Linked == true ? "Linked source" : "Pixels";
         int? percent = selectedLayer?.ScalePercent;
-        scaleControls.gameObject.SetActive(canEdit && percent.HasValue && actions.Resize != null);
+        scaleControls.gameObject.SetActive(
+            canEditPixels && percent.HasValue && actions.Resize != null
+        );
         scaleValue.text = percent.HasValue ? $"{percent}%" : string.Empty;
         decreaseScale.interactable = percent > ContentEditorArtworkLayer.MinimumScalePercent;
         increaseScale.interactable = percent < ContentEditorArtworkLayer.MaximumScalePercent;
@@ -407,7 +432,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     /// <param name="horizontal">Whether the first axis was edited.</param>
     private void Position(string value, bool horizontal)
     {
-        if (actions == null || !selectedLayer.HasValue || selectedLayer.Value.Locked || comparing)
+        if (actions == null || !selectedLayer.HasValue || selectedLayer.Value.Linked || comparing)
             return;
         if (!int.TryParse(value, out int pixels))
         {
@@ -428,7 +453,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     /// <param name="direction">The relative draw-order movement.</param>
     private void MoveOrder(int direction)
     {
-        if (comparing || !selectedLayer.HasValue || selectedLayer.Value.Locked)
+        if (comparing || !selectedLayer.HasValue)
             return;
         int target = GetReorderTarget(direction);
         if (target >= 0)
@@ -448,7 +473,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             if (layers[index].Index != selectedIndex)
                 continue;
             int neighbor = index + direction;
-            if ((uint)neighbor < (uint)layers.Count && !layers[neighbor].Locked)
+            if ((uint)neighbor < (uint)layers.Count)
                 return layers[neighbor].Index;
             break;
         }
@@ -466,7 +491,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             comparing && current[outputIndex].IsMissing ? "No artwork assigned"
             : comparing ? "Current in pack"
             : selectedLayer?.Hidden == true ? "Selected layer is hidden"
-            : selectedLayer is { Locked: false } ? "Drag layer · Space + drag to pan"
+            : selectedLayer is { Linked: false } ? "Drag layer · Space + drag to pan"
             : "Space + drag to pan";
         canvasHint.text = $"{artworkCanvas.ZoomPercent}%   ·   {hint}";
         SetSelected(fit, artworkCanvas.IsFitted);
@@ -558,8 +583,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             Mathf.Max(51, layerCount * 51),
             Mathf.Max(51, Mathf.Min(narrow ? 154 : 260, sideHeight - footer - 56))
         );
-        Place(layerCaption.transform, 16, 9, Mathf.Max(80, sideWidth - 158), 32);
-        Place(add.transform, sideWidth - 133, 9, 117, 32);
+        Place(layerCaption.transform, 16, 9, sideWidth - 246, 32);
+        Place(add.transform, sideWidth - 224, 9, 108, 32);
+        Place(importLayer.transform, sideWidth - 110, 9, 94, 32);
         Place(layerScroll.transform, 16, 50, sideWidth - 32, listHeight);
         float controlsY = 56 + listHeight;
         Place(layerActions, 0, controlsY, sideWidth, 37);
@@ -751,6 +777,8 @@ internal sealed class ArtworkEffectActions
     internal Action<int> Toggle;
     internal Action<int, int> Reorder;
     internal Action Add;
+    internal Action Import;
+    internal Action<string> ImportDroppedImage;
     internal Action Duplicate;
     internal Action Remove;
     internal Action Rebuild;

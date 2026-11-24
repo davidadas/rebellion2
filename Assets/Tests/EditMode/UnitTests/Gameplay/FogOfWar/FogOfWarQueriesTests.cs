@@ -319,6 +319,72 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BuildFactionView_OwnedPlanetWithHiddenInboundBuilding_PreservesEnergyAboveCapacity()
+        {
+            _hoth.EnergyCapacity = 1;
+            Building stationedBuilding = CreateBuilding("STATIONED", _alliance);
+            Building inboundBuilding = CreateBuilding(
+                "INBOUND",
+                _empire,
+                ManufacturingStatus.Delivering
+            );
+            inboundBuilding.Movement = TestMovement.Create(transitTicks: 10, ticksElapsed: 5);
+            _hoth.AddTestChild(stationedBuilding);
+            _hoth.AddTestChild(inboundBuilding);
+
+            Planet viewHoth = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _outerRim.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _hoth.InstanceID);
+
+            CollectionAssert.AreEqual(
+                new[] { stationedBuilding.InstanceID },
+                viewHoth.GetChildren<Building>().Select(building => building.InstanceID)
+            );
+            Assert.AreEqual(2, viewHoth.AllocatedEnergy);
+        }
+
+        [Test]
+        public void BuildFactionView_LiveEnemyPlanetWithHiddenBuilding_PreservesKnownEnergy()
+        {
+            _coruscant.EnergyCapacity = 3;
+            _coruscant.AllocatedEnergy = 1;
+            new FogOfWarRecorder().RecordIntelligenceSnapshot(
+                _alliance,
+                _coruscant,
+                _coreSector,
+                10,
+                PlanetIntelligenceCategory.Planet
+            );
+            Building stationedBuilding = CreateBuilding("STATIONED", _empire);
+            Building hiddenBuilding = CreateBuilding(
+                "HIDDEN",
+                _empire,
+                ManufacturingStatus.Building
+            );
+            _coruscant.AddTestChild(stationedBuilding);
+            _coruscant.AddTestChild(hiddenBuilding);
+            Fleet observerFleet = CreateFleet("OBSERVER", _alliance);
+            _game.AttachNode(observerFleet, _coruscant);
+            AddCapitalShip(observerFleet, _alliance, "OBSERVER_SHIP");
+
+            Planet viewCoruscant = _queries
+                .BuildFactionView(_alliance)
+                .GetChildren<PlanetSector>()
+                .Single(sector => sector.InstanceID == _coreSector.InstanceID)
+                .GetChildren<Planet>()
+                .Single(planet => planet.InstanceID == _coruscant.InstanceID);
+
+            CollectionAssert.AreEqual(
+                new[] { stationedBuilding.InstanceID },
+                viewCoruscant.GetChildren<Building>().Select(building => building.InstanceID)
+            );
+            Assert.AreEqual(1, viewCoruscant.AllocatedEnergy);
+        }
+
+        [Test]
         public void BuildFactionView_NotVisibleWithSnapshot_UsesSnapshotData()
         {
             Officer vader = CreateOfficer("VADER", _empire);

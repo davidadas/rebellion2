@@ -180,8 +180,7 @@ namespace Rebellion.Game.Factions
                 Settings.ResourceProcessingPointsPerFacility
             );
         public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
-        public int ProjectedMaintenanceHeadroom =>
-            MaintenanceCapacity - GetTotalProjectedMaintenanceCost();
+        public int ProjectedMaintenanceHeadroom => GetProjectedMaintenanceHeadroom();
 
         // Fog of War.
         public FogState Fog { get; set; } = new FogState();
@@ -617,9 +616,10 @@ namespace Rebellion.Game.Factions
         /// Available resource nodes take into account external factors such as blockaded planets
         /// or buildings still under construction that might reduce usability.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The total number of available resource nodes.</returns>
-        public int GetTotalAvailableResourceNodes() =>
-            SumPlanetaryResources(p => p.GetAvailableResourceNodes());
+        public int GetTotalAvailableResourceNodes(GameRoot game = null) =>
+            SumPlanetaryResources(p => p.GetAvailableResourceNodes(game));
 
         /// <summary>
         /// Gets the total number of raw mined resources across all owned planets.
@@ -635,9 +635,10 @@ namespace Rebellion.Game.Factions
         /// Available mined resources consider blockaded planets or buildings under construction
         /// that might limit resource collection.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The total number of available mined resources.</returns>
-        public int GetTotalAvailableMinedResources() =>
-            SumPlanetaryResources(p => p.GetAvailableMinedResources());
+        public int GetTotalAvailableMinedResources(GameRoot game = null) =>
+            SumPlanetaryResources(p => p.GetAvailableMinedResources(game));
 
         /// <summary>
         /// Gets the total raw refinement capacity across all owned planets.
@@ -653,24 +654,26 @@ namespace Rebellion.Game.Factions
         /// Available refinement capacity accounts for factors like blockaded planets or buildings
         /// that are still under construction.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The total available refinement capacity.</returns>
-        public int GetTotalAvailableRefinementCapacity() =>
-            SumPlanetaryResources(p => p.GetAvailableRefinementCapacity());
+        public int GetTotalAvailableRefinementCapacity(GameRoot game = null) =>
+            SumPlanetaryResources(p => p.GetAvailableRefinementCapacity(game));
 
         /// <summary>
         /// Calculates the total available refined capacity count (before multiplier).
         /// This includes only resources and capacities that are available after accounting for
         /// blockades, buildings under construction, and other limiting factors.
         /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>The available refined capacity count.</returns>
-        public int GetTotalAvailableMaterialsRaw()
+        public int GetTotalAvailableMaterialsRaw(GameRoot game = null)
         {
             int resourceNodes = 0;
             int minedResources = 0;
             int refinementCapacity = 0;
             foreach (Planet planet in GetOwnedUnitsByType<Planet>())
             {
-                if (planet.IsResourceProductionSuspended())
+                if (planet.IsResourceProductionSuspended(game))
                     continue;
                 checked
                 {
@@ -682,6 +685,17 @@ namespace Rebellion.Game.Factions
 
             return CalculateRefinedCapacity(resourceNodes, minedResources, refinementCapacity);
         }
+
+        /// <summary>
+        /// Returns maintenance capacity after committed and ordered units are accounted for.
+        /// </summary>
+        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <returns>The projected spare maintenance capacity.</returns>
+        internal int GetProjectedMaintenanceHeadroom(GameRoot game = null) =>
+            IntegerMath.SaturatingMultiply(
+                GetTotalAvailableMaterialsRaw(game),
+                Settings.ResourceProcessingPointsPerFacility
+            ) - GetTotalProjectedMaintenanceCost();
 
         /// <summary>
         /// Calculates the refined capacity count (before applying multiplier).

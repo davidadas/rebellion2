@@ -22,6 +22,7 @@ namespace Rebellion.Gameplay
             typeof(RecoveryObserver),
             typeof(HeadquartersObserver),
             typeof(MissionObserver),
+            typeof(JediCommands),
             typeof(CaptiveObserver),
             typeof(VictoryObserver),
             typeof(PlanetaryControlObserver),
@@ -123,7 +124,6 @@ namespace Rebellion.Gameplay
             services.AddSingleton<PlanetaryControlQueries>();
             services.AddSingleton<PlanetaryControlCommands>();
             services.AddSingleton<UprisingResolver>();
-            services.AddSingleton<JediCommands>();
             services.AddSingleton<MissionQueries>();
             services.AddSingleton<MissionBetrayalResolver>();
             services.AddSingleton<MissionResolver>(locator => new MissionResolver(

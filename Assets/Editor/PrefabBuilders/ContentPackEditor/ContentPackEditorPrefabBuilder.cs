@@ -243,15 +243,13 @@ public static class ContentPackEditorPrefabBuilder
             (RectTransform)duplicate.transform
         ).anchorMax = Vector2.one;
         ((RectTransform)duplicate.transform).anchoredPosition = new Vector2(-208, -36);
-        Button resetSection = PlainButton("ResetSection", editor, "Reset section");
-        Rect((RectTransform)resetSection.transform, 0, 36, 124, 32);
-        ((RectTransform)resetSection.transform).anchorMin = (
-            (RectTransform)resetSection.transform
-        ).anchorMax = Vector2.one;
-        ((RectTransform)resetSection.transform).anchoredPosition = new Vector2(-344, -36);
+        Button resetSection = PlainButton("ResetSection", editor, "Reset to defaults");
+        UILayout.SetTopRightRect((RectTransform)resetSection.transform, 220, 36, 124, 32);
         resetSection
             .gameObject.AddComponent<HelpTooltipView>()
-            .Configure("Remove every override in this section and use the inherited defaults.");
+            .Configure(
+                "Clear the overrides shown here and use the inherited or built-in defaults."
+            );
         resetSection.gameObject.SetActive(false);
         Button delete = PlainButton("Delete", editor, "Delete");
         Rect((RectTransform)delete.transform, 0, 36, 84, 32);
@@ -1566,11 +1564,17 @@ public static class ContentPackEditorPrefabBuilder
             -134,
             110
         );
+        UICheckboxView cutSelection = Checkbox(panel.transform);
+        cutSelection.name = "IncludeCut";
+        TextMeshProUGUI cutCaption = cutSelection.GetComponentInChildren<TextMeshProUGUI>();
+        cutCaption.fontSize = 15;
+        Stretch(cutCaption.rectTransform, 32, 0, 0, 0);
+        cutSelection.gameObject.SetActive(false);
         TextMeshProUGUI layerInstructions = Label("LayerInstructions", panel.transform, "", 15);
-        Stretch(layerInstructions.rectTransform, 24, 67, 500, 0);
+        layerInstructions.rectTransform.anchorMin = Vector2.zero;
         layerInstructions.rectTransform.anchorMax = Vector2.right;
         layerInstructions.rectTransform.offsetMin = new Vector2(24, 67);
-        layerInstructions.rectTransform.offsetMax = new Vector2(-500, 102);
+        layerInstructions.rectTransform.offsetMax = new Vector2(-24, 102);
         layerInstructions.gameObject.SetActive(false);
         Assign(preview, "layerInstructions", layerInstructions);
         Assign(preview, "image", image);
@@ -1579,6 +1583,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(preview, "artworkSlot", slot);
         Assign(preview, "previewPanel", panel.rectTransform);
         Assign(preview, "applyButton", apply);
+        Assign(preview, "cutSelectionTemplate", cutSelection);
         Assign(view, "imagePreview", preview);
         overlay.gameObject.SetActive(false);
     }

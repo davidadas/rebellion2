@@ -440,7 +440,7 @@ internal sealed class PlanetSectorWindowProjector
             );
         }
 
-        int energyUsed = planet.GetEnergyUsed();
+        int energyUsed = StrategyPlanetEnergy.GetUsed(planet);
         string tooltipText = $"Energy Consumption {energyUsed}/{planet.EnergyCapacity}";
         if (planet.EnergyCapacity <= 0)
         {

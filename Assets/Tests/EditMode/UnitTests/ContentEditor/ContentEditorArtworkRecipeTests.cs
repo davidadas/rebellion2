@@ -74,5 +74,60 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.That(reopened, Is.Null);
         }
+
+        [Test]
+        public void UpgradeImageLayerVersion_ImportedImage_RequiresAnImageLayerReader()
+        {
+            var recipe = new ContentEditorArtworkRecipe { Version = 7 };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { ImageSource = "layer.png" });
+
+            recipe.UpgradeImageLayerVersion();
+
+            Assert.That(recipe.Version, Is.EqualTo(8));
+        }
+
+        [Test]
+        public void ReadForOutput_UpgradedLegacyImageRecipe_RetainsItsProceduralRenderingVersion()
+        {
+            var recipe = new ContentEditorArtworkRecipe
+            {
+                Version = 2,
+                OutputMember = "InTransitImagePath",
+            };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { ImageSource = "layer.png" });
+            recipe.UpgradeImageLayerVersion();
+
+            var reopened = ContentEditorArtworkRecipe.ReadForOutput(
+                JsonUtility.ToJson(recipe),
+                "InTransitImagePath",
+                0,
+                1,
+                false
+            );
+
+            Assert.That(reopened.RenderVersion, Is.EqualTo(2));
+        }
+
+        [Test]
+        public void UpgradeImageLayerVersion_ProceduralLayers_KeepsTheExistingVersion()
+        {
+            var recipe = new ContentEditorArtworkRecipe { Version = 7 };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { Source = -1, Seed = 13 });
+
+            recipe.UpgradeImageLayerVersion();
+
+            Assert.That(recipe.Version, Is.EqualTo(7));
+        }
+
+        [Test]
+        public void UpgradeCompositionLayerVersion_LegacyRecipe_PreservesRenderingVersion()
+        {
+            var recipe = new ContentEditorArtworkRecipe { Version = 2 };
+
+            recipe.UpgradeCompositionLayerVersion();
+
+            Assert.That(recipe.Version, Is.EqualTo(ContentEditorArtworkRecipe.CurrentVersion));
+            Assert.That(recipe.RenderVersion, Is.EqualTo(2));
+        }
     }
 }

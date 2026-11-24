@@ -175,15 +175,14 @@ internal sealed class MissionsWindowProjector
                 continue;
 
             bool isInTransit = node is IMovable movable && movable.GetTransitMovement() != null;
-            Texture backgroundTexture = isInTransit
-                ? uiContext.GetEntityStatusTexture(node, true) ?? enrouteBackground
-                : normalBackground;
+            Texture backgroundTexture = isInTransit ? enrouteBackground : normalBackground;
             rows.Add(
                 new MissionParticipantRowRenderData(
                     node.GetDisplayName(),
                     _white,
                     backgroundTexture,
-                    uiContext.GetEntityTexture(node, true)
+                    uiContext.GetEntityTexture(node, true),
+                    isInTransit ? uiContext.GetEntityStatusTexture(node, true) : null
                 )
             );
         }

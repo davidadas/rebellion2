@@ -20,6 +20,9 @@ public sealed class MissionParticipantRowView : MonoBehaviour
     private RawImage entityImage;
 
     [SerializeField]
+    private RawImage statusOverlayImage;
+
+    [SerializeField]
     private TextMeshProUGUI nameTextField;
 
     private RectInt entitySlotRect;
@@ -118,6 +121,7 @@ public sealed class MissionParticipantRowView : MonoBehaviour
         VerifyReferences();
         UILayout.SetInteractiveImageTexture(backgroundImage, data.BackgroundTexture);
         UILayout.SetCenteredImage(entityImage, data.EntityTexture, entitySlotRect);
+        UILayout.SetCenteredImage(statusOverlayImage, data.StatusOverlayTexture, entitySlotRect);
         UILayout.SetTextContent(nameTextField, data.Name, data.NameColor);
         gameObject.SetActive(true);
     }
@@ -133,6 +137,8 @@ public sealed class MissionParticipantRowView : MonoBehaviour
             throw new MissingReferenceException($"{name}/BackgroundImage is missing.");
         if (entityImage == null)
             throw new MissingReferenceException($"{name}/EntityImage is missing.");
+        if (statusOverlayImage == null)
+            throw new MissingReferenceException($"{name}/StatusOverlayImage is missing.");
         if (nameTextField == null)
             throw new MissingReferenceException($"{name}/NameTextField is missing.");
         if (hasEntitySlotRect)
@@ -156,6 +162,8 @@ public sealed class MissionParticipantRowRenderData
 
     public Texture EntityTexture { get; }
 
+    public Texture StatusOverlayTexture { get; }
+
     /// <summary>
     /// Creates one complete participant-row presentation snapshot.
     /// </summary>
@@ -163,16 +171,19 @@ public sealed class MissionParticipantRowRenderData
     /// <param name="nameColor">The displayed participant-name color.</param>
     /// <param name="backgroundTexture">The optional state background.</param>
     /// <param name="entityTexture">The displayed participant image.</param>
+    /// <param name="statusOverlayTexture">The optional movement-state overlay.</param>
     public MissionParticipantRowRenderData(
         string name,
         Color32 nameColor,
         Texture backgroundTexture,
-        Texture entityTexture
+        Texture entityTexture,
+        Texture statusOverlayTexture = null
     )
     {
         Name = name ?? string.Empty;
         NameColor = nameColor;
         BackgroundTexture = backgroundTexture;
         EntityTexture = entityTexture;
+        StatusOverlayTexture = statusOverlayTexture;
     }
 }

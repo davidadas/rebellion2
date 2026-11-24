@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -95,11 +96,16 @@ internal static class ThunderstorePackageExporter
                         cancellationToken
                     );
                 foreach (
-                    string source in Directory.EnumerateFiles(
-                        snapshot,
-                        "*",
-                        SearchOption.AllDirectories
-                    )
+                    string source in Directory
+                        .EnumerateFiles(snapshot, "*", SearchOption.AllDirectories)
+                        .Where(source =>
+                            !Path.GetRelativePath(snapshot, source)
+                                .Replace('\\', '/')
+                                .StartsWith(
+                                    ContentEditorAssetChange.EditorDirectory + "/",
+                                    StringComparison.Ordinal
+                                )
+                        )
                 )
                 {
                     cancellationToken.ThrowIfCancellationRequested();

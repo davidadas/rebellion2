@@ -129,11 +129,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
     private bool reflowingFields;
     private bool showOutputArtworkBackground = true;
+    private bool showIllustrationBackground = true;
     private bool showStateArtworkBackground = true;
 
     private ContentEditorNumericGrid probabilityGrid;
 
     private readonly List<RawImage> articleImages = new List<RawImage>();
+    private readonly Dictionary<GameObject, ContentPackEditorField> imageDropTargets = new();
 
     private readonly List<RawImage> tableRows = new List<RawImage>();
 
@@ -172,7 +174,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
+    private readonly Dictionary<string, Button> illustrationReuseButtons = new();
     private Button artworkCutsButton;
+    private UICheckboxView illustrationBackgroundToggle;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
     private string selectedFactionArtworkCategory = _defaultFactionArtworkCategory;
@@ -334,6 +338,10 @@ public sealed class ContentEditorFormView : MonoBehaviour
         stateBackgroundToggle
             .GetComponent<Toggle>()
             .onValueChanged.RemoveListener(SetStateArtworkBackgroundVisible);
+        if (illustrationBackgroundToggle != null)
+            illustrationBackgroundToggle
+                .GetComponent<Toggle>()
+                .onValueChanged.RemoveListener(SetIllustrationBackgroundVisible);
         foreach (ContentEditorFieldView field in fieldViews)
         {
             field.ValidationFailed -= ReportValidationError;
@@ -365,6 +373,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (record != selectedRecord)
         {
             showOutputArtworkBackground = true;
+            showIllustrationBackground = true;
             showStateArtworkBackground = true;
             artworkStateSize = 0;
         }
@@ -440,6 +449,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             field.Clear();
         foreach (TextMeshProUGUI label in groupLabels)
             label.gameObject.SetActive(false);
+        imageDropTargets.Clear();
         foreach (RawImage image in articleImages)
         {
             image.texture = null;
@@ -832,6 +842,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             group.gameObject.SetActive(false);
         foreach (ContentEditorColorPickerView picker in colorPickers)
             picker.Clear();
+        imageDropTargets.Clear();
         foreach (RawImage image in articleImages)
             image.gameObject.SetActive(false);
         foreach (RawImage row in tableRows)
@@ -1130,14 +1141,69 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField[] states = fields
             .Where(field => ContentEditorUnitArtworkLayout.IsStateSpecific(field.MemberName))
             .ToArray();
+        ContentPackEditorField[] illustrations = normal
+            .Where(ContentEditorUnitArtworkLayout.IsIllustration)
+            .ToArray();
+        ContentPackEditorField[] display = normal
+            .Where(field => !ContentEditorUnitArtworkLayout.IsIllustration(field))
+            .ToArray();
 
-        if (normal.Length > 0)
+        if (illustrations.Length > 0)
+        {
+            int panelStart = y;
+            y = BeginArtworkPanel(ref panelIndex, "Illustrations", y, width);
+            Texture2D illustrationBackground = GetArtworkBackground(
+                illustrations,
+                background,
+                null
+            );
+            y = PlaceArtworkSectionHeader(
+                "Messages and encyclopedia",
+                illustrationBackground != null ? GetIllustrationBackgroundToggle() : null,
+                showIllustrationBackground,
+                y,
+                width,
+                ref labelIndex
+            );
+            if (
+                illustrations.Length == 2
+                && illustrations[0].Value == illustrations[1].Value
+                && ResolveArtworkTexture(illustrations[0]) != null
+            )
+            {
+                GetArtworkContentBounds(width, out float left, out float availableWidth);
+                y +=
+                    PlaceLabel(
+                        "Both slots use the same image.",
+                        labelIndex++,
+                        left,
+                        y,
+                        availableWidth,
+                        false
+                    ) + 4;
+            }
+            y = PlaceArtworkOutputGallery(
+                illustrations,
+                showIllustrationBackground ? illustrationBackground : null,
+                null,
+                y,
+                width,
+                ref fieldIndex,
+                ref imageIndex,
+                ref labelIndex
+            );
+            y = CompleteArtworkPanel(panelStart, y);
+        }
+
+        if (display.Length > 0)
         {
             int panelStart = y;
             y = BeginArtworkPanel(ref panelIndex, "Images", y, width);
             y = PlaceArtworkSectionHeader(
-                "Images",
-                background != null || compactBackground != null ? outputBackgroundToggle : null,
+                "Gameplay images",
+                GetArtworkBackground(display, background, compactBackground) != null
+                    ? outputBackgroundToggle
+                    : null,
                 showOutputArtworkBackground,
                 y,
                 width,
@@ -1145,7 +1211,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             );
             y = PlaceArtworkCutsAction(normal, y, width);
             y = PlaceArtworkOutputGallery(
-                normal,
+                display,
                 showOutputArtworkBackground ? background : null,
                 showOutputArtworkBackground ? compactBackground : null,
                 y,
@@ -1175,7 +1241,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             );
             y = PlaceArtworkStateSize(states, y, width);
             y = PlaceArtworkStateGallery(
-                normal,
+                display,
                 states,
                 showStateArtworkBackground ? background : null,
                 showStateArtworkBackground ? compactBackground : null,
@@ -1244,37 +1310,40 @@ public sealed class ContentEditorFormView : MonoBehaviour
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         if (toggle == null)
             return y + PlaceLabel(caption, labelIndex++, contentLeft, y, contentWidth, true) + 6;
-        const int toggleWidth = 174;
         const int toggleHeight = 26;
-        int headingHeight;
-        if (contentWidth >= 400)
-        {
-            headingHeight = PlaceLabel(
-                caption,
-                labelIndex++,
-                contentLeft,
-                y,
-                contentWidth - toggleWidth - 12,
-                true
-            );
-            SetFormRect(
-                (RectTransform)toggle.transform,
-                contentLeft + contentWidth - toggleWidth,
-                y,
-                toggleWidth,
-                toggleHeight
-            );
-            toggle.SetIsCheckedWithoutNotify(isChecked);
-            toggle.gameObject.SetActive(true);
-            return y + Mathf.Max(headingHeight, toggleHeight) + 6;
-        }
-
-        headingHeight = PlaceLabel(caption, labelIndex++, contentLeft, y, contentWidth, true);
-        y += headingHeight + 4;
-        SetFormRect((RectTransform)toggle.transform, contentLeft, y, toggleWidth, toggleHeight);
+        TMP_Text toggleLabel = toggle.GetComponentInChildren<TMP_Text>(true);
+        RectInt labelBounds = UILayout.GetSourceRect(toggleLabel.rectTransform);
+        float toggleWidth = Mathf.Min(
+            contentWidth,
+            labelBounds.x + Mathf.CeilToInt(toggleLabel.GetPreferredValues(toggleLabel.text).x)
+        );
+        bool sharesHeadingRow = contentWidth >= 400;
+        int headingHeight = PlaceLabel(
+            caption,
+            labelIndex++,
+            contentLeft,
+            y,
+            sharesHeadingRow ? contentWidth - toggleWidth - 12 : contentWidth,
+            true
+        );
+        int toggleTop = sharesHeadingRow ? y : y + headingHeight + 4;
+        RectInt toggleBounds = SetFormRect(
+            (RectTransform)toggle.transform,
+            contentLeft + contentWidth - toggleWidth,
+            toggleTop,
+            toggleWidth,
+            toggleHeight
+        );
+        UILayout.SetSourceRect(
+            toggleLabel.rectTransform,
+            labelBounds.x,
+            labelBounds.y,
+            Mathf.Max(1, toggleBounds.width - labelBounds.x),
+            labelBounds.height
+        );
         toggle.SetIsCheckedWithoutNotify(isChecked);
         toggle.gameObject.SetActive(true);
-        return y + toggleHeight + 6;
+        return Mathf.Max(y + headingHeight, toggleTop + toggleHeight) + 6;
     }
 
     /// <summary>
@@ -1292,24 +1361,40 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         if (!ContentEditorUnitArtworkLayout.SupportsStandardCuts(selectedRecord))
             return y;
-        ContentPackEditorField source = ContentEditorUnitArtworkLayout
-            .GetGenerationSourceMembers(selectedRecord.Kind)
-            .Select(member =>
-                fields.FirstOrDefault(field =>
-                    field.MemberName == member && ResolveArtworkTexture(field) != null
+        ContentPackEditorField source = null;
+        ContentPackEditorField[] targets = null;
+        foreach (
+            string member in ContentEditorUnitArtworkLayout.GetGenerationSourceMembers(
+                selectedRecord.Kind
+            )
+        )
+        {
+            ContentPackEditorField candidate = fields.FirstOrDefault(field =>
+                field.MemberName == member
+            );
+            if (candidate == null || !ContentEditorUnitArtworkLayout.IsCutSource(candidate))
+                continue;
+            Texture2D texture = ResolveArtworkTexture(candidate);
+            if (texture == null)
+                continue;
+            Vector2Int sourceSize = new(texture.width, texture.height);
+            targets = fields
+                .Where(field =>
+                    ContentEditorUnitArtworkLayout.TryGetCutDimensions(
+                        candidate,
+                        field,
+                        sourceSize,
+                        out _
+                    )
                 )
-            )
-            .FirstOrDefault(field => field != null);
+                .OrderBy(GetArtworkOutputOrder)
+                .ToArray();
+            if (targets.Length == 0)
+                continue;
+            source = candidate;
+            break;
+        }
         if (source == null)
-            return y;
-        ContentPackEditorField[] targets = fields
-            .Where(field =>
-                field != source
-                && ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(field, out _)
-            )
-            .OrderBy(GetArtworkOutputOrder)
-            .ToArray();
-        if (targets.Length == 0)
             return y;
 
         artworkCutsButton ??= Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
@@ -1351,6 +1436,35 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private void SetOutputArtworkBackgroundVisible(bool visible)
     {
         showOutputArtworkBackground = visible;
+        RenderFields(false);
+    }
+
+    /// <summary>
+    /// Creates the independent background preview control for the illustrations card.
+    /// </summary>
+    /// <returns>The shared checkbox style configured for illustrations.</returns>
+    private UICheckboxView GetIllustrationBackgroundToggle()
+    {
+        if (illustrationBackgroundToggle != null)
+            return illustrationBackgroundToggle;
+        illustrationBackgroundToggle = Instantiate(
+            outputBackgroundToggle,
+            fieldScroll.ScrollArea.ContentRoot
+        );
+        illustrationBackgroundToggle.name = "IllustrationBackgroundToggle";
+        illustrationBackgroundToggle
+            .GetComponent<Toggle>()
+            .onValueChanged.AddListener(SetIllustrationBackgroundVisible);
+        return illustrationBackgroundToggle;
+    }
+
+    /// <summary>
+    /// Changes the illustration background preview for the current record.
+    /// </summary>
+    /// <param name="visible">Whether to show the effective background behind illustrations.</param>
+    private void SetIllustrationBackgroundVisible(bool visible)
+    {
+        showIllustrationBackground = visible;
         RenderFields(false);
     }
 
@@ -1645,7 +1759,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     entity,
                     Array.Empty<Texture2D>(),
                     ref imageIndex,
-                    fitEntity: true
+                    fitEntity: true,
+                    dropField: output.Field
                 );
                 if (entity == null)
                     PlaceArtworkPlaceholder(
@@ -1666,25 +1781,90 @@ public sealed class ContentEditorFormView : MonoBehaviour
             x = contentLeft;
             for (int index = rowStart; index < outputIndex; index++)
             {
-                rowBottom = Mathf.Max(
-                    rowBottom,
+                ContentPackEditorField field = outputs[index].Field;
+                int cardWidth = cardWidths[index];
+                int fieldBottom =
                     controlsY
-                        + PlaceField(
-                            outputs[index].Field,
-                            fieldIndex++,
-                            x,
-                            controlsY,
-                            cardWidths[index],
-                            0,
-                            0,
-                            true
-                        )
-                );
-                x += cardWidths[index] + gap;
+                    + PlaceField(field, fieldIndex++, x, controlsY, cardWidth, 0, 0, true);
+                if (ContentEditorUnitArtworkLayout.IsIllustration(field))
+                {
+                    var peer = outputs.FirstOrDefault(output => output.Field != field);
+                    if (peer?.Texture != null && peer.Field.Value != field.Value)
+                    {
+                        const int importWidth = 120;
+                        const int actionGap = 8;
+                        const int actionWidth = 190;
+                        bool inline = cardWidth >= importWidth + actionGap + actionWidth;
+                        int buttonY = inline ? controlsY + 4 : fieldBottom;
+                        PlaceIllustrationReuseAction(
+                            field,
+                            peer.Field,
+                            inline ? x + importWidth + actionGap : x,
+                            buttonY,
+                            Mathf.Min(cardWidth, actionWidth)
+                        );
+                        fieldBottom = Mathf.Max(fieldBottom, buttonY + 32);
+                    }
+                }
+                rowBottom = Mathf.Max(rowBottom, fieldBottom);
+                x += cardWidth + gap;
             }
             y = rowBottom + (outputIndex < outputs.Length ? gap : 8);
         }
         return y;
+    }
+
+    /// <summary>
+    /// Offers to assign the peer illustration's existing media address to this slot.
+    /// </summary>
+    /// <param name="target">The slot under which the action appears.</param>
+    /// <param name="source">The other illustration with a resolved image.</param>
+    /// <param name="x">The action's left edge in the form.</param>
+    /// <param name="y">The action's top edge in the form.</param>
+    /// <param name="width">The width available for the action.</param>
+    private void PlaceIllustrationReuseAction(
+        ContentPackEditorField target,
+        ContentPackEditorField source,
+        float x,
+        int y,
+        int width
+    )
+    {
+        if (!illustrationReuseButtons.TryGetValue(target.MemberName, out Button button))
+        {
+            button = Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
+            button.name = "ReuseIllustration-" + target.MemberName;
+            illustrationReuseButtons.Add(target.MemberName, button);
+        }
+        button.GetComponentInChildren<TMP_Text>().text =
+            source.MemberName == "EncyclopediaImagePath"
+                ? "Use encyclopedia image"
+                : "Use message image";
+        button.onClick.AddListener(() => ReuseIllustration(target, source));
+        SetFormRect((RectTransform)button.transform, x, y, width, 32);
+        button.gameObject.SetActive(true);
+    }
+
+    /// <summary>
+    /// Applies a single undoable image reference through the normal field edit path.
+    /// </summary>
+    /// <param name="target">The illustration field receiving the shared address.</param>
+    /// <param name="source">The illustration field supplying the address.</param>
+    private void ReuseIllustration(ContentPackEditorField target, ContentPackEditorField source)
+    {
+        if (!Commit() || ResolveArtworkTexture(source) == null)
+            return;
+        try
+        {
+            SubmitField(target, new[] { source.Value });
+        }
+        catch (ArgumentException exception)
+        {
+            ReportValidationError(exception.Message);
+            return;
+        }
+        Refresh();
+        HandleFieldChanged();
     }
 
     /// <summary>
@@ -1986,7 +2166,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 stateEntity,
                 overlays,
                 ref imageIndex,
-                fitEntity: selectedRecord.Kind == "Officer"
+                fitEntity: selectedRecord.Kind == "Officer",
+                dropField: action
             );
             if (stateEntity == null && stateBackground == null && overlays.Length == 0)
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
@@ -2062,6 +2243,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="overlays">The travel, damage, injury, or captured layers in render order.</param>
     /// <param name="imageIndex">The next reusable preview image.</param>
     /// <param name="fitEntity">Whether the normal image must fit entirely within the preview.</param>
+    /// <param name="dropField">The editable image slot represented by this preview, when available.</param>
     private void PlaceArtworkComposition(
         string name,
         int x,
@@ -2073,10 +2255,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         Texture2D entity,
         IReadOnlyList<Texture2D> overlays,
         ref int imageIndex,
-        bool fitEntity = false
+        bool fitEntity = false,
+        ContentPackEditorField dropField = null
     )
     {
         RawImage backing = GetArtworkPreviewImage(ref imageIndex, name + "-Backing");
+        if (dropField != null)
+            BindImageDropTarget(backing, dropField);
         backing.texture = null;
         backing.color =
             entity == null && background == null && overlays.Count == 0
@@ -2205,9 +2390,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return background;
         if (
             selectedRecord?.Kind == "Officer"
-            && fields.Any(field =>
-                field.MemberName is "MessageImagePath" or "EncyclopediaImagePath"
-            )
+            && fields.Any(ContentEditorUnitArtworkLayout.IsIllustration)
         )
             return background;
         return fields.Any(field => field.MemberName == "SmallDisplayImagePath")
@@ -2311,6 +2494,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             articleImages.Add(image);
         }
         RawImage preview = articleImages[imageIndex++];
+        imageDropTargets.Remove(preview.gameObject);
+        preview.raycastTarget = false;
         preview.name = articleImageTemplate.name + "-" + imageName;
         if (activeArtworkPanel != null)
         {
@@ -2324,6 +2509,34 @@ public sealed class ContentEditorFormView : MonoBehaviour
         preview.enabled = true;
         preview.gameObject.SetActive(true);
         return preview;
+    }
+
+    /// <summary>
+    /// Maps a preview graphic to the same field used by its image picker.
+    /// </summary>
+    /// <param name="image">The visible drop surface.</param>
+    /// <param name="field">The image slot represented by the surface.</param>
+    private void BindImageDropTarget(RawImage image, ContentPackEditorField field)
+    {
+        imageDropTargets[image.gameObject] = field;
+        image.raycastTarget = true;
+    }
+
+    /// <summary>
+    /// Resolves an image preview, field row, or editable interface image selected by a drop.
+    /// </summary>
+    /// <param name="target">The topmost visible object at the drop position.</param>
+    /// <returns>The exact image field to import into, when available.</returns>
+    internal ContentPackEditorField FindImageDropField(GameObject target)
+    {
+        if (imageDropTargets.TryGetValue(target, out ContentPackEditorField field))
+            return field;
+        field =
+            target.GetComponentInParent<ContentEditorFieldView>()?.Field
+            ?? target.GetComponentInParent<ContentEditorArtworkEditTarget>()?.Field;
+        return field?.MediaType == ContentPackEditorMediaType.Image && !field.IsMediaDirectory
+            ? field
+            : null;
     }
 
     /// <summary>
@@ -2398,6 +2611,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 readable: true
             )
             : null;
+
+    /// <summary>
+    /// Resolves the same authored ship backdrop used by the unit artwork gallery.
+    /// </summary>
+    /// <param name="record">The ship whose encyclopedia art will be generated.</param>
+    /// <returns>The readable backdrop to include in the PNG, when configured.</returns>
+    internal Texture2D GetShipEncyclopediaCutBackground(ContentPackEditorRecord record) =>
+        ResolveEffectiveUnitBackground(
+            record.GetField(ContentEditorUnitArtworkLayout.BackgroundMember),
+            readable: true
+        );
 
     /// <summary>
     /// Resolves the card background used behind compact personnel and regiment artwork in gameplay.
@@ -2579,6 +2803,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 ref imageIndex,
                 "Selected-" + field.MemberName
             );
+            BindImageDropTarget(preview, field);
             preview.texture = texture;
             preview.color = Color.white;
             current = new Vector2Int(texture.width, texture.height);
@@ -2631,7 +2856,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 null,
                 null,
                 Array.Empty<Texture2D>(),
-                ref imageIndex
+                ref imageIndex,
+                dropField: field
             );
             PlaceArtworkPlaceholder(
                 invalid || address != null ? "Image unavailable" : "Empty image slot",
@@ -2729,7 +2955,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             .ToArray();
         int columnCount = width >= 940 ? 2 : 1;
         const int gap = 16;
-        const int cardHeight = 296;
+        const int cardHeight = 270;
         float cardWidth = (width - 8 - gap * (columnCount - 1)) / columnCount;
         for (int index = 0; index < fields.Length; index++)
         {
@@ -3201,7 +3427,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IEnumerable<string> categoryNames = ContentEditorContentSections.FactionArtworkCategories;
         if (neutral)
             categoryNames = categoryNames
-                .Concat(new[] { "Galaxy map icons", "Other artwork", "Shared mission icons" })
+                .Concat(
+                    new[]
+                    {
+                        "Galaxy map icons",
+                        "Other artwork",
+                        ContentEditorContentSections.FacilityResearchIconsArtworkCategory,
+                    }
+                )
                 .OrderBy(name => name, StringComparer.Ordinal);
         var categories = categoryNames
             .Select(name => new
@@ -3783,6 +4016,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void ClearArtworkViewControls()
     {
+        if (illustrationBackgroundToggle != null)
+            illustrationBackgroundToggle.gameObject.SetActive(false);
+        foreach (Button button in illustrationReuseButtons.Values)
+        {
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
         factionArtworkFieldTops.Clear();
         artworkViewSelector.gameObject.SetActive(false);
         ArtworkViewOptions = Array.Empty<string>();

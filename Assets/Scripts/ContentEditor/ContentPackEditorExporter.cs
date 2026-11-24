@@ -70,11 +70,19 @@ internal static class ContentPackEditorExporter
     )
     {
         await WriteSnapshotAsync(project, staging, cancellationToken);
-        return await ContentEditorPackValidator.ValidateAsync(
-            ContentPackEditorStorage.OpenFolder(project.ContentRootPath, staging),
+        ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+            project.ContentRootPath,
+            staging
+        );
+        ContentPackEditorStorage.Save(snapshot);
+        IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
+            snapshot,
             progress,
             cancellationToken
         );
+        return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
+            ? warnings
+            : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
     }
 
     /// <summary>
@@ -100,7 +108,16 @@ internal static class ContentPackEditorExporter
         );
         using ZipArchive archive = new ZipArchive(output, ZipArchiveMode.Create);
         foreach (
-            string source in Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories)
+            string source in Directory
+                .EnumerateFiles(staging, "*", SearchOption.AllDirectories)
+                .Where(source =>
+                    !Path.GetRelativePath(staging, source)
+                        .Replace('\\', '/')
+                        .StartsWith(
+                            ContentEditorAssetChange.EditorDirectory + "/",
+                            StringComparison.Ordinal
+                        )
+                )
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -201,6 +218,12 @@ internal static class ContentPackEditorExporter
                     .Equals(
                         ContentEditorPublishingStorage.DirectoryName,
                         StringComparison.OrdinalIgnoreCase
+                    )
+                && !Path.GetRelativePath(root, source)
+                    .Replace('\\', '/')
+                    .StartsWith(
+                        ContentEditorAssetChange.EditorDirectory + "/",
+                        StringComparison.Ordinal
                     )
                 && !removed.Contains(source)
             )

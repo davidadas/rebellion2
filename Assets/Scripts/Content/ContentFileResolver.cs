@@ -18,9 +18,11 @@ public sealed class ContentFileResolver
     private const string _packDefinitionFileName = "pack.xml";
     private const string _modContentDirectoryName = "Content";
     private const string _modsDirectoryName = "Mods";
+    private static readonly string[] _artworkExtensions = { ".png", ".jpg", ".jpeg" };
 
     private readonly IReadOnlyList<string> modContentRoots;
     private readonly IReadOnlyList<string> packRoots;
+    private readonly Dictionary<string, Dictionary<string, string>> artworkAliases;
 
     public string ContentRootPath { get; }
 
@@ -94,6 +96,10 @@ public sealed class ContentFileResolver
         Mods = (mods ?? Enumerable.Empty<ContentModDefinition>()).ToArray();
         AvailableMods = (availableMods ?? Mods).ToArray();
         ModIssues = (modIssues ?? Enumerable.Empty<ContentModIssue>()).ToArray();
+        artworkAliases = packRoots
+            .Concat(modContentRoots.Select(root => Path.Combine(root, _packScopeName)))
+            .Distinct(StringComparer.Ordinal)
+            .ToDictionary(root => root, ContentArtworkAliases.Load, StringComparer.Ordinal);
     }
 
     /// <summary>
@@ -217,8 +223,38 @@ public sealed class ContentFileResolver
     public string ResolveFile(string address, params string[] extensions)
     {
         string normalizedAddress = NormalizeAddress(address);
+        return ResolveFile(normalizedAddress, extensions, null);
+    }
+
+    /// <summary>
+    /// Follows image redirects at their owning layer while retaining normal override precedence.
+    /// </summary>
+    /// <param name="normalizedAddress">The scoped address being resolved.</param>
+    /// <param name="extensions">The image extensions to probe.</param>
+    /// <param name="visited">The addresses followed during this resolution.</param>
+    /// <returns>The selected image or other content file, or null when missing.</returns>
+    private string ResolveFile(
+        string normalizedAddress,
+        string[] extensions,
+        HashSet<string> visited
+    )
+    {
+        if (visited?.Add(normalizedAddress) == false)
+            throw new InvalidDataException(
+                "The artwork address maps contain a cycle between content layers."
+            );
         for (int index = modContentRoots.Count - 1; index >= 0; index--)
         {
+            if (
+                artworkAliases[Path.Combine(modContentRoots[index], _packScopeName)]
+                    .TryGetValue(normalizedAddress, out string alias)
+                && alias != normalizedAddress
+            )
+                return ResolveFile(
+                    alias,
+                    extensions.Length == 0 ? _artworkExtensions : extensions,
+                    visited ?? new HashSet<string>(StringComparer.Ordinal) { normalizedAddress }
+                );
             string resolved = ResolveFromRoot(
                 modContentRoots[index],
                 normalizedAddress,
@@ -228,8 +264,22 @@ public sealed class ContentFileResolver
                 return resolved;
         }
 
-        foreach (string basePath in ResolveBasePaths(normalizedAddress))
+        foreach (string root in packRoots)
         {
+            if (
+                artworkAliases[root].TryGetValue(normalizedAddress, out string alias)
+                && alias != normalizedAddress
+            )
+                return ResolveFile(
+                    alias,
+                    extensions.Length == 0 ? _artworkExtensions : extensions,
+                    visited ?? new HashSet<string>(StringComparer.Ordinal) { normalizedAddress }
+                );
+            string basePath = ResolveScopedPath(
+                Path.Combine(ContentRootPath, _applicationScopeName),
+                root,
+                normalizedAddress
+            );
             if (File.Exists(basePath))
                 return basePath;
             foreach (string extension in extensions)

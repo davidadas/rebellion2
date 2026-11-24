@@ -59,10 +59,10 @@ public sealed class ContentEditorArtworkLayerRow : MonoBehaviour
             (float)layer.Texture.width / layer.Texture.height;
         thumbnail.color = layer.Hidden ? new Color(1, 1, 1, 0.48f) : Color.white;
         visibilityCaption.text =
-            layer.Locked ? "Locked"
+            layer.Linked ? "Linked"
             : layer.Hidden ? "Show"
             : "Hide";
-        visibility.interactable = editing && !layer.Locked;
+        visibility.interactable = editing && !layer.Linked;
         ContentEditorArtworkWorkspace.SetSelected(select, selected);
     }
 

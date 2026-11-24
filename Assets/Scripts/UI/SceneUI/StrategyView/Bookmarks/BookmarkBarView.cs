@@ -130,16 +130,25 @@ public sealed class BookmarkRenderData
 
     public Texture2D IconTexture { get; }
 
+    internal RectInt IconContentBounds { get; }
+
     /// <summary>
     /// Creates one bookmark-slot presentation snapshot.
     /// </summary>
     /// <param name="active">Whether the slot contains a visible bookmark.</param>
     /// <param name="label">The displayed planet label.</param>
     /// <param name="iconTexture">The displayed feature icon.</param>
-    public BookmarkRenderData(bool active, string label, Texture2D iconTexture)
+    /// <param name="iconContentBounds">The region to frame when the icon reuses positioned artwork.</param>
+    public BookmarkRenderData(
+        bool active,
+        string label,
+        Texture2D iconTexture,
+        RectInt iconContentBounds = default
+    )
     {
         Active = active;
         Label = label ?? string.Empty;
         IconTexture = iconTexture;
+        IconContentBounds = iconContentBounds;
     }
 }

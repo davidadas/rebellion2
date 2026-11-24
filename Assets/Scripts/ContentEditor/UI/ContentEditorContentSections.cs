@@ -70,6 +70,7 @@ internal static class ContentEditorContentSections
     };
 
     internal const string NeutralThemePageKey = "factions/neutral-theme";
+    internal const string FacilityResearchIconsArtworkCategory = "Facility research icons";
 
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
@@ -528,7 +529,7 @@ internal static class ContentEditorContentSections
         if (root == nameof(FactionTheme.PlanetWindowTheme))
             return PlanetWindowArtworkCategory(field);
         if (root == nameof(FactionTheme.MissionIcons))
-            return neutral ? "Shared mission icons" : "Missions";
+            return neutral ? FacilityResearchIconsArtworkCategory : "Missions";
         if (root == nameof(FactionTheme.GalacticInformationDisplay))
             return "Galactic information";
         if (root is nameof(FactionTheme.StrategyAdvisor) or nameof(FactionTheme.StrategyBriefing))
@@ -763,7 +764,8 @@ internal static class ContentEditorContentSections
             "Planet sector" =>
                 "Destroyed planets, the composed planet-sector window, map overlays, and bookmarks.",
             "Galaxy map icons" => "Star markers for neutral planets on the galaxy map.",
-            "Shared mission icons" => "Facility research artwork used by all factions.",
+            FacilityResearchIconsArtworkCategory =>
+                "Facility research artwork used by all factions.",
             "Strategy view" =>
                 "The complete strategy interface, including its frame, controls, speed indicators, message notifications, and context menus.",
             "Defense window" =>

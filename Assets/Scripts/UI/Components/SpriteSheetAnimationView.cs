@@ -9,7 +9,7 @@ public sealed class SpriteSheetAnimationView : MonoBehaviour
     [SerializeField]
     private RawImage image;
 
-    private SpriteSheetAnimationViewData animation;
+    private SpriteSheetAnimationViewData animationData;
     private double elapsed;
     private int frameIndex = -1;
     private bool requestedVisible;
@@ -28,7 +28,7 @@ public sealed class SpriteSheetAnimationView : MonoBehaviour
     /// </summary>
     private void OnEnable()
     {
-        image.enabled = requestedVisible && animation != null;
+        image.enabled = requestedVisible && animationData != null;
     }
 
     /// <summary>
@@ -56,12 +56,12 @@ public sealed class SpriteSheetAnimationView : MonoBehaviour
     public void Render(SpriteSheetAnimationViewData data, bool visible)
     {
         bool changed =
-            animation?.Texture != data?.Texture
-            || animation?.FrameCount != data?.FrameCount
-            || animation?.Columns != data?.Columns
-            || animation?.FramesPerSecond != data?.FramesPerSecond;
+            animationData?.Texture != data?.Texture
+            || animationData?.FrameCount != data?.FrameCount
+            || animationData?.Columns != data?.Columns
+            || animationData?.FramesPerSecond != data?.FramesPerSecond;
         bool restart = changed || visible && !requestedVisible;
-        animation = data;
+        animationData = data;
         requestedVisible = visible;
         image.texture = data?.Texture;
         if (restart)
@@ -81,11 +81,11 @@ public sealed class SpriteSheetAnimationView : MonoBehaviour
     /// <param name="elapsedSeconds">The unscaled elapsed duration.</param>
     internal void AdvanceAnimation(float elapsedSeconds)
     {
-        if (!requestedVisible || animation == null || elapsedSeconds <= 0f)
+        if (!requestedVisible || animationData == null || elapsedSeconds <= 0f)
             return;
-        double duration = animation.FrameCount / (double)animation.FramesPerSecond;
+        double duration = animationData.FrameCount / (double)animationData.FramesPerSecond;
         elapsed = (elapsed + elapsedSeconds) % duration;
-        SetFrame((int)(elapsed * animation.FramesPerSecond) % animation.FrameCount);
+        SetFrame((int)(elapsed * animationData.FramesPerSecond) % animationData.FrameCount);
     }
 
     /// <summary>
@@ -94,14 +94,14 @@ public sealed class SpriteSheetAnimationView : MonoBehaviour
     /// <param name="index">The zero-based animation frame.</param>
     private void SetFrame(int index)
     {
-        if (animation == null || frameIndex == index)
+        if (animationData == null || frameIndex == index)
             return;
         frameIndex = index;
         image.uvRect = new Rect(
-            (float)(index % animation.Columns) / animation.Columns,
-            1f - (float)(index / animation.Columns + 1) / animation.Rows,
-            1f / animation.Columns,
-            1f / animation.Rows
+            (float)(index % animationData.Columns) / animationData.Columns,
+            1f - (float)(index / animationData.Columns + 1) / animationData.Rows,
+            1f / animationData.Columns,
+            1f / animationData.Rows
         );
     }
 }

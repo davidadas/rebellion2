@@ -92,6 +92,91 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Bake_ImportedLayer_PreservesItsPositionAndTransparency()
+        {
+            Texture2D image = new(4, 4, TextureFormat.RGBA32, false);
+            Texture2D output = new(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Color32[] pixels = new Color32[16];
+                pixels[5] = new Color32(215, 32, 17, 128);
+                image.SetPixels32(pixels);
+                image.Apply(false);
+                byte[] png = image.EncodeToPNG();
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    null,
+                    loadLayerSource: _ => png
+                );
+                var layer = new ContentEditorArtworkLayer
+                {
+                    Source = -1,
+                    ImageSource = "Pack/Assets/ArtworkSources/layer.png",
+                    Offset = new Vector2(3f / _width, 0f),
+                };
+
+                Assert.IsTrue(output.LoadImage(frame.Bake(new[] { layer })));
+                Color32[] visible = output.GetPixels32();
+                int x = (_width - 4) / 2 + 1 + 3;
+                int y = (_height - 4) / 2 + 1;
+                Assert.AreEqual(128, visible[y * _width + x].a);
+                Assert.AreEqual(1, visible.Count(pixel => pixel.a != 0));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(image);
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
+        public void Bake_DownscaledImportedLayer_KeepsEdgeColorAtPartialAlpha()
+        {
+            int width = _width * 2;
+            int height = _height * 2;
+            Texture2D image = new(width, height, TextureFormat.RGBA32, false);
+            Texture2D output = new(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                Color32 color = new(215, 32, 17, 255);
+                Color32[] pixels = new Color32[width * height];
+                for (int y = 0; y < height; y++)
+                    pixels[y * width] = color;
+                image.SetPixels32(pixels);
+                image.Apply(false);
+                byte[] png = image.EncodeToPNG();
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    null,
+                    loadLayerSource: _ => png
+                );
+                var layer = new ContentEditorArtworkLayer
+                {
+                    Source = -1,
+                    ImageSource = "layer.png",
+                };
+
+                Assert.IsTrue(output.LoadImage(frame.Bake(new[] { layer })));
+                Color32 edge = output.GetPixels32()[_width * (_height / 2)];
+                Assert.That((edge.r, edge.g, edge.b), Is.EqualTo((color.r, color.g, color.b)));
+                Assert.That(edge.a, Is.InRange(127, 128));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(image);
+                UnityEngine.Object.DestroyImmediate(output);
+            }
+        }
+
+        [Test]
         public void CreateEditableFrame_AngledShip_PlacesTheWakePastTheDiagonalHull()
         {
             Texture2D angled = new(_width, _height, TextureFormat.RGBA32, false);
@@ -135,6 +220,183 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsNotNull(added.Texture);
             Assert.Less(Mathf.Abs(existing.Bounds.center.x - added.Bounds.center.x), 12);
             Assert.Greater(Mathf.Abs(existing.Bounds.center.y - added.Bounds.center.y), 5);
+        }
+
+        [Test]
+        public void CreateDefaultLayers_ShipTravel_SeparatesBackgroundUnitAndEffects()
+        {
+            Texture2D background = new(_width, _height, TextureFormat.RGBA32, false);
+            try
+            {
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background
+                );
+
+                ContentEditorArtworkLayerRole[] roles = frame
+                    .CreateDefaultLayers()
+                    .Select(layer => layer.Role)
+                    .ToArray();
+
+                Assert.That(roles[0], Is.EqualTo(ContentEditorArtworkLayerRole.Background));
+                Assert.That(roles[1], Is.EqualTo(ContentEditorArtworkLayerRole.Subject));
+                Assert.That(roles.Skip(2), Is.All.EqualTo(ContentEditorArtworkLayerRole.Effect));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
+        public void GetLayerBounds_LinkedUnitWithStoredTransform_UsesTheSourceFrame()
+        {
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null
+            );
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+                Offset = new Vector2(0.25f, -0.25f),
+                ScalePercent = 200,
+            };
+            var source = frame.GetLayer(unit);
+
+            RectInt bounds = frame.GetLayerBounds(unit, source.Bounds);
+
+            Assert.That(bounds, Is.EqualTo(new RectInt(0, 0, _width, _height)));
+        }
+
+        [Test]
+        public void Bake_ShipEffectBelowUnit_CutsEffectOutOfUnitSilhouette()
+        {
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+
+            Color32[] pixels = DecodePixels(frame.Bake(new[] { effect, unit }));
+
+            Assert.That(pixels[24 * _width + 40].a, Is.Zero);
+            Assert.That(pixels[4 * _width + 4].a, Is.EqualTo(byte.MaxValue));
+        }
+
+        [Test]
+        public void Bake_ShipEffectAboveUnit_PreservesEffectOverUnitSilhouette()
+        {
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                sourcePath,
+                null,
+                ContentEditorArtworkEffectStyle.ShipTravel,
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var unit = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+
+            Color32[] pixels = DecodePixels(frame.Bake(new[] { unit, effect }));
+
+            Assert.That(pixels[24 * _width + 40].a, Is.EqualTo(byte.MaxValue));
+        }
+
+        [TestCase("ShipTravel", false)]
+        [TestCase("ShipTravel", true)]
+        [TestCase("Damage", false)]
+        [TestCase("Damage", true)]
+        [TestCase("PersonnelTravel", false)]
+        [TestCase("PersonnelTravel", true)]
+        [TestCase("RegimentTravel", false)]
+        [TestCase("RegimentTravel", true)]
+        public void Bake_OpaqueSubjectLayer_PreservesEffectOrdering(string format, bool effectAbove)
+        {
+            string source = WriteEffectImage((_, _) => new Color32(31, 72, 81, 255));
+            byte[] image = WriteSolidLayer(new Color32(215, 32, 17, 255));
+            using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                source,
+                null,
+                Enum.Parse<ContentEditorArtworkEffectStyle>(format),
+                148,
+                false,
+                null,
+                loadLayerSource: _ => image
+            );
+            var effect = new ContentEditorArtworkLayer { Source = -1, ImageSource = "layer.png" };
+            var subject = new ContentEditorArtworkLayer
+            {
+                Role = ContentEditorArtworkLayerRole.Subject,
+            };
+
+            Color32[] pixels = DecodePixels(
+                frame.Bake(effectAbove ? new[] { subject, effect } : new[] { effect, subject })
+            );
+
+            Assert.That(
+                pixels.Select(pixel => pixel.a),
+                Is.All.EqualTo(effectAbove ? byte.MaxValue : (byte)0)
+            );
+        }
+
+        [Test]
+        public void Bake_ShipBackgroundMovedAboveUnit_ExportsTheReorderedBackground()
+        {
+            Texture2D background = new(_width, _height, TextureFormat.RGBA32, false);
+            background.SetPixels(
+                Enumerable.Repeat(new Color(0.15f, 0.3f, 0.45f, 1f), _width * _height).ToArray()
+            );
+            background.Apply(false);
+            try
+            {
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background
+                );
+                var unit = new ContentEditorArtworkLayer
+                {
+                    Role = ContentEditorArtworkLayerRole.Subject,
+                };
+                var linkedBackground = new ContentEditorArtworkLayer
+                {
+                    Role = ContentEditorArtworkLayerRole.Background,
+                };
+
+                Color32[] pixels = DecodePixels(frame.Bake(new[] { unit, linkedBackground }));
+
+                Assert.That(pixels[24 * _width + 40].a, Is.EqualTo(byte.MaxValue));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
         }
 
         [Test]
@@ -858,7 +1120,7 @@ namespace Rebellion.Tests.ContentEditor
                 false,
                 null
             );
-            Assert.IsNotNull(frame.SubjectOverlay);
+            Assert.IsNotNull(frame.SubjectLayer);
             Assert.AreEqual(3, frame.DefaultLayerCount);
             var layer = frame.GetLayer(new ContentEditorArtworkLayer { Source = 0 });
             Assert.IsNotNull(layer.Texture);
@@ -1106,6 +1368,28 @@ namespace Rebellion.Tests.ContentEditor
                 texture.Apply(false);
                 File.WriteAllBytes(path, texture.EncodeToPNG());
                 return path;
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
+        }
+
+        /// <summary>
+        /// Encodes one frame-sized solid image for an imported-layer fixture.
+        /// </summary>
+        /// <param name="color">The color assigned to every pixel.</param>
+        /// <returns>The encoded PNG.</returns>
+        private static byte[] WriteSolidLayer(Color32 color)
+        {
+            Texture2D texture = new(_width, _height, TextureFormat.RGBA32, false);
+            try
+            {
+                Color32[] pixels = new Color32[_width * _height];
+                Array.Fill(pixels, color);
+                texture.SetPixels32(pixels);
+                texture.Apply(false);
+                return texture.EncodeToPNG();
             }
             finally
             {
