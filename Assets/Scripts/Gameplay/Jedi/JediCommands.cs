@@ -114,7 +114,7 @@ namespace Rebellion.Gameplay
         internal void ReconcileDiscoveryState()
         {
             foreach (Officer officer in _game.RegisteredOfficers)
-                officer.ReconcileForceDiscoveryState();
+                _game.ReconcileForceDiscoveryState(officer);
             _pendingDiscoveryResults.Clear();
         }
 

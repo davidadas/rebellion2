@@ -847,6 +847,20 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void GalaxyReplacement_PreviousOfficerChangesRank_DoesNotScheduleDiscovery()
+        {
+            Officer oldTrainer = CreateJediTrainer("OLD_TRAINER", forceValue: 50);
+
+            _game.Galaxy = new GalaxyMap();
+            oldTrainer.ForceValue = 80;
+
+            Assert.IsFalse(oldTrainer.IsDiscoveringForceUser);
+            Assert.Zero(oldTrainer.NextForceDiscoveryTick);
+            CollectionAssert.DoesNotContain(_game.RegisteredOfficers, oldTrainer);
+            Assert.IsEmpty(_system.TakeDiscoveryResults());
+        }
+
+        [Test]
         public void ProcessTick_ScannerRemovedDuringEarlierScan_DoesNotRunRemovedScan()
         {
             CreateJediTrainer("FIRST", forceValue: 80);

@@ -274,8 +274,10 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         private GameConfig.JediConfig _forceRules;
 
-        [PersistableIgnore]
-        private GameRoot _forceGame;
+        /// <summary>
+        /// Reports a change in whether this officer is eligible to scan for hidden Force users.
+        /// </summary>
+        internal event Action<Officer> ForceDiscoveryStateChanged;
 
         public string EncyclopediaImagePath { get; set; }
         public List<EncyclopediaEntryStat> EncyclopediaStats { get; set; }
@@ -716,33 +718,20 @@ namespace Rebellion.Game.Units
         internal void BindLoyaltyProtection(bool canBetray) => _canBetray = canBetray;
 
         /// <summary>
-        /// Connects Force discovery and healing to the rules injected into the owning game.
-        /// Binding does not change the officer's saved Force values.
+        /// Applies the configured Force discovery and healing thresholds.
         /// </summary>
-        /// <param name="rules">The current game's Force rules.</param>
-        /// <param name="game">The authoritative game owning the officer and its discovery clock.</param>
-        internal void BindForceRules(GameConfig.JediConfig rules, GameRoot game)
-        {
+        /// <param name="rules">The current campaign's Force rules.</param>
+        internal void BindForceRules(GameConfig.JediConfig rules) =>
             _forceRules = rules ?? throw new ArgumentNullException(nameof(rules));
-            _forceGame = game ?? throw new ArgumentNullException(nameof(game));
-        }
 
         /// <summary>
-        /// Disconnects live discovery scheduling when this officer leaves the game registry.
-        /// Keeps the configured rules available for healing queries.
+        /// Restores a missing deadline for a saved scanner and refreshes its eligibility.
         /// </summary>
-        internal void UnbindForceRuntime()
+        /// <param name="nextTick">The next scan tick assigned by the campaign.</param>
+        internal void ReconcileForceDiscoveryState(int nextTick)
         {
-            _forceGame = null;
-        }
-
-        /// <summary>
-        /// Reconciles discovery eligibility and restores a missing deadline after registration.
-        /// </summary>
-        internal void ReconcileForceDiscoveryState()
-        {
-            if (_forceGame != null && _isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
-                NextForceDiscoveryTick = unchecked(_forceGame.CurrentTick + 1);
+            if (_isDiscoveringForceUser && !_nextForceDiscoveryTick.HasValue)
+                NextForceDiscoveryTick = nextTick;
             RefreshForceDiscoveryState();
         }
 
@@ -765,12 +754,12 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Updates retained discovery eligibility and arms a newly enabled scanner for the next tick.
+        /// Updates retained discovery eligibility and reports changes to the campaign.
         /// Availability changes evaluate the current rank even when it is zero.
         /// </summary>
         private void RefreshForceDiscoveryState()
         {
-            if (_forceGame == null)
+            if (ForceDiscoveryStateChanged == null)
                 return;
 
             bool shouldDiscover =
@@ -785,10 +774,7 @@ namespace Rebellion.Game.Units
                 return;
 
             _isDiscoveringForceUser = shouldDiscover;
-            NextForceDiscoveryTick = shouldDiscover ? unchecked(_forceGame.CurrentTick + 1) : 0;
-            ForceDiscoveryOrder = shouldDiscover ? _forceGame.AllocateForceDiscoveryOrder() : 0;
-            if (shouldDiscover)
-                _forceGame.RecordForceDiscoveryStarted(this);
+            ForceDiscoveryStateChanged(this);
         }
 
         /// <summary>

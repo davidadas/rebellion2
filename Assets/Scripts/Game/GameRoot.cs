@@ -305,7 +305,11 @@ namespace Rebellion.Game
 
             Config = config;
             foreach (Officer officer in _registeredOfficers)
-                officer.BindForceRules(config.Jedi, this);
+            {
+                officer.BindForceRules(config.Jedi);
+                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
+                officer.ForceDiscoveryStateChanged += UpdateForceDiscoverySchedule;
+            }
         }
 
         /// <summary>
@@ -937,7 +941,7 @@ namespace Rebellion.Game
         {
             EnsureRuntimeIdentifier((BaseGameEntity)node);
             if (node is Officer officerToBind && Config != null)
-                officerToBind.BindForceRules(Config.Jedi, this);
+                officerToBind.BindForceRules(Config.Jedi);
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
@@ -958,8 +962,11 @@ namespace Rebellion.Game
                     $"Cannot add duplicate node \"{node.GetInstanceID()}\" and Display Name \"{node.GetDisplayName()}\" to scene."
                 );
             }
-            if (node is Officer registeredOfficer)
-                registeredOfficer.ReconcileForceDiscoveryState();
+            if (node is Officer registeredOfficer && Config != null)
+            {
+                registeredOfficer.ForceDiscoveryStateChanged += UpdateForceDiscoverySchedule;
+                ReconcileForceDiscoveryState(registeredOfficer);
+            }
         }
 
         /// <summary>
@@ -971,18 +978,32 @@ namespace Rebellion.Game
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
             {
-                officer.UnbindForceRuntime();
+                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
                 _registeredOfficers.Remove(officer);
             }
         }
 
         /// <summary>
-        /// Records a completed discovery-state transition for the connected runtime.
+        /// Reconciles a registered officer's discovery state and restores a missing deadline.
         /// </summary>
-        /// <param name="officer">The officer whose scanner became enabled.</param>
-        internal void RecordForceDiscoveryStarted(Officer officer)
+        /// <param name="officer">The registered officer whose scan state is reconciled.</param>
+        internal void ReconcileForceDiscoveryState(Officer officer)
         {
-            ForceDiscoveryStarted?.Invoke(officer);
+            if (Config != null)
+                officer.ReconcileForceDiscoveryState(unchecked(CurrentTick + 1));
+        }
+
+        /// <summary>
+        /// Updates the officer's scan schedule before reporting a newly enabled scanner.
+        /// </summary>
+        /// <param name="officer">The officer whose discovery eligibility changed.</param>
+        private void UpdateForceDiscoverySchedule(Officer officer)
+        {
+            bool enabled = officer.IsDiscoveringForceUser;
+            officer.NextForceDiscoveryTick = enabled ? unchecked(CurrentTick + 1) : 0;
+            officer.ForceDiscoveryOrder = enabled ? AllocateForceDiscoveryOrder() : 0;
+            if (enabled)
+                ForceDiscoveryStarted?.Invoke(officer);
         }
 
         /// <summary>
@@ -996,10 +1017,10 @@ namespace Rebellion.Game
         /// Disconnects a removed officer before containment changes can schedule new work.
         /// </summary>
         /// <param name="node">The node leaving the game registry.</param>
-        private static void DisconnectOfficerRuntime(ISceneNode node)
+        private void DisconnectOfficerRuntime(ISceneNode node)
         {
             if (node is Officer officer)
-                officer.UnbindForceRuntime();
+                officer.ForceDiscoveryStateChanged -= UpdateForceDiscoverySchedule;
         }
 
         /// <summary>
@@ -1007,13 +1028,7 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            foreach (Officer officer in _registeredOfficers)
-                officer.UnbindForceRuntime();
-            NodesByInstanceID.Clear();
-            _registeredOfficers.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
-
+            ClearSceneRegistration();
             InitializeSceneRoot(Galaxy);
         }
 
@@ -1024,11 +1039,22 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            NodesByInstanceID.Clear();
-            foreach (Faction faction in _factions)
-                faction.ClearOwnedUnits();
+            ClearSceneRegistration();
             InitializeSceneRoot(galaxy);
             return galaxy;
+        }
+
+        /// <summary>
+        /// Disconnects the current scene before rebuilding its registration and ownership indexes.
+        /// </summary>
+        private void ClearSceneRegistration()
+        {
+            foreach (Officer officer in _registeredOfficers)
+                DisconnectOfficerRuntime(officer);
+            NodesByInstanceID.Clear();
+            _registeredOfficers.Clear();
+            foreach (Faction faction in _factions)
+                faction.ClearOwnedUnits();
         }
 
         /// <summary>
