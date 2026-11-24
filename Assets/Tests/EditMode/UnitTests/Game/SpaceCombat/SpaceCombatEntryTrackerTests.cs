@@ -469,6 +469,24 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.AreEqual(1, _origin.SpaceCombatEntryFaction);
         }
 
+        [Test]
+        public void SceneUpdate_FleetActivatesAfterAnotherFaction_RecordsLastCompletedActivation()
+        {
+            Fleet alliance = AddFleet("alpha");
+            CapitalShip allianceShip = AddCapital(alliance, ManufacturingStatus.Building);
+            CapitalShip imperialShip = AddCapital(AddFleet("beta"), ManufacturingStatus.Building);
+
+            using (_game.BeginSceneUpdate())
+            {
+                alliance.Movement = new MovementState();
+                imperialShip.ManufacturingStatus = ManufacturingStatus.Complete;
+                allianceShip.ManufacturingStatus = ManufacturingStatus.Complete;
+                alliance.Movement = null;
+            }
+
+            Assert.AreEqual(1, _origin.SpaceCombatEntryFaction);
+        }
+
         [TestCase(ManufacturingStatus.Complete, true, true, true)]
         [TestCase(ManufacturingStatus.Building, true, true, false)]
         [TestCase(ManufacturingStatus.Delivering, true, true, false)]

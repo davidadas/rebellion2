@@ -15,8 +15,8 @@ namespace Rebellion.Game.SpaceCombat
         private readonly Dictionary<BaseSceneNode, Presence> _presence = new();
         private readonly Dictionary<CapitalShip, Fleet> _capitalParents = new();
         private readonly HashSet<BaseSceneNode> _registered = new();
-        private readonly HashSet<BaseSceneNode> _pendingSet = new();
-        private readonly List<BaseSceneNode> _pending = new();
+        private readonly HashSet<BaseSceneNode> _pending = new();
+        private readonly List<BaseSceneNode> _activations = new();
         private int _updateDepth;
         private int _restorationDepth;
 
@@ -28,6 +28,9 @@ namespace Rebellion.Game.SpaceCombat
             internal readonly HashSet<CapitalShip> Capitals = new();
             internal Planet Planet;
             internal bool Active;
+            internal Planet ObservedPlanet;
+            internal bool ObservedActive;
+            internal int ActivationIndex = -1;
         }
 
         /// <summary>
@@ -173,7 +176,7 @@ namespace Rebellion.Game.SpaceCombat
             _presence.Clear();
             _capitalParents.Clear();
             _pending.Clear();
-            _pendingSet.Clear();
+            _activations.Clear();
         }
 
         /// <summary>
@@ -287,48 +290,69 @@ namespace Rebellion.Game.SpaceCombat
         }
 
         /// <summary>
-        /// Retains the first affected-unit order while coalescing repeated changes.
+        /// Observes readiness in mutation order while deferring entry writes until the operation has finished.
         /// </summary>
         /// <param name="node">The presence owner that needs reevaluation.</param>
         private void Schedule(BaseSceneNode node)
         {
-            if (node != null && _presence.ContainsKey(node) && _pendingSet.Add(node))
-                _pending.Add(node);
+            if (node == null || !_presence.TryGetValue(node, out Presence presence))
+                return;
+
+            Planet planet = node.GetParent() as Planet;
+            bool active = planet != null && node.IsEnabled;
+            if (node is Fleet fleet)
+                active &= fleet.Movement == null && presence.Capitals.Count != 0;
+            else
+            {
+                Starfighter fighter = (Starfighter)node;
+                active &=
+                    fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                    && fighter.Movement == null;
+            }
+
+            if (active && (!presence.ObservedActive || presence.ObservedPlanet != planet))
+            {
+                presence.ActivationIndex = _activations.Count;
+                _activations.Add(node);
+            }
+            presence.ObservedActive = active;
+            presence.ObservedPlanet = planet;
+            _pending.Add(node);
         }
 
         /// <summary>
-        /// Evaluates committed presence and records only new activations or locations.
+        /// Records new arrivals in activation order after their parent and transit state have settled.
         /// </summary>
         private void Flush()
         {
+            if (_restorationDepth == 0)
+            {
+                for (int index = 0; index < _activations.Count; index++)
+                {
+                    BaseSceneNode node = _activations[index];
+                    if (
+                        _presence.TryGetValue(node, out Presence presence)
+                        && presence.ActivationIndex == index
+                        && presence.ObservedActive
+                        && (!presence.Active || presence.Planet != presence.ObservedPlanet)
+                        && node.OwnerInstanceID != null
+                        && _factions.TryGetValue(node.OwnerInstanceID, out int selector)
+                    )
+                        presence.ObservedPlanet.SpaceCombatEntryFaction = selector;
+                }
+            }
+
             foreach (BaseSceneNode node in _pending)
             {
-                if (!_presence.TryGetValue(node, out Presence presence))
-                    continue;
-                Planet planet = node.GetParent() as Planet;
-                bool active = planet != null && node.IsEnabled;
-                if (node is Fleet fleet)
-                    active &= fleet.Movement == null && presence.Capitals.Count != 0;
-                else
+                if (_presence.TryGetValue(node, out Presence presence))
                 {
-                    Starfighter fighter = (Starfighter)node;
-                    active &=
-                        fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        && fighter.Movement == null;
+                    presence.Active = presence.ObservedActive;
+                    presence.Planet = presence.ObservedPlanet;
+                    presence.ActivationIndex = -1;
                 }
-                if (
-                    active
-                    && (!presence.Active || presence.Planet != planet)
-                    && _restorationDepth == 0
-                    && node.OwnerInstanceID != null
-                    && _factions.TryGetValue(node.OwnerInstanceID, out int selector)
-                )
-                    planet.SpaceCombatEntryFaction = selector;
-                presence.Active = active;
-                presence.Planet = planet;
             }
             _pending.Clear();
-            _pendingSet.Clear();
+            _activations.Clear();
         }
 
         /// <summary>
