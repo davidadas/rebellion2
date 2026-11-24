@@ -2982,6 +2982,54 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("body:Target Officer:has been eliminated", message.Body);
         }
 
+        [TestCase(true, true)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        public void CreateMessages_AbductionTargetState_UsesMatchingReport(
+            bool officerReports,
+            bool targetKilled
+        )
+        {
+            Message message = CreateAbductionReport(officerReports, targetKilled);
+
+            Assert.AreEqual(
+                officerReports ? "Leia Mission Report" : "Abduction Mission Report",
+                message.Title
+            );
+            if (targetKilled)
+            {
+                string attempt = officerReports ? "my" : "the";
+                Assert.AreEqual(
+                    $"Ackbar was killed during {attempt} abduction attempt at Drall.\n"
+                        + "Personnel are returning to Coruscant.",
+                    message.Body
+                );
+            }
+            else
+            {
+                StringAssert.Contains(
+                    officerReports ? "was a success." : "succeeded.",
+                    message.Body
+                );
+                StringAssert.DoesNotContain("was killed", message.Body);
+                StringAssert.EndsWith("Personnel are returning to Coruscant.", message.Body);
+            }
+        }
+
+        [TestCase(MissionOutcome.Failed, "failed")]
+        [TestCase(MissionOutcome.Foiled, "foiled")]
+        public void CreateMessages_UnsuccessfulAbductionWithKilledTarget_UsesFailureReport(
+            MissionOutcome outcome,
+            string expected
+        )
+        {
+            Message message = CreateAbductionReport(false, true, outcome);
+
+            StringAssert.Contains(expected, message.Body);
+            StringAssert.DoesNotContain("was killed", message.Body);
+        }
+
         [Test]
         public void CreateMessages_AbductionReportWithKilledTarget_ReportsTargetDeath()
         {
@@ -6083,6 +6131,141 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(destination, sector);
 
             return (game, alliance, origin, destination);
+        }
+
+        /// <summary>
+        /// Creates an abduction report using the content pack's authored message definitions.
+        /// </summary>
+        /// <param name="officerReports">Whether a main officer personally reports the outcome.</param>
+        /// <param name="targetKilled">Whether the target or an unrelated officer was killed.</param>
+        /// <param name="outcome">The mission's gameplay outcome.</param>
+        /// <returns>The abduction report delivered to the mission owner.</returns>
+        private static Message CreateAbductionReport(
+            bool officerReports,
+            bool targetKilled,
+            MissionOutcome outcome = MissionOutcome.Success
+        )
+        {
+            (GameRoot game, Faction alliance, Faction empire, Planet origin, Planet target) =
+                BuildTwoFactionMessageScene();
+            target.DisplayName = "Drall";
+            Officer targetOfficer = new Officer
+            {
+                DisplayName = "Ackbar",
+                InstanceID = "target-officer",
+                OwnerInstanceID = empire.InstanceID,
+                IsKilled = targetKilled,
+            };
+            Mission mission = new AbductionMission
+            {
+                DisplayName = "Abduction",
+                OwnerInstanceID = alliance.InstanceID,
+                TargetOfficerInstanceID = targetOfficer.InstanceID,
+            };
+            IMissionParticipant participant = officerReports
+                ? new Officer
+                {
+                    DisplayName = "Leia",
+                    InstanceID = "reporter",
+                    OwnerInstanceID = alliance.InstanceID,
+                    IsMain = true,
+                }
+                : new SpecialForces
+                {
+                    DisplayName = "Commandos",
+                    InstanceID = "reporter",
+                    OwnerInstanceID = alliance.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                };
+            game.AttachNode(targetOfficer, target);
+            game.AttachNode(mission, target);
+            game.AttachNode((ISceneNode)participant, origin);
+            if (targetKilled)
+                game.DetachNode(targetOfficer);
+
+            return FirstMessageFor(
+                CreateMessages(
+                    game,
+                    AbductionDefinitions(),
+                    new MissionCompletedResult
+                    {
+                        Mission = mission,
+                        MissionName = "Abduction",
+                        Participants = new List<IMissionParticipant> { participant },
+                        Outcome = outcome,
+                        ReturnDestination = origin,
+                    },
+                    new OfficerKilledResult
+                    {
+                        TargetOfficer = targetKilled
+                            ? targetOfficer
+                            : new Officer
+                            {
+                                DisplayName = "Another officer",
+                                InstanceID = "another-officer",
+                                OwnerInstanceID = empire.InstanceID,
+                                IsKilled = true,
+                            },
+                        Context = target,
+                    }
+                ),
+                alliance
+            );
+        }
+
+        /// <summary>
+        /// Creates the complete set of report selectors exercised by the abduction scenarios.
+        /// </summary>
+        /// <returns>Self-contained abduction report definitions.</returns>
+        private static MessageDefinition[] AbductionDefinitions()
+        {
+            const string returning = "Personnel are returning to {destination}.";
+            return new[]
+            {
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} was a success. {abduction_result}\n{personnel_status}",
+                    outcome: MessageResultOutcome.Success,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} succeeded. {abduction_result}\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "{officer} was killed during my abduction attempt at {system}.\n{personnel_status}",
+                    outcome: MessageResultOutcome.TargetKilled,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "{officer} was killed during the abduction attempt at {system}.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Report",
+                    "My mission to abduct {officer} from {system} failed. {personnel_status}",
+                    outcome: MessageResultOutcome.Failed,
+                    missionTypeId: AbductionMission.MissionTypeID,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "Abduction Mission Report",
+                    unattributedBody: "The mission to abduct {officer} from {system} failed.\n{personnel_status}"
+                ),
+                Definition(
+                    MessageResultType.MissionReport,
+                    MessageType.Mission,
+                    "{participant} Mission Foiled",
+                    "My {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}",
+                    outcome: MessageResultOutcome.Foiled,
+                    personnelReturningTemplate: returning,
+                    unattributedSubject: "{mission} Mission Foiled",
+                    unattributedBody: "The {mission} mission to {system} has been foiled by opposing forces.  {personnel_status}"
+                ),
+            };
         }
 
         /// <summary>
