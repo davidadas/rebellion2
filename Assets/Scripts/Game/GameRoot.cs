@@ -1059,8 +1059,6 @@ namespace Rebellion.Game
             if (node is Officer registeredOfficer)
                 registeredOfficer.ReconcileForceDiscoveryState();
             _spaceCombatEntries.Register(node);
-            if (node is Planet planet)
-                planet.BindBlockadeGame(this);
         }
 
         /// <summary>
@@ -1069,8 +1067,6 @@ namespace Rebellion.Game
         /// <param name="node">The scene node to deregister.</param>
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
-            if (node is Planet planet)
-                planet.BindBlockadeGame(null);
             _spaceCombatEntries.Unregister(node);
             NodesByInstanceID.Remove(node.InstanceID);
             if (node is Officer officer)
@@ -1111,7 +1107,6 @@ namespace Rebellion.Game
         /// </summary>
         public void RebuildSceneState()
         {
-            ClearBlockadeBindings();
             _spaceCombatEntries.Clear();
             foreach (Officer officer in _registeredOfficers)
                 officer.UnbindForceRuntime();
@@ -1130,23 +1125,12 @@ namespace Rebellion.Game
         /// <returns>The result of initialize galaxy.</returns>
         private GalaxyMap InitializeGalaxy(GalaxyMap galaxy)
         {
-            ClearBlockadeBindings();
             _spaceCombatEntries.Clear();
             NodesByInstanceID.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();
             InitializeSceneRoot(galaxy);
             return galaxy;
-        }
-
-        /// <summary>
-        /// Releases authoritative blockade ownership before replacing the registered scene graph.
-        /// </summary>
-        private void ClearBlockadeBindings()
-        {
-            foreach (ISceneNode node in NodesByInstanceID.Values)
-                if (node is Planet planet)
-                    planet.BindBlockadeGame(null);
         }
 
         /// <summary>

@@ -283,7 +283,7 @@ namespace Rebellion.Gameplay
             }
 
             Planet requestedPlanet = MovementQueries.RequireDestinationPlanet(destination);
-            if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet))
+            if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet, _game))
             {
                 rejectionReason =
                     $"{unit.GetDisplayName()} cannot enter the enemy blockade at {requestedPlanet.GetDisplayName()}.";
@@ -320,7 +320,11 @@ namespace Rebellion.Gameplay
             if (
                 unit is Starfighter
                 && destinationPlanet != origin
-                && MovementQueries.IsBlockedFromDestinationByBlockade(unit, destinationPlanet)
+                && MovementQueries.IsBlockedFromDestinationByBlockade(
+                    unit,
+                    destinationPlanet,
+                    _game
+                )
             )
             {
                 bool? wasBlockaded = CaptureBlockadeState(unit, origin);
@@ -1669,7 +1673,7 @@ namespace Rebellion.Gameplay
                 return false;
 
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
-            if (!destinationPlanet.IsBlockadedFor(movableOwner))
+            if (!destinationPlanet.IsBlockadedFor(movableOwner, _game))
                 return false;
             Fleet blockadingFleet = destinationPlanet
                 .GetChildren<Fleet>()
@@ -2440,9 +2444,9 @@ namespace Rebellion.Gameplay
         /// <param name="unit">The unit about to change movement or containment.</param>
         /// <param name="planet">The affected planet.</param>
         /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
-        private static bool? CaptureBlockadeState(IMovable unit, Planet planet)
+        private bool? CaptureBlockadeState(IMovable unit, Planet planet)
         {
-            return unit is Fleet or CapitalShip or Starfighter ? planet?.IsBlockaded() : null;
+            return unit is Fleet or CapitalShip or Starfighter ? planet?.IsBlockaded(_game) : null;
         }
 
         /// <summary>
@@ -2736,7 +2740,7 @@ namespace Rebellion.Gameplay
 
             List<string> blockadedFactionInstanceIDs = _game
                 .GetFactions()
-                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID))
+                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID, _game))
                 .Select(candidate => candidate.InstanceID)
                 .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);

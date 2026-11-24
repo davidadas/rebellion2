@@ -67,7 +67,7 @@ namespace Rebellion.Gameplay
         /// <param name="config">The config.</param>
         private void UpdateBlockadeSupport(Planet planet, GameConfig.SupportShiftConfig config)
         {
-            if (!planet.IsBlockaded())
+            if (!planet.IsBlockaded(_game))
             {
                 ResetBlockadeSupportTimer(planet);
                 return;
@@ -378,7 +378,7 @@ namespace Rebellion.Gameplay
                 );
                 List<string> blockadedFactionInstanceIDs = _game
                     .GetFactions()
-                    .Where(faction => planet.IsBlockadedFor(faction.InstanceID))
+                    .Where(faction => planet.IsBlockadedFor(faction.InstanceID, _game))
                     .Select(faction => faction.InstanceID)
                     .ToList();
 

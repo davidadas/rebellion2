@@ -256,7 +256,7 @@ namespace Rebellion.Gameplay
             ISceneNode node = item;
             Planet location = node?.GetParentOfType<Planet>();
             bool? wasBlockaded = item is CapitalShip or Starfighter
-                ? location?.IsBlockaded()
+                ? location?.IsBlockaded(_game)
                 : null;
             Planet garrisonPlanet =
                 item is Regiment regiment

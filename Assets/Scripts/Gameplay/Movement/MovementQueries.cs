@@ -299,7 +299,8 @@ namespace Rebellion.Gameplay
             if (
                 unit is Starfighter
                 && destinationPlanet.IsBlockadedFor(
-                    ownerInstanceId ?? GetMovementControlOwner(unit)
+                    ownerInstanceId ?? GetMovementControlOwner(unit),
+                    _game
                 )
             )
             {
@@ -1055,14 +1056,16 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="unit">The unit requesting access.</param>
         /// <param name="destinationPlanet">The planet receiving the unit.</param>
+        /// <param name="game">The campaign evaluating the blockade.</param>
         /// <returns>True when an opposing blockade prevents the unit from entering.</returns>
         internal static bool IsBlockedFromDestinationByBlockade(
             IMovable unit,
-            Planet destinationPlanet
+            Planet destinationPlanet,
+            GameRoot game
         )
         {
             return unit is Starfighter or Regiment or Building
-                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit));
+                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit), game);
         }
 
         /// <summary>
@@ -1132,7 +1135,7 @@ namespace Rebellion.Gameplay
             {
                 if (
                     planet.GetOwnerInstanceID() != ownerInstanceID
-                    || planet.IsBlockadedFor(ownerInstanceID)
+                    || planet.IsBlockadedFor(ownerInstanceID, _game)
                 )
                     continue;
                 ContainerNode destination = FindFighterDestinationInContext(fighter, planet);
@@ -1193,7 +1196,7 @@ namespace Rebellion.Gameplay
                 return null;
             if (
                 context is Planet planet
-                && !planet.IsBlockadedFor(fighter.GetOwnerInstanceID())
+                && !planet.IsBlockadedFor(fighter.GetOwnerInstanceID(), _game)
                 && CanReceiveRelocatedUnit(fighter, planet)
             )
                 return planet;
@@ -1494,19 +1497,19 @@ namespace Rebellion.Gameplay
         /// <param name="factionInstanceId">The faction whose access is evaluated.</param>
         /// <param name="blockades">Optional query-local blockade results.</param>
         /// <returns>True when another faction blockades the planet.</returns>
-        private static bool IsBlockadedFor(
+        private bool IsBlockadedFor(
             Planet planet,
             string factionInstanceId,
             Dictionary<(Planet Planet, string FactionInstanceId), bool> blockades
         )
         {
             if (blockades == null)
-                return planet.IsBlockadedFor(factionInstanceId);
+                return planet.IsBlockadedFor(factionInstanceId, _game);
 
             var key = (planet, factionInstanceId);
             if (!blockades.TryGetValue(key, out bool isBlockaded))
             {
-                isBlockaded = planet.IsBlockadedFor(factionInstanceId);
+                isBlockaded = planet.IsBlockadedFor(factionInstanceId, _game);
                 blockades.Add(key, isBlockaded);
             }
             return isBlockaded;
@@ -1589,7 +1592,7 @@ namespace Rebellion.Gameplay
             }
 
             Planet destinationPlanet = RequireDestinationPlanet(resolvedDestination);
-            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet))
+            if (IsBlockedFromDestinationByBlockade(unit, destinationPlanet, _game))
             {
                 rejectionReason =
                     $"{unit.GetDisplayName()} cannot enter the enemy blockade at {destinationPlanet.GetDisplayName()}.";

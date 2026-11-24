@@ -26,6 +26,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Determines whether the supplied fleets can execute a planetary assault.
         /// </summary>
+        /// <param name="game">The campaign evaluating the blockade.</param>
         /// <param name="fleets">The fleets attempting the assault.</param>
         /// <param name="planet">The planet being assaulted.</param>
         /// <returns>True when the fleets contain ready troops and shields do not block them.</returns>
@@ -79,16 +80,17 @@ namespace Rebellion.Gameplay
                 liveFleets.Add(liveFleet);
             }
 
-            return CanAssault(liveFleets, livePlanet);
+            return CanAssault(_game, liveFleets, livePlanet);
         }
 
         /// <summary>
         /// Determines whether the supplied fleets can begin an assault at the planet.
         /// </summary>
+        /// <param name="game">The campaign evaluating the blockade.</param>
         /// <param name="fleets">The fleets attempting the assault.</param>
         /// <param name="planet">The planet being assaulted.</param>
         /// <returns>True when every fleet is stationary, colocated, and owned by one faction at a blockaded planet.</returns>
-        internal static bool CanAssault(IReadOnlyList<Fleet> fleets, Planet planet)
+        internal static bool CanAssault(GameRoot game, IReadOnlyList<Fleet> fleets, Planet planet)
         {
             if (
                 planet?.IsDestroyed != false
@@ -106,7 +108,7 @@ namespace Rebellion.Gameplay
                     && !fleet.IsInCombat
                     && fleet.GetParent() == planet
                 )
-                && planet.IsBlockaded();
+                && planet.IsBlockaded(game);
         }
     }
 }

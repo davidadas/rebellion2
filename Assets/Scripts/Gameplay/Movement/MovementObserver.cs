@@ -79,7 +79,7 @@ namespace Rebellion.Gameplay
                     result?.Blockaded != true
                     || result.Planet == null
                     || result.BlockadingFleet == null
-                    || !result.Planet.IsBlockaded()
+                    || !result.Planet.IsBlockaded(_game)
                     || !handledPlanets.Add(result.Planet.InstanceID)
                 )
                     continue;

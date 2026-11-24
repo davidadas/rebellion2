@@ -378,7 +378,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.IsTrue(scrapped);
-            Assert.IsTrue(scene.origin.IsBlockaded());
+            Assert.IsTrue(scene.origin.IsBlockaded(scene.game));
             BlockadeChangedResult blockade = observed.Single();
             Assert.AreSame(scene.origin, blockade.Planet);
             Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);
@@ -420,7 +420,7 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable observation = scene.resultBus.Observe<BlockadeChangedResult>(
                 observed.AddRange
             );
-            Assert.IsFalse(scene.origin.IsBlockaded());
+            Assert.IsFalse(scene.origin.IsBlockaded(scene.game));
 
             bool scrapped = scene.maintenance.TryScrap(
                 new IManufacturable[] { fighter },
@@ -429,7 +429,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(scrapped);
             Assert.IsNull(scene.game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
-            Assert.IsTrue(scene.origin.IsBlockaded());
+            Assert.IsTrue(scene.origin.IsBlockaded(scene.game));
             BlockadeChangedResult blockade = observed.Single();
             Assert.AreSame(scene.origin, blockade.Planet);
             Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);

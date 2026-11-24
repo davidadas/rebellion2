@@ -126,7 +126,8 @@ namespace Rebellion.Gameplay
                     template,
                     destination,
                     count,
-                    ownerInstanceId
+                    ownerInstanceId,
+                    game: _game
                 )
             )
                 return false;
@@ -228,7 +229,8 @@ namespace Rebellion.Gameplay
                         template,
                         destination,
                         1,
-                        ownerInstanceId
+                        ownerInstanceId,
+                        game: _game
                     )
                 )
                 {
