@@ -34,6 +34,7 @@ public sealed class ContentPackEditorProject
     public ContentPackDefinition Definition { get; private set; }
 
     internal IReadOnlyList<ContentPackEditorDocument> AllDocuments => documents;
+    internal string ArtworkConversionReport { get; set; }
 
     public IReadOnlyList<ContentPackEditorDocument> Documents =>
         documents.Where(document => !document.IsRemoved).ToArray();
@@ -56,6 +57,13 @@ public sealed class ContentPackEditorProject
     {
         return history.BeginEdit(description);
     }
+
+    /// <summary>
+    /// Writes pack-owned artwork while retaining file revisions for undo and redo.
+    /// </summary>
+    /// <param name="path">The destination inside this project.</param>
+    /// <param name="bytes">The complete replacement contents.</param>
+    internal void WriteAsset(string path, byte[] bytes) => history.WriteFile(this, path, bytes);
 
     /// <summary>
     /// Restores the preceding edit and rebuilds catalog wrappers from the restored documents.
