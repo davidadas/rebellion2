@@ -100,23 +100,59 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual("13", field.Value);
         }
 
-        [TestCase("CapitalShip")]
-        [TestCase("Starfighter")]
-        public void Render_UnitHyperdriveCount_ShowsEditableStat(string kind)
+        [TestCase("CapitalShip", true, "3")]
+        [TestCase("Starfighter", true, "3")]
+        [TestCase("CapitalShip", false, "0")]
+        [TestCase("Starfighter", false, "0")]
+        [TestCase("CapitalShip", false, "3")]
+        [TestCase("Starfighter", false, "3")]
+        public void Render_UnitHyperdriveCount_ShowsEditableStat(
+            string kind,
+            bool authored,
+            string count
+        )
         {
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
                 .First(record => record.Kind == kind);
+            string id = unit.ID;
+            if (!authored)
+            {
+                XDocument document = XDocument.Parse(unit.Catalog.Document.Text);
+                document
+                    .Descendants(kind)
+                    .Single(element => element.Element("TypeID")?.Value == id)
+                    .Element("HyperdriveCount")
+                    .Remove();
+                project.SetDocumentText(unit.Catalog.Document, document.ToString());
+                unit = project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.Kind == kind && record.ID == id);
+            }
+            string before = unit.Catalog.Document.Text;
+            bool wasDirty = project.IsDirty;
 
             SelectRecord(unit);
 
             ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
                 .Single(field => field.Field.MemberName == "HyperdriveCount");
-            Assert.IsNotNull(control.GetComponentInChildren<TMP_InputField>());
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
+            Assert.IsNotNull(input);
             Assert.IsNotEmpty(control.Field.HelpText);
-            project.SetField(control.Field, "3");
-            Assert.AreEqual("3", unit.Element.Element("HyperdriveCount").Value);
+            Assert.AreEqual(before, unit.Catalog.Document.Text);
+            Assert.AreEqual(wasDirty, project.IsDirty);
+            if (!authored)
+            {
+                Assert.IsEmpty(input.text);
+                Assert.IsNull(unit.Element.Element("HyperdriveCount"));
+            }
+
+            input.text = count;
+            input.onEndEdit.Invoke(count);
+
+            Assert.AreEqual(count, unit.Element.Element("HyperdriveCount").Value);
         }
 
         [Test]
