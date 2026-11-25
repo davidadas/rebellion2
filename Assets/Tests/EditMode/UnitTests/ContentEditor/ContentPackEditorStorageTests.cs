@@ -10,6 +10,27 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void WriteBytesAtomically_LongArtworkPath_PublishesBytesAndCleansTemporary(
+            bool replacesExisting
+        )
+        {
+            string directory = Path.Combine(contentRoot, "Assets", "ArtworkSources");
+            Directory.CreateDirectory(directory);
+            string target = Path.Combine(
+                directory,
+                new string('a', 250 - directory.Length - 1 - ".png".Length) + ".png"
+            );
+            byte[] expected = { 1, 2, 3 };
+            if (replacesExisting)
+                File.WriteAllBytes(target, new byte[] { 4, 5 });
+            ContentPackEditorStorage.WriteBytesAtomically(target, expected);
+
+            CollectionAssert.AreEqual(expected, File.ReadAllBytes(target));
+            Assert.IsEmpty(Directory.GetFiles(directory, "*.tmp"));
+        }
+
         [Test]
         public void Save_HeadquartersFacilityList_PreservesOrderedQuantitiesWhenLoaded()
         {
@@ -174,13 +195,13 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual(first, second);
             StringAssert.StartsWith(
-                "Pack/Assets/Generated/starfighter/" + field.Record.ID.ToLowerInvariant() + "/",
+                "Pack/Factions/Alliance/Units/Starfighters/" + field.Record.ID + "/",
                 first
             );
-            StringAssert.EndsWith("/display.png", first);
+            StringAssert.EndsWith("/display", first);
             CollectionAssert.AreEqual(
                 new byte[] { 4, 5 },
-                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..] + ".png"))
             );
         }
 
@@ -210,7 +231,14 @@ namespace Rebellion.Tests.ContentEditor
                 preservePrevious: true,
                 layerRecipe: nextRecipe
             );
-            Assert.AreNotEqual(first, next);
+            Assert.AreEqual(first, next);
+            Assert.IsTrue(project.Undo());
+
+            field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
 
             project.SetField(field, first);
             ContentPackEditorStorage.Save(project);
@@ -230,7 +258,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void WriteGeneratedPng_PreservedVariations_KeepsPreviousBytesAtTheirAddress()
+        public void WriteGeneratedPng_StableAddress_UndoRestoresPreviousBytes()
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField field = project
@@ -254,10 +282,16 @@ namespace Rebellion.Tests.ContentEditor
                 preservePrevious: true
             );
 
-            Assert.AreNotEqual(first, second);
+            Assert.AreEqual(first, second);
+            Assert.IsTrue(project.Undo());
+            field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DamagedSmallImagePath");
             CollectionAssert.AreEqual(
                 firstImage,
-                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..]))
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, first[5..] + ".png"))
             );
             Assert.AreEqual(
                 first,

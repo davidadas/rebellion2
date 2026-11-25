@@ -34,8 +34,13 @@ internal static class ContentPackEditorExporter
         try
         {
             await WriteSnapshotAsync(project, staging, cancellationToken);
+            ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                staging
+            );
+            ContentPackEditorStorage.Save(snapshot);
             IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
-                ContentPackEditorStorage.OpenFolder(project.ContentRootPath, staging),
+                snapshot,
                 progress,
                 cancellationToken
             );
@@ -44,7 +49,9 @@ internal static class ContentPackEditorExporter
             await WriteArchiveContentsAsync(staging, temporaryFile, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             CommitArchive(temporaryFile, destination);
-            return warnings;
+            return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
+                ? warnings
+                : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
         }
         finally
         {
@@ -77,7 +84,16 @@ internal static class ContentPackEditorExporter
         );
         using ZipArchive archive = new ZipArchive(output, ZipArchiveMode.Create);
         foreach (
-            string source in Directory.EnumerateFiles(staging, "*", SearchOption.AllDirectories)
+            string source in Directory
+                .EnumerateFiles(staging, "*", SearchOption.AllDirectories)
+                .Where(source =>
+                    !Path.GetRelativePath(staging, source)
+                        .Replace('\\', '/')
+                        .StartsWith(
+                            ContentEditorAssetChange.EditorDirectory + "/",
+                            StringComparison.Ordinal
+                        )
+                )
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -173,6 +189,12 @@ internal static class ContentPackEditorExporter
             .Where(source =>
                 !source.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
                 && !source.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
+                && !Path.GetRelativePath(root, source)
+                    .Replace('\\', '/')
+                    .StartsWith(
+                        ContentEditorAssetChange.EditorDirectory + "/",
+                        StringComparison.Ordinal
+                    )
                 && !removed.Contains(source)
             )
             .ToArray();

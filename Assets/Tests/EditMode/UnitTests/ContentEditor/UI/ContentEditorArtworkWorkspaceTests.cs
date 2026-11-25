@@ -188,24 +188,54 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(requested, Is.EqualTo((0, 2)));
         }
 
+        [Test]
+        public void MoveOrder_LinkedUnitArtwork_TargetsAdjacentEffect()
+        {
+            (int, int)? requested = null;
+            var workspace = ShowArtwork(
+                new ArtworkEffectActions
+                {
+                    Reorder = (index, target) => requested = (index, target),
+                },
+                linkedFirst: true
+            );
+            foreach (Button button in workspace.GetComponentsInChildren<Button>())
+                if (
+                    button.name == "SelectLayer"
+                    && button.GetComponentInChildren<TMP_Text>().text == "Lower wake"
+                )
+                    button.onClick.Invoke();
+            GetButton(workspace, "MoveLayerForward").onClick.Invoke();
+
+            Assert.That(requested, Is.EqualTo((0, 1)));
+        }
+
         /// <summary>
         /// Opens the artwork workspace with the fixture layer stacks.
         /// </summary>
         /// <param name="commands">The actions assigned to the workspace.</param>
         /// <param name="changed">Whether the draft starts with unsaved changes.</param>
         /// <param name="sizeSpecificLayers">Whether each output shows a different layer stack.</param>
+        /// <param name="linkedFirst">Whether the first fixture layer represents linked unit artwork.</param>
         /// <returns>The rendered workspace.</returns>
         private ContentEditorArtworkWorkspace ShowArtwork(
             ArtworkEffectActions commands = null,
             bool changed = false,
-            bool sizeSpecificLayers = false
+            bool sizeSpecificLayers = false,
+            bool linkedFirst = false
         )
         {
             small = new Texture2D(32, 16);
             large = new Texture2D(64, 32);
             var layers = new[]
             {
-                new ArtworkEffectLayerPreview(0, "Lower wake", small, new Rect(0, 0, 1, 1)),
+                new ArtworkEffectLayerPreview(
+                    0,
+                    "Lower wake",
+                    small,
+                    new Rect(0, 0, 1, 1),
+                    linked: linkedFirst
+                ),
                 new ArtworkEffectLayerPreview(
                     1,
                     "Upper wake",
@@ -230,8 +260,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                 : layers;
             var frames = new[]
             {
-                new ArtworkEffectPreviewFrame("Small", small, null, layers),
-                new ArtworkEffectPreviewFrame("Large", large, null, largeLayers),
+                new ArtworkEffectPreviewFrame("Small", small, layers),
+                new ArtworkEffectPreviewFrame("Large", large, largeLayers),
             };
             commands ??= new ArtworkEffectActions();
             commands.ReadCurrent ??= () => frames;

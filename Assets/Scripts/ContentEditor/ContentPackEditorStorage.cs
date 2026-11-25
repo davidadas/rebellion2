@@ -471,6 +471,60 @@ public static class ContentPackEditorStorage
             )
         )
             throw new ArgumentException("Unsupported file type.");
+        string unitAddress = ContentEditorArtworkPaths.GetAddress(field, preserveCurrent: false);
+        if (unitAddress != null)
+        {
+            byte[] bytes = File.ReadAllBytes(sourcePath);
+            UnityEngine.Texture2D texture = new UnityEngine.Texture2D(2, 2);
+            try
+            {
+                if (!UnityEngine.ImageConversion.LoadImage(texture, bytes))
+                    throw new InvalidDataException("The selected image could not be read.");
+                bytes = UnityEngine.ImageConversion.EncodeToPNG(texture);
+            }
+            finally
+            {
+                if (UnityEngine.Application.isPlaying)
+                    UnityEngine.Object.Destroy(texture);
+                else
+                    UnityEngine.Object.DestroyImmediate(texture);
+            }
+            string candidate = unitAddress;
+            int suffix = 2;
+            ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Dictionary<string, string> aliases = ContentArtworkAliases.Load(project.PackRootPath);
+            while (
+                aliases.ContainsKey(candidate)
+                || field.MediaExtensions.Any(extension =>
+                    File.Exists(Path.GetFullPath(candidate[5..] + extension, project.PackRootPath))
+                )
+            )
+            {
+                string existing = field
+                    .MediaExtensions.Select(extension =>
+                        Path.GetFullPath(candidate[5..] + extension, project.PackRootPath)
+                    )
+                    .FirstOrDefault(File.Exists);
+                if (existing != null)
+                {
+                    ContentEditorPaths.VerifyWritePath(project, existing);
+                    if (
+                        string.Equals(
+                            resolver.ResolveFile(candidate, field.MediaExtensions),
+                            existing,
+                            StringComparison.OrdinalIgnoreCase
+                        ) && File.ReadAllBytes(existing).AsSpan().SequenceEqual(bytes)
+                    )
+                        return candidate;
+                }
+                candidate = unitAddress + "-" + suffix++;
+            }
+            return WriteUnitArtwork(project, field, candidate, bytes, null);
+        }
         string root = field.MediaRoot;
         string folder =
             ContentEditorContentSections.IsFactionMissionIcon(field)
@@ -585,22 +639,7 @@ public static class ContentPackEditorStorage
         if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
             return;
 
-        ContentEditorPaths.VerifyWritePath(project, target);
-        string temporary = Path.Combine(
-            Path.GetDirectoryName(target),
-            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
-        );
-        ContentEditorPaths.VerifyWritePath(project, temporary);
-        try
-        {
-            File.Copy(source, temporary);
-            File.Replace(temporary, target, null);
-        }
-        finally
-        {
-            if (File.Exists(temporary))
-                File.Delete(temporary);
-        }
+        project.WriteAsset(target, File.ReadAllBytes(source));
     }
 
     /// <summary>
@@ -637,6 +676,9 @@ public static class ContentPackEditorStorage
         string root = field.MediaRoot?.TrimEnd('/') ?? "Pack/Assets";
         if (!root.StartsWith("Pack/", StringComparison.Ordinal))
             throw new IOException("Generated images require a writable pack media folder.");
+        string unitAddress = ContentEditorArtworkPaths.GetAddress(field);
+        if (unitAddress != null)
+            return WriteUnitArtwork(project, field, unitAddress, pngBytes, layerRecipe);
         string fileName = GetGeneratedPathSegment(GetGeneratedMemberName(field.MemberName));
         if (preservePrevious)
             fileName += "-" + GetArtworkRevision(pngBytes, layerRecipe);
@@ -655,6 +697,41 @@ public static class ContentPackEditorStorage
         if (layerRecipe != null)
             WriteBytesAtomically(target + ".layers.json", Encoding.UTF8.GetBytes(layerRecipe));
         return field.MediaRoot == null ? address : address[(root.Length + 1)..];
+    }
+
+    /// <summary>
+    /// Publishes one unit image and its editable layers as one reversible file operation.
+    /// </summary>
+    /// <param name="project">The pack receiving the artwork.</param>
+    /// <param name="field">The unit image slot being edited.</param>
+    /// <param name="address">The extensionless unit-folder address.</param>
+    /// <param name="pngBytes">The complete PNG contents.</param>
+    /// <param name="layerRecipe">The optional editable layer data.</param>
+    /// <returns>The address stored in the unit definition.</returns>
+    private static string WriteUnitArtwork(
+        ContentPackEditorProject project,
+        ContentPackEditorField field,
+        string address,
+        byte[] pngBytes,
+        string layerRecipe
+    )
+    {
+        string target = Path.GetFullPath(address[5..] + ".png", project.PackRootPath);
+        ContentEditorPaths.VerifyWritePath(project, target);
+        using (project.BeginEdit("Replace artwork"))
+        {
+            ContentEditorArtworkConversion.PreserveAddress(project, field, address);
+            project.WriteAsset(target, pngBytes);
+            if (layerRecipe != null)
+            {
+                project.WriteAsset(target + ".layers.json", Encoding.UTF8.GetBytes(layerRecipe));
+                project.WriteAsset(
+                    target + ".layers.hash",
+                    Encoding.UTF8.GetBytes(GetArtworkRevision(pngBytes, layerRecipe))
+                );
+            }
+        }
+        return address;
     }
 
     /// <summary>
@@ -727,22 +804,30 @@ public static class ContentPackEditorStorage
         string address = field.GetMediaAddress(field.Value);
         if (
             !address.StartsWith("Pack/", StringComparison.Ordinal)
-            || !address.Contains("/Generated/", StringComparison.Ordinal)
-            || !address.EndsWith(".png", StringComparison.OrdinalIgnoreCase)
+            || (
+                !address.Contains("/Generated/", StringComparison.Ordinal)
+                && ContentEditorArtworkPaths.GetAddress(field) == null
+            )
         )
             return null;
         string imagePath = Path.GetFullPath(address[5..], project.PackRootPath);
+        if (!File.Exists(imagePath) && File.Exists(imagePath + ".png"))
+            imagePath += ".png";
         string sidecar = imagePath + ".layers.json";
         ContentEditorPaths.VerifyWritePath(project, sidecar);
         if (!File.Exists(sidecar) || !File.Exists(imagePath))
             return null;
         ContentEditorPaths.VerifyWritePath(project, imagePath);
         string recipe = File.ReadAllText(sidecar);
+        string revision = GetArtworkRevision(File.ReadAllBytes(imagePath), recipe);
+        string revisionFile = imagePath + ".layers.hash";
+        if (File.Exists(revisionFile))
+        {
+            ContentEditorPaths.VerifyWritePath(project, revisionFile);
+            return File.ReadAllText(revisionFile) == revision ? recipe : null;
+        }
         return Path.GetFileNameWithoutExtension(imagePath)
-            .EndsWith(
-                "-" + GetArtworkRevision(File.ReadAllBytes(imagePath), recipe),
-                StringComparison.Ordinal
-            )
+            .EndsWith("-" + revision, StringComparison.Ordinal)
             ? recipe
             : null;
     }
@@ -753,7 +838,7 @@ public static class ContentPackEditorStorage
     /// <param name="png">The saved PNG data.</param>
     /// <param name="recipe">The optional layers associated with the PNG.</param>
     /// <returns>The revision suffix used in the generated file name.</returns>
-    private static string GetArtworkRevision(byte[] png, string recipe)
+    internal static string GetArtworkRevision(byte[] png, string recipe)
     {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(png);
@@ -770,7 +855,7 @@ public static class ContentPackEditorStorage
     /// </summary>
     /// <param name="member">The serialized image member.</param>
     /// <returns>The semantic portion used by the generated filename.</returns>
-    private static string GetGeneratedMemberName(string member)
+    internal static string GetGeneratedMemberName(string member)
     {
         const string suffix = "ImagePath";
         return member.EndsWith(suffix, StringComparison.Ordinal)
@@ -783,7 +868,7 @@ public static class ContentPackEditorStorage
     /// </summary>
     /// <param name="value">The authored identifier.</param>
     /// <returns>A lowercase path-safe segment.</returns>
-    private static string GetGeneratedPathSegment(string value)
+    internal static string GetGeneratedPathSegment(string value)
     {
         StringBuilder result = new StringBuilder();
         bool separator = false;
@@ -813,11 +898,11 @@ public static class ContentPackEditorStorage
     /// </summary>
     /// <param name="target">The verified absolute pack path.</param>
     /// <param name="bytes">The complete encoded file.</param>
-    private static void WriteBytesAtomically(string target, byte[] bytes)
+    internal static void WriteBytesAtomically(string target, byte[] bytes)
     {
         string temporary = Path.Combine(
             Path.GetDirectoryName(target),
-            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+            "." + Guid.NewGuid().ToString("N") + ".tmp"
         );
         try
         {
@@ -892,6 +977,12 @@ public static class ContentPackEditorStorage
     public static void Save(ContentPackEditorProject project)
     {
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
+        foreach (ContentPackEditorDocument document in project.AllDocuments)
+        {
+            document.Validate();
+            VerifyUnchangedTarget(document);
+        }
+        project.ArtworkConversionReport = ContentEditorArtworkConversion.Convert(project);
         ContentPackEditorDocument[] dirtyDocuments = project
             .AllDocuments.Where(document => document.IsDirty)
             .ToArray();

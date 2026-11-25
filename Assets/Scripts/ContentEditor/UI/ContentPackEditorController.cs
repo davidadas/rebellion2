@@ -526,16 +526,20 @@ public sealed class ContentPackEditorController : MonoBehaviour
         }
 
         ContentPackEditorField[] emptyCuts = GetFirstArtworkCutTargets(field);
-        string address = ContentPackEditorStorage.ImportAsset(project, source, field);
-        if (field.IsList)
-            project.SetFieldValues(
-                field,
-                field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
-            );
-        else
-            project.SetField(field, address);
+        using (project.BeginEdit("Import artwork"))
+        {
+            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
+            if (field.IsList)
+                project.SetFieldValues(
+                    field,
+                    field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).Append(address)
+                );
+            else
+                project.SetField(field, address);
+        }
         if (field.MediaType == ContentPackEditorMediaType.Image)
             RememberImageImportDirectory(source);
+        OpenProject(project);
         if (emptyCuts.Length > 0)
         {
             Vector2Int sourceSize = GetArtworkSourceSize(field);
@@ -550,7 +554,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 )
                 .ToArray();
         }
-        workspace.RenderProject(project, assets);
         if (emptyCuts.Length > 0)
             view.ConfirmFirstArtworkCuts(
                 emptyCuts.Length,
@@ -931,8 +934,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 is ContentEditorArtworkEffectStyle.ShipTravel
                     or ContentEditorArtworkEffectStyle.Damage;
             Texture2D previewBackground =
-                shipEffects ? view.GetShipEffectBackground()
-                : style == ContentEditorArtworkEffectStyle.RegimentTravel
+                style == ContentEditorArtworkEffectStyle.RegimentTravel
                     ? view.GetTroopTransitBackground()
                 : style == ContentEditorArtworkEffectStyle.PersonnelTravel
                     ? view.GetPersonnelTransitBackground()
@@ -984,10 +986,18 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     };
                     drafts[index] = draft;
                     frames[index] = BuildFrame(draft, index);
+                    bool upgradedComposition = false;
                     if (initialize)
                         CreateDefaultLayers(index);
+                    else if (draft.NeedsCompositionLayerUpgrade)
+                    {
+                        UpgradeCompositionLayers(index);
+                        upgradedComposition = true;
+                    }
                     if (output.Existing != null || index != initialFrame)
-                        savedRecipes[index] = JsonUtility.ToJson(draft);
+                        savedRecipes[index] = upgradedComposition
+                            ? null
+                            : JsonUtility.ToJson(draft);
                 }
                 if (generate)
                 {
@@ -1154,6 +1164,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 ContentEditorArtworkEffectGenerator.EditableFrame frame;
                 var output = outputs[index];
+                var shipBackground = shipEffects
+                    ? view.GetShipEffectBackground(output.Field)
+                    : default;
                 string existing = ExistingSource(draft, index);
                 bool completeTravel =
                     effect == ContentEditorArtworkEffect.Travel
@@ -1188,7 +1201,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         style,
                         draft.Seed,
                         output.StretchSource,
-                        previewBackground,
+                        shipEffects ? shipBackground.Texture : previewBackground,
                         existing,
                         draft.Variant,
                         legacyStreaks: draft.RenderVersion == 2,
@@ -1198,7 +1211,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         travelPattern: pattern,
                         preserveRegisteredTravel: completeTravel && draft.RenderVersion >= 6,
                         varyShipWakes: draft.VaryShipWakes,
-                        loadLayerSource: LoadLayerSource
+                        loadLayerSource: LoadLayerSource,
+                        backdropUv: shipBackground.Texture == null ? null : shipBackground.Uv
                     );
                 }
                 catch (InvalidDataException)
@@ -1227,14 +1241,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         style,
                         draft.Seed,
                         false,
-                        previewBackground,
+                        shipEffects ? shipBackground.Texture : previewBackground,
                         existing,
                         draft.Variant,
                         legacyStreaks: draft.RenderVersion == 2,
                         facilityClearance: clearance,
                         completeTravel: completeTravel,
                         travelPattern: fallback,
-                        loadLayerSource: LoadLayerSource
+                        loadLayerSource: LoadLayerSource,
+                        backdropUv: shipBackground.Texture == null ? null : shipBackground.Uv
                     );
                 }
                 if (draft.RenderVersion >= 4 && draft.FacilityClearance < 0)
@@ -1244,17 +1259,48 @@ public sealed class ContentPackEditorController : MonoBehaviour
 
             void CreateDefaultLayers(int index)
             {
-                drafts[index].Layers = CreateLayerDefinitions(frames[index].DefaultLayerCount);
+                drafts[index].Layers = frames[index].CreateDefaultLayers();
+                drafts[index].UpgradeCompositionLayerVersion();
+            }
+
+            void UpgradeCompositionLayers(int index)
+            {
+                var recipe = drafts[index];
+                var frame = frames[index];
+                var linked = frame
+                    .CreateDefaultLayers()
+                    .Where(layer => layer.Role != ContentEditorArtworkLayerRole.Effect)
+                    .ToArray();
+                foreach (var layer in linked)
+                {
+                    int insertion =
+                        layer.Role == ContentEditorArtworkLayerRole.Background ? 0
+                        : style
+                            is ContentEditorArtworkEffectStyle.ShipTravel
+                                or ContentEditorArtworkEffectStyle.Damage
+                            ? recipe.Layers.FindLastIndex(item =>
+                                item.Role == ContentEditorArtworkLayerRole.Background
+                            ) + 1
+                        : recipe.Layers.Count;
+                    recipe.Layers.Insert(Mathf.Max(0, insertion), layer);
+                }
+                recipe.UpgradeCompositionLayerVersion();
             }
 
             void SelectDefaultLayer()
             {
                 var layers = drafts[activeOutput].Layers;
                 int facility = frames[activeOutput].FacilityLayerIndex;
-                selected =
-                    layers.Count == 0
-                        ? -1
-                        : Mathf.Max(0, layers.FindIndex(layer => layer.Source == facility));
+                int preferred =
+                    facility >= 0
+                        ? layers.FindIndex(layer =>
+                            layer.Role == ContentEditorArtworkLayerRole.Effect
+                            && layer.Source == facility
+                        )
+                        : layers.FindIndex(layer =>
+                            layer.Role == ContentEditorArtworkLayerRole.Effect
+                        );
+                selected = layers.Count == 0 ? -1 : Mathf.Max(0, preferred);
             }
 
             void RememberEdit()
@@ -1305,6 +1351,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 if (
                     index < 0
                     || index >= recipe.Layers.Count
+                    || recipe.Layers[index].Role != ContentEditorArtworkLayerRole.Effect
                     || offset.sqrMagnitude < float.Epsilon
                 )
                     return;
@@ -1340,6 +1387,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 var recipe = drafts[activeOutput];
                 if (selected < 0)
                     return;
+                if (recipe.Layers[selected].Role != ContentEditorArtworkLayerRole.Effect)
+                    return;
                 RememberEdit();
                 recipe.Layers.RemoveAt(selected);
                 selected = Mathf.Min(selected, recipe.Layers.Count - 1);
@@ -1366,6 +1415,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 int facility = frames[activeOutput].FacilityLayerIndex;
                 int foreground =
                     facility < 0 ? -1 : recipe.Layers.FindIndex(item => item.Source == facility);
+                if (
+                    foreground < 0
+                    && style
+                        is ContentEditorArtworkEffectStyle.PersonnelTravel
+                            or ContentEditorArtworkEffectStyle.RegimentTravel
+                )
+                    foreground = recipe.Layers.FindIndex(item =>
+                        item.Role == ContentEditorArtworkLayerRole.Subject
+                    );
                 return foreground < 0 ? recipe.Layers.Count : foreground;
             }
 
@@ -1428,6 +1486,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 var recipe = drafts[activeOutput];
                 if (selected < 0 || selected >= recipe.Layers.Count)
                     return;
+                if (recipe.Layers[selected].Role != ContentEditorArtworkLayerRole.Effect)
+                    return;
                 RememberEdit();
                 ContentEditorArtworkLayer copy = recipe.Layers[selected];
                 string name = LayerName(copy, selected, frames[activeOutput], recipe) + " copy";
@@ -1442,6 +1502,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 var recipe = drafts[activeOutput];
                 if (index < 0 || index >= recipe.Layers.Count)
+                    return;
+                if (recipe.Layers[index].Role != ContentEditorArtworkLayerRole.Effect)
                     return;
                 RememberEdit();
                 ContentEditorArtworkLayer layer = recipe.Layers[index];
@@ -1586,6 +1648,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 if (!string.IsNullOrWhiteSpace(definition.Name))
                     return definition.Name;
+                if (definition.Role == ContentEditorArtworkLayerRole.Background)
+                    return "Background";
+                if (definition.Role == ContentEditorArtworkLayerRole.Subject)
+                    return "Unit artwork";
                 int ordinal = definition.Source < 0 ? index + 1 : definition.Source + 1;
                 return style switch
                 {
@@ -1613,17 +1679,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
             )
             {
                 var layers = new List<ArtworkEffectLayerPreview>();
-                Texture2D fixedArtwork = shipEffects ? frame.BaseImage : frame.SubjectOverlay;
-                if (fixedArtwork != null && !missing)
-                    layers.Add(
-                        new ArtworkEffectLayerPreview(
-                            -1,
-                            shipEffects ? "Base artwork" : "Unit artwork",
-                            fixedArtwork,
-                            default,
-                            locked: true
-                        )
-                    );
                 Vector2 size = frame.Size;
                 for (int layerIndex = 0; layerIndex < definitions.Count; layerIndex++)
                 {
@@ -1640,8 +1695,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             LayerName(definition, layerIndex, frame, draft),
                             piece.Texture,
                             bounds,
-                            definition.Offset,
-                            definition.Hidden,
+                            definition.Role == ContentEditorArtworkLayerRole.Effect
+                                ? definition.Offset
+                                : default,
+                            definition.Hidden
+                                && definition.Role == ContentEditorArtworkLayerRole.Effect,
+                            linked: definition.Role != ContentEditorArtworkLayerRole.Effect,
                             scalePercent: frame.CanScaleLayer(definition)
                                 ? definition.EffectiveScalePercent
                                 : null
@@ -1651,7 +1710,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return new ArtworkEffectPreviewFrame(
                     outputs[index].Caption,
                     frame.BaseImage,
-                    frame.SubjectOverlay,
                     layers,
                     missing
                 );
@@ -1685,16 +1743,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         {
                             bool missing = outputs[index].Existing == null;
                             IReadOnlyList<ContentEditorArtworkLayer> layers = missing
-                                ? frame.FacilityLayerIndex < 0
-                                    ? Array.Empty<ContentEditorArtworkLayer>()
-                                    : new[]
-                                    {
-                                        new ContentEditorArtworkLayer
-                                        {
-                                            Source = frame.FacilityLayerIndex,
-                                        },
-                                    }
-                                : CreateLayerDefinitions(frame.DefaultLayerCount);
+                                ? frame
+                                    .CreateDefaultLayers()
+                                    .Where(layer =>
+                                        layer.Role != ContentEditorArtworkLayerRole.Effect
+                                        || layer.Source == frame.FacilityLayerIndex
+                                    )
+                                    .ToArray()
+                                : frame.CreateDefaultLayers();
                             return MakePreview(frame, index, layers, CurrentDraft(), missing);
                         }
                     )
@@ -1784,17 +1840,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates the independent editable layers for a single output.
-    /// </summary>
-    /// <param name="count">The number of source layers available on the output.</param>
-    /// <returns>The source layers in the output's stacking order.</returns>
-    private static List<ContentEditorArtworkLayer> CreateLayerDefinitions(int count) =>
-        Enumerable
-            .Range(0, count)
-            .Select(index => new ContentEditorArtworkLayer { Source = index })
-            .ToList();
-
-    /// <summary>
     /// Applies standard cuts without attaching any layer metadata.
     /// </summary>
     /// <param name="description">The description of the operation in the undo history.</param>
@@ -1821,8 +1866,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
         bool persist
     )
     {
-        var references = images
-            .Select(image =>
+        using (project.BeginEdit(description))
+        {
+            foreach (var image in images)
             {
                 string value = ContentPackEditorStorage.WriteGeneratedPng(
                     project,
@@ -1831,13 +1877,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     preservePrevious: true,
                     layerRecipe: image.Layers
                 );
-                return (image.Field, Value: value);
-            })
-            .ToArray();
-        using (project.BeginEdit(description))
-        {
-            foreach (var reference in references)
-                project.SetField(reference.Field, reference.Value);
+                project.SetField(image.Field, value);
+            }
         }
         if (persist)
             ContentPackEditorStorage.Save(project);
@@ -1906,11 +1947,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         string previousBase = project.Definition.BasePackID;
         ContentPackEditorStorage.Save(project);
-        if (previousBase != project.Definition.BasePackID)
+        if (
+            previousBase != project.Definition.BasePackID
+            || !string.IsNullOrEmpty(project.ArtworkConversionReport)
+        )
             OpenProject(project);
         else
             view.RefreshProjectState();
-        view.RenderStatus("Content pack saved.", false);
+        view.RenderStatus("Content pack saved. " + project.ArtworkConversionReport, false);
     }
 
     /// <summary>
@@ -2001,7 +2045,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.UndoText())
                 return;
             if (project != null && view.CommitFields() && project.Undo())
-                workspace.RenderProject(project, assets);
+                OpenProject(project);
         });
     }
 
@@ -2015,7 +2059,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (view.RedoText())
                 return;
             if (project != null && view.CommitFields() && project.Redo())
-                workspace.RenderProject(project, assets);
+                OpenProject(project);
         });
     }
 

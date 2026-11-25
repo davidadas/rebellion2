@@ -131,6 +131,19 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     }
 
     /// <summary>
+    /// Measures fitted artwork inside this card's authored image frame.
+    /// </summary>
+    /// <param name="pixels">The artwork's pixel dimensions.</param>
+    /// <param name="frameYOffset">The presentation's vertical image-frame offset.</param>
+    /// <returns>The artwork rectangle relative to the card.</returns>
+    internal RectInt GetArtworkRect(Vector2Int pixels, int frameYOffset)
+    {
+        VerifyReferences();
+        CaptureLayout();
+        return UILayout.GetFittedImageRect(pixels, GetEntityRenderFrameRect(frameYOffset));
+    }
+
+    /// <summary>
     /// Applies one complete unit-card presentation snapshot.
     /// </summary>
     /// <param name="data">The immutable card presentation.</param>

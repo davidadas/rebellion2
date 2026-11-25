@@ -155,6 +155,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private bool showOutputArtworkBackground = true;
     private bool showIllustrationBackground = true;
     private bool showStateArtworkBackground = true;
+    private FactionTheme artworkTheme;
 
     private ContentEditorNumericGrid probabilityGrid;
 
@@ -887,6 +888,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="rebind">Whether to bind new values instead of only reflowing existing controls.</param>
     private void RenderFields(bool rebind)
     {
+        artworkTheme = null;
         if (selectedRecord == null || section != ContentEditorContentSections.ModelSection)
         {
             modelPreview?.Clear();
@@ -1314,6 +1316,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <returns>The vertical space occupied by the preview and its trailing margin.</returns>
     private int RenderPreview(string address, float width, float maximumHeight = 280)
     {
+        ContentPackEditorField unitImage = selectedRecord
+            ?.GetFields()
+            .OrderBy(field => field.MemberName == "EncyclopediaImagePath" ? 0 : 1)
+            .FirstOrDefault(field =>
+                ContentEditorUnitArtworkLayout.SupportsMember(selectedRecord, field.MemberName)
+                && field.MemberName != ContentEditorUnitArtworkLayout.BackgroundMember
+                && !string.IsNullOrWhiteSpace(address)
+                && field.Value == address
+            );
+        if (unitImage != null)
+            return RenderUnitArtworkPreview(unitImage, width, maximumHeight);
         Texture2D texture = null;
         try
         {
@@ -1378,6 +1391,69 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
+    /// Composes the unit inspector's image using the same backdrop as its artwork gallery.
+    /// </summary>
+    /// <param name="field">The unit artwork selected for the inspector.</param>
+    /// <param name="width">The available inspector width.</param>
+    /// <param name="maximumHeight">The maximum preview height.</param>
+    /// <returns>The preview height and trailing margin.</returns>
+    private int RenderUnitArtworkPreview(
+        ContentPackEditorField field,
+        float width,
+        float maximumHeight
+    )
+    {
+        Texture2D texture = ResolveArtworkTexture(field);
+        if (texture == null)
+            return 0;
+        artworkTheme = ResolveUnitFactionTheme();
+        Vector2Int dimensions = new(texture.width, texture.height);
+        int imageWidth = Mathf.Max(1, Mathf.FloorToInt(width - 8));
+        int imageHeight = Mathf.Max(
+            1,
+            Mathf.CeilToInt(imageWidth * dimensions.y / (float)dimensions.x)
+        );
+        if (imageHeight > maximumHeight)
+        {
+            imageHeight = Mathf.FloorToInt(maximumHeight);
+            imageWidth = Mathf.Max(
+                1,
+                Mathf.RoundToInt(imageHeight * dimensions.x / (float)dimensions.y)
+            );
+        }
+        var gameplay = GetGameplayArtworkBackground(field);
+        Texture2D background =
+            gameplay.Texture
+            ?? GetArtworkBackground(
+                new[] { field },
+                ResolveEffectiveUnitBackground(
+                    selectedRecord
+                        .GetFields()
+                        .FirstOrDefault(candidate =>
+                            candidate.MemberName == ContentEditorUnitArtworkLayout.BackgroundMember
+                        )
+                ),
+                ResolveUnitCompactBackground()
+            );
+        int imageIndex = 0;
+        PlaceArtworkComposition(
+            "Unit-preview",
+            4,
+            0,
+            imageWidth,
+            imageHeight,
+            dimensions,
+            background,
+            texture,
+            Array.Empty<Texture2D>(),
+            ref imageIndex,
+            fitEntity: true,
+            backgroundUv: gameplay.Texture == null ? new Rect(0, 0, 1, 1) : gameplay.Uv
+        );
+        return imageHeight + 20;
+    }
+
+    /// <summary>
     /// Selects the current page's form fields without exposing the same property in several tabs.
     /// </summary>
     /// <param name="field">The authored field to classify.</param>
@@ -1416,6 +1492,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="fields">The unit's editable artwork fields.</param>
     private void RenderArtworkFields(ContentPackEditorField[] fields)
     {
+        artworkTheme = ResolveUnitFactionTheme();
         float width = fieldScroll.ScrollArea.ViewportWidth;
         int y = 6;
         int fieldIndex = 0,
@@ -1431,6 +1508,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             is "Officer"
                 or "SpecialForce"
                 or "Regiment"
+                or "Building"
             ? ResolveUnitCompactBackground(inTransit: true)
             : null;
         ContentPackEditorField[] normal = fields
@@ -1483,6 +1561,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
                         false
                     ) + 4;
             }
+            y +=
+                PlaceLabel(
+                    "Message backgrounds depend on the report.",
+                    labelIndex++,
+                    4,
+                    y,
+                    width - 8,
+                    false
+                ) + 4;
             y = PlaceArtworkOutputGallery(
                 illustrations,
                 showIllustrationBackground ? illustrationBackground : null,
@@ -1503,6 +1590,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             y = PlaceArtworkSectionHeader(
                 "Gameplay images",
                 GetArtworkBackground(display, background, compactBackground) != null
+                || display.Any(field => GetGameplayArtworkBackground(field).Texture != null)
                     ? outputBackgroundToggle
                     : null,
                 showOutputArtworkBackground,
@@ -1532,7 +1620,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 "Gameplay states",
                 compactBackground != null
                 || travelBackground != null
-                || background != null && selectedRecord.Kind is "CapitalShip" or "Starfighter"
+                || display.Any(field => GetGameplayArtworkBackground(field).Texture != null)
                     ? stateBackgroundToggle
                     : null,
                 showStateArtworkBackground,
@@ -1562,11 +1650,30 @@ public sealed class ContentEditorFormView : MonoBehaviour
             y = BeginArtworkPanel(ref panelIndex, "Background", y, width);
             GetArtworkContentBounds(width, out float left, out float availableWidth);
             float backgroundWidth = Mathf.Min(232, availableWidth);
-            y += PlaceLabel("Background", labelIndex++, left, y, availableWidth, true) + 6;
+            bool ship = selectedRecord.Kind is "CapitalShip" or "Starfighter";
+            y +=
+                PlaceLabel(
+                    ship ? "Encyclopedia background" : "Background",
+                    labelIndex++,
+                    left,
+                    y,
+                    availableWidth,
+                    true
+                ) + 6;
             if (selectedRecord.Kind == "Officer")
                 y +=
                     PlaceLabel(
-                        "Visible through transparent message and encyclopedia artwork.",
+                        "Visible through transparent encyclopedia artwork. Message backgrounds depend on the report.",
+                        labelIndex++,
+                        left,
+                        y,
+                        availableWidth,
+                        false
+                    ) + 6;
+            else if (ship)
+                y +=
+                    PlaceLabel(
+                        "Gameplay previews use the backgrounds from their matching windows.",
                         labelIndex++,
                         left,
                         y,
@@ -2043,6 +2150,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 int labelHeight = PlaceLabel(caption, labelIndex++, x, y, cardWidths[index], false);
                 int imageY = y + labelHeight + 4;
                 Texture2D entity = output.Texture;
+                var gameplayBackground = showOutputArtworkBackground
+                    ? GetGameplayArtworkBackground(output.Field)
+                    : default;
                 PlaceArtworkComposition(
                     "Output-" + output.Field.MemberName,
                     Mathf.RoundToInt(x),
@@ -2052,16 +2162,20 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     output.Dimensions,
                     entity == null
                         ? null
-                        : GetArtworkBackground(
-                            new[] { output.Field },
-                            background,
-                            compactBackground
-                        ),
+                        : gameplayBackground.Texture
+                            ?? GetArtworkBackground(
+                                new[] { output.Field },
+                                background,
+                                compactBackground
+                            ),
                     entity,
                     Array.Empty<Texture2D>(),
                     ref imageIndex,
                     fitEntity: true,
-                    dropField: output.Field
+                    dropField: output.Field,
+                    backgroundUv: gameplayBackground.Texture == null
+                        ? new Rect(0, 0, 1, 1)
+                        : gameplayBackground.Uv
                 );
                 if (entity == null)
                     PlaceArtworkPlaceholder(
@@ -2258,7 +2372,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (index == artworkStateSize || !Commit())
             return;
         artworkStateSize = index;
-        RenderFields(true);
+        Refresh();
     }
 
     /// <summary>
@@ -2333,7 +2447,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField captured = largeOfficerCard
             ? null
             : stateFields.FirstOrDefault(field => field.MemberName == "CapturedOverlayImagePath");
-        Texture2D officerTravelBackground = travelBackground;
+        Texture2D officerTravelArtwork = null;
         if (officer)
         {
             ContentPackEditorField travelSource = transit;
@@ -2346,7 +2460,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     field.MemberName == fallbackMember
                 );
             }
-            officerTravelBackground = ResolveArtworkTexture(travelSource) ?? travelBackground;
+            officerTravelArtwork = ResolveArtworkTexture(travelSource);
         }
 
         bool regiment = selectedRecord.Kind == "Regiment";
@@ -2360,42 +2474,48 @@ public sealed class ContentEditorFormView : MonoBehaviour
         List<(
             string Caption,
             ContentPackEditorField[] Layers,
-            ContentPackEditorField Action
-        )> states = new() { ("Normal", Array.Empty<ContentPackEditorField>(), null) };
+            ContentPackEditorField Action,
+            bool InTransit
+        )> states = new() { ("Normal", Array.Empty<ContentPackEditorField>(), null, false) };
         if (officer && transit == null)
-            states.Add(("In transit", Array.Empty<ContentPackEditorField>(), null));
+            states.Add(("In transit", Array.Empty<ContentPackEditorField>(), null, true));
         if (splitTransit)
-            states.Add(("In transit (Fleet)", Array.Empty<ContentPackEditorField>(), null));
+            states.Add(("In transit (Fleet)", Array.Empty<ContentPackEditorField>(), null, true));
         if (transit != null)
         {
             string caption =
                 splitTransit ? "In transit (Defense)"
                 : regiment || officer ? "In transit"
                 : "Travel";
-            states.Add((caption, new[] { transit }, transit));
+            states.Add((caption, new[] { transit }, transit, true));
         }
         if (damage != null)
             states.Add(
                 (
                     damage.MemberName == "InjuredImagePath" ? "Injured" : "Damaged",
                     new[] { damage },
-                    damage
+                    damage,
+                    false
                 )
             );
-        if (transit != null && damage != null)
+        if (damage != null && (transit != null || officer))
             states.Add(
                 (
-                    damage.MemberName == "InjuredImagePath"
-                        ? "Travel + injured"
-                        : "Travel + damaged",
-                    new[] { transit, damage },
-                    null
+                    captured != null ? "In transit + injured + captured"
+                    : damage.MemberName == "InjuredImagePath" ? "Travel + injured"
+                    : "Travel + damaged",
+                    new[] { transit, damage, captured }.Where(field => field != null).ToArray(),
+                    null,
+                    true
                 )
             );
         if (captured != null)
-            states.Add(("Captured", new[] { captured }, captured));
+            states.Add(("Captured", new[] { captured }, captured, false));
 
         Texture2D baseTexture = ResolveArtworkTexture(baseField);
+        var gameplayBackground = showStateArtworkBackground
+            ? GetGameplayArtworkBackground(preferredBase ?? baseField)
+            : default;
         const int gap = 16;
         GetArtworkContentBounds(width, out float contentLeft, out float contentWidth);
         int columnCount = Mathf.Clamp(
@@ -2411,7 +2531,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             (
                 string caption,
                 ContentPackEditorField[] layers,
-                ContentPackEditorField action
+                ContentPackEditorField action,
+                bool inTransit
             ) in states
         )
         {
@@ -2424,29 +2545,33 @@ public sealed class ContentEditorFormView : MonoBehaviour
 
             int labelHeight = PlaceLabel(caption, labelIndex++, x, y, size.x, false);
             int imageY = y + labelHeight + 4;
-            bool officerTransit = officer && transit != null && layers.Contains(transit);
+            bool officerTransit = officer && inTransit;
+            Texture2D transitOverlay =
+                officerTransit && !largeOfficerCard ? officerTravelArtwork : null;
             Texture2D[] overlays = layers
                 .Where(field => !officerTransit || field != transit)
                 .Select(field => ResolveArtworkTexture(field))
                 .Where(texture => texture != null)
                 .ToArray();
             bool hasStateArtwork = overlays.Length > 0;
-            Texture2D stateBackground = GetArtworkBackground(
-                new[] { baseField },
-                background,
-                compactBackground
-            );
+            Texture2D stateBackground =
+                gameplayBackground.Texture
+                ?? GetArtworkBackground(new[] { baseField }, background, compactBackground);
             Texture2D stateEntity = baseTexture;
-            if (caption is "In transit" or "In transit (Fleet)")
+            if (inTransit && selectedRecord.Kind is "Officer" or "Regiment")
                 stateBackground = travelBackground;
-            if (officerTransit || (officer && caption == "In transit"))
-                stateBackground = officerTravelBackground;
+            if (officerTransit && largeOfficerCard)
+                stateBackground = officerTravelArtwork ?? travelBackground;
             if (action == transit && transit != null)
             {
-                if (selectedRecord.Kind == "Building" && overlays.Length > 0)
+                if (selectedRecord.Kind == "Building")
                 {
-                    stateEntity = overlays[0];
-                    overlays = Array.Empty<Texture2D>();
+                    stateBackground = travelBackground;
+                    if (overlays.Length > 0)
+                    {
+                        stateEntity = overlays[0];
+                        overlays = Array.Empty<Texture2D>();
+                    }
                 }
                 else if (selectedRecord.Kind == "SpecialForce")
                 {
@@ -2468,9 +2593,19 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 overlays,
                 ref imageIndex,
                 fitEntity: selectedRecord.Kind == "Officer",
-                dropField: action
+                dropField: action,
+                backgroundUv: stateBackground == gameplayBackground.Texture
+                && stateBackground != null
+                    ? gameplayBackground.Uv
+                    : new Rect(0, 0, 1, 1),
+                transitOverlay: transitOverlay
             );
-            if (stateEntity == null && stateBackground == null && overlays.Length == 0)
+            if (
+                stateEntity == null
+                && stateBackground == null
+                && transitOverlay == null
+                && overlays.Length == 0
+            )
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
             int cardHeight = labelHeight + 4 + size.y;
             if (action != null)
@@ -2545,6 +2680,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="imageIndex">The next reusable preview image.</param>
     /// <param name="fitEntity">Whether the normal image must fit entirely within the preview.</param>
     /// <param name="dropField">The editable image slot represented by this preview, when available.</param>
+    /// <param name="backgroundUv">The gameplay-window region behind this image, when applicable.</param>
+    /// <param name="transitOverlay">The optional fitted travel artwork behind the normal entity image.</param>
     private void PlaceArtworkComposition(
         string name,
         int x,
@@ -2557,7 +2694,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IReadOnlyList<Texture2D> overlays,
         ref int imageIndex,
         bool fitEntity = false,
-        ContentPackEditorField dropField = null
+        ContentPackEditorField dropField = null,
+        Rect? backgroundUv = null,
+        Texture2D transitOverlay = null
     )
     {
         RawImage backing = GetArtworkPreviewImage(ref imageIndex, name + "-Backing");
@@ -2565,7 +2704,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             BindImageDropTarget(backing, dropField);
         backing.texture = null;
         backing.color =
-            entity == null && background == null && overlays.Count == 0
+            entity == null && background == null && transitOverlay == null && overlays.Count == 0
                 ? ContentEditorAppearance.ColorFor(
                     GetComponentInParent<ContentEditorAppearance>()?.Mode
                         ?? ContentEditorColorMode.Dark,
@@ -2579,6 +2718,18 @@ public sealed class ContentEditorFormView : MonoBehaviour
             background,
             target,
             false,
+            x,
+            y,
+            width,
+            height,
+            ref imageIndex,
+            backgroundUv
+        );
+        PlaceArtworkCompositionLayer(
+            name + "-Transit",
+            transitOverlay,
+            target,
+            true,
             x,
             y,
             width,
@@ -2624,6 +2775,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="width">The displayed width.</param>
     /// <param name="height">The displayed height.</param>
     /// <param name="imageIndex">The next reusable preview image.</param>
+    /// <param name="uv">An explicit gameplay-window crop instead of a centered artwork crop.</param>
     private void PlaceArtworkCompositionLayer(
         string name,
         Texture2D texture,
@@ -2633,7 +2785,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         int y,
         int width,
         int height,
-        ref int imageIndex
+        ref int imageIndex,
+        Rect? uv = null
     )
     {
         if (texture == null)
@@ -2652,7 +2805,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             SetFormRect(image.rectTransform, fitted.x, fitted.y, fitted.width, fitted.height);
             return;
         }
-        image.uvRect = ContentEditorArtworkCrop.GetCenteredUvRect(source, target);
+        image.uvRect = uv ?? ContentEditorArtworkCrop.GetCenteredUvRect(source, target);
         SetFormRect(image.rectTransform, x, y, width, height);
     }
 
@@ -2680,19 +2833,14 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="fields">The output fields sharing one preview.</param>
     /// <param name="background">The effective authored unit background.</param>
     /// <param name="compactBackground">The gameplay card background for compact personnel artwork.</param>
-    /// <returns>The background for this output, or null for transparent officer cuts.</returns>
+    /// <returns>The configured background, or null when the context supplies no fixed backdrop.</returns>
     private Texture2D GetArtworkBackground(
         IReadOnlyList<ContentPackEditorField> fields,
         Texture2D background,
         Texture2D compactBackground
     )
     {
-        if (selectedRecord?.Kind is "CapitalShip" or "Starfighter")
-            return background;
-        if (
-            selectedRecord?.Kind == "Officer"
-            && fields.Any(ContentEditorUnitArtworkLayout.IsIllustration)
-        )
+        if (fields.Any(field => field.MemberName == "EncyclopediaImagePath"))
             return background;
         return fields.Any(field => field.MemberName == "SmallDisplayImagePath")
             ? compactBackground
@@ -2712,6 +2860,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         if (!showOutputArtworkBackground)
             return (null, default);
+        if (!ContentEditorUnitArtworkLayout.IsIllustration(field))
+        {
+            var gameplay = GetGameplayArtworkBackground(field, imageSize: dimensions);
+            if (gameplay.Texture != null)
+                return gameplay;
+        }
         ContentPackEditorField overrideField = selectedRecord.Kind
             is "Officer"
                 or "CapitalShip"
@@ -2723,15 +2877,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             ResolveEffectiveUnitBackground(overrideField),
             ResolveUnitCompactBackground()
         );
-        return texture == null
-            ? (null, default)
-            : (
-                texture,
-                ContentEditorArtworkCrop.GetCenteredUvRect(
-                    new Vector2Int(texture.width, texture.height),
-                    dimensions
-                )
-            );
+        return texture == null ? (null, default) : (texture, new Rect(0, 0, 1, 1));
     }
 
     /// <summary>
@@ -2902,19 +3048,66 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
-    /// Resolves the optional gameplay backdrop for a generated ship state preview.
+    /// Resolves a unit image's gameplay-window backdrop without consulting encyclopedia overrides.
     /// </summary>
-    /// <returns>A readable ship backdrop, or null when the author has hidden it.</returns>
-    internal Texture2D GetShipEffectBackground() =>
-        showStateArtworkBackground
-            ? ResolveEffectiveUnitBackground(
-                selectedRecord.GetField(ContentEditorUnitArtworkLayout.BackgroundMember),
-                readable: true
-            )
-            : null;
+    /// <param name="field">The output whose actual gameplay context should be shown.</param>
+    /// <param name="readable">Whether software compositing needs readable pixels.</param>
+    /// <param name="imageSize">The generated output size, or null for current artwork dimensions.</param>
+    /// <returns>The applicable backdrop and exact window crop, or no backdrop for other artwork.</returns>
+    private (Texture2D Texture, Rect Uv) GetGameplayArtworkBackground(
+        ContentPackEditorField field,
+        bool readable = false,
+        Vector2Int? imageSize = null
+    )
+    {
+        if (
+            ContentEditorUnitArtworkLayout.IsIllustration(field)
+            || ContentEditorUnitArtworkLayout.IsHeadquartersIcon(field.Record)
+        )
+            return default;
+        if (!imageSize.HasValue && ResolveArtworkTexture(field) is Texture2D artwork)
+            imageSize = new Vector2Int(artwork.width, artwork.height);
+        try
+        {
+            return ContentEditorGameplayArtworkBackground.Resolve(
+                artworkWindowPreview.transform,
+                assets,
+                artworkTheme,
+                field,
+                readable,
+                imageSize
+            );
+        }
+        catch (ArgumentException exception)
+        {
+            GameLogger.Warning("Invalid gameplay artwork path: " + exception.Message);
+            return default;
+        }
+    }
 
     /// <summary>
-    /// Resolves the same authored ship backdrop used by the unit artwork gallery.
+    /// Resolves the visible gameplay backdrop for a generated ship state output.
+    /// </summary>
+    /// <param name="field">The specific travel or damage output being edited.</param>
+    /// <returns>The readable backdrop and crop, or no backdrop when hidden.</returns>
+    internal (Texture2D Texture, Rect Uv) GetShipEffectBackground(ContentPackEditorField field)
+    {
+        if (!showStateArtworkBackground)
+            return default;
+        if (
+            !ContentPackEditorFieldMetadata.TryGetExpectedImageDimensions(
+                field,
+                out Vector2Int size
+            )
+        )
+            throw new InvalidOperationException(
+                "The gameplay image has no configured output size."
+            );
+        return GetGameplayArtworkBackground(field, readable: true, imageSize: size);
+    }
+
+    /// <summary>
+    /// Resolves the authored backdrop used behind the ship's encyclopedia artwork.
     /// </summary>
     /// <param name="record">The ship whose encyclopedia art will be generated.</param>
     /// <returns>The readable backdrop to include in the PNG, when configured.</returns>

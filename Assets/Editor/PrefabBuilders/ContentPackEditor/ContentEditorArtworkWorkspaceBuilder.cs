@@ -108,7 +108,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
     }
 
     /// <summary>
-    /// Creates the clipped artwork stage with reusable backing, foreground and selection outline.
+    /// Creates the clipped artwork stage with a neutral backing and selection outline.
     /// </summary>
     /// <param name="parent">The workspace container.</param>
     /// <returns>The stage's rendering and gesture view.</returns>
@@ -123,7 +123,6 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         art.anchorMin = art.anchorMax = art.pivot = new Vector2(0.5f, 0.5f);
         art.gameObject.AddComponent<RectMask2D>();
         RawImage backing = CanvasImage("Backing", art);
-        RawImage subject = CanvasImage("Foreground", art);
         RectTransform selection = Layer("ArtworkSelection", art);
         const float thickness = 1.2f;
         Image top = OutlineEdge("Top", selection);
@@ -144,7 +143,6 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         right.rectTransform.offsetMin = new Vector2(-thickness, 0);
         Assign(view, "artwork", art);
         Assign(view, "backing", backing);
-        Assign(view, "subject", subject);
         Assign(view, "selection", selection);
         selection.gameObject.SetActive(false);
         return view;

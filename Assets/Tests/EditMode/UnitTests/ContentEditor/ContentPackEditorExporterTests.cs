@@ -201,7 +201,10 @@ namespace Rebellion.Tests.ContentEditor
                 ContentPackEditorExporter.WriteArchiveAsync(project, output)
             );
 
-            StringAssert.Contains(address, failure.Message);
+            StringAssert.Contains(
+                "Pack/Factions/Alliance/Units/Officers/" + officer.ID + "/display",
+                failure.Message
+            );
             Assert.AreEqual("existing archive", File.ReadAllText(output));
             Assert.IsTrue(project.IsDirty);
             Assert.IsFalse(File.Exists(officer.Catalog.Document.TargetPath));

@@ -249,10 +249,83 @@ namespace Rebellion.Gameplay
                 .Cast<IMissionParticipant>()
                 .ToList();
             _movementManager.CompleteMissionAtLocation(attachedOfficers, missionPlanet, results);
+            ReevaluateRemainingParticipants(mission, attachedOfficers, results);
+        }
 
+        /// <summary>
+        /// Deactivates and withdraws participants from their assigned missions.
+        /// </summary>
+        /// <param name="participants">The participants to withdraw from their attached missions.</param>
+        /// <returns>The relocation and mission interruption results.</returns>
+        internal List<GameResult> DeactivateAssignedParticipants(
+            IReadOnlyList<IMissionParticipant> participants
+        )
+        {
+            List<(
+                Mission Mission,
+                IMissionParticipant Participant,
+                ContainerNode Destination
+            )> withdrawals = new();
+            foreach (IMissionParticipant participant in participants)
+            {
+                Mission mission = (Mission)participant.GetParent();
+                if (
+                    mission.GetParent() is not Planet { IsDestroyed: false } planet
+                    || participant.GetTransitMovement() != null
+                )
+                    throw new InvalidOperationException(
+                        $"Participant '{participant.InstanceID}' must be at an intact mission location before deactivation."
+                    );
+                ContainerNode destination = _movementManager.ResolveScriptedWithdrawalDestination(
+                    participant,
+                    planet
+                );
+                if (destination == null)
+                    throw new InvalidOperationException(
+                        $"No valid withdrawal destination for mission participant '{participant.InstanceID}'."
+                    );
+                withdrawals.Add((mission, participant, destination));
+            }
+
+            List<GameResult> results = new();
+            foreach (var withdrawal in withdrawals)
+            {
+                _game.SetNodeEnabled(withdrawal.Participant, false);
+                _movementManager.CompleteMissionAtLocation(
+                    new[] { withdrawal.Participant },
+                    withdrawal.Destination,
+                    results
+                );
+            }
+            foreach (
+                var missionWithdrawals in withdrawals.GroupBy(withdrawal => withdrawal.Mission)
+            )
+            {
+                Mission mission = missionWithdrawals.Key;
+                List<IMissionParticipant> departed = missionWithdrawals
+                    .Select(withdrawal => withdrawal.Participant)
+                    .ToList();
+                RecordOfficersReleased(mission, departed, results);
+                ReevaluateRemainingParticipants(mission, departed, results);
+            }
+            return results;
+        }
+
+        /// <summary>
+        /// Reevaluates the mission with its remaining roster after participants leave.
+        /// </summary>
+        /// <param name="mission">The mission losing participants.</param>
+        /// <param name="participants">The participants leaving the mission.</param>
+        /// <param name="results">The batch receiving relocation and interruption results.</param>
+        private void ReevaluateRemainingParticipants(
+            Mission mission,
+            IReadOnlyList<IMissionParticipant> participants,
+            List<GameResult> results
+        )
+        {
             mission.AcceptCurrentParticipantRoster();
             if (mission.GetAbortReason(_game).HasValue)
-                InterruptMission(mission, results, attachedOfficers);
+                InterruptMission(mission, results, participants);
         }
 
         /// <summary>
@@ -358,9 +431,7 @@ namespace Rebellion.Gameplay
             RecordOfficersReleased(mission, attachedOfficers, withdrawalResults);
             AddMissionResults(mission, withdrawalResults, results);
 
-            mission.AcceptCurrentParticipantRoster();
-            if (mission.GetAbortReason(_game).HasValue)
-                InterruptMission(mission, results, attachedOfficers);
+            ReevaluateRemainingParticipants(mission, attachedOfficers, results);
         }
 
         /// <summary>

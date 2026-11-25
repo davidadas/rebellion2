@@ -171,12 +171,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             Assert.AreEqual("Agent", data.Participants[0].Name);
             Assert.AreEqual((Color32)Color.white, data.Participants[0].NameColor);
             Assert.AreSame(
-                _uiContext.GetTexture(_entityImagePath),
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
                 data.Participants[0].BackgroundTexture
             );
             Assert.AreSame(
                 _uiContext.GetTexture(_entityImagePath),
                 data.Participants[0].EntityTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.Participants[0].StatusOverlayTexture
             );
         }
 
@@ -220,8 +228,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionsWindowRenderData data = _projector.Build(session, _window, true);
 
             Assert.AreSame(
-                _uiContext.GetTexture(_entityImagePath),
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
                 data.Participants[0].BackgroundTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.Participants[0].StatusOverlayTexture
             );
         }
 

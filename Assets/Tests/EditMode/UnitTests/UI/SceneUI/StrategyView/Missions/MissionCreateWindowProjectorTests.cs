@@ -371,11 +371,20 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
                 _uiContext.GetTexture(_entityImagePath),
                 data.AgentRows[0].EntityTexture
             );
+            Assert.IsNull(data.AgentRows[0].StatusOverlayTexture);
             Assert.AreEqual("In Transit", data.AgentRows[1].Name);
             Assert.AreEqual((Color32)Color.gray, data.AgentRows[1].NameColor);
             Assert.AreSame(
-                _uiContext.GetTexture(_entityImagePath),
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
                 data.AgentRows[1].BackgroundTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.AgentRows[1].StatusOverlayTexture
             );
             Assert.IsEmpty(data.DecoyRows);
         }
@@ -397,8 +406,16 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Missions
             MissionCreateWindowRenderData data = _projector.Build(session, _window);
 
             Assert.AreSame(
-                _uiContext.GetTexture(_entityImagePath),
+                _uiContext.GetTexture(
+                    _uiContext
+                        .GetPlayerFactionTheme()
+                        .StrategyWindows.Defense.EnrouteBackgroundImagePath
+                ),
                 data.AgentRows[0].BackgroundTexture
+            );
+            Assert.AreSame(
+                _uiContext.GetTexture(_entityImagePath),
+                data.AgentRows[0].StatusOverlayTexture
             );
         }
 

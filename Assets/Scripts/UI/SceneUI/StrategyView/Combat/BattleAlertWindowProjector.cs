@@ -981,7 +981,7 @@ internal sealed class BattleAlertWindowProjector
         return panel switch
         {
             BattleResultPanel.FirstForces or BattleResultPanel.SecondForces =>
-                GetResultListBackgroundPath(theme, category),
+                theme?.GetResultListBackgroundImagePath(category == BattleResultCategory.Personnel),
             BattleResultPanel.Direct => BattleResultPresentation.FirstNonBlank(
                 theme?.ResultDirectBackgroundImagePath,
                 theme?.ResultSummaryImagePath
@@ -1033,28 +1033,6 @@ internal sealed class BattleAlertWindowProjector
                 || result.EnergyCapacityDamage > 0
                 || result.AllocatedEnergyDamage > 0
                 || result.DefendingUnits?.Any(unit => unit?.Destroyed == true) == true
-            );
-    }
-
-    /// <summary>
-    /// Returns the completed-result list background for a selected category.
-    /// </summary>
-    /// <param name="theme">The active battle-alert theme.</param>
-    /// <param name="category">The selected result category.</param>
-    /// <returns>The selected list background path.</returns>
-    private static string GetResultListBackgroundPath(
-        BattleAlertWindowTheme theme,
-        BattleResultCategory category
-    )
-    {
-        return category == BattleResultCategory.Personnel
-            ? BattleResultPresentation.FirstNonBlank(
-                theme?.ResultPersonnelListBackgroundImagePath,
-                theme?.ResultListBackgroundImagePath
-            )
-            : BattleResultPresentation.FirstNonBlank(
-                theme?.ResultListBackgroundImagePath,
-                theme?.SummaryBackgroundImagePath
             );
     }
 

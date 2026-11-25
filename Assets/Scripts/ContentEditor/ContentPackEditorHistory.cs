@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 
 /// <summary>
@@ -11,6 +12,9 @@ internal sealed class ContentPackEditorHistory
     private readonly Stack<Edit> redo = new Stack<Edit>();
     private readonly Dictionary<ContentPackEditorDocument, Change> pending =
         new Dictionary<ContentPackEditorDocument, Change>();
+    private readonly Dictionary<string, ContentEditorAssetChange> pendingFiles = new(
+        StringComparer.Ordinal
+    );
     private bool restoring;
     private int depth;
     private string description;
@@ -67,6 +71,27 @@ internal sealed class ContentPackEditorHistory
     }
 
     /// <summary>
+    /// Replaces one pack-owned file as part of the current reversible edit.
+    /// </summary>
+    /// <param name="project">The writable project owning the file.</param>
+    /// <param name="path">The file being replaced or created.</param>
+    /// <param name="bytes">The complete new file contents.</param>
+    internal void WriteFile(ContentPackEditorProject project, string path, byte[] bytes)
+    {
+        ContentEditorPaths.VerifyWritePath(project, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        using (BeginEdit("Replace artwork"))
+        {
+            if (!pendingFiles.TryGetValue(path, out ContentEditorAssetChange change))
+            {
+                change = new ContentEditorAssetChange(project, path);
+                pendingFiles.Add(path, change);
+            }
+            change.Write(bytes);
+        }
+    }
+
+    /// <summary>
     /// Records a single field edit or folds it into the current continuous edit.
     /// </summary>
     /// <param name="document">The changed document.</param>
@@ -103,9 +128,13 @@ internal sealed class ContentPackEditorHistory
             .Values.Where(change => !change.Before.Matches(change.After))
             .ToArray();
         pending.Clear();
-        if (changes.Length == 0)
+        ContentEditorAssetChange[] files = pendingFiles
+            .Values.Where(change => change.HasChanges)
+            .ToArray();
+        pendingFiles.Clear();
+        if (changes.Length == 0 && files.Length == 0)
             return;
-        undo.Push(new Edit(description, changes));
+        undo.Push(new Edit(description, changes, files));
         redo.Clear();
     }
 
@@ -124,10 +153,27 @@ internal sealed class ContentPackEditorHistory
             );
         if (source.Count == 0)
             return false;
-        Edit edit = source.Pop();
+        Edit edit = source.Peek();
+        foreach (ContentEditorAssetChange file in edit.Files)
+            file.Verify(forward);
         restoring = true;
         try
         {
+            int restored = 0;
+            try
+            {
+                foreach (ContentEditorAssetChange file in edit.Files)
+                {
+                    file.Restore(forward);
+                    restored++;
+                }
+            }
+            catch
+            {
+                for (int index = restored - 1; index >= 0; index--)
+                    edit.Files[index].Restore(!forward);
+                throw;
+            }
             foreach (Change change in edit.Changes)
                 change.Document.RestoreState(forward ? change.After : change.Before);
         }
@@ -135,6 +181,7 @@ internal sealed class ContentPackEditorHistory
         {
             restoring = false;
         }
+        source.Pop();
         destination.Push(edit);
         return true;
     }
@@ -173,16 +220,23 @@ internal sealed class ContentPackEditorHistory
     {
         internal string Description { get; }
         internal IReadOnlyList<Change> Changes { get; }
+        internal IReadOnlyList<ContentEditorAssetChange> Files { get; }
 
         /// <summary>
         /// Captures one completed operation.
         /// </summary>
         /// <param name="description">The operation caption.</param>
         /// <param name="changes">The affected document states.</param>
-        internal Edit(string description, IReadOnlyList<Change> changes)
+        /// <param name="files">The file revisions changed with the documents.</param>
+        internal Edit(
+            string description,
+            IReadOnlyList<Change> changes,
+            IReadOnlyList<ContentEditorAssetChange> files = null
+        )
         {
             Description = description;
             Changes = changes;
+            Files = files ?? Array.Empty<ContentEditorAssetChange>();
         }
     }
 

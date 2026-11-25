@@ -4211,6 +4211,14 @@ public static class StrategyViewPrefabBuilder
         SetSourceRect(background.rectTransform, entityX, entityY, entityWidth, entityHeight);
         RawImage entity = CreateRawImage("EntityImage", row.transform, null, entityX, entityY);
         SetSourceRect(entity.rectTransform, entityX, entityY, entityWidth, entityHeight);
+        RawImage statusOverlay = CreateRawImage(
+            "StatusOverlayImage",
+            row.transform,
+            null,
+            entityX,
+            entityY
+        );
+        SetSourceRect(statusOverlay.rectTransform, entityX, entityY, entityWidth, entityHeight);
         TextMeshProUGUI nameText = CreateTextLabel("NameTextField", row.transform);
         nameText.text = "Leia Organa";
         nameText.color = Color.white;
@@ -4223,6 +4231,7 @@ public static class StrategyViewPrefabBuilder
         AssignReference(view, "pointerGestures", pointerGestures);
         AssignReference(view, "backgroundImage", background);
         AssignReference(view, "entityImage", entity);
+        AssignReference(view, "statusOverlayImage", statusOverlay);
         AssignReference(view, "nameTextField", nameText);
         view.enabled = true;
         return view;
