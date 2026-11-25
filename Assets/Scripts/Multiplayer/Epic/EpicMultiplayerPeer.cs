@@ -295,11 +295,11 @@ namespace Rebellion.Multiplayer
         /// </summary>
         /// <param name="packet">The game packet.</param>
         /// <returns>The pending send.</returns>
-        public Task SendAsync(MultiplayerPacket packet)
+        public async Task SendAsync(MultiplayerPacket packet)
         {
             if (!IsConnected)
                 throw new InvalidOperationException("No multiplayer peer is connected.");
-            return _sendScheduler.SendAsync(packet, _cancellation.Token);
+            await _sendScheduler.SendAsync(packet, _cancellation.Token);
         }
 
         /// <summary>
