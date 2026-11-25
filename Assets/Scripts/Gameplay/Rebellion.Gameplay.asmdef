@@ -4,6 +4,7 @@
     "references": [
         "Rebellion.Game",
         "Rebellion.SceneGraph",
+        "Rebellion.Tactical.Core",
         "Rebellion.Util"
     ],
     "includePlatforms": [],

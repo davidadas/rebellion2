@@ -9,6 +9,7 @@
         "Rebellion.Gameplay",
         "Rebellion.Saves",
         "Rebellion.SceneGraph",
+        "Rebellion.Tactical.Core",
         "Rebellion.UserSettings",
         "Rebellion.Util"
     ],

@@ -5,7 +5,9 @@ using System.Xml.Linq;
 using System.Xml.Schema;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
+using Rebellion.Util.Serialization;
 using UnityEngine;
 
 namespace Rebellion.Tests.Content
@@ -79,6 +81,56 @@ namespace Rebellion.Tests.Content
             + "<MaintenanceCapacityPercent>150</MaintenanceCapacityPercent>"
             + "</GameModifier></Value></Entry></DifficultyModifiers></GameConfig>";
 
+        [Test]
+        [Category("RequiresMedia")]
+        public void OpenActive_TacticalAssetAddresses_ResolveEveryDeclaredResource()
+        {
+            ContentPack pack = TestContent.Pack;
+            using MemoryStream serialized = new MemoryStream();
+            new GameSerializer(typeof(TacticalCombatDefinition)).Serialize(
+                serialized,
+                pack.GameData.TacticalCombat
+            );
+            serialized.Position = 0;
+            string[] addresses = XDocument
+                .Load(serialized)
+                .Descendants()
+                .Where(element => !element.HasElements)
+                .Select(element => element.Value)
+                .Where(address =>
+                    address.StartsWith("Pack/", StringComparison.Ordinal)
+                    || address.StartsWith("Application/", StringComparison.Ordinal)
+                )
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.IsNotEmpty(addresses);
+            foreach (string address in addresses)
+                Assert.IsNotNull(
+                    pack.FileResolver.ResolveFile(address, ".png", ".glb", ".wav", ".mp4"),
+                    $"Missing tactical combat resource: {address}"
+                );
+        }
+
+        [Test]
+        [Category("RequiresMedia")]
+        public void OpenActive_TacticalRoster_ContainsEveryAuthoredShipAndFighter()
+        {
+            GameDataCatalog data = TestContent.Pack.GameData;
+            string[] authoredTypeIDs = data
+                .CapitalShips.Select(ship => ship.TypeID)
+                .Concat(data.Starfighters.Select(fighter => fighter.TypeID))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+            string[] tacticalTypeIDs = data
+                .TacticalCombat.Units.Select(unit => unit.UnitTypeID)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+            Assert.IsNotEmpty(authoredTypeIDs);
+            CollectionAssert.AreEquivalent(authoredTypeIDs, tacticalTypeIDs);
+        }
+
         /// <summary>
         /// Verifies that stock ship suppression is loaded independently from destruction capability.
         /// </summary>
@@ -111,6 +163,27 @@ namespace Rebellion.Tests.Content
             Assert.IsTrue(ionCannon.IsDetectionBlocker);
             Assert.AreEqual(2, turbolasers.Length);
             Assert.IsTrue(turbolasers.All(building => !building.IsDetectionBlocker));
+        }
+
+        [TestCase("MON_MOTHMA", "FNALL1")]
+        [TestCase("LEIA_ORGANA", "FNALL1")]
+        [TestCase("LUKE_SKYWALKER", "FNALL1")]
+        [TestCase("HAN_SOLO", "FNALL1")]
+        [TestCase("EMPEROR_PALPATINE", "FNEMP1")]
+        [TestCase("DARTH_VADER", "FNEMP1")]
+        [Category("RequiresMedia")]
+        public void OpenActive_ProtectedMainOfficer_RetainsFactionFlagsWithoutBecomingRecruitable(
+            string officerID,
+            string factionID
+        )
+        {
+            Officer officer = TestContent.Pack.GameData.Officers.Single(item =>
+                item.InstanceID == officerID
+            );
+
+            Assert.IsFalse(officer.IsRecruitable);
+            Assert.IsFalse(officer.CanBetray);
+            CollectionAssert.AreEqual(new[] { factionID }, officer.RecruitingFactionInstanceIDs);
         }
 
         [Test]
@@ -824,6 +897,154 @@ namespace Rebellion.Tests.Content
                 "<GameConfig Inherit='true'><DifficultyModifiers Remove='true'/></GameConfig>"
             );
             Assert.IsEmpty(config.DifficultyModifiers);
+        }
+
+        [Test]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_BattleSupportEntryLeafOverride_PreservesOtherContextsAndValues()
+        {
+            GameConfig config = LoadApplicationGameConfig(
+                "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry>"
+                    + "<Key>FirstFactionEasy</Key><Value><SpaceCombatSupportProfile><FirstSide>"
+                    + "<LeadingGapScale>321</LeadingGapScale></FirstSide></SpaceCombatSupportProfile>"
+                    + "</Value></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+            );
+
+            var profiles = config.SupportShift.BattleSupport.Profiles;
+            Assert.AreEqual(7, profiles.Count);
+            Assert.AreEqual(
+                321,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.LeadingGapScale
+            );
+            Assert.AreEqual(
+                200,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].SecondSide.LeadingGapScale
+            );
+            Assert.AreEqual(
+                400,
+                profiles[SpaceCombatSupportContext.FirstFactionMedium].FirstSide.LeadingGapScale
+            );
+            Assert.AreEqual(10, profiles[SpaceCombatSupportContext.FirstFactionEasy].Divisor);
+            Assert.AreEqual(
+                0,
+                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.TrailingFlat
+            );
+        }
+
+        [TestCase("Divisor")]
+        [TestCase("FirstSide.LeadingFlat")]
+        [TestCase("SecondSide.SupportThreshold")]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_RemovedRequiredBattleSupportInput_RejectsMergedDocument(
+            string member
+        )
+        {
+            XElement profile = new("SpaceCombatSupportProfile");
+            XElement target = profile;
+            foreach (string name in member.Split('.'))
+            {
+                XElement child = new(name);
+                target.Add(child);
+                target = child;
+            }
+            target.SetAttributeValue("Remove", true);
+            XElement overlay = new(
+                "GameConfig",
+                new XAttribute("Inherit", true),
+                new XElement(
+                    "SupportShift",
+                    new XElement(
+                        "BattleSupport",
+                        new XElement(
+                            "Profiles",
+                            new XElement(
+                                "Entry",
+                                new XElement("Key", "FirstFactionEasy"),
+                                new XElement("Value", profile)
+                            )
+                        )
+                    )
+                )
+            );
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(overlay.ToString())
+            );
+        }
+
+        [TestCase("0")]
+        [TestCase("Unknown")]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_UnsupportedBattleSupportContext_RejectsMergedDocument(
+            string context
+        )
+        {
+            string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
+            XElement defaults = XElement.Load(Path.Combine(application, "Rules", "game.xml"));
+            defaults
+                .Element("SupportShift")
+                .Element("BattleSupport")
+                .Element("Profiles")
+                .Elements("Entry")
+                .First()
+                .Element("Key")
+                .Value = context;
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadGameConfigFromFixture(
+                    defaults.ToString(),
+                    null,
+                    File.ReadAllText(Path.Combine(application, "Schemas", "game-config.xsd"))
+                )
+            );
+        }
+
+        [Test]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_DuplicateBattleSupportContext_RejectsDocument()
+        {
+            string application = Path.Combine(TestContent.Pack.ContentRootPath, "Application");
+            XElement defaults = XElement.Load(Path.Combine(application, "Rules", "game.xml"));
+            XElement[] entries = defaults
+                .Element("SupportShift")
+                .Element("BattleSupport")
+                .Element("Profiles")
+                .Elements("Entry")
+                .ToArray();
+            entries[1].Element("Key").Value = entries[0].Element("Key").Value;
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadGameConfigFromFixture(
+                    defaults.ToString(),
+                    null,
+                    File.ReadAllText(Path.Combine(application, "Schemas", "game-config.xsd"))
+                )
+            );
+        }
+
+        [Test]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_ZeroBattleSupportDivisor_RejectsMergedDocument()
+        {
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(
+                    "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry>"
+                        + "<Key>FirstFactionEasy</Key><Value><SpaceCombatSupportProfile><Divisor>0</Divisor>"
+                        + "</SpaceCombatSupportProfile></Value></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+                )
+            );
+        }
+
+        [Test]
+        [Category("RequiresMedia")]
+        public void LoadGameConfig_RemovedBattleSupportProfile_RejectsMergedDocument()
+        {
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                LoadApplicationGameConfig(
+                    "<GameConfig Inherit='true'><SupportShift><BattleSupport><Profiles><Entry Remove='true'>"
+                        + "<Key>FirstFactionEasy</Key></Entry></Profiles></BattleSupport></SupportShift></GameConfig>"
+                )
+            );
         }
 
         /// <summary>

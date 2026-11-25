@@ -1,0 +1,18 @@
+{
+    "name": "Rebellion.Tactical.Core",
+    "rootNamespace": "Rebellion.Tactical",
+    "references": [
+        "Rebellion.SceneGraph",
+        "Rebellion.Game",
+        "Rebellion.Util"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

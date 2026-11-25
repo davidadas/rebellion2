@@ -20,6 +20,7 @@ namespace Rebellion.Architecture.Tests
                 "Rebellion.Saves",
                 "Rebellion.SceneGraph",
                 "Rebellion.Sessions",
+                "Rebellion.Tactical.Core",
                 "Rebellion.UserSettings",
                 "Rebellion.Util",
             ];

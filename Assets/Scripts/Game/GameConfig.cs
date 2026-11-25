@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.FogOfWar;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -1807,6 +1808,8 @@ namespace Rebellion.Game
         [PersistableObject]
         public class SupportShiftConfig
         {
+            public SpaceCombatSupportConfig BattleSupport { get; set; }
+
             public int OwnershipTransferThreshold { get; set; }
 
             public int WeakSupportPenaltyDivisor { get; set; }
@@ -1838,6 +1841,7 @@ namespace Rebellion.Game
             public SupportShiftConfig CreateCopy() =>
                 new SupportShiftConfig
                 {
+                    BattleSupport = BattleSupport?.CreateCopy(),
                     OwnershipTransferThreshold = OwnershipTransferThreshold,
                     WeakSupportPenaltyDivisor = WeakSupportPenaltyDivisor,
                     GarrisonRemovalSupportShift = GarrisonRemovalSupportShift,

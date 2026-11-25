@@ -16,6 +16,8 @@ using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using XDocument = global::System.Xml.Linq.XDocument;
+using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.Game
 {
@@ -70,6 +72,89 @@ namespace Rebellion.Tests.Game
             _game.GetFactions().Add(_faction1);
             _game.GetFactions().Add(_faction2);
             _game.SetFactionController(_faction1.InstanceID, "PLAYER1", PlayerControllerType.Human);
+        }
+
+        [Test]
+        public void MoveStarfighters_FullCarrierExchange_UsesFinalCapacity()
+        {
+            CapitalShip first = CreateStarfighterHost("first", 1);
+            CapitalShip second = CreateStarfighterHost("second", 1);
+            Starfighter firstFighter = CreateHostedStarfighter(first, "first-fighter");
+            Starfighter secondFighter = CreateHostedStarfighter(second, "second-fighter");
+
+            _game.MoveStarfighters(
+                new[]
+                {
+                    new StarfighterHostAssignment(firstFighter, second),
+                    new StarfighterHostAssignment(secondFighter, first),
+                }
+            );
+
+            CollectionAssert.AreEqual(new[] { secondFighter }, first.GetChildren<Starfighter>());
+            CollectionAssert.AreEqual(new[] { firstFighter }, second.GetChildren<Starfighter>());
+            Assert.AreSame(second, firstFighter.GetParent());
+            Assert.AreSame(first, firstFighter.GetLastParent());
+            Assert.AreEqual(second.InstanceID, firstFighter.ParentInstanceID);
+            Assert.AreEqual(first.InstanceID, firstFighter.LastParentInstanceID);
+            Assert.AreSame(first, secondFighter.GetParent());
+        }
+
+        [Test]
+        public void MoveStarfighters_OrderedIncomingSquadrons_AppendsInAssignmentOrder()
+        {
+            CapitalShip host = CreateStarfighterHost("host", 3);
+            Starfighter resident = CreateHostedStarfighter(host, "resident");
+            Starfighter first = CreateHostedStarfighter(_planet, "first");
+            Starfighter second = CreateHostedStarfighter(_planet, "second");
+
+            _game.MoveStarfighters(
+                new[]
+                {
+                    new StarfighterHostAssignment(second, host),
+                    new StarfighterHostAssignment(first, host),
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { resident, second, first },
+                host.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(_planet.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_OverCapacityDestination_RestoresOverfullSourceAndParentHistory()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 3);
+            CapitalShip target = CreateStarfighterHost("target", 1);
+            Starfighter first = CreateHostedStarfighter(source, "first");
+            Starfighter second = CreateHostedStarfighter(source, "second");
+            Starfighter third = CreateHostedStarfighter(source, "third");
+            ISceneNode previous = first.GetLastParent();
+            string previousID = first.LastParentInstanceID;
+            source.StarfighterCapacity = 0;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.MoveStarfighters(
+                    new[]
+                    {
+                        new StarfighterHostAssignment(first, target),
+                        new StarfighterHostAssignment(third, target),
+                    }
+                )
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { first, second, third },
+                source.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+            Assert.AreSame(source, first.GetParent());
+            Assert.AreSame(previous, first.GetLastParent());
+            Assert.AreEqual(previousID, first.LastParentInstanceID);
+            Assert.AreSame(source, third.GetParent());
+            Assert.AreSame(first, _game.GetSceneNodeByInstanceID<Starfighter>(first.InstanceID));
+            CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Starfighter>(), first);
         }
 
         [Test]
@@ -133,6 +218,149 @@ namespace Rebellion.Tests.Game
 
         [TestCase(false)]
         [TestCase(true)]
+        public void MoveStarfighters_UnavailableDestination_RestoresSource(bool destroyedPlanet)
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            ContainerNode target;
+            if (destroyedPlanet)
+            {
+                _planet.IsDestroyed = true;
+                target = _planet;
+            }
+            else
+            {
+                CapitalShip ship = CreateStarfighterHost("target", 1);
+                ship.ManufacturingStatus = ManufacturingStatus.Building;
+                target = ship;
+            }
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, target) })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_UnchangedOverfullHost_PreservesParentHistoryAndOrder()
+        {
+            CapitalShip host = CreateStarfighterHost("host", 1);
+            Starfighter fighter = CreateHostedStarfighter(host, "fighter");
+            ISceneNode previous = fighter.GetLastParent();
+            host.StarfighterCapacity = 0;
+
+            _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, host) });
+
+            Assert.AreSame(previous, fighter.GetLastParent());
+            CollectionAssert.AreEqual(new[] { fighter }, host.GetChildren<Starfighter>());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MoveStarfighters_InvalidAssignment_LeavesEarlierAssignmentsUnchanged(
+            bool duplicate
+        )
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            CapitalShip target = CreateStarfighterHost("target", 2);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            StarfighterHostAssignment assignment = new(fighter, target);
+
+            Assert.Throws<ArgumentException>(() =>
+                _game.MoveStarfighters(new[] { assignment, duplicate ? assignment : default })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_UnsupportedHost_LeavesSourceUnchanged()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+
+            Assert.Throws<ArgumentException>(() =>
+                _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, _fleet) })
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void MoveStarfighters_DisabledSquadron_PreservesRegistrationAndAvailability()
+        {
+            CapitalShip source = CreateStarfighterHost("source", 1);
+            CapitalShip target = CreateStarfighterHost("target", 1);
+            Starfighter fighter = CreateHostedStarfighter(source, "fighter");
+            fighter.IsEnabled = false;
+
+            _game.MoveStarfighters(new[] { new StarfighterHostAssignment(fighter, target) });
+
+            Assert.IsFalse(fighter.IsEnabled);
+            Assert.AreSame(
+                fighter,
+                _game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true)
+            );
+            CollectionAssert.AreEqual(
+                new[] { fighter },
+                target.GetChildren<Starfighter>(includeDisabled: true)
+            );
+            CollectionAssert.Contains(_faction1.GetOwnedUnitsByType<Starfighter>(true), fighter);
+        }
+
+        [Test]
+        public void MoveStarfighters_NullAssignments_RejectsInput()
+        {
+            Assert.Throws<ArgumentNullException>(() => _game.MoveStarfighters(null));
+        }
+
+        [Test]
+        public void MoveStarfighters_FinalHostsApplied_ReportsEachAffectedPlanetAfterBatch()
+        {
+            CapitalShip firstHost = CreateStarfighterHost("first-host", 1);
+            CapitalShip secondHost = CreateStarfighterHost("second-host", 1);
+            Starfighter first = CreateHostedStarfighter(firstHost, "first-fighter");
+            Starfighter second = CreateHostedStarfighter(secondHost, "second-fighter");
+            Planet destination = new()
+            {
+                InstanceID = "fighter-destination",
+                OwnerInstanceID = _faction1.InstanceID,
+            };
+            _game.AttachNode(destination, _planetSector);
+            List<(ISceneNode Unit, Planet Origin, Planet Destination)> changes = new();
+            _game.UnitPresenceChanged += (unit, origin, target) =>
+            {
+                Assert.AreSame(destination, first.GetParent());
+                Assert.AreSame(firstHost, second.GetParent());
+                changes.Add((unit, origin, target));
+            };
+
+            _game.MoveStarfighters(
+                new[]
+                {
+                    new StarfighterHostAssignment(first, destination),
+                    new StarfighterHostAssignment(second, firstHost),
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    ((ISceneNode)first, _planet, destination),
+                    ((ISceneNode)second, _planet, _planet),
+                },
+                changes
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
         public void GenerateRuntimeIdentifier_ConfiguredRestoredGame_ContinuesPersistedSequence(
             bool legacyName
         )
@@ -141,10 +369,8 @@ namespace Rebellion.Tests.Game
             game.GenerateRuntimeIdentifier();
             game.GenerateRuntimeIdentifier();
 
-            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
-                SerializationHelper.Serialize(game)
-            );
-            System.Xml.Linq.XElement counter = document.Element(nameof(GameRoot.IDCounter));
+            XElement document = XElement.Parse(SerializationHelper.Serialize(game));
+            XElement counter = document.Element(nameof(GameRoot.IDCounter));
             Assert.That(counter, Is.Not.Null);
             Assert.That(document.Element("RuntimeIdentifierIndex"), Is.Null);
             if (legacyName)
@@ -166,7 +392,7 @@ namespace Rebellion.Tests.Game
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
             Assert.That(restored.Summary.Seed, Is.EqualTo(456));
-            Assert.That(System.Xml.Linq.XElement.Parse(xml).Element("RandomSeed"), Is.Null);
+            Assert.That(XElement.Parse(xml).Element("RandomSeed"), Is.Null);
             Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
             Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
             Assert.That(
@@ -309,9 +535,7 @@ namespace Rebellion.Tests.Game
                 },
                 _planet
             );
-            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
-                SerializationHelper.Serialize(_game)
-            );
+            XDocument document = XDocument.Parse(SerializationHelper.Serialize(_game));
             Assert.AreEqual(
                 1,
                 document
@@ -728,6 +952,177 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(1, restored.RegisteredOfficers.Count);
             Assert.AreEqual(officer.InstanceID, restored.RegisteredOfficers[0].InstanceID);
             Assert.IsFalse(restored.RegisteredOfficers[0].IsEnabled);
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_DuplicateMilitaryKey_PreservesCurrentValue()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+            };
+            _game.AddSceneNodeByInstanceID(ship);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.AddSceneNodeByInstanceID(
+                    new Starfighter
+                    {
+                        InstanceID = ship.InstanceID,
+                        OwnerInstanceID = _faction2.InstanceID,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        UprisingDefense = 100,
+                    }
+                )
+            );
+
+            Assert.AreEqual(
+                (7, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RemoveSceneNodeByInstanceID_MatchingRegistryKey_RemovesMilitaryValue()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+            };
+            _game.AddSceneNodeByInstanceID(ship);
+
+            _game.RemoveSceneNodeByInstanceID(new CapitalShip { InstanceID = ship.InstanceID });
+
+            Assert.AreEqual(
+                (0, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+        }
+
+        [Test]
+        public void DeleteNode_CarrierSubtree_RemovesShipAndCargoMilitaryValues()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _fleet.IsEnabled = false;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-carrier",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 10,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(ship, _fleet);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "military-cargo",
+                    OwnerInstanceID = _faction1.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    UprisingDefense = 11,
+                },
+                ship
+            );
+            Assert.AreEqual(
+                (18, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+
+            _game.DeleteNode(ship);
+
+            Assert.AreEqual(
+                (0, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+        }
+
+        [Test]
+        public void CaptureSpaceCombatMilitaryValues_RegimentFinishesForDelivery_ReadsNewAdmission()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                UprisingDefense = 17,
+            };
+            _game.AddSceneNodeByInstanceID(regiment);
+            Assert.AreEqual(
+                (0, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+
+            regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
+            regiment.Movement = new MovementState();
+
+            Assert.AreEqual(
+                (17, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+        }
+
+        [Test]
+        public void Galaxy_ReplacingRoot_DropsOutgoingMilitaryValues()
+        {
+            _game.AddSceneNodeByInstanceID(
+                new Regiment
+                {
+                    InstanceID = "outgoing-military-unit",
+                    OwnerInstanceID = _faction1.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    UprisingDefense = 17,
+                }
+            );
+
+            _game.Galaxy = new GalaxyMap { InstanceID = "replacement-military-galaxy" };
+
+            Assert.AreEqual(
+                (0, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedMilitary_RestoresIndependentRosterOnce()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "persisted-military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 17,
+            };
+            _game.AttachNode(regiment, _planet);
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            restored.RebuildSceneState();
+            restored.RebuildSceneState();
+            restored.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID).UprisingDefense = 23;
+
+            Assert.AreEqual(
+                (23, 0),
+                restored.CaptureSpaceCombatMilitaryValues(
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                (17, 0),
+                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+            );
+            StringAssert.DoesNotContain("SpaceCombatMilitaryRoster", xml);
         }
 
         [Test]
@@ -1314,6 +1709,189 @@ namespace Rebellion.Tests.Game
             Assert.IsFalse(officer.IsActive());
         }
 
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_PopulatedPlanetAcquired_GrantsSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, true);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ChangeOwnership_PopulatedPlanetTransferred_GrantsSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(false, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, _faction2.InstanceID);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnpopulatedPlanetAcquired_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, false);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_PopulatedPlanetReleased_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, null);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnchangedFactionOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ChangeOwnership(planet, _faction1.InstanceID);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ChangeOwnership_UnchangedNeutralOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, true);
+
+            _game.ChangeOwnership(planet, null);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ChangeOwnership_InvalidFaction_PreservesUnknownSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(null, null, true);
+
+            Assert.Throws<SceneNodeNotFoundException>(() =>
+                _game.ChangeOwnership(planet, "missing")
+            );
+
+            Assert.IsNull(planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_OwnedPopulationTransition_GrantsSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, false);
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_SupportSetterRejectsNeutralOwner_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, null, false);
+
+            Assert.Throws<ArgumentNullException>(() => _game.ColonizePlanet(planet));
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [Test]
+        public void ColonizePlanet_SupportCallback_RunsBeforeGrantingSectorSupportEligibility()
+        {
+            Planet planet = CreateRegisteredSupportPlanet(false, _faction1.InstanceID, false);
+            bool? eligibilityDuringSupportChange = null;
+            planet.PopularSupportChanged += changed =>
+                eligibilityDuringSupportChange = changed.IsSectorSupportEligible;
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(false, eligibilityDuringSupportChange);
+            Assert.AreEqual(true, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ColonizePlanet_UnchangedPopulation_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+
+            _game.ColonizePlanet(planet);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void NeutralizeDestroyedPlanet_OwnedPlanet_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+            planet.IsDestroyed = true;
+
+            _game.NeutralizeDestroyedPlanet(planet);
+
+            Assert.AreEqual(eligibility, planet.IsSectorSupportEligible);
+        }
+
+        [TestCase(null)]
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RebuildSceneState_SerializedOwnedPlanet_PreservesSectorSupportEligibility(
+            bool? eligibility
+        )
+        {
+            Planet planet = CreateRegisteredSupportPlanet(eligibility, _faction1.InstanceID, true);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
+                SerializationHelper.Serialize(_game)
+            );
+
+            restored.RebuildSceneState();
+
+            Assert.AreEqual(
+                eligibility,
+                restored.GetSceneNodeByInstanceID<Planet>(planet.InstanceID).IsSectorSupportEligible
+            );
+        }
+
         [Test]
         public void ChangeOwnership_NullOwner_ReleasesFactionOwnership()
         {
@@ -1468,6 +2046,74 @@ namespace Rebellion.Tests.Game
                     .GetFactionByOwnerInstanceID(_faction1.InstanceID)
                     .GetOwnedUnitsByType<Planet>()
             );
+        }
+
+        /// <summary>
+        /// Registers a planet with raw eligibility and current population and owner state.
+        /// </summary>
+        /// <param name="eligibility">The retained eligibility, or null for an older save.</param>
+        /// <param name="ownerInstanceId">The current faction owner, or null for neutrality.</param>
+        /// <param name="isColonized">Whether the current planet population is present.</param>
+        /// <returns>The registered planet.</returns>
+        private Planet CreateRegisteredSupportPlanet(
+            bool? eligibility,
+            string ownerInstanceId,
+            bool isColonized
+        )
+        {
+            string state = eligibility.HasValue
+                ? $"<IsSectorSupportEligible>{eligibility.Value.ToString().ToLowerInvariant()}</IsSectorSupportEligible>"
+                : "";
+            Planet planet = SerializationHelper.Deserialize<Planet>($"<Planet>{state}</Planet>");
+            planet.InstanceID = "support-planet";
+            planet.OwnerInstanceID = ownerInstanceId;
+            planet.IsColonized = isColonized;
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(planet, _planetSector);
+            return planet;
+        }
+
+        /// <summary>
+        /// Creates a registered carrier under the fixture's fleet.
+        /// </summary>
+        /// <param name="id">The carrier identifier.</param>
+        /// <param name="capacity">The available squadron berths.</param>
+        /// <returns>The attached carrier.</returns>
+        private CapitalShip CreateStarfighterHost(string id, int capacity)
+        {
+            if (_planet.GetParent() == null)
+            {
+                _game.AttachNode(_planetSector, _game.Galaxy);
+                _game.AttachNode(_planet, _planetSector);
+                _game.AttachNode(_fleet, _planet);
+            }
+            CapitalShip host = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = _faction1.InstanceID,
+                StarfighterCapacity = capacity,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(host, _fleet);
+            return host;
+        }
+
+        /// <summary>
+        /// Creates a registered squadron in its initial host.
+        /// </summary>
+        /// <param name="host">The squadron's initial host.</param>
+        /// <param name="id">The squadron identifier.</param>
+        /// <returns>The attached squadron.</returns>
+        private Starfighter CreateHostedStarfighter(ContainerNode host, string id)
+        {
+            Starfighter fighter = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(fighter, host);
+            return fighter;
         }
 
         /// <summary>

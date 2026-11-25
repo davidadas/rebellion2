@@ -92,6 +92,14 @@ namespace Rebellion.PlayerRequests
             if (actor == null)
                 return Reject("The issuing faction is unavailable.");
 
+            if (
+                _session.Game.Metadata?.IsMultiplayer == true
+                && _session.GetService<SpaceCombatCommands>().ActiveTacticalCombat != null
+                && playerRequest is not CompleteTacticalCombatRequest
+                && playerRequest is not SendPeerChatRequest
+            )
+                return Reject("Campaign orders are suspended during the manual battle.");
+
             return playerRequest switch
             {
                 MoveRequest request => Move(actor, request),
@@ -126,6 +134,8 @@ namespace Rebellion.PlayerRequests
                     request
                 ),
                 ResolveCombatRequest request => ResolveCombat(actor, request),
+                BeginTacticalCombatRequest request => BeginTacticalCombat(actor, request),
+                CompleteTacticalCombatRequest request => CompleteTacticalCombat(actor, request),
                 SetSpeedRequest request => SetSpeed(actor, request),
                 RespondToSpeedRequest request => Complete(
                     _gameManager.TryRespondToGameSpeed(

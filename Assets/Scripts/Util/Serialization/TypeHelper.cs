@@ -166,7 +166,11 @@ namespace Rebellion.Util.Serialization
         {
             Type nullableType = Nullable.GetUnderlyingType(targetType);
             if (nullableType != null)
+            {
+                if (nullableType.IsEnum && content == string.Empty)
+                    return null;
                 return ConvertToScalar(content, nullableType);
+            }
 
             if (targetType.IsEnum)
                 return Enum.Parse(targetType, content);

@@ -18,7 +18,8 @@
         "Rebellion.Analytics",
         "Rebellion.Sessions",
         "Rebellion.Multiplayer",
-        "Rebellion.Gameplay"
+        "Rebellion.Gameplay",
+        "Rebellion.Tactical.Core"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

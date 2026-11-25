@@ -1,10 +1,12 @@
 using System;
 using Rebellion.AI;
+using Rebellion.AI.Tactical;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
+using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -28,6 +30,7 @@ namespace Rebellion.Gameplay
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(OfficerLoyaltyObserver),
+            typeof(SpaceCombatObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
             typeof(AdvisorAutomationObserver),
@@ -42,13 +45,15 @@ namespace Rebellion.Gameplay
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
         /// <param name="results">The bus delivering completed game changes.</param>
+        /// <param name="createTacticalAudio">Creates encounter audio from the active content catalog.</param>
         /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,
             GameDataCatalog gameData,
             IRandomNumberProvider random,
             MessageFactory messageFactory,
-            GameResultBus results
+            GameResultBus results,
+            TacticalCombatAudioFactory createTacticalAudio
         )
         {
             if (game == null)
@@ -61,6 +66,8 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(messageFactory));
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
+            if (createTacticalAudio == null)
+                throw new ArgumentNullException(nameof(createTacticalAudio));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
@@ -76,7 +83,8 @@ namespace Rebellion.Gameplay
                     content.CapitalShips,
                     content.Starfighters,
                     content.Regiments,
-                    content.SpecialForces
+                    content.SpecialForces,
+                    content.TacticalCombat
                 );
             });
 
@@ -144,12 +152,21 @@ namespace Rebellion.Gameplay
                 locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
+            services.AddSingleton<TacticalCombatFactory>(locator => new TacticalCombatFactory(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>().TacticalCombat,
+                locator.GetService<SpaceCombatQueries>(),
+                TacticalCombatPlanner.Attach,
+                createTacticalAudio
+            ));
             services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<MovementCommands>(),
                 locator.GetService<SpaceCombatQueries>(),
                 locator.GetService<BlockadeTransitionResolver>(),
-                locator.GetService<GameDataCatalog>().Starfighters
+                locator.GetService<TacticalCombatFactory>(),
+                locator.GetService<GameDataCatalog>().Starfighters,
+                locator.GetService<SpaceCombatObserver>()
             ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();
@@ -173,7 +190,14 @@ namespace Rebellion.Gameplay
             ));
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
-                services.AddSingleton(observerType);
+                if (observerType == typeof(SpaceCombatObserver))
+                    services.AddSingleton<SpaceCombatObserver>(locator => new SpaceCombatObserver(
+                        locator.GetService<GameRoot>(),
+                        locator.GetService<GameDataCatalog>().TacticalCombat,
+                        locator.GetService<PersonnelCommands>()
+                    ));
+                else
+                    services.AddSingleton(observerType);
             services.AddSingleton<GameActionCommands>(locator => new GameActionCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<IRandomNumberProvider>(),

@@ -10,6 +10,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
@@ -644,6 +645,15 @@ public static class ContentPackLoader
                 pack.OfficerTraitsPath,
                 "OfficerTraits"
             );
+        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(
+            pack.TacticalCombatDefinitionsPath
+        )
+            ? null
+            : DeserializeGameData<TacticalCombatDefinition>(
+                fileResolver,
+                pack.TacticalCombatDefinitionsPath,
+                "TacticalCombatDefinition"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -738,7 +748,8 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
-            officerTraits
+            officerTraits,
+            tacticalCombat
         );
     }
 

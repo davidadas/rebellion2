@@ -10,6 +10,8 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.SceneGraph;
+using Rebellion.Sessions.Tactical;
+using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -21,6 +23,7 @@ namespace Rebellion.Gameplay
     public sealed class GameSession : IServiceLocator, IDisposable
     {
         private readonly GameDataCatalog _gameData;
+        private readonly TacticalCombatAudioFactory _createTacticalAudio;
         private readonly List<Action> _disconnect = new();
         private readonly List<ServiceLocator> _retiredServiceScopes = new();
         private IRandomNumberProvider _randomProvider;
@@ -90,8 +93,24 @@ namespace Rebellion.Gameplay
             GameDataCatalog gameData,
             Func<bool> canExecuteCommands = null
         )
+            : this(game, gameData, canExecuteCommands, null) { }
+
+        /// <summary>
+        /// Creates a campaign session using the host's tactical audio factory.
+        /// </summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
+        /// <param name="canExecuteCommands">Optional application admission policy for external mutations.</param>
+        /// <param name="createTacticalAudio">The audio factory, or null for silent audio.</param>
+        internal GameSession(
+            GameRoot game,
+            GameDataCatalog gameData,
+            Func<bool> canExecuteCommands,
+            TacticalCombatAudioFactory createTacticalAudio
+        )
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
+            _createTacticalAudio = createTacticalAudio ?? HeadlessTacticalCombatAudio.Create;
             _canExecuteCommands = canExecuteCommands;
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(
@@ -315,7 +334,8 @@ namespace Rebellion.Gameplay
                 _gameData,
                 _randomProvider,
                 messageFactory,
-                resultBus
+                resultBus,
+                _createTacticalAudio
             );
             MessageObserver = GetService<MessageObserver>();
             GetService<MovementQueries>()
@@ -410,6 +430,7 @@ namespace Rebellion.Gameplay
         private void RebuildContentBindings()
         {
             _gameData.BindOfficerDefinitions(GetPersistedOfficers());
+            _gameData.BindCapitalShipDefinitions(Game.GetSceneNodesByType<CapitalShip>());
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
@@ -419,6 +440,7 @@ namespace Rebellion.Gameplay
                 .Concat(CopyTemplates(_gameData.SpecialForces))
                 .ToArray();
 
+            _gameData.BindCapitalShipDefinitions(templates.OfType<CapitalShip>());
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
         }

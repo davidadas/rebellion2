@@ -13,6 +13,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
@@ -484,6 +485,9 @@ public static class TestGameData
     /// <param name="officers">The content-authored officer templates.</param>
     /// <param name="gameEvents">The fixture's authored event definitions.</param>
     /// <param name="capitalShips">The fixture's ship templates.</param>
+    /// <param name="starfighters">The fixture's fighter templates.</param>
+    /// <param name="regiments">The fixture's troop templates.</param>
+    /// <param name="tacticalCombat">The fixture's tactical definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
@@ -491,7 +495,10 @@ public static class TestGameData
         OfficerTraitDefinition[] officerTraits = null,
         Officer[] officers = null,
         GameEvent[] gameEvents = null,
-        CapitalShip[] capitalShips = null
+        CapitalShip[] capitalShips = null,
+        Starfighter[] starfighters = null,
+        Regiment[] regiments = null,
+        TacticalCombatDefinition tacticalCombat = null
     )
     {
         return new GameDataCatalog(
@@ -501,15 +508,16 @@ public static class TestGameData
             Array.Empty<PlanetSector>(),
             Array.Empty<Building>(),
             capitalShips ?? Array.Empty<CapitalShip>(),
-            Array.Empty<Starfighter>(),
-            Array.Empty<Regiment>(),
+            starfighters ?? Array.Empty<Starfighter>(),
+            regiments ?? Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
             officers ?? Array.Empty<Officer>(),
             gameEvents ?? Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes(),
-            officerTraits
+            officerTraits,
+            tacticalCombat
         );
     }
 
@@ -560,7 +568,8 @@ public static class TestGameData
             source.MessageDefinitions,
             source.EncyclopediaEntries,
             source.FactionThemes,
-            source.OfficerTraits
+            source.OfficerTraits,
+            source.TacticalCombat
         );
     }
 }

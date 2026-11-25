@@ -61,6 +61,99 @@ namespace Rebellion.Tests.Generation
             _game = builder.Build();
         }
 
+        [TestCase(PlanetSectorType.Core, true)]
+        [TestCase(PlanetSectorType.OuterRim, false)]
+        public void Build_GeneratedPlanet_SetsSectorSupportEligibilityFromSectorType(
+            PlanetSectorType sectorType,
+            bool expected
+        )
+        {
+            Planet[] planets = _game
+                .Galaxy.GetChildren<PlanetSector>()
+                .Where(sector => sector.SectorType == sectorType)
+                .SelectMany(sector => sector.GetChildren<Planet>(includeDisabled: true))
+                .ToArray();
+
+            Assert.IsNotEmpty(planets);
+            Assert.That(planets.All(planet => planet.IsSectorSupportEligible == expected));
+        }
+
+        [Test]
+        public void Build_InitiallyOwnedRimPlanet_RemainsIneligibleForSectorSupport()
+        {
+            Planet[] planets = _game
+                .Galaxy.GetChildren<PlanetSector>()
+                .Where(sector => sector.SectorType == PlanetSectorType.OuterRim)
+                .SelectMany(sector => sector.GetChildren<Planet>())
+                .Where(planet => !string.IsNullOrEmpty(planet.OwnerInstanceID))
+                .ToArray();
+
+            Assert.IsNotEmpty(planets);
+            Assert.That(planets.All(planet => planet.IsSectorSupportEligible == false));
+        }
+
+        [TestCase(PlanetSectorType.Core, true)]
+        [TestCase(PlanetSectorType.OuterRim, false)]
+        public void Build_DisabledAuthoredPlanet_InitializesSectorSupportEligibility(
+            PlanetSectorType sectorType,
+            bool expected
+        )
+        {
+            PlanetSector[] sectors = _data
+                .PlanetSectors.Select(sector =>
+                    (PlanetSector)sector.CreateCopy(recursive: true, includeDisabled: true)
+                )
+                .ToArray();
+            PlanetSector sector = sectors.First(candidate =>
+                candidate.SectorType == sectorType && (int)candidate.Visibility <= (int)_size
+            );
+            Planet planet = SerializationHelper.Deserialize<Planet>(
+                $"<Planet><IsSectorSupportEligible>{(!expected).ToString().ToLowerInvariant()}</IsSectorSupportEligible></Planet>"
+            );
+            planet.InstanceID = "disabled-support-planet";
+            planet.IsEnabled = false;
+            sector.AddChild(planet);
+            GameSummary summary = new()
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+            };
+
+            GameRoot game = new GameBuilder(summary, CopyGameDataWithSectors(sectors)).Build();
+            Planet generated = game
+                .Galaxy.GetChildren<PlanetSector>(includeDisabled: true)
+                .SelectMany(value => value.GetChildren<Planet>(includeDisabled: true))
+                .Single(value => value.InstanceID == planet.InstanceID);
+
+            Assert.AreEqual(expected, generated.IsSectorSupportEligible);
+            Assert.IsFalse(generated.IsEnabled);
+        }
+
+        [Test]
+        public void Build_UnsupportedSectorType_RejectsEligibilityMapping()
+        {
+            PlanetSector invalidSector = new()
+            {
+                InstanceID = "unsupported-sector",
+                SectorType = (PlanetSectorType)int.MaxValue,
+                Visibility = GameSize.Small,
+            };
+            PlanetSector[] sectors = _data.PlanetSectors.Concat(new[] { invalidSector }).ToArray();
+            GameSummary summary = new()
+            {
+                GalaxySize = _size,
+                PlayerFactionID = "FNALL1",
+                Seed = 12345,
+            };
+
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+                new GameBuilder(summary, CopyGameDataWithSectors(sectors)).Build()
+            );
+
+            StringAssert.Contains("Unsupported planet sector type", error.Message);
+        }
+
         /// <summary>
         /// Removes the temporary generation pack.
         /// </summary>
@@ -1079,6 +1172,14 @@ namespace Rebellion.Tests.Generation
                 }
             }
         }
+
+        /// <summary>
+        /// Copies the shared game-data catalog with replacement sector definitions.
+        /// </summary>
+        /// <param name="sectors">The replacement authored sectors.</param>
+        /// <returns>A game-data catalog containing the replacement sectors.</returns>
+        private GameDataCatalog CopyGameDataWithSectors(PlanetSector[] sectors) =>
+            CopyCatalog(_data, sectors, _data.GameEvents);
 
         /// <summary>
         /// Copies the shared game-data catalog with a replacement event collection.

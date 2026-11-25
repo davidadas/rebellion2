@@ -146,7 +146,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="favoredFaction">The faction for which the shift is positive.</param>
         /// <param name="shift">The signed shift relative to the favored faction.</param>
-        public void ApplyGlobalLoyaltyShift(Faction favoredFaction, int shift)
+        /// <param name="opposingFaction">The other combatant when eligibility flags determine battle allegiance, or null for an ownership-relative shift.</param>
+        public void ApplyGlobalLoyaltyShift(
+            Faction favoredFaction,
+            int shift,
+            Faction opposingFaction = null
+        )
         {
             if (favoredFaction == null)
                 throw new ArgumentNullException(nameof(favoredFaction));
@@ -159,6 +164,15 @@ namespace Rebellion.Gameplay
                 )
             )
             {
+                if (opposingFaction != null)
+                {
+                    officer.TryAdjustBattleLoyalty(
+                        shift,
+                        favoredFaction.InstanceID,
+                        opposingFaction.InstanceID
+                    );
+                    continue;
+                }
                 int officerShift =
                     officer.GetOwnerInstanceID() == favoredFaction.InstanceID ? shift : -shift;
                 officer.TryAdjustLoyalty(officerShift);

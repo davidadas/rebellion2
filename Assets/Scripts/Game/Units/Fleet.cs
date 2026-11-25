@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -255,11 +256,7 @@ namespace Rebellion.Game.Units
         {
             int count = 0;
             foreach (CapitalShip ship in GetChildren<CapitalShip>())
-                if (
-                    ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ship.Movement == null
-                    && ship.OwnerInstanceID == OwnerInstanceID
-                )
+                if (SpaceCombatReadiness.IsCapitalReady(ship, this))
                     count++;
             return count;
         }

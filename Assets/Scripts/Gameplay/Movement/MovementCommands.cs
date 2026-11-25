@@ -1862,10 +1862,15 @@ namespace Rebellion.Gameplay
                 && !arrivalPlanet.IsColonized
             )
             {
-                arrivalPlanet.IsColonized = true;
-                arrivalPlanet.PopularSupport.Clear();
-                if (!string.IsNullOrEmpty(arrivalPlanet.OwnerInstanceID))
-                    arrivalPlanet.SetFullPopularSupport(arrivalPlanet.OwnerInstanceID);
+                if (string.IsNullOrEmpty(arrivalPlanet.OwnerInstanceID))
+                {
+                    arrivalPlanet.IsColonized = true;
+                    arrivalPlanet.PopularSupport.Clear();
+                }
+                else
+                {
+                    _game.ColonizePlanet(arrivalPlanet);
+                }
             }
 
             string arrivingOwner = MovementQueries.GetMovementControlOwner(movable);
