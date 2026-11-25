@@ -260,6 +260,8 @@ internal static class ContentPackEditorFieldMetadata
             "The base value used by this unit's manufacturing-progress calculation.",
         ["Hyperdrive"] =
             "Controls hyperspace travel duration together with distance and movement rules.",
+        ["HyperdriveCount"] =
+            "The number of hyperdrive systems on each craft. Combat damage can disable them; losing all systems prevents independent retreat. This does not change travel speed.",
         ["Roles"] = "The combat tasks this unit design is intended to perform.",
         ["FormationPriority"] =
             "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by roles, then type ID.",

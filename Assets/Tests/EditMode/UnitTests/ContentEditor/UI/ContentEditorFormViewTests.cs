@@ -100,6 +100,61 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual("13", field.Value);
         }
 
+        [TestCase("CapitalShip", true, "3")]
+        [TestCase("Starfighter", true, "3")]
+        [TestCase("CapitalShip", false, "0")]
+        [TestCase("Starfighter", false, "0")]
+        [TestCase("CapitalShip", false, "3")]
+        [TestCase("Starfighter", false, "3")]
+        public void Render_UnitHyperdriveCount_ShowsEditableStat(
+            string kind,
+            bool authored,
+            string count
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind);
+            string id = unit.ID;
+            if (!authored)
+            {
+                XDocument document = XDocument.Parse(unit.Catalog.Document.Text);
+                document
+                    .Descendants(kind)
+                    .Single(element => element.Element("TypeID")?.Value == id)
+                    .Element("HyperdriveCount")
+                    .Remove();
+                project.SetDocumentText(unit.Catalog.Document, document.ToString());
+                unit = project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.Kind == kind && record.ID == id);
+            }
+            string before = unit.Catalog.Document.Text;
+            bool wasDirty = project.IsDirty;
+
+            SelectRecord(unit);
+
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "HyperdriveCount");
+            TMP_InputField input = control.GetComponentInChildren<TMP_InputField>();
+            Assert.IsNotNull(input);
+            Assert.IsNotEmpty(control.Field.HelpText);
+            Assert.AreEqual(before, unit.Catalog.Document.Text);
+            Assert.AreEqual(wasDirty, project.IsDirty);
+            if (!authored)
+            {
+                Assert.IsEmpty(input.text);
+                Assert.IsNull(unit.Element.Element("HyperdriveCount"));
+            }
+
+            input.text = count;
+            input.onEndEdit.Invoke(count);
+
+            Assert.AreEqual(count, unit.Element.Element("HyperdriveCount").Value);
+        }
+
         [Test]
         public void Render_FactionMissionRestrictions_UsesNamedCheckboxesForTheAuthoredSelection()
         {
@@ -1742,8 +1797,11 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .First(record =>
                     record.Kind == "Starfighter" && record.Catalog.Faction == "Alliance"
                 );
-            string backgroundAddress = unit.GetField("EncyclopediaImagePath").Value;
-            SetFactionArtworkBackground("StarfighterBackgroundImagePath", backgroundAddress);
+            FactionTheme gameplayTheme = SetGameplayWindowBackgrounds();
+            string backgroundAddress = gameplayTheme
+                .StrategyWindows
+                .Fleet
+                .DetailBackgroundImagePath;
             SelectRecord(unit);
             RenderSection("Artwork");
 
@@ -1769,6 +1827,238 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase("CapitalShip", "CapitalShipBackgroundImagePath")]
+        [TestCase("Starfighter", "StarfighterBackgroundImagePath")]
+        public void Render_ShipArtworkBackgroundOverride_UsesUnitBackgroundForEncyclopedia(
+            string kind,
+            string defaultMember
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            SetFactionArtworkBackground(
+                defaultMember,
+                unit.GetField("EncyclopediaImagePath").Value
+            );
+            string address = unit.GetField("DisplayImagePath").Value;
+            project.SetField(unit.GetField("BackgroundImagePath"), address);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name == "ArticleImageTemplate-Output-EncyclopediaImagePath-Background"
+                );
+            Assert.AreSame(assets.GetTexture(address), background.texture);
+        }
+
+        [TestCase("CapitalShip", "DisplayImagePath", "Fleet", 6, 11, 122, 50, 132, 266)]
+        [TestCase("CapitalShip", "SmallDisplayImagePath", "Fleet", 32, 101, 61, 23, 132, 266)]
+        [TestCase(
+            "CapitalShip",
+            "BattleResultImagePath",
+            "Battle result",
+            46,
+            133,
+            122,
+            50,
+            400,
+            310
+        )]
+        [TestCase("Starfighter", "DisplayImagePath", "Status", 244, 40, 126, 48, 379, 272)]
+        [TestCase("Starfighter", "SmallDisplayImagePath", "Fleet", 32, 102, 61, 23, 132, 266)]
+        [TestCase(
+            "Starfighter",
+            "BattleResultImagePath",
+            "Battle result",
+            46,
+            133,
+            122,
+            50,
+            400,
+            310
+        )]
+        public void Render_ShipGameplayOutput_UsesGameplayWindowBackdropAndCrop(
+            string kind,
+            string member,
+            string context,
+            int x,
+            int y,
+            int width,
+            int height,
+            int backgroundWidth,
+            int backgroundHeight
+        )
+        {
+            FactionTheme theme = SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            project.SetField(
+                unit.GetField("BackgroundImagePath"),
+                unit.GetField("EncyclopediaImagePath").Value
+            );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            string address = context switch
+            {
+                "Fleet" => theme.StrategyWindows.Fleet.DetailBackgroundImagePath,
+                "Status" => theme.StrategyWindows.Status.BackgroundImagePath,
+                _ => theme.StrategyWindows.BattleAlert.ResultListBackgroundImagePath,
+            };
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name == "ArticleImageTemplate-Output-" + member + "-Background"
+                );
+
+            Assert.AreSame(assets.GetTexture(address), background.texture);
+            Rect expected = new(
+                x / (float)backgroundWidth,
+                1f - (y + height) / (float)backgroundHeight,
+                width / (float)backgroundWidth,
+                height / (float)backgroundHeight
+            );
+            Assert.That(background.uvRect, Is.EqualTo(expected));
+        }
+
+        [TestCase("CapitalShip", 0)]
+        [TestCase("CapitalShip", 1)]
+        [TestCase("CapitalShip", 2)]
+        [TestCase("Starfighter", 0)]
+        [TestCase("Starfighter", 1)]
+        [TestCase("Starfighter", 2)]
+        public void Render_ShipStateSize_UsesMatchingGameplayBackdrop(string kind, int size)
+        {
+            FactionTheme theme = SetGameplayWindowBackgrounds();
+            string address =
+                size == 2 ? theme.StrategyWindows.BattleAlert.ResultListBackgroundImagePath
+                : kind == "Starfighter" && size == 1
+                    ? theme.StrategyWindows.Status.BackgroundImagePath
+                : theme.StrategyWindows.Fleet.DetailBackgroundImagePath;
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize" + size)
+                .onClick.Invoke();
+
+            RawImage[] backgrounds = view.GetComponentsInChildren<RawImage>()
+                .Where(image =>
+                    image.name.StartsWith("ArticleImageTemplate-State-", StringComparison.Ordinal)
+                    && image.name.EndsWith("-Background", StringComparison.Ordinal)
+                )
+                .ToArray();
+            Assert.IsNotEmpty(backgrounds);
+            foreach (RawImage background in backgrounds)
+                Assert.AreSame(assets.GetTexture(address), background.texture, background.name);
+        }
+
+        [TestCase("FleetWindow", "DetailItemsScrollArea", 0)]
+        [TestCase("BattleAlertWindow", "ResultRowsScrollArea", 2)]
+        public void Render_ShipGameplayStates_AfterWindowPreviewScroll_PreservesBackgroundCrop(
+            string windowName,
+            string scrollName,
+            int size
+        )
+        {
+            SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == "Starfighter" && record.Catalog.Faction == "Alliance"
+                );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize" + size)
+                .onClick.Invoke();
+            Rect expected = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "ArticleImageTemplate-State-Normal-Background")
+                .uvRect;
+            ContentEditorArtworkWindowPreview preview =
+                view.GetComponentsInChildren<ContentEditorArtworkWindowPreview>(true)
+                    .Single(item => item.name == "ArtworkWindowPreview");
+            ScrollAreaView scroll = preview
+                .transform.Find(windowName)
+                .GetComponentsInChildren<ScrollAreaView>(true)
+                .Single(item => item.name == scrollName);
+            scroll.SetContentHeight(400, 50, true);
+            scroll.AlignContentTop(30);
+            Assert.Greater(scroll.ContentRoot.anchoredPosition.y, 0);
+
+            view.Refresh();
+
+            foreach (
+                RawImage background in view.GetComponentsInChildren<RawImage>()
+                    .Where(image =>
+                        image.name.StartsWith(
+                            "ArticleImageTemplate-State-",
+                            StringComparison.Ordinal
+                        ) && image.name.EndsWith("-Background", StringComparison.Ordinal)
+                    )
+            )
+                Assert.AreEqual(expected, background.uvRect, background.name);
+        }
+
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        public void Render_ShipGameplayArtwork_MalformedImageAddress_ShowsUnavailableSlot(
+            string kind
+        )
+        {
+            SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            unit.GetField("SmallDisplayImagePath").XmlElement.Value = "Pack/../../outside";
+            SelectRecord(unit);
+
+            RenderSection("Artwork");
+
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Image unavailable")
+            );
+        }
+
+        [TestCase("CapitalShip", "SmallDisplayImagePath")]
+        [TestCase("CapitalShip", "DisplayImagePath")]
+        [TestCase("Starfighter", "DisplayImagePath")]
+        [TestCase("Starfighter", "BattleResultImagePath")]
+        public void Render_GameplayArtworkRenamedHierarchy_PreservesTheBackground(
+            string kind,
+            string member
+        )
+        {
+            SetGameplayWindowBackgrounds();
+            SelectRecord(GetArtworkUnit(kind));
+            RenderSection("Artwork");
+            string name = "ArticleImageTemplate-Output-" + member + "-Background";
+            RawImage original = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == name);
+            Texture expected = original.texture;
+            Rect uv = original.uvRect;
+            ContentEditorArtworkWindowPreview windows =
+                view.GetComponentInChildren<ContentEditorArtworkWindowPreview>(true);
+            foreach (Transform child in windows.GetComponentsInChildren<Transform>(true))
+                child.name = "Renamed " + child.GetInstanceID();
+
+            view.Refresh();
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == name);
+            Assert.AreSame(expected, background.texture);
+            Assert.AreEqual(uv, background.uvRect);
+        }
+
         [Test]
         public void Render_OfficerArtwork_AppliesRuntimeBackgroundsToApplicableOutputs()
         {
@@ -1790,7 +2080,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Select(image => image.name)
                 .ToArray();
 
-            CollectionAssert.Contains(
+            CollectionAssert.DoesNotContain(
                 backgrounds,
                 "ArticleImageTemplate-Output-MessageImagePath-Background"
             );
@@ -1817,10 +2107,209 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreSame(assets.GetTexture(compactBackgroundAddress), stateBackground.texture);
         }
 
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        [TestCase("Regiment")]
+        [TestCase("Building")]
+        public void Render_UnitDisplayArtwork_UsesStatusWindowBackdropAndCrop(string kind)
+        {
+            FactionTheme theme = SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = GetArtworkUnit(kind);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name == "ArticleImageTemplate-Output-DisplayImagePath-Background"
+                );
+            Texture2D entity = assets.GetTexture(unit.GetField("DisplayImagePath").Value);
+            Texture2D backdrop = assets.GetTexture(
+                theme.StrategyWindows.Status.BackgroundImagePath
+            );
+            RectInt slot = new(244, 20, 126, 88);
+            Vector2Int size = UILayout.GetFittedImageSize(entity, slot);
+            int x = slot.x + (slot.width - size.x) / 2;
+            int y = slot.y + (slot.height - size.y) / 2;
+            Vector2Int backdropSize = UILayout.GetTextureSourceSize(backdrop);
+
+            Assert.AreSame(backdrop, background.texture);
+            Assert.AreEqual(
+                new Rect(
+                    x / (float)backdropSize.x,
+                    1f - (y + size.y) / (float)backdropSize.y,
+                    size.x / (float)backdropSize.x,
+                    size.y / (float)backdropSize.y
+                ),
+                background.uvRect
+            );
+        }
+
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        [TestCase("Regiment")]
+        [TestCase("Building")]
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        public void Render_MessageArtwork_LeavesReportSpecificBackgroundUnassigned(string kind)
+        {
+            SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = GetArtworkUnit(kind);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            Assert.IsFalse(
+                view.GetComponentsInChildren<RawImage>()
+                    .Any(image =>
+                        image.name == "ArticleImageTemplate-Output-MessageImagePath-Background"
+                    )
+            );
+            Assert.IsTrue(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Message backgrounds depend on the report.")
+            );
+        }
+
+        [TestCase("Officer", false)]
+        [TestCase("Officer", true)]
+        [TestCase("CapitalShip", false)]
+        [TestCase("CapitalShip", true)]
+        [TestCase("Starfighter", false)]
+        [TestCase("Starfighter", true)]
+        public void Render_UnitInspectorArtwork_UsesTheEncyclopediaBackground(
+            string kind,
+            bool sharedImage
+        )
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            string address = unit.GetField("SmallDisplayImagePath").Value;
+            project.SetField(unit.GetField("BackgroundImagePath"), address);
+            if (sharedImage)
+                project.SetField(
+                    unit.GetField("DisplayImagePath"),
+                    unit.GetField("EncyclopediaImagePath").Value
+                );
+            SelectRecord(unit);
+            RenderSection("General");
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "ArticleImageTemplate-Unit-preview-Background");
+            Assert.AreSame(assets.GetTexture(address), background.texture);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), background.uvRect);
+        }
+
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        [TestCase("Regiment")]
+        public void Render_CompactUnitBackdrop_StretchesTheFullCardTexture(string kind)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            string address = unit.GetField("EncyclopediaImagePath").Value;
+            SetFactionPersonnelBackground(address);
+            if (string.IsNullOrWhiteSpace(unit.GetField("SmallDisplayImagePath").Value))
+                project.SetField(
+                    unit.GetField("SmallDisplayImagePath"),
+                    unit.GetField("DisplayImagePath").Value
+                );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image =>
+                    image.name == "ArticleImageTemplate-Output-SmallDisplayImagePath-Background"
+                );
+            Assert.AreSame(assets.GetTexture(address), background.texture);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), background.uvRect);
+        }
+
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        [TestCase("Regiment")]
+        [TestCase("Building")]
+        public void GetArtworkCutBackground_LargeUnitCut_UsesStatusWindowBackdrop(string kind)
+        {
+            FactionTheme theme = SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = GetArtworkUnit(kind);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            ContentPackEditorField field = unit.GetField("DisplayImagePath");
+            var background = view.GetArtworkCutBackground(field, new Vector2Int(360, 360));
+
+            Assert.AreSame(
+                assets.GetTexture(theme.StrategyWindows.Status.BackgroundImagePath),
+                background.Texture
+            );
+            Assert.AreEqual(
+                new Rect(267f / 379, 1f - 104f / 272, 80f / 379, 80f / 272),
+                background.Uv
+            );
+        }
+
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        public void Render_LargePersonnelState_UsesStatusWindowBackdrop(string kind)
+        {
+            FactionTheme theme = SetGameplayWindowBackgrounds();
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize1")
+                .onClick.Invoke();
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "ArticleImageTemplate-State-Normal-Background");
+            Assert.AreSame(
+                assets.GetTexture(theme.StrategyWindows.Status.BackgroundImagePath),
+                background.texture
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_FacilityTransitArtwork_UsesDefenseTransitBackdrop(bool hasOverlay)
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Building");
+            string address = unit.GetField("DisplayImagePath").Value;
+            project.SetField(
+                unit.GetField("InTransitSmallImagePath"),
+                hasOverlay ? address : string.Empty
+            );
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+            theme.Element.Element("StrategyWindows")?.Remove();
+            theme.Element.Add(
+                new XElement(
+                    "StrategyWindows",
+                    new XElement("Defense", new XElement("EnrouteBackgroundImagePath", address))
+                )
+            );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            RawImage background = view.GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "ArticleImageTemplate-State-Travel-Background");
+            Assert.AreSame(assets.GetTexture(address), background.texture);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), background.uvRect);
+        }
+
         [TestCase(800)]
         [TestCase(340)]
         public void Render_UnitArtworkBackgroundToggles_AlignCaptionToRightInset(int width)
         {
+            SetGameplayWindowBackgrounds();
             ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
@@ -1859,6 +2348,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [Test]
         public void Render_UnitArtworkBackgroundToggles_ChangeOnlyTheirOwnPreviewSection()
         {
+            SetGameplayWindowBackgrounds();
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
@@ -1969,6 +2459,42 @@ namespace Rebellion.Tests.ContentEditor.UI
             CollectionAssert.Contains(fields, "BattleResultInTransitImagePath");
             CollectionAssert.DoesNotContain(fields, "InTransitSmallImagePath");
             CollectionAssert.DoesNotContain(fields, "InTransitImagePath");
+        }
+
+        [TestCase("CapitalShip", 0)]
+        [TestCase("CapitalShip", 1)]
+        [TestCase("CapitalShip", 2)]
+        [TestCase("Starfighter", 0)]
+        [TestCase("Starfighter", 1)]
+        [TestCase("Starfighter", 2)]
+        public void Render_ShipStateSizeChange_PreservesScrollOffset(string kind, int size)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind && record.Catalog.Faction == "Alliance");
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            ScrollAreaLayout fields = view.GetComponentsInChildren<ScrollAreaLayout>(true).Single();
+            ((RectTransform)fields.transform).SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                240
+            );
+            if (size == 0)
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "UnitArtworkSize1")
+                    .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+            fields.ScrollArea.AlignContentTop(200);
+            float offset = fields.ScrollArea.ContentRoot.anchoredPosition.y;
+            Assert.Greater(offset, 0);
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "UnitArtworkSize" + size)
+                .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+
+            Assert.AreEqual(offset, fields.ScrollArea.ContentRoot.anchoredPosition.y, 0.01f);
         }
 
         [Test]
@@ -2240,6 +2766,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [Test]
         public void Render_UnitArtworkImages_UsesCurrentOutputTexture()
         {
+            SetGameplayWindowBackgrounds();
             ContentPackEditorRecord unit = project
                 .GetCatalogs()
                 .SelectMany(catalog => catalog.Records)
@@ -2473,6 +3000,122 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        public void Render_OfficerCombinedState_ComposesTransitInjuryAndCapture(int travelSource)
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            string sharedTravel = SetOfficerSharedTravelBackground();
+            string compact = unit.GetField("SmallDisplayImagePath").Value;
+            string large = unit.GetField("DisplayImagePath").Value;
+            project.SetField(
+                unit.GetField("InTransitSmallImagePath"),
+                travelSource == 1 ? compact : string.Empty
+            );
+            project.SetField(
+                unit.GetField("InTransitImagePath"),
+                travelSource == 2 ? large : string.Empty
+            );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            const string prefix = "ArticleImageTemplate-State-In-transit-+-injured-+-captured-";
+            RawImage[] images = view.GetComponentsInChildren<RawImage>();
+            RawImage background = images.Single(image => image.name == prefix + "Background");
+            RawImage entity = images.Single(image => image.name == prefix + "Entity");
+            RawImage injury = images.Single(image => image.name == prefix + "Overlay-0");
+            RawImage capture = images.Single(image => image.name == prefix + "Overlay-1");
+            Assert.AreSame(assets.GetTexture(sharedTravel), background.texture);
+            if (travelSource > 0)
+            {
+                RawImage transit = images.Single(image => image.name == prefix + "Transit");
+                Assert.AreSame(
+                    assets.GetTexture(travelSource == 1 ? compact : large),
+                    transit.texture
+                );
+                Assert.Less(
+                    background.transform.GetSiblingIndex(),
+                    transit.transform.GetSiblingIndex()
+                );
+                Assert.Less(
+                    transit.transform.GetSiblingIndex(),
+                    entity.transform.GetSiblingIndex()
+                );
+            }
+            else
+                Assert.IsFalse(images.Any(image => image.name == prefix + "Transit"));
+            Assert.AreSame(assets.GetTexture(compact), entity.texture);
+            Assert.AreSame(
+                assets.GetTexture(unit.GetField("InjuredImagePath").Value),
+                injury.texture
+            );
+            Assert.AreSame(
+                assets.GetTexture(unit.GetField("CapturedOverlayImagePath").Value),
+                capture.texture
+            );
+            Assert.Less(background.transform.GetSiblingIndex(), entity.transform.GetSiblingIndex());
+            Assert.Less(entity.transform.GetSiblingIndex(), injury.transform.GetSiblingIndex());
+            Assert.Less(injury.transform.GetSiblingIndex(), capture.transform.GetSiblingIndex());
+            Assert.IsFalse(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "Travel + injured")
+            );
+        }
+
+        [TestCase("In-transit", true)]
+        [TestCase("In-transit", false)]
+        [TestCase("In-transit-+-injured-+-captured", true)]
+        [TestCase("In-transit-+-injured-+-captured", false)]
+        public void Render_OfficerCompactTravelFallback_FitsSquareArtworkBehindThePortrait(
+            string state,
+            bool showBackground
+        )
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            string sharedTravel = SetOfficerSharedTravelBackground();
+            string large = unit.GetField("DisplayImagePath").Value;
+            project.SetField(unit.GetField("InTransitSmallImagePath"), string.Empty);
+            project.SetField(unit.GetField("InTransitImagePath"), large);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            if (!showBackground)
+                view.GetComponentsInChildren<UICheckboxView>()
+                    .Single(toggle => toggle.name == "GameplayStatesBackgroundToggle")
+                    .GetComponent<Toggle>()
+                    .isOn = false;
+
+            string prefix = "ArticleImageTemplate-State-" + state + "-";
+            RawImage[] images = view.GetComponentsInChildren<RawImage>();
+            RawImage frame = images.Single(image => image.name == prefix + "Backing");
+            RawImage transit = images.Single(image => image.name == prefix + "Transit");
+            RawImage entity = images.Single(image => image.name == prefix + "Entity");
+            RectInt frameBounds = UILayout.GetSourceRect(frame.rectTransform);
+            RectInt transitBounds = UILayout.GetSourceRect(transit.rectTransform);
+
+            Assert.AreSame(assets.GetTexture(large), transit.texture);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), transit.uvRect);
+            Assert.AreEqual(transitBounds.height, transitBounds.width);
+            Assert.Less(transitBounds.width, frameBounds.width);
+            Assert.AreEqual(frameBounds.height, transitBounds.height);
+            Assert.That(transitBounds.center.x, Is.EqualTo(frameBounds.center.x).Within(0.5f));
+            Assert.That(transitBounds.center.y, Is.EqualTo(frameBounds.center.y).Within(0.5f));
+            Assert.Less(transit.transform.GetSiblingIndex(), entity.transform.GetSiblingIndex());
+            if (showBackground)
+            {
+                RawImage background = images.Single(image => image.name == prefix + "Background");
+                Assert.AreSame(assets.GetTexture(sharedTravel), background.texture);
+                Assert.AreEqual(new Rect(0, 0, 1, 1), background.uvRect);
+                Assert.AreEqual(frameBounds, UILayout.GetSourceRect(background.rectTransform));
+                Assert.Less(
+                    background.transform.GetSiblingIndex(),
+                    transit.transform.GetSiblingIndex()
+                );
+            }
+            else
+                Assert.IsFalse(images.Any(image => image.name == prefix + "Background"));
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void Render_OfficerTravelArtwork_ShowsEditableCompactAndLargeBackgrounds(
@@ -2497,9 +3140,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreSame(
                 assets.GetTexture(compactArtworkAssigned ? compactAddress : largeAddress),
                 view.GetComponentsInChildren<RawImage>()
-                    .Single(image =>
-                        image.name == "ArticleImageTemplate-State-In-transit-Background"
-                    )
+                    .Single(image => image.name == "ArticleImageTemplate-State-In-transit-Transit")
                     .texture
             );
 
@@ -4168,8 +4809,8 @@ namespace Rebellion.Tests.ContentEditor.UI
             RenderSection(tabName);
             Canvas.ForceUpdateCanvases();
             RawImage image = view.GetComponentsInChildren<RawImage>()
-                .Single(control => control.name == "Portrait");
-            RectTransform content = (RectTransform)image.transform.parent.parent.parent;
+                .Single(control => control.name == "ArticleImageTemplate-Unit-preview-Entity");
+            RectTransform content = (RectTransform)image.transform.parent;
             Bounds imageBounds = RectTransformUtility.CalculateRelativeRectTransformBounds(
                 content,
                 image.transform
@@ -4228,6 +4869,98 @@ namespace Rebellion.Tests.ContentEditor.UI
                     FieldRect(fields[first]).Overlaps(FieldRect(fields[second])),
                     fields[first].name + " overlaps " + fields[second].name
                 );
+        }
+
+        /// <summary>
+        /// Chooses a representative unit and gives shared facilities an explicit preview faction.
+        /// </summary>
+        /// <param name="kind">The unit kind to represent.</param>
+        /// <returns>The editable unit with a known faction theme.</returns>
+        private ContentPackEditorRecord GetArtworkUnit(string kind)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record =>
+                    record.Kind == kind
+                    && (kind == "Building" || record.Catalog.Faction == "Alliance")
+                    && !ContentEditorUnitArtworkLayout.IsHeadquartersIcon(record)
+                );
+            if (kind == "Building")
+                unit.Element.SetElementValue("ManufacturingFactionInstanceIDs", "FNALL1");
+            return unit;
+        }
+
+        /// <summary>
+        /// Configures the shared officer travel background independently of per-unit artwork.
+        /// </summary>
+        /// <returns>The shared travel background's content address.</returns>
+        private string SetOfficerSharedTravelBackground()
+        {
+            FactionTheme source = SetGameplayWindowBackgrounds();
+            string address = source.StrategyWindows.Fleet.PersonnelEnrouteBackgroundImagePath;
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+            theme
+                .Element.Element("StrategyWindows")
+                .Element("Fleet")
+                .Add(new XElement("PersonnelEnrouteBackgroundImagePath", address));
+            return address;
+        }
+
+        /// <summary>
+        /// Supplies the shipped gameplay-window backgrounds independently of encyclopedia artwork.
+        /// </summary>
+        /// <returns>The shipped faction theme supplying the expected gameplay assets.</returns>
+        private FactionTheme SetGameplayWindowBackgrounds()
+        {
+            FactionTheme source = TestContent.Data.FactionThemes.Single(theme =>
+                theme.FactionInstanceID == "FNALL1"
+            );
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+            theme.Element.Element("StrategyWindows")?.Remove();
+            theme.Element.Add(
+                new XElement(
+                    "StrategyWindows",
+                    new XElement(
+                        "Fleet",
+                        new XElement(
+                            "DetailBackgroundImagePath",
+                            source.StrategyWindows.Fleet.DetailBackgroundImagePath
+                        )
+                    ),
+                    new XElement(
+                        "Status",
+                        new XElement(
+                            "BackgroundImagePath",
+                            source.StrategyWindows.Status.BackgroundImagePath
+                        )
+                    ),
+                    new XElement(
+                        "BattleAlert",
+                        new XElement(
+                            "ResultListBackgroundImagePath",
+                            source.StrategyWindows.BattleAlert.ResultListBackgroundImagePath
+                        ),
+                        new XElement(
+                            "SummaryBackgroundImagePath",
+                            source.StrategyWindows.BattleAlert.SummaryBackgroundImagePath
+                        )
+                    )
+                )
+            );
+            return source;
         }
 
         /// <summary>

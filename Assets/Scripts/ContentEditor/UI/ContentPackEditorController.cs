@@ -966,8 +966,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 is ContentEditorArtworkEffectStyle.ShipTravel
                     or ContentEditorArtworkEffectStyle.Damage;
             Texture2D previewBackground =
-                shipEffects ? view.GetShipEffectBackground()
-                : style == ContentEditorArtworkEffectStyle.RegimentTravel
+                style == ContentEditorArtworkEffectStyle.RegimentTravel
                     ? view.GetTroopTransitBackground()
                 : style == ContentEditorArtworkEffectStyle.PersonnelTravel
                     ? view.GetPersonnelTransitBackground()
@@ -1197,6 +1196,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 ContentEditorArtworkEffectGenerator.EditableFrame frame;
                 var output = outputs[index];
+                var shipBackground = shipEffects
+                    ? view.GetShipEffectBackground(output.Field)
+                    : default;
                 string existing = ExistingSource(draft, index);
                 bool completeTravel =
                     effect == ContentEditorArtworkEffect.Travel
@@ -1231,7 +1233,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         style,
                         draft.Seed,
                         output.StretchSource,
-                        previewBackground,
+                        shipEffects ? shipBackground.Texture : previewBackground,
                         existing,
                         draft.Variant,
                         legacyStreaks: draft.RenderVersion == 2,
@@ -1241,7 +1243,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         travelPattern: pattern,
                         preserveRegisteredTravel: completeTravel && draft.RenderVersion >= 6,
                         varyShipWakes: draft.VaryShipWakes,
-                        loadLayerSource: LoadLayerSource
+                        loadLayerSource: LoadLayerSource,
+                        backdropUv: shipBackground.Texture == null ? null : shipBackground.Uv
                     );
                 }
                 catch (InvalidDataException)
@@ -1270,14 +1273,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         style,
                         draft.Seed,
                         false,
-                        previewBackground,
+                        shipEffects ? shipBackground.Texture : previewBackground,
                         existing,
                         draft.Variant,
                         legacyStreaks: draft.RenderVersion == 2,
                         facilityClearance: clearance,
                         completeTravel: completeTravel,
                         travelPattern: fallback,
-                        loadLayerSource: LoadLayerSource
+                        loadLayerSource: LoadLayerSource,
+                        backdropUv: shipBackground.Texture == null ? null : shipBackground.Uv
                     );
                 }
                 if (draft.RenderVersion >= 4 && draft.FacilityClearance < 0)

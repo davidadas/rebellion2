@@ -77,48 +77,18 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
-        public void CreateCopy_SpaceCombatMetadata_DetachesNestedCollections()
-        {
-            GameConfig.SpaceCombatConfig source = new GameConfig.SpaceCombatConfig
-            {
-                HyperdriveSystemCounts = new Dictionary<string, int> { ["cruiser"] = 2 },
-            };
-            GameConfig.SpaceCombatConfig copy = source.CreateCopy();
-
-            CollectionAssert.AreEquivalent(
-                source.HyperdriveSystemCounts,
-                copy.HyperdriveSystemCounts
-            );
-            copy.HyperdriveSystemCounts["cruiser"] = 1;
-
-            Assert.AreEqual(2, source.HyperdriveSystemCounts["cruiser"]);
-        }
-
-        [Test]
-        public void Serialize_SpaceCombatMetadata_PreservesSystemCounts()
-        {
-            GameConfig config = new GameConfig();
-            config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("immobile", 0);
-            config.Combat.SpaceCombat.HyperdriveSystemCounts.Add("cruiser", 3);
-
-            GameConfig loaded = SerializationHelper.Deserialize<GameConfig>(
-                SerializationHelper.Serialize(config)
-            );
-
-            CollectionAssert.AreEquivalent(
-                config.Combat.SpaceCombat.HyperdriveSystemCounts,
-                loaded.Combat.SpaceCombat.HyperdriveSystemCounts
-            );
-        }
-
-        [Test]
-        public void Deserialize_OmittedSpaceCombatMetadata_UsesEmptyCollections()
+        public void Deserialize_ObsoleteHyperdriveCounts_AcceptsWithoutWriting()
         {
             GameConfig config = SerializationHelper.Deserialize<GameConfig>(
-                "<GameConfig><Combat><SpaceCombat/></Combat></GameConfig>"
+                "<GameConfig><Combat><SpaceCombat><HyperdriveSystemCounts>"
+                    + "<Entry><Key>cruiser</Key><Value>2</Value></Entry>"
+                    + "</HyperdriveSystemCounts></SpaceCombat></Combat></GameConfig>"
             );
 
-            CollectionAssert.IsEmpty(config.Combat.SpaceCombat.HyperdriveSystemCounts);
+            Assert.That(
+                SerializationHelper.Serialize(config),
+                Does.Not.Contain("HyperdriveSystemCounts")
+            );
         }
 
         [Test]

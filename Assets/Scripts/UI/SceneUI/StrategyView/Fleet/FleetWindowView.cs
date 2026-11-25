@@ -498,6 +498,41 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
     }
 
     /// <summary>
+    /// Returns the background region behind the selected-ship banner.
+    /// </summary>
+    /// <returns>The normalized region of the detail background.</returns>
+    public Rect GetBannerArtworkBackgroundUv()
+    {
+        VerifyReferences();
+        return UILayout.GetBackgroundUv(
+            UILayout.GetSourceRect(bannerImage.rectTransform, transform),
+            UILayout.GetSourceRect(detailBackgroundImage.rectTransform, transform)
+        );
+    }
+
+    /// <summary>
+    /// Returns the background behind the first unit card in a detail tab.
+    /// </summary>
+    /// <param name="pixels">The unit artwork's pixel dimensions.</param>
+    /// <param name="tab">The represented detail tab.</param>
+    /// <returns>The normalized detail-background region, independent of current scrolling.</returns>
+    public Rect GetDetailArtworkBackgroundUv(Vector2Int pixels, FleetWindowTab tab)
+    {
+        VerifyReferences();
+        RectInt image = detailItemTemplate.GetArtworkRect(
+            pixels,
+            FleetWindowRenderData.GetDetailEntityFrameYOffset(tab)
+        );
+        image.position += UILayout
+            .GetSourceRect(detailItemsScrollArea.ViewportRoot, transform)
+            .position;
+        return UILayout.GetBackgroundUv(
+            image,
+            UILayout.GetSourceRect(detailBackgroundImage.rectTransform, transform)
+        );
+    }
+
+    /// <summary>
     /// Applies selected-fleet visibility and detail presentation.
     /// </summary>
     /// <param name="data">The fleet-window snapshot.</param>

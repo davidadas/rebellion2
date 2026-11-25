@@ -383,7 +383,9 @@ internal sealed class FleetWindowProjector
                     selectionTexture: selected
                         ? GetDetailSelectionTexture(uiContext, fleet.OwnerInstanceID)
                         : null,
-                    entityFrameYOffset: session.ActiveTab == FleetWindowTab.CapitalShips ? -1 : 0,
+                    entityFrameYOffset: FleetWindowRenderData.GetDetailEntityFrameYOffset(
+                        session.ActiveTab
+                    ),
                     starfighterBadgeTexture: GetBadgeTexture(
                         uiContext,
                         icons,

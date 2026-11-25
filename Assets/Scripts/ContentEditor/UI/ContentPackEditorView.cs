@@ -2415,8 +2415,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <summary>
     /// Resolves the backdrop behind generated ship states using the artwork page's current setting.
     /// </summary>
-    /// <returns>The configured override or faction default, when visible.</returns>
-    internal Texture2D GetShipEffectBackground() => form.GetShipEffectBackground();
+    /// <param name="field">The specific gameplay image output.</param>
+    /// <returns>The gameplay backdrop and crop, when visible.</returns>
+    internal (Texture2D Texture, Rect Uv) GetShipEffectBackground(ContentPackEditorField field) =>
+        form.GetShipEffectBackground(field);
 
     /// <summary>
     /// Resolves the starfield to include in a generated encyclopedia image.

@@ -269,6 +269,25 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Returns the background region behind centered unit artwork in the status image area.
+    /// </summary>
+    /// <param name="pixels">The artwork's pixel dimensions.</param>
+    /// <param name="background">The background texture whose native size defines the window.</param>
+    /// <returns>The normalized region of the status background.</returns>
+    public Rect GetArtworkBackgroundUv(Vector2Int pixels, Texture background)
+    {
+        VerifyReferences(false);
+        RectInt image = UILayout.GetFittedImageRect(
+            pixels,
+            UILayout.GetSourceRect(statusImageAreaTemplate, transform)
+        );
+        return UILayout.GetBackgroundUv(
+            image,
+            new RectInt(Vector2Int.zero, UILayout.GetTextureSourceSize(background))
+        );
+    }
+
+    /// <summary>
     /// Fits projected images into the authored status-image slot.
     /// </summary>
     /// <param name="textures">The images to render in stacking order.</param>
@@ -284,10 +303,12 @@ public sealed class StatusWindowView : MonoBehaviour, IContentInitializable
                 continue;
 
             RawImage image = GetStatusImage(visibleIndex++);
-            Vector2Int size = UILayout.GetFittedImageSize(texture, imageArea);
-            int x = imageArea.x + (centerImage ? (imageArea.width - size.x) / 2 : 0);
-            int y = imageArea.y + (centerImage ? (imageArea.height - size.y) / 2 : 0);
-            UILayout.SetImage(image, texture, x, y, size.x, size.y);
+            RectInt rect = UILayout.GetFittedImageRect(
+                new Vector2Int(texture.width, texture.height),
+                imageArea,
+                centerImage
+            );
+            UILayout.SetImage(image, texture, rect.x, rect.y, rect.width, rect.height);
         }
 
         HideImagesFrom(visibleIndex);

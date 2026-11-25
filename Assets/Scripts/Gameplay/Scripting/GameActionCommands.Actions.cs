@@ -1475,7 +1475,7 @@ namespace Rebellion.Gameplay.Scripting
         /// </summary>
         /// <param name="action">The authored action definition.</param>
         /// <param name="context">The context.</param>
-        private static void Execute(SetNodeStateAction action, GameActionContext context)
+        private void Execute(SetNodeStateAction action, GameActionContext context)
         {
             IEnumerable<ISceneNode> selected = action.Selectors.SelectMany(selector =>
                 GameSelectorResolver.Select(
@@ -1499,24 +1499,33 @@ namespace Rebellion.Gameplay.Scripting
                     "SetNodeState requires a resolvable node or selector."
                 );
 
+            bool enabled = action.State == SceneNodeState.Active;
+            nodes.RemoveAll(node => node.IsEnabled == enabled);
+            if (!enabled && _missionResolver != null)
+            {
+                List<IMissionParticipant> assigned = nodes
+                    .OfType<IMissionParticipant>()
+                    .Where(participant =>
+                        participant.GetParent() is Mission mission && mission.GetParent() != null
+                    )
+                    .ToList();
+                if (assigned.Count != 0)
+                    context.Record(_missionResolver.DeactivateAssignedParticipants(assigned));
+            }
+
             foreach (ISceneNode node in nodes)
             {
                 if (
-                    action.State == SceneNodeState.Inactive
+                    !enabled
                     && node is IMissionParticipant
                     && node.GetParent() is Mission mission
                     && mission.GetParent() != null
                 )
-                {
                     throw new InvalidOperationException(
                         $"SetNodeState cannot deactivate mission participant "
                             + $"'{node.InstanceID}' on active mission '{mission.InstanceID}'."
                     );
-                }
 
-                bool enabled = action.State == SceneNodeState.Active;
-                if (node.IsEnabled == enabled)
-                    continue;
                 context.Game.SetNodeEnabled(node, enabled);
                 context.Record(
                     new SceneNodeActivationChangedResult

@@ -122,6 +122,130 @@ namespace Rebellion.Tests.Gameplay.Scripting
             Assert.IsTrue(officer.IsActive());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Execute_SetNodeStateOnMission_WithdrawsOfficerAndReevaluatesTeam(
+            bool hasTeammate
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            Officer teammate = EntityFactory.CreateOfficer("teammate", "rebels");
+            StubMission mission = new("rebels", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+            if (hasTeammate)
+                game.AttachNode(teammate, mission);
+            mission.Initiate(10);
+
+            CreateMissionActionCommands(game)
+                .Execute(
+                    new[]
+                    {
+                        new SetNodeStateAction
+                        {
+                            InstanceID = officer.InstanceID,
+                            State = SceneNodeState.Inactive,
+                        },
+                    },
+                    evaluation: null
+                );
+
+            Assert.IsFalse(officer.IsActive());
+            Assert.AreSame(planet, officer.GetParent());
+            if (hasTeammate)
+            {
+                Assert.AreSame(planet, mission.GetParent());
+                Assert.AreSame(mission, teammate.GetParent());
+                Assert.IsNull(mission.GetAbortReason(game));
+            }
+            else
+            {
+                Assert.IsNull(mission.GetParent());
+            }
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Execute_SetCaptureStatusThenDeactivate_PreservesRemainingMissionTeam(
+            bool isColonized
+        )
+        {
+            GameRoot game = BuildGame(out _, out Planet planet);
+            planet.IsColonized = isColonized;
+            if (!isColonized)
+                game.ChangeOwnership(planet, null);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            Officer teammate = EntityFactory.CreateOfficer("teammate", "rebels");
+            StubMission mission = new("rebels", planet.InstanceID);
+            game.AttachNode(mission, planet);
+            game.AttachNode(officer, mission);
+            game.AttachNode(teammate, mission);
+            mission.Initiate(10);
+
+            CreateMissionActionCommands(game)
+                .Execute(
+                    new GameAction[]
+                    {
+                        new SetCaptureStatusAction
+                        {
+                            OfficerInstanceID = officer.InstanceID,
+                            CaptorFactionInstanceID = "empire",
+                            IsCaptured = true,
+                            CanEscape = false,
+                        },
+                        new SetNodeStateAction
+                        {
+                            InstanceID = officer.InstanceID,
+                            State = SceneNodeState.Inactive,
+                        },
+                    },
+                    evaluation: null
+                );
+
+            Assert.IsTrue(officer.IsCaptured);
+            Assert.IsFalse(officer.IsActive());
+            Assert.AreSame(planet, officer.GetParent());
+            Assert.AreSame(mission, teammate.GetParent());
+            Assert.IsFalse(teammate.IsCaptured);
+            Assert.IsNull(mission.GetAbortReason(game));
+        }
+
+        [Test]
+        public void Execute_SetNodeStateAtHostileMission_ReturnsOfficerToValidLocation()
+        {
+            GameRoot game = BuildGame(out Planet target, out Planet origin);
+            Officer officer = EntityFactory.CreateOfficer("officer", "rebels");
+            officer.MissionReturnParentInstanceID = origin.InstanceID;
+            officer.MissionReturnLocationInstanceID = origin.InstanceID;
+            StubMission mission = new("rebels", target.InstanceID);
+            game.AttachNode(mission, target);
+            game.AttachNode(officer, mission);
+            mission.Initiate(10);
+
+            CreateMissionActionCommands(game)
+                .Execute(
+                    new GameAction[]
+                    {
+                        new SetNodeStateAction
+                        {
+                            InstanceID = officer.InstanceID,
+                            State = SceneNodeState.Inactive,
+                        },
+                        new SetNodeStateAction
+                        {
+                            InstanceID = officer.InstanceID,
+                            State = SceneNodeState.Active,
+                        },
+                    },
+                    evaluation: null
+                );
+
+            Assert.IsTrue(officer.IsActive());
+            Assert.AreSame(origin, officer.GetParent());
+            Assert.IsNull(mission.GetParent());
+        }
+
         [Test]
         public void Execute_SetNodeStateSelector_DisablesEveryMatchingOfficer()
         {
@@ -1228,6 +1352,38 @@ namespace Rebellion.Tests.Gameplay.Scripting
                 new GameActionCommands(context.Game, context.Random)
             );
             Assert.AreEqual(40, officer.GetEffectiveRating(SkillRating.Leadership));
+        }
+
+        /// <summary>
+        /// Creates scripting commands with the mission lifecycle configured.
+        /// </summary>
+        /// <param name="game">The game hosting the missions.</param>
+        /// <returns>The commands used to execute scripted mission changes.</returns>
+        private static GameActionCommands CreateMissionActionCommands(GameRoot game)
+        {
+            MovementCommands movement = new(
+                game,
+                new FogOfWarCommands(game),
+                new FleetCommands(game),
+                new FogOfWarQueries(game),
+                new MovementQueries(game)
+            );
+            MissionCommands missions = TestSystems.CreateMissionCommands(
+                game,
+                game.Random,
+                movement
+            );
+            return new GameActionCommands(
+                game,
+                game.Random,
+                unitFactory: null,
+                movement,
+                planetaryControlCommands: null,
+                duelCommands: null,
+                messageCommands: null,
+                missionResolver: TestSystems.GetMissionResolver(missions),
+                blockadeTransitionResolver: null
+            );
         }
 
         /// <summary>

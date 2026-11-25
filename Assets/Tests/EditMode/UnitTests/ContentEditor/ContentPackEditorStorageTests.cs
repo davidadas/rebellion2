@@ -10,6 +10,27 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void WriteBytesAtomically_LongArtworkPath_PublishesBytesAndCleansTemporary(
+            bool replacesExisting
+        )
+        {
+            string directory = Path.Combine(contentRoot, "Assets", "ArtworkSources");
+            Directory.CreateDirectory(directory);
+            string target = Path.Combine(
+                directory,
+                new string('a', 250 - directory.Length - 1 - ".png".Length) + ".png"
+            );
+            byte[] expected = { 1, 2, 3 };
+            if (replacesExisting)
+                File.WriteAllBytes(target, new byte[] { 4, 5 });
+            ContentPackEditorStorage.WriteBytesAtomically(target, expected);
+
+            CollectionAssert.AreEqual(expected, File.ReadAllBytes(target));
+            Assert.IsEmpty(Directory.GetFiles(directory, "*.tmp"));
+        }
+
         [Test]
         public void Save_HeadquartersFacilityList_PreservesOrderedQuantitiesWhenLoaded()
         {

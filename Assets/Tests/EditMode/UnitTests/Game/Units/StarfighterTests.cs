@@ -141,6 +141,55 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(ManufacturingType.Ship, type, "Starfighter should be of type Ship");
         }
 
+        [TestCase(0, 0)]
+        [TestCase(-1, 0)]
+        [TestCase(60, 1)]
+        public void HyperdriveCount_Omitted_UsesTravelCapability(int rating, int expected)
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                $"<Starfighter><Hyperdrive>{rating}</Hyperdrive></Starfighter>"
+            );
+
+            Assert.AreEqual(expected, fighter.HyperdriveCount);
+        }
+
+        [TestCase(0)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void Serialize_HyperdriveCount_PreservesValue(int count)
+        {
+            Starfighter fighter = new Starfighter { Hyperdrive = 60, HyperdriveCount = count };
+
+            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(
+                SerializationHelper.Serialize(fighter)
+            );
+
+            Assert.AreEqual(count, loaded.HyperdriveCount);
+            Assert.AreEqual(60, loaded.Hyperdrive);
+        }
+
+        [Test]
+        public void CreateCopy_HyperdriveCount_PreservesValue()
+        {
+            Starfighter fighter = new Starfighter { Hyperdrive = 60, HyperdriveCount = 3 };
+
+            Starfighter copy = (Starfighter)fighter.CreateCopy();
+
+            Assert.AreEqual(3, copy.HyperdriveCount);
+        }
+
+        [Test]
+        public void CreateCopy_OmittedHyperdriveCount_PreservesTravelFallback()
+        {
+            Starfighter fighter = new Starfighter { Hyperdrive = 60 };
+
+            Starfighter copy = (Starfighter)fighter.CreateCopy();
+            copy.Hyperdrive = 0;
+
+            Assert.AreEqual(0, copy.HyperdriveCount);
+            Assert.AreEqual(1, fighter.HyperdriveCount);
+        }
+
         [Test]
         public void GetWeaponStrength_WithConfiguredWeapons_ReturnsCombinedStrength()
         {

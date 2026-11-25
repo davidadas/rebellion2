@@ -522,6 +522,9 @@ activation itself is still consumed. Use `SelectFirst` to provide ordered fallba
 
 Activates or deactivates retained scene nodes. Inactive nodes remain
 attached to the scene graph and are preserved in saves, but ordinary gameplay queries ignore them.
+Deactivating an assigned participant withdraws them to the mission location if it can receive them,
+or to a valid return location. The mission continues if the remaining team still qualifies.
+Participants in transit must arrive before they can be withdrawn this way.
 Reactivate a returning unit before placing or sending it.
 
 **Required options**

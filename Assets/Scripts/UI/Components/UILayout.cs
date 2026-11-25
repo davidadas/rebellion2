@@ -199,14 +199,8 @@ public static class UILayout
         if (texture == null)
             return;
 
-        Vector2Int size = GetFittedImageSize(texture, slot);
-        SetSourceRect(
-            image.rectTransform,
-            slot.x + (slot.width - size.x) / 2,
-            slot.y + (slot.height - size.y) / 2,
-            size.x,
-            size.y
-        );
+        RectInt rect = GetFittedImageRect(new Vector2Int(texture.width, texture.height), slot);
+        SetSourceRect(image.rectTransform, rect.x, rect.y, rect.width, rect.height);
     }
 
     /// <summary>
@@ -607,6 +601,34 @@ public static class UILayout
     }
 
     /// <summary>
+    /// Measures an authored source rectangle relative to an ancestor's coordinate space.
+    /// </summary>
+    /// <param name="rect">The authored rectangle.</param>
+    /// <param name="ancestor">The ancestor defining the coordinate origin.</param>
+    /// <returns>The rectangle in the ancestor's source coordinates.</returns>
+    public static RectInt GetSourceRect(RectTransform rect, Transform ancestor)
+    {
+        RectInt bounds = GetSourceRect(rect);
+        for (Transform parent = rect.parent; parent != ancestor; parent = parent.parent)
+            bounds.position += GetSourceRect((RectTransform)parent).position;
+        return bounds;
+    }
+
+    /// <summary>
+    /// Computes the background region covered by an image in the same source coordinate space.
+    /// </summary>
+    /// <param name="image">The image bounds.</param>
+    /// <param name="background">The background bounds.</param>
+    /// <returns>The normalized background sample rectangle.</returns>
+    public static Rect GetBackgroundUv(RectInt image, RectInt background) =>
+        new(
+            (image.x - background.x) / (float)background.width,
+            1f - (image.yMax - background.y) / (float)background.height,
+            image.width / (float)background.width,
+            image.height / (float)background.height
+        );
+
+    /// <summary>
     /// Resolves the usable source-space dimensions of an authored transform.
     /// </summary>
     /// <param name="rect">The transform to measure.</param>
@@ -698,16 +720,22 @@ public static class UILayout
     /// <returns>The fitted source-space size.</returns>
     public static Vector2Int GetFittedImageSize(Texture texture, RectInt slot)
     {
-        if (
-            texture == null
-            || texture.width <= 0
-            || texture.height <= 0
-            || slot.width <= 0
-            || slot.height <= 0
-        )
+        if (texture == null)
             return Vector2Int.zero;
+        return GetFittedImageSize(new Vector2Int(texture.width, texture.height), slot);
+    }
 
-        Vector2Int sourceSize = GetTextureSourceSize(texture);
+    /// <summary>
+    /// Fits authored or generated pixel dimensions within a source-space slot without enlarging them.
+    /// </summary>
+    /// <param name="pixels">The image's pixel dimensions.</param>
+    /// <param name="slot">The available source-space slot.</param>
+    /// <returns>The fitted source-space size.</returns>
+    public static Vector2Int GetFittedImageSize(Vector2Int pixels, RectInt slot)
+    {
+        if (pixels.x <= 0 || pixels.y <= 0 || slot.width <= 0 || slot.height <= 0)
+            return Vector2Int.zero;
+        Vector2Int sourceSize = new(ToSourceUnits(pixels.x), ToSourceUnits(pixels.y));
         if (sourceSize.x <= 0 || sourceSize.y <= 0)
             return Vector2Int.zero;
 
@@ -719,6 +747,24 @@ public static class UILayout
         return new Vector2Int(
             Mathf.Max(1, Mathf.RoundToInt(sourceSize.x * scale)),
             Mathf.Max(1, Mathf.RoundToInt(sourceSize.y * scale))
+        );
+    }
+
+    /// <summary>
+    /// Fits an image within its source-space slot and optionally centers it.
+    /// </summary>
+    /// <param name="pixels">The image's pixel dimensions.</param>
+    /// <param name="slot">The available source-space slot.</param>
+    /// <param name="center">Whether to center the image within the slot.</param>
+    /// <returns>The image's source-space drawing rectangle.</returns>
+    public static RectInt GetFittedImageRect(Vector2Int pixels, RectInt slot, bool center = true)
+    {
+        Vector2Int size = GetFittedImageSize(pixels, slot);
+        return new RectInt(
+            slot.x + (center ? (slot.width - size.x) / 2 : 0),
+            slot.y + (center ? (slot.height - size.y) / 2 : 0),
+            size.x,
+            size.y
         );
     }
 

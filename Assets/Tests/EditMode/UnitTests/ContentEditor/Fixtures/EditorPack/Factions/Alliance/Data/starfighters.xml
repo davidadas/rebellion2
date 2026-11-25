@@ -56,6 +56,7 @@
     <Bombardment>2</Bombardment>
     <ShieldStrength>5</ShieldStrength>
     <Hyperdrive>60</Hyperdrive>
+    <HyperdriveCount>1</HyperdriveCount>
     <SublightSpeed>8</SublightSpeed>
     <Agility>4</Agility>
     <LaserCannon>5</LaserCannon>
@@ -123,6 +124,7 @@
     <Bombardment>1</Bombardment>
     <ShieldStrength>5</ShieldStrength>
     <Hyperdrive>60</Hyperdrive>
+    <HyperdriveCount>1</HyperdriveCount>
     <SublightSpeed>8</SublightSpeed>
     <Agility>5</Agility>
     <LaserCannon>8</LaserCannon>

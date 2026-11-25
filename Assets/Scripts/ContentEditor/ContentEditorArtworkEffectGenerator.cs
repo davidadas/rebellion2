@@ -333,6 +333,7 @@ internal static class ContentEditorArtworkEffectGenerator
     /// <param name="varyShipWakes">Whether to vary the reach of each authored ship wake.</param>
     /// <param name="travelPattern">The matching authored travel and display references, if available.</param>
     /// <param name="loadLayerSource">Loads a draft or saved layer image by its pack address.</param>
+    /// <param name="backdropUv">The gameplay-window region represented by this output, when supplied.</param>
     /// <returns>The caller-owned frame with separable artwork.</returns>
     internal static EditableFrame CreateEditableFrame(
         string sourcePath,
@@ -350,7 +351,8 @@ internal static class ContentEditorArtworkEffectGenerator
         ContentEditorTravelPattern travelPattern = default,
         bool preserveRegisteredTravel = false,
         bool varyShipWakes = false,
-        Func<string, byte[]> loadLayerSource = null
+        Func<string, byte[]> loadLayerSource = null,
+        Rect? backdropUv = null
     )
     {
         Texture2D source = new(2, 2, TextureFormat.RGBA32, false);
@@ -432,7 +434,8 @@ internal static class ContentEditorArtworkEffectGenerator
                     );
                 }
             }
-            Color[] background = backdrop != null ? FitPreviewBackground(backdrop, target) : null;
+            Color[] background =
+                backdrop != null ? FitPreviewBackground(backdrop, target, backdropUv) : null;
             Color[] exportBackground = null;
             List<Color[]> pieces = new();
             if (facility || personnel || (regiment && completeTravel && imported == null))
@@ -1853,17 +1856,20 @@ internal static class ContentEditorArtworkEffectGenerator
     }
 
     /// <summary>
-    /// Samples the same centered background crop used in the editor's gameplay cards.
+    /// Samples the gameplay-window region, or a centered artwork crop when none is supplied.
     /// </summary>
     /// <param name="texture">The readable background image.</param>
     /// <param name="size">The preview canvas size.</param>
+    /// <param name="uv">An exact gameplay crop, or null to use the centered artwork crop.</param>
     /// <returns>The cropped background pixels.</returns>
-    private static Color[] FitPreviewBackground(Texture2D texture, Vector2Int size)
+    private static Color[] FitPreviewBackground(Texture2D texture, Vector2Int size, Rect? uv = null)
     {
-        Rect crop = ContentEditorArtworkCrop.GetCenteredUvRect(
-            new Vector2Int(texture.width, texture.height),
-            size
-        );
+        Rect crop =
+            uv
+            ?? ContentEditorArtworkCrop.GetCenteredUvRect(
+                new Vector2Int(texture.width, texture.height),
+                size
+            );
         Color[] pixels = new Color[size.x * size.y];
         for (int y = 0; y < size.y; y++)
         for (int x = 0; x < size.x; x++)
