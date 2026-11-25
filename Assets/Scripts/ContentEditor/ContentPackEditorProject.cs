@@ -9,6 +9,7 @@ using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
+using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Util.Serialization;
@@ -327,6 +328,27 @@ public sealed class ContentPackEditorProject
             field.SetValue(value);
             productionType.SetValue(Building.GetRequiredProductionType(buildingType).ToString());
             LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Assigns one imported ship model at every viewing distance.
+    /// </summary>
+    /// <param name="model">The ship's tactical definition.</param>
+    /// <param name="address">The new GLB's content address.</param>
+    internal void SetUnitModel(ContentPackEditorRecord model, string address)
+    {
+        ContentPackEditorField primary = model.GetField(
+            nameof(TacticalCombatUnitDefinition.ModelPath)
+        );
+        ContentPackEditorField details = model.GetField(
+            nameof(TacticalCombatUnitDefinition.ModelDetailPaths)
+        );
+        using (BeginEdit("Change ship model"))
+        {
+            SetField(primary, address);
+            if (details.Values.Count > 0)
+                SetFieldValues(details, Array.Empty<string>());
         }
     }
 

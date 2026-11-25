@@ -40,6 +40,10 @@ public sealed class ContentEditorAppearance : MonoBehaviour
     /// <returns>The corresponding palette color.</returns>
     public static Color ColorFor(ContentEditorColorMode mode, ContentEditorColorRole role)
     {
+        if (role == ContentEditorColorRole.PreviewControl)
+            return new Color32(57, 66, 79, 255);
+        if (role == ContentEditorColorRole.PreviewText)
+            return new Color32(232, 237, 243, 255);
         if (
             mode
             is ContentEditorColorMode.Empire
@@ -221,4 +225,6 @@ public enum ContentEditorColorRole
     TextSelection,
     ButtonText,
     Checkmark,
+    PreviewControl,
+    PreviewText,
 }

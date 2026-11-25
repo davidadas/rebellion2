@@ -246,6 +246,7 @@ public static class ContentPackEditorStorage
         AddDocumentAddress(addresses, definition.PlanetSectorsPath);
         AddDocumentAddress(addresses, definition.BuildingsPath);
         AddDocumentAddress(addresses, definition.OfficerTraitsPath);
+        AddDocumentAddress(addresses, definition.TacticalCombatDefinitionsPath);
         AddDocumentAddress(addresses, definition.GameEventsPath);
         AddDocumentAddress(addresses, definition.MessageDefinitionsPath);
         AddDocumentAddress(addresses, definition.EncyclopediaEntriesPath);
