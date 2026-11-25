@@ -332,6 +332,7 @@ internal sealed class StrategyStatusInfoBuilder
                 FormatStatusRatio(starfighter.CurrentSquadronSize, starfighter.MaxSquadronSize)
             )
         );
+        AddEstimatedRepairCompletionRow(info, starfighter);
         info.Rows.Add(
             new StrategyStatusRow("Hyperdrive Rating:", starfighter.Hyperdrive.ToString())
         );
@@ -665,6 +666,7 @@ internal sealed class StrategyStatusInfoBuilder
                 FormatStatusRatio(capitalShip.CurrentHullStrength, capitalShip.MaxHullStrength)
             )
         );
+        AddEstimatedRepairCompletionRow(info, capitalShip);
         info.Rows.Add(
             new StrategyStatusRow("Damage Control Rating:", capitalShip.DamageControl.ToString())
         );
@@ -844,6 +846,40 @@ internal sealed class StrategyStatusInfoBuilder
         string location = GetStatusLocationName(target, item);
         if (!string.IsNullOrWhiteSpace(location))
             info.Rows.Add(new StrategyStatusRow("Attached:", location));
+    }
+
+    /// <summary>
+    /// Adds the estimated recovery completion day for a damaged player-owned combat unit.
+    /// </summary>
+    /// <param name="info">The status information receiving the row.</param>
+    /// <param name="item">The capital ship or starfighter whose schedule is inspected.</param>
+    private void AddEstimatedRepairCompletionRow(StrategyStatusInfo info, ISceneNode item)
+    {
+        if (
+            item == null
+            || string.IsNullOrWhiteSpace(playerFactionId)
+            || !string.Equals(item.OwnerInstanceID, playerFactionId, StringComparison.Ordinal)
+        )
+            return;
+
+        long? completionTick = item switch
+        {
+            CapitalShip capitalShip => ShipRecoveryRules.EstimateCompletionTick(
+                capitalShip,
+                currentTick
+            ),
+            Starfighter starfighter => FighterRecoveryRules.EstimateCompletionTick(
+                starfighter,
+                currentTick
+            ),
+            _ => null,
+        };
+        if (completionTick.HasValue)
+        {
+            info.Rows.Add(
+                new StrategyStatusRow("Estimated Repair Completion:", $"Day {completionTick.Value}")
+            );
+        }
     }
 
     /// <summary>
