@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using UnityEngine;
+using Object = UnityEngine.Object;
 using XElement = global::System.Xml.Linq.XElement;
 
 /// <summary>
@@ -475,19 +477,19 @@ public static class ContentPackEditorStorage
         if (unitAddress != null)
         {
             byte[] bytes = File.ReadAllBytes(sourcePath);
-            UnityEngine.Texture2D texture = new UnityEngine.Texture2D(2, 2);
+            Texture2D texture = new Texture2D(2, 2);
             try
             {
-                if (!UnityEngine.ImageConversion.LoadImage(texture, bytes))
+                if (!ImageConversion.LoadImage(texture, bytes))
                     throw new InvalidDataException("The selected image could not be read.");
-                bytes = UnityEngine.ImageConversion.EncodeToPNG(texture);
+                bytes = ImageConversion.EncodeToPNG(texture);
             }
             finally
             {
-                if (UnityEngine.Application.isPlaying)
-                    UnityEngine.Object.Destroy(texture);
+                if (Application.isPlaying)
+                    Object.Destroy(texture);
                 else
-                    UnityEngine.Object.DestroyImmediate(texture);
+                    Object.DestroyImmediate(texture);
             }
             string candidate = unitAddress;
             int suffix = 2;
