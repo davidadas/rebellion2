@@ -902,7 +902,7 @@ public static class ContentPackEditorStorage
     {
         string temporary = Path.Combine(
             Path.GetDirectoryName(target),
-            "." + Path.GetFileName(target) + "." + Guid.NewGuid().ToString("N") + ".tmp"
+            "." + Guid.NewGuid().ToString("N") + ".tmp"
         );
         try
         {
