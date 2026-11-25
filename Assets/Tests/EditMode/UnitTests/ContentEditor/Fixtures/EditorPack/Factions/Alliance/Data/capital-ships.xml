@@ -76,6 +76,7 @@
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
     <Hyperdrive>80</Hyperdrive>
+    <HyperdriveCount>1</HyperdriveCount>
     <SublightSpeed>3</SublightSpeed>
     <Maneuverability>1</Maneuverability>
     <StarfighterCapacity>1</StarfighterCapacity>
@@ -207,6 +208,7 @@
     <MaxShieldStrength>200</MaxShieldStrength>
     <ShieldRechargeRate>10</ShieldRechargeRate>
     <Hyperdrive>80</Hyperdrive>
+    <HyperdriveCount>1</HyperdriveCount>
     <SublightSpeed>3</SublightSpeed>
     <Maneuverability>1</Maneuverability>
     <StarfighterCapacity>0</StarfighterCapacity>

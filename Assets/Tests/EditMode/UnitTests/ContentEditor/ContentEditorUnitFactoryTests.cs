@@ -56,6 +56,8 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Greater(unit.MaxSquadronSize, 0);
             Assert.AreEqual(unit.MaxSquadronSize, unit.CurrentSquadronSize);
             Assert.IsNotNull(definition.Element(nameof(Starfighter.Hyperdrive)));
+            Assert.IsNotNull(definition.Element(nameof(Starfighter.HyperdriveCount)));
+            Assert.AreEqual(0, unit.HyperdriveCount);
             Assert.IsNotNull(definition.Element(nameof(Starfighter.ConstructionCost)));
         }
 
@@ -77,6 +79,8 @@ namespace Rebellion.Tests.ContentEditor
                 Assert.IsTrue(weapon.All(value => value == 0));
             }
             Assert.AreEqual(unit.MaxHullStrength, unit.CurrentHullStrength);
+            Assert.IsNotNull(definition.Element(nameof(CapitalShip.HyperdriveCount)));
+            Assert.AreEqual(0, unit.HyperdriveCount);
             Assert.IsNull(definition.Element("Officers"));
             Assert.IsNull(definition.Element("Starfighters"));
             Assert.IsFalse(unit.HasGravityWell);

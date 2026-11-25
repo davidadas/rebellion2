@@ -91,6 +91,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Hyperdrive))]
         private int _hyperdrive;
 
+        [PersistableMember(Name = nameof(HyperdriveCount))]
+        private int? _hyperdriveCount;
+
         [PersistableMember(Name = nameof(SublightSpeed))]
         private int _sublightSpeed;
 
@@ -171,6 +174,17 @@ namespace Rebellion.Game.Units
         {
             get => _hyperdrive;
             set => _hyperdrive = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
+        /// An omitted count provides one system when the travel rating is positive.
+        /// </summary>
+        [PersistableIgnore]
+        public int HyperdriveCount
+        {
+            get => _hyperdriveCount ?? (Hyperdrive > 0 ? 1 : 0);
+            set => _hyperdriveCount = value;
         }
 
         [PersistableIgnore]
@@ -283,6 +297,7 @@ namespace Rebellion.Game.Units
             copy.Bombardment = Bombardment;
             copy.ShieldStrength = ShieldStrength;
             copy.Hyperdrive = Hyperdrive;
+            copy._hyperdriveCount = _hyperdriveCount;
             copy.SublightSpeed = SublightSpeed;
             copy.Agility = Agility;
             copy.LaserCannon = LaserCannon;

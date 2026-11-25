@@ -53,6 +53,55 @@ namespace Rebellion.Tests.Game.Units
             Assert.IsTrue(_capitalShip.HasAssignedName);
         }
 
+        [TestCase(0, 0)]
+        [TestCase(-1, 0)]
+        [TestCase(80, 1)]
+        public void HyperdriveCount_Omitted_UsesTravelCapability(int rating, int expected)
+        {
+            CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(
+                $"<CapitalShip><Hyperdrive>{rating}</Hyperdrive></CapitalShip>"
+            );
+
+            Assert.AreEqual(expected, ship.HyperdriveCount);
+        }
+
+        [TestCase(0)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void Serialize_HyperdriveCount_PreservesValue(int count)
+        {
+            CapitalShip ship = new CapitalShip { Hyperdrive = 80, HyperdriveCount = count };
+
+            CapitalShip loaded = SerializationHelper.Deserialize<CapitalShip>(
+                SerializationHelper.Serialize(ship)
+            );
+
+            Assert.AreEqual(count, loaded.HyperdriveCount);
+            Assert.AreEqual(80, loaded.Hyperdrive);
+        }
+
+        [Test]
+        public void CreateCopy_HyperdriveCount_PreservesValue()
+        {
+            CapitalShip ship = new CapitalShip { Hyperdrive = 80, HyperdriveCount = 3 };
+
+            CapitalShip copy = (CapitalShip)ship.CreateCopy();
+
+            Assert.AreEqual(3, copy.HyperdriveCount);
+        }
+
+        [Test]
+        public void CreateCopy_OmittedHyperdriveCount_PreservesTravelFallback()
+        {
+            CapitalShip ship = new CapitalShip { Hyperdrive = 80 };
+
+            CapitalShip copy = (CapitalShip)ship.CreateCopy();
+            copy.Hyperdrive = 0;
+
+            Assert.AreEqual(0, copy.HyperdriveCount);
+            Assert.AreEqual(1, ship.HyperdriveCount);
+        }
+
         [Test]
         public void AssignName_WhitespaceName_ThrowsArgumentException()
         {

@@ -1704,7 +1704,7 @@ namespace Rebellion.Gameplay
             protected TacticalUnit(double minimumManeuverRatio, int hyperdriveSystems)
             {
                 _minimumManeuverRatio = minimumManeuverRatio;
-                InstalledHyperdriveSystems = hyperdriveSystems;
+                InstalledHyperdriveSystems = Math.Max(hyperdriveSystems, 0);
             }
 
             /// <summary>
@@ -2007,27 +2007,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Resolves the installed hyperdrive count independently of strategic travel speed.
-        /// </summary>
-        /// <param name="typeId">The unit type identifier.</param>
-        /// <param name="rating">The primary hyperdrive's travel rating.</param>
-        /// <param name="config">The content's hardware definitions.</param>
-        /// <returns>The installed system count.</returns>
-        private static int GetHyperdriveSystems(
-            string typeId,
-            int rating,
-            GameConfig.SpaceCombatConfig config
-        )
-        {
-            return typeId != null
-                && config.HyperdriveSystemCounts != null
-                && config.HyperdriveSystemCounts.TryGetValue(typeId, out int count)
-                    ? Math.Max(count, 0)
-                : rating > 0 ? 1
-                : 0;
-        }
-
-        /// <summary>
         /// Stores a capital ship's tactical hull, shield, and attack state.
         /// </summary>
         private sealed class CapitalShipState : TacticalUnit
@@ -2089,10 +2068,7 @@ namespace Rebellion.Gameplay
                 GameConfig.SpaceCombatConfig config,
                 CombatForce force
             )
-                : base(
-                    config.AutoResolveMinimumManeuverRatio,
-                    GetHyperdriveSystems(ship.TypeID, ship.Hyperdrive, config)
-                )
+                : base(config.AutoResolveMinimumManeuverRatio, ship.HyperdriveCount)
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
@@ -2235,10 +2211,7 @@ namespace Rebellion.Gameplay
                 GameConfig.SpaceCombatConfig config,
                 double commandBonus
             )
-                : base(
-                    config.AutoResolveMinimumManeuverRatio,
-                    GetHyperdriveSystems(fighter.TypeID, fighter.Hyperdrive, config)
-                )
+                : base(config.AutoResolveMinimumManeuverRatio, fighter.HyperdriveCount)
             {
                 Fighter = fighter;
                 InitialSquadronSize = Math.Max(fighter.CurrentSquadronSize, 0);

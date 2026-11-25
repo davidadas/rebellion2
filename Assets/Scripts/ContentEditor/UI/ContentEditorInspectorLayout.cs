@@ -44,6 +44,11 @@ internal static class ContentEditorInspectorLayout
         foreach (string member in ContentEditorUnitArtworkLayout.GetMembers(record.Kind))
             if (!fields.Any(field => field.MemberName == member))
                 fields.Add(record.GetField(member));
+        if (
+            record.Kind is "CapitalShip" or "Starfighter"
+            && !fields.Any(field => field.MemberName == nameof(CapitalShip.HyperdriveCount))
+        )
+            fields.Add(record.GetField(nameof(CapitalShip.HyperdriveCount)));
         if (record.Kind == "Faction" && record.Element.Element("FactionDataPath") == null)
             foreach (string member in new[] { "HQInstanceID", "DisallowedMissionTypeIDs" })
                 if (!fields.Any(field => field.MemberName == member))
