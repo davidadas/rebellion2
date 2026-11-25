@@ -66,42 +66,6 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_ShipModelCatalog_KeepsModelDefinitionsOffTheContentTree()
-        {
-            ContentPackEditorCatalog ships = Catalog(
-                "CapitalShips",
-                "CapitalShip",
-                "Pack/Factions/SideA/Data/ships.xml",
-                "SHIP1",
-                "Named ship"
-            );
-            string path = Path.Combine(directory, "tactical-combat.xml");
-            ContentPackEditorCatalog tactical = new(
-                new ContentPackEditorDocument(
-                    "Pack/Data/tactical-combat.xml",
-                    path,
-                    path,
-                    "<TacticalCombatDefinition><Units><TacticalCombatUnitDefinition>"
-                        + "<UnitTypeID>SHIP1</UnitTypeID><ModelPath>Pack/Assets/ship</ModelPath>"
-                        + "</TacticalCombatUnitDefinition></Units></TacticalCombatDefinition>"
-                )
-            );
-            ContentPackEditorCatalog[] catalogs = { ships, tactical };
-            ContentEditorNavigation navigation = new();
-            navigation.Render(catalogs);
-            navigation.SetExpanded(true);
-
-            Assert.IsNull(navigation.Find("category/" + tactical.Name));
-            Assert.IsEmpty(navigation.GetRows(tactical.Name));
-            ContentPackEditorRecord ship = ships.Records.Single();
-            Assert.IsTrue(navigation.GetRows(string.Empty).Any(node => node.Record == ship));
-            Assert.AreSame(
-                tactical,
-                ContentEditorContentSections.FindUnitModel(ship, catalogs)?.Catalog
-            );
-        }
-
-        [Test]
         public void Reveal_Record_ExpandsOnlyItsUnitsCategoryAndFactionAncestors()
         {
             ContentPackEditorCatalog officers = Catalog(

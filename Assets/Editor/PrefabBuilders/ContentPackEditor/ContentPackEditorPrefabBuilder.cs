@@ -264,7 +264,6 @@ public static class ContentPackEditorPrefabBuilder
             "Default backgrounds",
             "Colors",
             "Mission presentation",
-            "Model",
         };
         Button[] tabButtons = new Button[sections.Length];
         for (int i = 0; i < sections.Length; i++)
@@ -294,8 +293,6 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "defaultBackgroundsTab", tabButtons[9]);
         Assign(view, "colorsTab", tabButtons[10]);
         Assign(view, "missionPresentationTab", tabButtons[11]);
-        Assign(view, "modelTab", tabButtons[12]);
-        tabButtons[12].gameObject.SetActive(false);
         Button[] generationTabs = ContentPackEditorView
             .GenerationSections.Select(
                 (caption, index) =>
@@ -324,12 +321,6 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "form", form);
         Assign(form, "previewPane", preview.gameObject);
         Assign(form, "previewImage", image);
-        ContentEditorModelPreview modelPreview =
-            image.gameObject.AddComponent<ContentEditorModelPreview>();
-        Assign(modelPreview, "camera", BuildModelPreviewCamera(root.transform));
-        Assign(modelPreview, "previewShader", Shader.Find("Shader Graphs/glTF-unlit"));
-        Assign(form, "modelPreview", modelPreview);
-        BuildModelWorkspace(form, fields.ScrollArea.ContentRoot);
         Stretch((RectTransform)fields.transform, 0, 136, 0, 0);
         preview.SetParent(fields.ScrollArea.ContentRoot, false);
         Rect(preview, 0, 0, 280, 160);
@@ -592,75 +583,6 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "menu", menu);
         Assign(view, "checkmark", LoadIcon("Checkmark").texture);
         workbenchLayout.SetZoom(1);
-    }
-
-    /// <summary>
-    /// Builds the model viewer toolbar, status line, and file editing controls.
-    /// </summary>
-    /// <param name="form">The inspector that binds the selected model.</param>
-    /// <param name="parent">The scroll content owning the model controls.</param>
-    private static void BuildModelWorkspace(ContentEditorFormView form, Transform parent)
-    {
-        Image stage = Surface("ModelStage", parent, new Color32(35, 42, 51, 255));
-        stage.transform.SetAsFirstSibling();
-        stage.gameObject.SetActive(false);
-        Assign(form, "modelStage", stage);
-
-        TextMeshProUGUI fileName = Label("ModelFilename", parent, string.Empty, 18);
-        BindColor(fileName, ContentEditorColorRole.PreviewText);
-        fileName.fontStyle = FontStyles.Bold;
-        fileName.raycastTarget = false;
-        fileName.gameObject.SetActive(false);
-        Assign(form, "modelFileName", fileName);
-
-        Button reset = Button("ResetModelView", parent, "Reset view");
-        BindColor(reset.targetGraphic, ContentEditorColorRole.PreviewControl, reset);
-        BindColor(reset.GetComponentInChildren<TMP_Text>(), ContentEditorColorRole.PreviewText);
-        reset.gameObject.SetActive(false);
-        Assign(form, "resetModelViewButton", reset);
-
-        TextMeshProUGUI status = Label("ModelStatus", parent, string.Empty, 15);
-        BindColor(status, ContentEditorColorRole.PreviewText);
-        status.raycastTarget = false;
-        status.gameObject.SetActive(false);
-        Assign(form, "modelStageStatus", status);
-
-        TextMeshProUGUI zoom = Label("ModelZoom", parent, string.Empty, 16);
-        BindColor(zoom, ContentEditorColorRole.PreviewText);
-        zoom.alignment = TextAlignmentOptions.MidlineRight;
-        zoom.raycastTarget = false;
-        zoom.gameObject.SetActive(false);
-        Assign(form, "modelZoomLabel", zoom);
-
-        Button change = Button("ChangeModel", parent, "Change model...");
-        change.gameObject.SetActive(false);
-        Assign(form, "changeModelButton", change);
-    }
-
-    /// <summary>
-    /// Configures an isolated camera and lighting for the optional ship preview.
-    /// </summary>
-    /// <param name="parent">The standalone editor root.</param>
-    /// <returns>The inactive preview camera.</returns>
-    private static Camera BuildModelPreviewCamera(Transform parent)
-    {
-        GameObject rig = new GameObject("ModelPreview");
-        rig.transform.SetParent(parent, false);
-        rig.transform.localPosition = new Vector3(0, -2000, 0);
-        int layer = LayerMask.NameToLayer("LoadingPresentation");
-        GameObject cameraObject = new GameObject("ModelPreviewCamera");
-        cameraObject.layer = layer;
-        cameraObject.transform.SetParent(rig.transform, false);
-        Camera camera = cameraObject.AddComponent<Camera>();
-        camera.enabled = false;
-        camera.orthographic = true;
-        camera.cullingMask = 1 << layer;
-        camera.backgroundColor = new Color32(23, 26, 31, 255);
-        camera.clearFlags = CameraClearFlags.SolidColor;
-        camera.nearClipPlane = 0.01f;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera);
-        HdrpRenderTargetBuilder.AddIsolatedVolume(rig.transform);
-        return camera;
     }
 
     /// <summary>

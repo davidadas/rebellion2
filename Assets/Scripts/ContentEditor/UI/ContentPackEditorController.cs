@@ -5,7 +5,6 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -427,16 +426,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
             throw new ArgumentException("Unsupported file type.");
         if (!File.Exists(source))
             throw new FileNotFoundException("The selected media file does not exist.", source);
-        if (
-            field.Record.Kind == nameof(TacticalCombatUnitDefinition)
-            && field.MemberName == nameof(TacticalCombatUnitDefinition.ModelPath)
-        )
-        {
-            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
-            project.SetUnitModel(field.Record, address);
-            workspace.RenderProject(project, assets);
-            return;
-        }
         string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
         if (current == null)
         {

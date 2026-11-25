@@ -2,7 +2,6 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Missions;
-using Rebellion.Game.SpaceCombat;
 
 /// <summary>
 /// Builds and filters the content hierarchy without creating an intermediate document list.
@@ -95,7 +94,6 @@ public sealed class ContentEditorNavigation
                 .Where(catalog =>
                     !_unitCategories.Contains(catalog.Name)
                     && catalog.Name is not "Scenarios" and not "Interface" and not "Asset preloads"
-                    && catalog.DocumentRecord.Kind != nameof(TacticalCombatDefinition)
                 )
                 .GroupBy(catalog => catalog.Name)
                 .OrderBy(group => GetCategoryOrder(group.Key))
