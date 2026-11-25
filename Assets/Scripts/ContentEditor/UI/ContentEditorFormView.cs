@@ -2146,7 +2146,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField captured = largeOfficerCard
             ? null
             : stateFields.FirstOrDefault(field => field.MemberName == "CapturedOverlayImagePath");
-        Texture2D officerTravelBackground = travelBackground;
+        Texture2D officerTravelArtwork = null;
         if (officer)
         {
             ContentPackEditorField travelSource = transit;
@@ -2159,7 +2159,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     field.MemberName == fallbackMember
                 );
             }
-            officerTravelBackground = ResolveArtworkTexture(travelSource) ?? travelBackground;
+            officerTravelArtwork = ResolveArtworkTexture(travelSource);
         }
 
         bool regiment = selectedRecord.Kind == "Regiment";
@@ -2245,6 +2245,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             int labelHeight = PlaceLabel(caption, labelIndex++, x, y, size.x, false);
             int imageY = y + labelHeight + 4;
             bool officerTransit = officer && inTransit;
+            Texture2D transitOverlay =
+                officerTransit && !largeOfficerCard ? officerTravelArtwork : null;
             Texture2D[] overlays = layers
                 .Where(field => !officerTransit || field != transit)
                 .Select(field => ResolveArtworkTexture(field))
@@ -2257,8 +2259,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             Texture2D stateEntity = baseTexture;
             if (inTransit && selectedRecord.Kind is "Officer" or "Regiment")
                 stateBackground = travelBackground;
-            if (officerTransit)
-                stateBackground = officerTravelBackground;
+            if (officerTransit && largeOfficerCard)
+                stateBackground = officerTravelArtwork ?? travelBackground;
             if (action == transit && transit != null)
             {
                 if (selectedRecord.Kind == "Building")
@@ -2294,9 +2296,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 backgroundUv: stateBackground == gameplayBackground.Texture
                 && stateBackground != null
                     ? gameplayBackground.Uv
-                    : new Rect(0, 0, 1, 1)
+                    : new Rect(0, 0, 1, 1),
+                transitOverlay: transitOverlay
             );
-            if (stateEntity == null && stateBackground == null && overlays.Length == 0)
+            if (
+                stateEntity == null
+                && stateBackground == null
+                && transitOverlay == null
+                && overlays.Length == 0
+            )
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
             int cardHeight = labelHeight + 4 + size.y;
             if (action != null)
@@ -2372,6 +2380,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="fitEntity">Whether the normal image must fit entirely within the preview.</param>
     /// <param name="dropField">The editable image slot represented by this preview, when available.</param>
     /// <param name="backgroundUv">The gameplay-window region behind this image, when applicable.</param>
+    /// <param name="transitOverlay">The optional fitted travel artwork behind the normal entity image.</param>
     private void PlaceArtworkComposition(
         string name,
         int x,
@@ -2385,7 +2394,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ref int imageIndex,
         bool fitEntity = false,
         ContentPackEditorField dropField = null,
-        Rect? backgroundUv = null
+        Rect? backgroundUv = null,
+        Texture2D transitOverlay = null
     )
     {
         RawImage backing = GetArtworkPreviewImage(ref imageIndex, name + "-Backing");
@@ -2393,7 +2403,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             BindImageDropTarget(backing, dropField);
         backing.texture = null;
         backing.color =
-            entity == null && background == null && overlays.Count == 0
+            entity == null && background == null && transitOverlay == null && overlays.Count == 0
                 ? ContentEditorAppearance.ColorFor(
                     GetComponentInParent<ContentEditorAppearance>()?.Mode
                         ?? ContentEditorColorMode.Dark,
@@ -2413,6 +2423,17 @@ public sealed class ContentEditorFormView : MonoBehaviour
             height,
             ref imageIndex,
             backgroundUv
+        );
+        PlaceArtworkCompositionLayer(
+            name + "-Transit",
+            transitOverlay,
+            target,
+            true,
+            x,
+            y,
+            width,
+            height,
+            ref imageIndex
         );
         PlaceArtworkCompositionLayer(
             name + "-Entity",

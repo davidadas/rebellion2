@@ -2951,19 +2951,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void Render_OfficerCombinedState_ComposesTransitInjuryAndCapture(int travelSource)
         {
             ContentPackEditorRecord unit = GetArtworkUnit("Officer");
-            FactionTheme source = SetGameplayWindowBackgrounds();
-            string sharedTravel = source.StrategyWindows.Fleet.PersonnelEnrouteBackgroundImagePath;
-            ContentPackEditorRecord theme = project
-                .GetCatalogs()
-                .SelectMany(catalog => catalog.Records)
-                .Single(record =>
-                    record.Kind == "FactionTheme"
-                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
-                );
-            theme
-                .Element.Element("StrategyWindows")
-                .Element("Fleet")
-                .Add(new XElement("PersonnelEnrouteBackgroundImagePath", sharedTravel));
+            string sharedTravel = SetOfficerSharedTravelBackground();
             string compact = unit.GetField("SmallDisplayImagePath").Value;
             string large = unit.GetField("DisplayImagePath").Value;
             project.SetField(
@@ -2983,12 +2971,25 @@ namespace Rebellion.Tests.ContentEditor.UI
             RawImage entity = images.Single(image => image.name == prefix + "Entity");
             RawImage injury = images.Single(image => image.name == prefix + "Overlay-0");
             RawImage capture = images.Single(image => image.name == prefix + "Overlay-1");
-            string travel =
-                travelSource == 1 ? compact
-                : travelSource == 2 ? large
-                : sharedTravel;
-
-            Assert.AreSame(assets.GetTexture(travel), background.texture);
+            Assert.AreSame(assets.GetTexture(sharedTravel), background.texture);
+            if (travelSource > 0)
+            {
+                RawImage transit = images.Single(image => image.name == prefix + "Transit");
+                Assert.AreSame(
+                    assets.GetTexture(travelSource == 1 ? compact : large),
+                    transit.texture
+                );
+                Assert.Less(
+                    background.transform.GetSiblingIndex(),
+                    transit.transform.GetSiblingIndex()
+                );
+                Assert.Less(
+                    transit.transform.GetSiblingIndex(),
+                    entity.transform.GetSiblingIndex()
+                );
+            }
+            else
+                Assert.IsFalse(images.Any(image => image.name == prefix + "Transit"));
             Assert.AreSame(assets.GetTexture(compact), entity.texture);
             Assert.AreSame(
                 assets.GetTexture(unit.GetField("InjuredImagePath").Value),
@@ -3005,6 +3006,59 @@ namespace Rebellion.Tests.ContentEditor.UI
                 view.GetComponentsInChildren<TMP_Text>()
                     .Any(label => label.text == "Travel + injured")
             );
+        }
+
+        [TestCase("In-transit", true)]
+        [TestCase("In-transit", false)]
+        [TestCase("In-transit-+-injured-+-captured", true)]
+        [TestCase("In-transit-+-injured-+-captured", false)]
+        public void Render_OfficerCompactTravelFallback_FitsSquareArtworkBehindThePortrait(
+            string state,
+            bool showBackground
+        )
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            string sharedTravel = SetOfficerSharedTravelBackground();
+            string large = unit.GetField("DisplayImagePath").Value;
+            project.SetField(unit.GetField("InTransitSmallImagePath"), string.Empty);
+            project.SetField(unit.GetField("InTransitImagePath"), large);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            if (!showBackground)
+                view.GetComponentsInChildren<UICheckboxView>()
+                    .Single(toggle => toggle.name == "GameplayStatesBackgroundToggle")
+                    .GetComponent<Toggle>()
+                    .isOn = false;
+
+            string prefix = "ArticleImageTemplate-State-" + state + "-";
+            RawImage[] images = view.GetComponentsInChildren<RawImage>();
+            RawImage frame = images.Single(image => image.name == prefix + "Backing");
+            RawImage transit = images.Single(image => image.name == prefix + "Transit");
+            RawImage entity = images.Single(image => image.name == prefix + "Entity");
+            RectInt frameBounds = UILayout.GetSourceRect(frame.rectTransform);
+            RectInt transitBounds = UILayout.GetSourceRect(transit.rectTransform);
+
+            Assert.AreSame(assets.GetTexture(large), transit.texture);
+            Assert.AreEqual(new Rect(0, 0, 1, 1), transit.uvRect);
+            Assert.AreEqual(transitBounds.height, transitBounds.width);
+            Assert.Less(transitBounds.width, frameBounds.width);
+            Assert.AreEqual(frameBounds.height, transitBounds.height);
+            Assert.That(transitBounds.center.x, Is.EqualTo(frameBounds.center.x).Within(0.5f));
+            Assert.That(transitBounds.center.y, Is.EqualTo(frameBounds.center.y).Within(0.5f));
+            Assert.Less(transit.transform.GetSiblingIndex(), entity.transform.GetSiblingIndex());
+            if (showBackground)
+            {
+                RawImage background = images.Single(image => image.name == prefix + "Background");
+                Assert.AreSame(assets.GetTexture(sharedTravel), background.texture);
+                Assert.AreEqual(new Rect(0, 0, 1, 1), background.uvRect);
+                Assert.AreEqual(frameBounds, UILayout.GetSourceRect(background.rectTransform));
+                Assert.Less(
+                    background.transform.GetSiblingIndex(),
+                    transit.transform.GetSiblingIndex()
+                );
+            }
+            else
+                Assert.IsFalse(images.Any(image => image.name == prefix + "Background"));
         }
 
         [TestCase(false)]
@@ -3031,9 +3085,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreSame(
                 assets.GetTexture(compactArtworkAssigned ? compactAddress : largeAddress),
                 view.GetComponentsInChildren<RawImage>()
-                    .Single(image =>
-                        image.name == "ArticleImageTemplate-State-In-transit-Background"
-                    )
+                    .Single(image => image.name == "ArticleImageTemplate-State-In-transit-Transit")
                     .texture
             );
 
@@ -4782,6 +4834,28 @@ namespace Rebellion.Tests.ContentEditor.UI
             if (kind == "Building")
                 unit.Element.SetElementValue("ManufacturingFactionInstanceIDs", "FNALL1");
             return unit;
+        }
+
+        /// <summary>
+        /// Configures the shared officer travel background independently of per-unit artwork.
+        /// </summary>
+        /// <returns>The shared travel background's content address.</returns>
+        private string SetOfficerSharedTravelBackground()
+        {
+            FactionTheme source = SetGameplayWindowBackgrounds();
+            string address = source.StrategyWindows.Fleet.PersonnelEnrouteBackgroundImagePath;
+            ContentPackEditorRecord theme = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record =>
+                    record.Kind == "FactionTheme"
+                    && record.Element.Element("FactionInstanceID")?.Value == "FNALL1"
+                );
+            theme
+                .Element.Element("StrategyWindows")
+                .Element("Fleet")
+                .Add(new XElement("PersonnelEnrouteBackgroundImagePath", address));
+            return address;
         }
 
         /// <summary>
