@@ -100,6 +100,25 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual("13", field.Value);
         }
 
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        public void Render_UnitHyperdriveCount_ShowsEditableStat(string kind)
+        {
+            ContentPackEditorRecord unit = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == kind);
+
+            SelectRecord(unit);
+
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "HyperdriveCount");
+            Assert.IsNotNull(control.GetComponentInChildren<TMP_InputField>());
+            Assert.IsNotEmpty(control.Field.HelpText);
+            project.SetField(control.Field, "3");
+            Assert.AreEqual("3", unit.Element.Element("HyperdriveCount").Value);
+        }
+
         [Test]
         public void Render_FactionMissionRestrictions_UsesNamedCheckboxesForTheAuthoredSelection()
         {
