@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
@@ -17,12 +18,35 @@ using UnityEngine.UI;
 public sealed class ContentEditorFormView : MonoBehaviour
 {
     private const string _defaultFactionArtworkCategory = "Planet sector";
+    private const float _modelToolbarHeight = 54;
+    private const float _modelFooterHeight = 46;
 
     [SerializeField]
     private GameObject previewPane;
 
     [SerializeField]
     private RawImage previewImage;
+
+    [SerializeField]
+    private ContentEditorModelPreview modelPreview;
+
+    [SerializeField]
+    private Image modelStage;
+
+    [SerializeField]
+    private TMP_Text modelStageStatus;
+
+    [SerializeField]
+    private TMP_Text modelZoomLabel;
+
+    [SerializeField]
+    private Button resetModelViewButton;
+
+    [SerializeField]
+    private TMP_Text modelFileName;
+
+    [SerializeField]
+    private Button changeModelButton;
 
     [SerializeField]
     private Button addMessageButton;
@@ -189,7 +213,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     public event Action PresentationChanged;
     public event Action<ContentPackEditorField, IReadOnlyList<string>> FieldSubmitted;
     public event Action<ContentPackEditorField> FieldValidationRequested;
-    public event Action WidthChanged;
+    public event Action LayoutChanged;
     public event Action<Button> AddMessageRequested;
     internal event Action<
         ContentPackEditorRecord,
@@ -279,7 +303,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
             throw new MissingReferenceException(name + " has incomplete form references.");
         bound = true;
         generationTask.onValueChanged.AddListener(SelectGenerationTask);
+        if (modelPreview != null && resetModelViewButton != null)
+        {
+            modelPreview.ZoomChanged += UpdateModelZoom;
+            resetModelViewButton.onClick.AddListener(modelPreview.ResetView);
+        }
         fieldScroll.WidthChanged += HandleWidthChanged;
+        fieldScroll.HeightChanged += HandleHeightChanged;
         addMessageButton.onClick.AddListener(RequestAddMessage);
         collectionDropdown.onValueChanged.AddListener(SelectCollectionItem);
         shipDesignDropdown.onValueChanged.AddListener(SelectShipNameDesign);
@@ -315,7 +345,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         if (!bound)
             return;
         generationTask.onValueChanged.RemoveListener(SelectGenerationTask);
+        if (modelPreview != null && resetModelViewButton != null)
+        {
+            modelPreview.ZoomChanged -= UpdateModelZoom;
+            resetModelViewButton.onClick.RemoveListener(modelPreview.ResetView);
+        }
         fieldScroll.WidthChanged -= HandleWidthChanged;
+        fieldScroll.HeightChanged -= HandleHeightChanged;
         addMessageButton.onClick.RemoveListener(RequestAddMessage);
         collectionDropdown.onValueChanged.RemoveListener(SelectCollectionItem);
         shipDesignDropdown.onValueChanged.RemoveListener(SelectShipNameDesign);
@@ -405,6 +441,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <returns>The distinct inheritable fields with local values in the active section.</returns>
     public IReadOnlyList<ContentPackEditorField> GetOverriddenFields()
     {
+        if (section == ContentEditorContentSections.ModelSection)
+            return GetModelFields().Where(field => field.CanResetToDefault).ToArray();
+
         IEnumerable<ContentPackEditorField> fields = fieldViews
             .Where(view => view.gameObject.activeSelf && view.Field != null)
             .Select(view => view.Field);
@@ -431,6 +470,21 @@ public sealed class ContentEditorFormView : MonoBehaviour
     {
         if (!Commit())
             return false;
+        if (section == ContentEditorContentSections.ModelSection)
+        {
+            try
+            {
+                foreach (
+                    ContentPackEditorField field in GetModelFields().Where(field => field.IsMedia)
+                )
+                    ValidateField(field);
+            }
+            catch (ArgumentException exception)
+            {
+                ReportValidationError(exception.Message);
+                return false;
+            }
+        }
         foreach (
             ContentEditorFieldView field in fieldViews.Where(field => field.gameObject.activeSelf)
         )
@@ -465,6 +519,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         stateBackgroundToggle.gameObject.SetActive(false);
         activeArtworkPanel = null;
         HidePreview();
+        HideModelControls();
         addMessageButton.gameObject.SetActive(false);
         collectionDropdown.gameObject.SetActive(false);
         shipDesignDropdown.gameObject.SetActive(false);
@@ -497,6 +552,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     public void HidePreview()
     {
+        modelPreview?.Clear();
         previewImage.texture = null;
         previewPane.SetActive(false);
     }
@@ -570,7 +626,16 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <summary>
     /// Requests responsive layout after the form's viewport changes.
     /// </summary>
-    private void HandleWidthChanged() => WidthChanged?.Invoke();
+    private void HandleWidthChanged() => LayoutChanged?.Invoke();
+
+    /// <summary>
+    /// Reflows the model viewport when the window height changes.
+    /// </summary>
+    private void HandleHeightChanged()
+    {
+        if (section == ContentEditorContentSections.ModelSection)
+            LayoutChanged?.Invoke();
+    }
 
     /// <summary>
     /// Requests a starting-message category menu at its authored control.
@@ -822,6 +887,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="rebind">Whether to bind new values instead of only reflowing existing controls.</param>
     private void RenderFields(bool rebind)
     {
+        if (selectedRecord == null || section != ContentEditorContentSections.ModelSection)
+        {
+            modelPreview?.Clear();
+            HideModelControls();
+        }
         ClearSetupControls();
         ClearArtworkViewControls();
         addMessageButton.gameObject.SetActive(false);
@@ -916,9 +986,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
         IReadOnlyList<ContentPackEditorField> pageFields =
             section == "Encyclopedia"
                 ? ContentEditorContentSections.EncyclopediaFields(selectedRecord, catalogs)
-                : selectedPage?.Fields ?? ContentEditorInspectorLayout.GetFields(selectedRecord);
+            : section == ContentEditorContentSections.ModelSection ? GetModelFields()
+            : selectedPage?.Fields ?? ContentEditorInspectorLayout.GetFields(selectedRecord);
         bool unit = ContentEditorUnitFactory.CanCreate(selectedRecord.Kind);
         ContentPackEditorField[] fields = pageFields.Where(IsInCurrentSection).ToArray();
+        if (section == ContentEditorContentSections.ModelSection)
+        {
+            RenderModelFields(fields, rebind);
+            return;
+        }
         if (selectedPage?.MissionID != null && section == "Rules")
         {
             RenderMissionRules();
@@ -1032,6 +1108,204 @@ public sealed class ContentEditorFormView : MonoBehaviour
     }
 
     /// <summary>
+    /// Finds the authored model files for the selected unit.
+    /// </summary>
+    /// <returns>The fields shared by the model viewer and its editing commands.</returns>
+    private IReadOnlyList<ContentPackEditorField> GetModelFields() =>
+        ContentEditorContentSections.ModelFields(
+            ContentEditorContentSections.FindUnitModel(selectedRecord, catalogs)
+        );
+
+    /// <summary>
+    /// Fills the available pane with the model and places editing actions underneath.
+    /// </summary>
+    /// <param name="fields">The ship's model media fields.</param>
+    /// <param name="rebind">Whether to reset the form's scroll position.</param>
+    private void RenderModelFields(ContentPackEditorField[] fields, bool rebind)
+    {
+        ContentPackEditorField primary = fields.FirstOrDefault();
+        if (primary == null)
+        {
+            HideModelControls();
+            HidePreview();
+            fieldScroll.SetContentHeight(0, rebind);
+            return;
+        }
+
+        string address = string.IsNullOrWhiteSpace(primary.Value)
+            ? null
+            : primary.GetMediaAddress(primary.Value);
+        const float top = 6;
+        const float bottomMargin = 8;
+        float width = Mathf.Max(1, Mathf.Floor(fieldScroll.ScrollArea.ViewportWidth - 8));
+        float height = Mathf.Floor(
+            fieldScroll.ScrollArea.ViewportHeight
+                - top
+                - _modelToolbarHeight
+                - _modelFooterHeight
+                - bottomMargin
+        );
+        float bodyHeight = address == null ? 92 : Mathf.Max(136, height);
+        modelPreview?.ResizeViewport(Mathf.RoundToInt(width), Mathf.RoundToInt(bodyHeight));
+        modelPreview?.Show(assets, address, () => RenderFields(false), ShowModelPreviewError);
+        RenderModelStage(primary, address, width, bodyHeight, top);
+        fieldScroll.SetContentHeight(
+            top + _modelToolbarHeight + bodyHeight + _modelFooterHeight + bottomMargin,
+            rebind
+        );
+    }
+
+    /// <summary>
+    /// Places the current filename, preview and its controls inside the model viewer.
+    /// </summary>
+    /// <param name="model">The import target for the ship model.</param>
+    /// <param name="address">The file being loaded, if assigned.</param>
+    /// <param name="width">The full viewer width.</param>
+    /// <param name="bodyHeight">The height allocated to the model rendering.</param>
+    /// <param name="top">The viewer's top edge.</param>
+    private void RenderModelStage(
+        ContentPackEditorField model,
+        string address,
+        float width,
+        float bodyHeight,
+        float top
+    )
+    {
+        float padding = Mathf.Min(12, width * 0.04f);
+        float bodyTop = top + _modelToolbarHeight;
+        float footerTop = bodyTop + bodyHeight;
+        SetFormRect(modelStage.rectTransform, 4, top, width, footerTop + _modelFooterHeight - top);
+        modelStage.gameObject.SetActive(true);
+
+        modelFileName.text = address == null ? "Ship model" : GetModelFileName(address);
+        SetFormRect(modelFileName.rectTransform, 4 + padding, top + 8, width - 2 * padding, 38);
+        modelFileName.gameObject.SetActive(true);
+
+        Texture preview = modelPreview?.Texture;
+        PlacePreviewTexture(preview, width, bodyHeight, bodyTop);
+        float controlsStart = RenderModelFooter(model, preview != null, width, footerTop, padding);
+        float statusWidth = preview != null ? controlsStart - 4 - 2 * padding : width - 2 * padding;
+        modelStageStatus.text =
+            preview != null ? "Drag to rotate    |    Scroll to zoom"
+            : address == null ? "Choose a GLB to preview."
+            : modelPreview?.LoadFailed == true ? "Preview unavailable"
+            : "Loading model...";
+        modelStageStatus.alignment =
+            preview != null ? TextAlignmentOptions.MidlineLeft : TextAlignmentOptions.Midline;
+        SetFormRect(
+            modelStageStatus.rectTransform,
+            4 + padding,
+            preview != null ? footerTop : bodyTop,
+            Mathf.Max(0, statusWidth),
+            preview != null ? _modelFooterHeight : bodyHeight
+        );
+        modelStageStatus.gameObject.SetActive(preview == null || statusWidth >= 220);
+    }
+
+    /// <summary>
+    /// Aligns the import and preview controls along the bottom of the viewer.
+    /// </summary>
+    /// <param name="model">The import target for the ship model.</param>
+    /// <param name="hasPreview">Whether zoom and reset are available.</param>
+    /// <param name="width">The full viewer width.</param>
+    /// <param name="top">The footer's top edge.</param>
+    /// <param name="padding">The inset between controls and the edges of the viewer.</param>
+    /// <returns>The left edge of the zoom readout.</returns>
+    private float RenderModelFooter(
+        ContentPackEditorField model,
+        bool hasPreview,
+        float width,
+        float top,
+        float padding
+    )
+    {
+        const float buttonHeight = 34;
+        float buttonTop = top + (_modelFooterHeight - buttonHeight) / 2;
+        float available = width - 2 * padding;
+        float gap = Mathf.Min(10, available * 0.04f);
+        float changeWidth = Mathf.Min(142, available * (hasPreview ? 0.44f : 1));
+        float changeX = 4 + width - padding - changeWidth;
+        changeModelButton.GetComponentInChildren<TMP_Text>().text = string.IsNullOrWhiteSpace(
+            model.Value
+        )
+            ? "Import GLB..."
+            : "Change model...";
+        changeModelButton.onClick.RemoveAllListeners();
+        changeModelButton.onClick.AddListener(() => RequestImport(model));
+        SetFormRect(
+            (RectTransform)changeModelButton.transform,
+            changeX,
+            buttonTop,
+            changeWidth,
+            buttonHeight
+        );
+        changeModelButton.gameObject.SetActive(true);
+
+        resetModelViewButton.gameObject.SetActive(hasPreview);
+        modelZoomLabel.gameObject.SetActive(hasPreview);
+        if (!hasPreview)
+            return changeX;
+
+        float resetWidth = Mathf.Min(108, available * 0.32f);
+        float resetX = changeX - gap - resetWidth;
+        SetFormRect(
+            (RectTransform)resetModelViewButton.transform,
+            resetX,
+            buttonTop,
+            resetWidth,
+            buttonHeight
+        );
+
+        float zoomWidth = Mathf.Min(54, available * 0.16f);
+        float zoomX = resetX - gap - zoomWidth;
+        SetFormRect(modelZoomLabel.rectTransform, zoomX, top, zoomWidth, _modelFooterHeight);
+        UpdateModelZoom();
+        return zoomX;
+    }
+
+    /// <summary>
+    /// Updates the magnification readout without rebuilding the model form.
+    /// </summary>
+    private void UpdateModelZoom()
+    {
+        modelZoomLabel.text = Mathf.RoundToInt(modelPreview.Zoom * 100f) + "%";
+    }
+
+    /// <summary>
+    /// Displays the exact GLB basename for the current preview.
+    /// </summary>
+    /// <param name="address">The resolved content address.</param>
+    /// <returns>The filename shown above the viewer.</returns>
+    private static string GetModelFileName(string address)
+    {
+        string file = Path.GetFileName(address.Replace('\\', '/'));
+        return file.EndsWith(".glb", StringComparison.OrdinalIgnoreCase) ? file : file + ".glb";
+    }
+
+    /// <summary>
+    /// Releases model-specific controls outside the Model tab.
+    /// </summary>
+    private void HideModelControls()
+    {
+        modelFileName?.gameObject.SetActive(false);
+        modelStage?.gameObject.SetActive(false);
+        modelStageStatus?.gameObject.SetActive(false);
+        modelZoomLabel?.gameObject.SetActive(false);
+        resetModelViewButton?.gameObject.SetActive(false);
+        changeModelButton?.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Reports the active file's failure and refreshes the viewport status.
+    /// </summary>
+    /// <param name="message">The model loader's error.</param>
+    private void ShowModelPreviewError(string message)
+    {
+        ReportValidationError(message);
+        RenderFields(false);
+    }
+
+    /// <summary>
     /// Fits a preview into an explicit slot and reserves the same height in the scrolling form.
     /// </summary>
     /// <param name="address">The image used by the current tab.</param>
@@ -1050,31 +1324,57 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             ValidationFailed?.Invoke("Image path is invalid. Use Import to choose an image.");
         }
+        return RenderPreviewTexture(texture, width, maximumHeight);
+    }
+
+    /// <summary>
+    /// Fits a portrait into its authored slot.
+    /// </summary>
+    /// <param name="texture">The prepared portrait.</param>
+    /// <param name="width">The available form width.</param>
+    /// <param name="maximumHeight">The portrait's height limit.</param>
+    /// <returns>The height occupied by the portrait and its lower margin.</returns>
+    private int RenderPreviewTexture(Texture texture, float width, float maximumHeight)
+    {
+        int height =
+            texture == null
+                ? 0
+                : Mathf.CeilToInt(Mathf.Min(maximumHeight, width * texture.height / texture.width));
+        PlacePreviewTexture(texture, Mathf.FloorToInt(width - 8), height, 0);
+        return texture == null ? 0 : height + 20;
+    }
+
+    /// <summary>
+    /// Places the shared preview image inside the assigned viewport.
+    /// </summary>
+    /// <param name="texture">The image or model render.</param>
+    /// <param name="width">The slot width.</param>
+    /// <param name="height">The slot height.</param>
+    /// <param name="top">The slot's top edge in the form.</param>
+    private void PlacePreviewTexture(Texture texture, float width, float height, float top)
+    {
         previewImage.texture = texture;
         previewPane.SetActive(texture != null);
         if (texture == null)
-            return 0;
-        int height = Mathf.CeilToInt(
-            Mathf.Min(maximumHeight, width * texture.height / texture.width)
-        );
+            return;
+
         UILayout.SetSourceRect(
             (RectTransform)previewPane.transform,
             4,
-            0,
-            Mathf.FloorToInt(width - 8),
-            height
+            Mathf.RoundToInt(top),
+            Mathf.Max(1, Mathf.RoundToInt(width)),
+            Mathf.RoundToInt(height)
         );
         UILayout.SetSourceRect(
             (RectTransform)previewImage.transform.parent,
             0,
             0,
-            Mathf.FloorToInt(width - 8),
-            height
+            Mathf.RoundToInt(width),
+            Mathf.RoundToInt(height)
         );
         previewImage.enabled = true;
         previewImage.GetComponent<AspectRatioFitter>().aspectRatio =
             (float)texture.width / texture.height;
-        return height + 20;
     }
 
     /// <summary>
@@ -1105,6 +1405,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         {
             "Audio" => field.MediaType == ContentPackEditorMediaType.Audio,
             "Artwork" => field.IsMedia && field.MediaType != ContentPackEditorMediaType.Audio,
+            ContentEditorContentSections.ModelSection => true,
             _ => !field.IsMedia,
         };
     }
