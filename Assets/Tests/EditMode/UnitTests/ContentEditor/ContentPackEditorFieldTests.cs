@@ -10,37 +10,6 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorFieldTests
     {
-        [TestCase("")]
-        [TestCase("<ModelPath /><ModelDetailPaths />")]
-        [TestCase(
-            "<ModelPath>Pack/Assets/high</ModelPath>"
-                + "<ModelDetailPaths><String>Pack/Assets/low</String></ModelDetailPaths>"
-        )]
-        public void GetField_TacticalModelPaths_UseGlbExtensions(string modelFields)
-        {
-            ContentPackEditorRecord model = Create(
-                "<TacticalCombatUnitDefinition><UnitTypeID>ship</UnitTypeID>"
-                    + modelFields
-                    + "</TacticalCombatUnitDefinition>"
-            ).DocumentRecord;
-
-            foreach (
-                ContentPackEditorField field in ContentEditorContentSections.ModelFields(model)
-            )
-            {
-                Assert.AreEqual(
-                    ContentPackEditorMediaType.Model,
-                    field.MediaType,
-                    field.MemberName
-                );
-                CollectionAssert.AreEqual(
-                    new[] { ".glb" },
-                    field.MediaExtensions,
-                    field.MemberName
-                );
-            }
-        }
-
         [Test]
         public void SetValue_BattleSupportProfile_UsesNullableNumericType()
         {

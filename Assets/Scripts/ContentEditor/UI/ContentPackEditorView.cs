@@ -98,9 +98,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button artworkTab;
 
     [SerializeField]
-    private Button modelTab;
-
-    [SerializeField]
     private Button defaultBackgroundsTab;
 
     [SerializeField]
@@ -407,7 +404,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || recordSubtitle == null
             || propertiesTab == null
             || artworkTab == null
-            || modelTab == null
             || defaultBackgroundsTab == null
             || colorsTab == null
             || audioTab == null
@@ -444,7 +440,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         )
             throw new MissingReferenceException(name + " has incomplete workspace references.");
         initialized = true;
-        form.LayoutChanged += HandleFieldAreaResize;
+        form.WidthChanged += HandleFieldAreaResize;
         workbenchLayout.Changed += HandleWorkbenchChanged;
         fileButton.onClick.AddListener(ShowFileMenu);
         editButton.onClick.AddListener(ShowEditMenu);
@@ -467,7 +463,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
         defaultBackgroundsTab.onClick.AddListener(() => ShowSection("Default backgrounds"));
         audioTab.onClick.AddListener(() => ShowSection("Audio"));
-        modelTab.onClick.AddListener(() => ShowSection(ContentEditorContentSections.ModelSection));
         advancedTab.onClick.AddListener(() => ShowSection("Advanced"));
         encyclopediaTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
         rulesTab.onClick.AddListener(() => ShowSection("Rules"));
@@ -571,7 +566,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             xml.ApplyRequested -= ApplyXmlDraft;
             xml.DiscardRequested -= RequestDiscardXml;
             xml.ScopeRequested -= RequestXmlScope;
-            form.LayoutChanged -= HandleFieldAreaResize;
+            form.WidthChanged -= HandleFieldAreaResize;
             form.AddMessageRequested -= ShowAddMessageMenu;
             form.MissionReportOverrideRequested -= ForwardMissionReportOverride;
             form.AddNamePoolRequested -= RequestNamePool;
@@ -1744,10 +1739,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             selectedRecord.Kind != "PlanetSectors"
                 && fields.Any(field => field.MediaType == ContentPackEditorMediaType.Audio)
         );
-        modelTab.gameObject.SetActive(
-            selectedPage?.Fields == null
-                && ContentEditorContentSections.FindUnitModel(selectedRecord, catalogs) != null
-        );
         if (selectedPage?.Fields != null)
         {
             encyclopediaTab.gameObject.SetActive(false);
@@ -1838,7 +1829,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 propertiesTab,
                 encyclopediaTab,
                 artworkTab,
-                modelTab,
                 audioTab,
                 rulesTab,
                 referenceTab,
@@ -1869,7 +1859,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 "General",
                 "Encyclopedia",
                 "Artwork",
-                ContentEditorContentSections.ModelSection,
                 "Audio",
                 "Rules",
                 ContentEditorMissionReport.Section,
