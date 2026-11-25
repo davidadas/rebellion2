@@ -110,6 +110,32 @@ namespace Rebellion.Gameplay
                 : config.NormalReplacementIntervalTicks;
             return Math.Max(1, interval);
         }
+
+        /// <summary>
+        /// Estimates the day when a squadron's active replacement schedule will finish.
+        /// </summary>
+        /// <param name="squadron">The squadron whose replacement schedule is inspected.</param>
+        /// <param name="currentTick">The current game day.</param>
+        /// <returns>The estimated completion day, or null when the squadron is not actively recovering.</returns>
+        internal static long? EstimateCompletionTick(Starfighter squadron, int currentTick)
+        {
+            if (squadron == null)
+                throw new ArgumentNullException(nameof(squadron));
+            if (
+                !squadron.HasLosses()
+                || squadron.ManufacturingStatus != ManufacturingStatus.Complete
+                || squadron.NextReplacementTick <= 0
+                || squadron.ReplacementIntervalTicks <= 0
+            )
+                return null;
+
+            long missingFighters = Math.Max(
+                0L,
+                (long)squadron.MaxSquadronSize - squadron.CurrentSquadronSize
+            );
+            long firstPulse = Math.Max((long)currentTick, squadron.NextReplacementTick);
+            return firstPulse + (missingFighters - 1L) * squadron.ReplacementIntervalTicks;
+        }
     }
 
     /// <summary>
@@ -167,6 +193,32 @@ namespace Rebellion.Gameplay
             if (ship == null)
                 throw new ArgumentNullException(nameof(ship));
             return Math.Max(1, ship.MaxHullStrength / _repairPulseDivisor);
+        }
+
+        /// <summary>
+        /// Estimates the day when a capital ship's active hull-repair schedule will finish.
+        /// </summary>
+        /// <param name="ship">The capital ship whose repair schedule is inspected.</param>
+        /// <param name="currentTick">The current game day.</param>
+        /// <returns>The estimated completion day, or null when the ship is not actively repairing.</returns>
+        internal static long? EstimateCompletionTick(CapitalShip ship, int currentTick)
+        {
+            if (ship == null)
+                throw new ArgumentNullException(nameof(ship));
+            if (
+                !ship.IsDamaged()
+                || ship.ManufacturingStatus != ManufacturingStatus.Complete
+                || ((IMovable)ship).GetTransitMovement() != null
+                || ship.NextRepairTick <= 0
+                || ship.RepairIntervalTicks <= 0
+            )
+                return null;
+
+            long damage = Math.Max(0L, (long)ship.MaxHullStrength - ship.CurrentHullStrength);
+            long repairAmount = GetRepairAmount(ship);
+            long pulses = (damage + repairAmount - 1L) / repairAmount;
+            long firstPulse = Math.Max((long)currentTick, ship.NextRepairTick);
+            return firstPulse + (pulses - 1L) * ship.RepairIntervalTicks;
         }
     }
 
