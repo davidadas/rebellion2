@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game.Missions;
+using Rebellion.Game.SpaceCombat;
 using UnityEngine;
 
 /// <summary>
@@ -71,6 +72,58 @@ internal static class ContentEditorContentSections
 
     internal const string NeutralThemePageKey = "factions/neutral-theme";
     internal const string FacilityResearchIconsArtworkCategory = "Facility research icons";
+
+    internal const string ModelSection = "Model";
+
+    /// <summary>
+    /// Finds the authored tactical entry for the selected ship or fighter.
+    /// </summary>
+    /// <param name="unit">The selected unit record.</param>
+    /// <param name="catalogs">The pack's editable documents.</param>
+    /// <returns>The unit's tactical entry, if the pack defines one.</returns>
+    internal static ContentPackEditorRecord FindUnitModel(
+        ContentPackEditorRecord unit,
+        IReadOnlyList<ContentPackEditorCatalog> catalogs
+    )
+    {
+        if (unit?.Kind is not ("CapitalShip" or "Starfighter"))
+            return null;
+
+        foreach (ContentPackEditorCatalog catalog in catalogs)
+        {
+            ContentPackEditorRecord root = catalog.DocumentRecord;
+            if (root.Kind != nameof(TacticalCombatDefinition))
+                continue;
+
+            XElement element = root
+                .Element.Element(nameof(TacticalCombatDefinition.Units))
+                ?.Elements(nameof(TacticalCombatUnitDefinition))
+                .FirstOrDefault(entry =>
+                    (string)entry.Element(nameof(TacticalCombatUnitDefinition.UnitTypeID))
+                    == unit.ID
+                );
+            if (element != null)
+                return new ContentPackEditorRecord(catalog, element);
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Gets the model path and legacy detail paths used for validation and reset.
+    /// </summary>
+    /// <param name="model">The unit's authored tactical entry.</param>
+    /// <returns>The model media fields.</returns>
+    internal static IReadOnlyList<ContentPackEditorField> ModelFields(
+        ContentPackEditorRecord model
+    ) =>
+        model == null
+            ? Array.Empty<ContentPackEditorField>()
+            : new[]
+            {
+                model.GetField(nameof(TacticalCombatUnitDefinition.ModelPath)),
+                model.GetField(nameof(TacticalCombatUnitDefinition.ModelDetailPaths)),
+            };
 
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
