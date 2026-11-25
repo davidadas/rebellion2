@@ -72,6 +72,78 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void CreateEditableFrame_GameplayBackdropCrop_SamplesRequestedWindowRegion()
+        {
+            Texture2D background = new(4, 4, TextureFormat.RGBA32, false)
+            {
+                wrapMode = TextureWrapMode.Clamp,
+            };
+            try
+            {
+                background.SetPixels(
+                    Enumerable
+                        .Range(0, 16)
+                        .Select(index => index < 8 ? Color.red : Color.blue)
+                        .ToArray()
+                );
+                background.Apply();
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background,
+                    backdropUv: new Rect(0, 0.75f, 1, 0.25f)
+                );
+
+                Assert.That(frame.BackgroundLayer.GetPixels(), Is.All.EqualTo(Color.blue));
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
+        public void Bake_GameplayBackdropCrop_KeepsTheWindowBackgroundOutOfTheExport()
+        {
+            Texture2D background = new(2, 2, TextureFormat.RGBA32, false);
+            try
+            {
+                background.SetPixels(Enumerable.Repeat(Color.red, 4).ToArray());
+                background.Apply();
+                using var frame = ContentEditorArtworkEffectGenerator.CreateEditableFrame(
+                    sourcePath,
+                    null,
+                    ContentEditorArtworkEffectStyle.ShipTravel,
+                    148,
+                    false,
+                    background,
+                    backdropUv: new Rect(0, 0, 0.5f, 0.5f)
+                );
+
+                Color32[] pixels = DecodePixels(
+                    frame.Bake(
+                        new[]
+                        {
+                            new ContentEditorArtworkLayer
+                            {
+                                Role = ContentEditorArtworkLayerRole.Background,
+                            },
+                        }
+                    )
+                );
+
+                Assert.That(pixels.Select(pixel => pixel.a), Is.All.Zero);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(background);
+            }
+        }
+
+        [Test]
         public void Generate_ChangedDamageSeed_ProducesDifferentDamage()
         {
             var first = ContentEditorArtworkEffectGenerator.Generate(
