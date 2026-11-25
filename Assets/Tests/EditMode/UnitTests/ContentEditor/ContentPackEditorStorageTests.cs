@@ -533,6 +533,89 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void SetUnitModel_InheritedDetailModels_ReplacesTheShipWithOneGlb()
+        {
+            UpdateBasePackDefinition(definition =>
+                definition.TacticalCombatDefinitionsPath = "Data/tactical-combat.xml"
+            );
+            UpdateBaseFactionDefinition(definition =>
+                definition.CapitalShipsPath = "Factions/Fixture/Data/capital-ships.xml"
+            );
+            WriteFixtureFile(
+                "Factions/Fixture/Data/capital-ships.xml",
+                "<CapitalShips><CapitalShip><TypeID>ship</TypeID></CapitalShip><CapitalShip><TypeID>other</TypeID></CapitalShip></CapitalShips>"
+            );
+            const string definition =
+                "<TacticalCombatDefinition><Units><TacticalCombatUnitDefinition><UnitTypeID>ship</UnitTypeID>"
+                + "<ModelPath>Pack/Data/high</ModelPath><ModelDetailPaths><String>Pack/Data/high</String>"
+                + "<String>Pack/Data/low</String></ModelDetailPaths></TacticalCombatUnitDefinition></Units></TacticalCombatDefinition>";
+            WriteFixtureFile("Data/tactical-combat.xml", definition);
+            WriteFixtureFile("Data/high.glb", "High model fixture");
+            WriteFixtureFile("Data/low.glb", "Low model fixture");
+            WriteFixtureFile("Data/test-model.glb", "Model fixture");
+            ContentPackEditorProject project = CreateWorkingProject();
+            var catalogs = project.GetCatalogs();
+            ContentPackEditorRecord ship = catalogs
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "CapitalShip" && record.ID == "ship");
+            ContentPackEditorRecord other = catalogs
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "CapitalShip" && record.ID == "other");
+            ContentPackEditorRecord model = ContentEditorContentSections.FindUnitModel(
+                ship,
+                catalogs
+            );
+            Assert.IsNull(ContentEditorContentSections.FindUnitModel(other, catalogs));
+            ContentPackEditorField field = ContentEditorContentSections.ModelFields(model).First();
+            Assert.AreEqual(ContentPackEditorMediaType.Model, field.MediaType);
+            Assert.AreEqual("Pack/Data/high", field.Value);
+            ContentPackEditorDocument document = model.Catalog.Document;
+            Assert.IsFalse(document.IsDirty);
+
+            string address = ContentPackEditorStorage.ImportAsset(
+                project,
+                Path.Combine(Path.GetDirectoryName(document.SourcePath), "test-model.glb"),
+                field
+            );
+            project.SetUnitModel(model, address);
+            Assert.AreEqual(
+                address,
+                XElement.Parse(document.Text).Descendants("ModelPath").Single().Value
+            );
+            Assert.IsEmpty(
+                XElement.Parse(document.Text).Descendants("ModelDetailPaths").Elements()
+            );
+
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(
+                new[] { "Pack/Data/high", "Pack/Data/low" },
+                XElement
+                    .Parse(document.Text)
+                    .Descendants("ModelDetailPaths")
+                    .Elements()
+                    .Select(item => item.Value)
+            );
+            Assert.IsTrue(project.Redo());
+            ContentPackEditorStorage.Save(project);
+
+            ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            ContentPackEditorDocument savedModel = reopened.Documents.Single(candidate =>
+                candidate.Address == model.Catalog.Document.Address
+            );
+            Assert.AreEqual(
+                address,
+                XElement.Parse(savedModel.Text).Descendants("ModelPath").Single().Value
+            );
+            Assert.IsEmpty(
+                XElement.Parse(savedModel.Text).Descendants("ModelDetailPaths").Elements()
+            );
+            Assert.AreEqual(definition, File.ReadAllText(document.SourcePath));
+        }
+
+        [Test]
         public void CreateInFolder_ExistingEmptyFolder_CreatesThePack()
         {
             string folder = Path.Combine(contentRoot, "Working");

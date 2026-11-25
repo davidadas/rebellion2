@@ -19,8 +19,10 @@ public sealed class ScrollAreaLayout : MonoBehaviour
     private float scrollStep = 38;
     private float contentHeight;
     private float lastWidth;
+    private float lastHeight;
 
     public event Action WidthChanged;
+    public event Action HeightChanged;
 
     public ScrollAreaView ScrollArea => scrollArea;
 
@@ -52,11 +54,14 @@ public sealed class ScrollAreaLayout : MonoBehaviour
             new Vector2(scrollbarWidth, Mathf.Max(24, rect.height))
         );
         scrollArea.SetContentHeight(contentHeight, scrollStep, false);
-        if (!Mathf.Approximately(lastWidth, rect.width))
-        {
-            lastWidth = rect.width;
+        bool widthChanged = !Mathf.Approximately(lastWidth, rect.width);
+        bool heightChanged = !Mathf.Approximately(lastHeight, rect.height);
+        lastWidth = rect.width;
+        lastHeight = rect.height;
+        if (widthChanged)
             WidthChanged?.Invoke();
-        }
+        if (heightChanged)
+            HeightChanged?.Invoke();
     }
 
     /// <summary>

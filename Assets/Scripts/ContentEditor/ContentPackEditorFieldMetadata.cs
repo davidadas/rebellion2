@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
+using Rebellion.Game.SpaceCombat;
 using UnityEngine;
 
 /// <summary>
@@ -575,6 +576,14 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The supported media category.</returns>
     internal static ContentPackEditorMediaType GetMediaType(ContentPackEditorField field)
     {
+        if (
+            field.Record.Kind == nameof(TacticalCombatUnitDefinition)
+            && field.MemberName
+                is nameof(TacticalCombatUnitDefinition.ModelPath)
+                    or nameof(TacticalCombatUnitDefinition.ModelDetailPaths)
+        )
+            return ContentPackEditorMediaType.Model;
+
         if (
             field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
             && field.XmlElement.Parent.Parent?.Name.LocalName
