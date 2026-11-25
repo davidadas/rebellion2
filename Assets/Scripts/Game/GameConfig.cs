@@ -2084,9 +2084,11 @@ namespace Rebellion.Game
         public class SpaceCombatConfig
         {
             /// <summary>
-            /// Sets the number of installed hyperdrive systems for each unit type.
+            /// Accepts obsolete unit hardware metadata without applying or writing it.
             /// </summary>
-            public Dictionary<string, int> HyperdriveSystemCounts { get; set; } = new();
+            [PersistableMember(Name = nameof(HyperdriveSystemCounts))]
+            [PersistableIgnore]
+            private Dictionary<string, int> HyperdriveSystemCounts { get; set; }
 
             public int AdmiralLeadershipDivisor { get; set; }
 
@@ -2206,7 +2208,6 @@ namespace Rebellion.Game
             public SpaceCombatConfig CreateCopy() =>
                 new SpaceCombatConfig
                 {
-                    HyperdriveSystemCounts = new Dictionary<string, int>(HyperdriveSystemCounts),
                     AdmiralLeadershipDivisor = AdmiralLeadershipDivisor,
                     CommanderCombatDivisor = CommanderCombatDivisor,
                     LaserCannonCapitalDamageMultiplier = LaserCannonCapitalDamageMultiplier,

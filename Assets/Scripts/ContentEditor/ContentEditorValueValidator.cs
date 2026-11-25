@@ -38,6 +38,10 @@ internal static class ContentEditorValueValidator
             )
             || (owner == typeof(Building) && member == "ProcessRate")
             || (
+                (owner == typeof(CapitalShip) || owner == typeof(Starfighter))
+                && member == nameof(CapitalShip.HyperdriveCount)
+            )
+            || (
                 owner == typeof(CapitalShip)
                 && member is "StarfighterCapacity" or "RegimentCapacity"
             )

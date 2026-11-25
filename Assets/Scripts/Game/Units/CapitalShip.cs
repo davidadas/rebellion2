@@ -99,6 +99,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(Hyperdrive))]
         private int _hyperdrive;
 
+        [PersistableMember(Name = nameof(HyperdriveCount))]
+        private int? _hyperdriveCount;
+
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
 
         [PersistableIgnore]
@@ -267,6 +270,17 @@ namespace Rebellion.Game.Units
         {
             get => _hyperdrive;
             set => _hyperdrive = value;
+        }
+
+        /// <summary>
+        /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
+        /// An omitted count provides one system when the travel rating is positive.
+        /// </summary>
+        [PersistableIgnore]
+        public int HyperdriveCount
+        {
+            get => _hyperdriveCount ?? (Hyperdrive > 0 ? 1 : 0);
+            set => _hyperdriveCount = value;
         }
 
         [PersistableIgnore]
@@ -479,6 +493,7 @@ namespace Rebellion.Game.Units
             copy.MaxShieldStrength = MaxShieldStrength;
             copy.ShieldRechargeRate = ShieldRechargeRate;
             copy.Hyperdrive = Hyperdrive;
+            copy._hyperdriveCount = _hyperdriveCount;
             copy._tacticalRules = _tacticalRules;
             copy._tacticalDefinition = _tacticalDefinition;
             copy.SystemDamage = SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();

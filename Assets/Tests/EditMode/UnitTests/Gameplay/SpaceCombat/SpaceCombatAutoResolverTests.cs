@@ -26,6 +26,38 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(GetResolvedShipHulls(first), GetResolvedShipHulls(second));
         }
 
+        [TestCase(false, 0, false)]
+        [TestCase(false, 1, true)]
+        [TestCase(false, 2, true)]
+        [TestCase(true, 0, false)]
+        [TestCase(true, 1, true)]
+        [TestCase(true, 2, true)]
+        public void Resolve_UnitHyperdriveCount_ControlsWithdrawal(
+            bool starfighter,
+            int count,
+            bool withdraws
+        )
+        {
+            CapitalShip opponent = CreatePassiveTarget("opponent", 100);
+            CapitalShip ship = CreatePassiveTarget("target", 100);
+            ship.HyperdriveCount = count;
+            Starfighter fighter = CreateFighter("target", 12, 0);
+            fighter.HyperdriveCount = count;
+            ISceneNode target = starfighter ? fighter : ship;
+
+            SpaceCombatResult result = Resolve(
+                CreateConfig(),
+                new[] { opponent },
+                Array.Empty<Starfighter>(),
+                starfighter ? Array.Empty<CapitalShip>() : new[] { ship },
+                starfighter ? new[] { fighter } : Array.Empty<Starfighter>(),
+                attackerCanWithdraw: true,
+                defenderCanWithdraw: true
+            );
+
+            Assert.AreEqual(withdraws, result.WithdrawnUnits.Contains(target));
+        }
+
         [TestCase(0)]
         [TestCase(100)]
         public void Resolve_AdmiralLeadership_DoesNotSupplyWeaponRecharge(int leadership)
@@ -2803,13 +2835,11 @@ namespace Rebellion.Tests.Gameplay
             config.AutoResolveStagnationIterations = 1;
             foreach (CapitalShip target in targetShips)
             {
-                target.TypeID = "single-step-ship-" + target.InstanceID;
-                config.HyperdriveSystemCounts[target.TypeID] = 2;
+                target.HyperdriveCount = 2;
             }
             foreach (Starfighter target in targetFighters)
             {
-                target.TypeID = "single-step-fighter-" + target.InstanceID;
-                config.HyperdriveSystemCounts[target.TypeID] = 2;
+                target.HyperdriveCount = 2;
             }
             return Resolve(
                 config,
