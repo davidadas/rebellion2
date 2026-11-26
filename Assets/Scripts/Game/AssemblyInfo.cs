@@ -2,6 +2,7 @@ using System.Runtime.CompilerServices;
 
 [assembly: InternalsVisibleTo("Rebellion.App")]
 [assembly: InternalsVisibleTo("Rebellion.Gameplay")]
+[assembly: InternalsVisibleTo("Rebellion.Tactical.Core")]
 [assembly: InternalsVisibleTo("Rebellion.AI")]
 [assembly: InternalsVisibleTo("Rebellion.Content")]
 [assembly: InternalsVisibleTo("Rebellion.Generation")]

@@ -10,7 +10,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.SceneGraph;
-using Rebellion.Sessions.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
@@ -110,7 +109,7 @@ namespace Rebellion.Gameplay
         )
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
-            _createTacticalAudio = createTacticalAudio ?? HeadlessTacticalCombatAudio.Create;
+            _createTacticalAudio = createTacticalAudio ?? TacticalCombatAudio.Create;
             _canExecuteCommands = canExecuteCommands;
             Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(

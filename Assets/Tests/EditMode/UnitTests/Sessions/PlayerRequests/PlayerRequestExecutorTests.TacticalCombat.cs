@@ -6,6 +6,7 @@ using System.Security.Cryptography;
 using System.Text;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -260,7 +261,7 @@ namespace Rebellion.Tests.PlayerRequests
                 CapitalShip guestShip
             ) = PrepareTacticalRequestEncounter();
             TacticalCombatSession battle = AdmitTacticalRequestBattle(pending);
-            TacticalCombatUnit host = battle.GetUnit(hostShip.InstanceID);
+            CombatUnit host = battle.GetUnit(hostShip.InstanceID);
             battle.SetTarget(battle.GetRequestedGroup(host), battle.GetUnit(guestShip.InstanceID));
             for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
                 battle.Advance(50);

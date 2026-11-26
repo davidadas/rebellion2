@@ -11,7 +11,7 @@ using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
-using TacticalCombatOutcome = global::Rebellion.Game.SpaceCombat.TacticalCombatOutcome;
+using TacticalCombatOutcome = global::Rebellion.Game.Results.TacticalCombatOutcome;
 
 namespace Rebellion.Gameplay
 {

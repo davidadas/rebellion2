@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -10,35 +11,35 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatCarrier
     {
-        private readonly List<TacticalCombatUnit> _launchQueue = new();
-        private readonly List<TacticalCombatUnit> _recovered = new();
-        private readonly HashSet<TacticalCombatUnit> _approaching = new();
+        private readonly List<CombatUnit> _launchQueue = new();
+        private readonly List<CombatUnit> _recovered = new();
+        private readonly HashSet<CombatUnit> _approaching = new();
         private int _occupied;
         private int _reserved;
         private float _nextLaunch;
 
-        public TacticalCombatUnit Unit { get; }
+        public CombatUnit Unit { get; }
         public int Occupied => _occupied;
         public int Reserved => _reserved;
         public bool IsFullAndLaunched =>
             _reserved == Unit.FighterCapacity && _launchQueue.Count == 0;
-        public IReadOnlyList<TacticalCombatUnit> Docked { get; }
-        public IReadOnlyList<TacticalCombatUnit> Recovered { get; }
+        public IReadOnlyList<CombatUnit> Docked { get; }
+        public IReadOnlyList<CombatUnit> Recovered { get; }
         public Vector3 HangarPosition =>
             Unit.IsBattleStation
                 ? Unit.Position
                 : new(Unit.Position.X, Unit.Position.Y - Unit.HalfHeight, Unit.Position.Z);
         public bool IsAvailable =>
             Unit.IsBattleStation
-                ? Unit.Systems.IsAlive && Unit.Status == TacticalCombatUnitStatus.Active
+                ? Unit.Systems.IsAlive && Unit.Status == CombatUnitStatus.Active
                 : Unit.IsTargetable;
-        public event Action<TacticalCombatCarrier, TacticalCombatUnit> LaunchRequested;
+        public event Action<TacticalCombatCarrier, CombatUnit> LaunchRequested;
 
         /// <summary>
         /// Creates the fighter operations state for one capital ship.
         /// </summary>
         /// <param name="unit">The carrier's tactical unit.</param>
-        public TacticalCombatCarrier(TacticalCombatUnit unit)
+        public TacticalCombatCarrier(CombatUnit unit)
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
             Docked = _launchQueue.AsReadOnly();
@@ -54,11 +55,7 @@ namespace Rebellion.Tactical
         /// <param name="systemTime">The captured command time at attachment.</param>
         /// <param name="random">The encounter's shared launch-timing stream.</param>
         /// <returns>Whether the carrier has capacity for the squadron.</returns>
-        public bool AddDocked(
-            TacticalCombatUnit fighter,
-            float systemTime,
-            IRandomNumberProvider random
-        )
+        public bool AddDocked(CombatUnit fighter, float systemTime, IRandomNumberProvider random)
         {
             if (_reserved >= Unit.FighterCapacity)
                 return false;
@@ -66,7 +63,7 @@ namespace Rebellion.Tactical
             _occupied++;
             _reserved++;
             fighter.CarrierID = Unit.InstanceID;
-            fighter.Status = TacticalCombatUnitStatus.Docked;
+            fighter.Status = CombatUnitStatus.Docked;
             if (_nextLaunch == 0 || float.IsNaN(_nextLaunch))
                 _nextLaunch = (float)(5d + random.NextInt(0, 9) + systemTime);
             return true;
@@ -98,14 +95,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The squadron being launched.</param>
         /// <returns>Whether the launch changed the squadron to active.</returns>
-        public bool Launch(TacticalCombatUnit fighter)
+        public bool Launch(CombatUnit fighter)
         {
             if (!IsAvailable || !_launchQueue.Remove(fighter))
                 return false;
             _occupied--;
             _reserved--;
             fighter.Position = HangarPosition;
-            fighter.Status = TacticalCombatUnitStatus.Active;
+            fighter.Status = CombatUnitStatus.Active;
             return true;
         }
 
@@ -114,7 +111,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The approaching squadron.</param>
         /// <returns>Whether a berth was reserved.</returns>
-        public bool Reserve(TacticalCombatUnit fighter)
+        public bool Reserve(CombatUnit fighter)
         {
             if (!IsAvailable || _reserved >= Unit.FighterCapacity)
                 return false;
@@ -128,13 +125,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The squadron at the hangar entrance.</param>
         /// <returns>Whether the recovery was applied.</returns>
-        public bool Recover(TacticalCombatUnit fighter)
+        public bool Recover(CombatUnit fighter)
         {
             if (!IsAvailable || !_approaching.Remove(fighter))
                 return false;
             _recovered.Add(fighter);
             _occupied++;
-            fighter.Status = TacticalCombatUnitStatus.Recovered;
+            fighter.Status = CombatUnitStatus.Recovered;
             return true;
         }
 
@@ -142,7 +139,7 @@ namespace Rebellion.Tactical
         /// Releases an approaching or docked squadron when it is destroyed or reassigned.
         /// </summary>
         /// <param name="fighter">The departing squadron.</param>
-        public void Detach(TacticalCombatUnit fighter)
+        public void Detach(CombatUnit fighter)
         {
             if (_approaching.Remove(fighter))
                 _reserved--;
@@ -158,13 +155,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The surviving squadron.</param>
         /// <returns>Whether this carrier accepted the squadron.</returns>
-        public bool AttachSurvivor(TacticalCombatUnit fighter)
+        public bool AttachSurvivor(CombatUnit fighter)
         {
             if (_occupied >= Unit.FighterCapacity)
                 return false;
             _occupied++;
             fighter.CarrierID = Unit.InstanceID;
-            fighter.Status = TacticalCombatUnitStatus.Docked;
+            fighter.Status = CombatUnitStatus.Docked;
             if (!_recovered.Contains(fighter))
                 _recovered.Add(fighter);
             return true;

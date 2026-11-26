@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -32,13 +33,13 @@ namespace Rebellion.Tactical
         private readonly Queue<DisplayModeCommand> _displayCommands = new();
         private readonly Queue<Action> _commands = new();
         private readonly Queue<PointerCommand> _pointers = new();
-        private readonly List<TacticalCombatUnit> _members = new();
-        private readonly List<TacticalCombatUnit> _highlights = new();
-        private readonly List<TacticalCombatUnit> _targets = new();
+        private readonly List<CombatUnit> _members = new();
+        private readonly List<CombatUnit> _highlights = new();
+        private readonly List<CombatUnit> _targets = new();
         private readonly List<Vector3> _waypoints = new();
         private readonly List<TacticalCombatGroup> _groups = new();
-        private TacticalCombatUnit _primary;
-        private TacticalCombatUnit _inspected;
+        private CombatUnit _primary;
+        private CombatUnit _inspected;
         private uint _notification;
         private bool _disposed;
         public TacticalCombatSelectionKind Kind { get; private set; }
@@ -49,16 +50,16 @@ namespace Rebellion.Tactical
         public TacticalCombatGroup Group { get; private set; }
         public int Category { get; private set; } = -1;
         public Vector3? PrimaryWaypoint { get; private set; }
-        public TacticalCombatUnit PrimaryUnit =>
+        public CombatUnit PrimaryUnit =>
             Kind switch
             {
                 TacticalCombatSelectionKind.ObjectGroup => _inspected,
                 TacticalCombatSelectionKind.FighterGroup => Group?.Members.FirstOrDefault(),
                 _ => _primary,
             };
-        public IReadOnlyList<TacticalCombatUnit> Members { get; }
-        public IReadOnlyList<TacticalCombatUnit> Highlights { get; }
-        public IReadOnlyList<TacticalCombatUnit> Targets { get; }
+        public IReadOnlyList<CombatUnit> Members { get; }
+        public IReadOnlyList<CombatUnit> Highlights { get; }
+        public IReadOnlyList<CombatUnit> Targets { get; }
         public IReadOnlyList<Vector3> Waypoints { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
         public bool CanIssueCommands =>
@@ -92,7 +93,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The addressed encounter participant.</param>
         /// <param name="extend">Whether to use the context's append or toggle operation.</param>
-        public void QueueObject(TacticalCombatUnit unit, bool extend = false)
+        public void QueueObject(CombatUnit unit, bool extend = false)
         {
             ValidateUnit(unit);
             if (
@@ -357,9 +358,9 @@ namespace Rebellion.Tactical
                     _session.CreateGroup(_members.ToArray());
                 else
                 {
-                    TacticalCombatUnit first = _members[0];
+                    CombatUnit first = _members[0];
                     Notify(0x84, 0x102);
-                    foreach (TacticalCombatUnit unit in _members)
+                    foreach (CombatUnit unit in _members)
                         _session.SetFormation(_session.CreateGroup(new[] { unit }), formation);
                     Inspect(first);
                 }
@@ -411,7 +412,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The participant being queried.</param>
         /// <returns>Whether the registered non-station object still belongs to the displayed battle.</returns>
-        public bool IsDisplayObject(TacticalCombatUnit unit) =>
+        public bool IsDisplayObject(CombatUnit unit) =>
             unit != null
             && ReferenceEquals(_session.GetUnit(unit.InstanceID), unit)
             && unit.IsActiveDisplayObject;
@@ -432,7 +433,7 @@ namespace Rebellion.Tactical
 
         private readonly struct DisplayModeCommand
         {
-            public TacticalCombatUnit Unit { get; }
+            public CombatUnit Unit { get; }
             public bool Next { get; }
 
             /// <summary>
@@ -440,7 +441,7 @@ namespace Rebellion.Tactical
             /// </summary>
             /// <param name="unit">The status panel's captured object.</param>
             /// <param name="next">Whether to traverse forward.</param>
-            public DisplayModeCommand(TacticalCombatUnit unit, bool next)
+            public DisplayModeCommand(CombatUnit unit, bool next)
             {
                 Unit = unit;
                 Next = next;
@@ -449,7 +450,7 @@ namespace Rebellion.Tactical
 
         private readonly struct PointerCommand
         {
-            public TacticalCombatUnit Unit { get; }
+            public CombatUnit Unit { get; }
             public Vector3? Waypoint { get; }
             public bool Extend { get; }
 
@@ -459,7 +460,7 @@ namespace Rebellion.Tactical
             /// <param name="unit">The addressed object, or null.</param>
             /// <param name="waypoint">The addressed navigation marker, or null.</param>
             /// <param name="extend">The contextual append or toggle modifier.</param>
-            public PointerCommand(TacticalCombatUnit unit, Vector3? waypoint, bool extend)
+            public PointerCommand(CombatUnit unit, Vector3? waypoint, bool extend)
             {
                 Unit = unit;
                 Waypoint = waypoint;

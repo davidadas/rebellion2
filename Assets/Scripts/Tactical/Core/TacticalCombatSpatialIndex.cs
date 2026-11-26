@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -9,16 +10,16 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatSpatialIndex
     {
-        private readonly List<TacticalCombatUnit> _capitalShips = new();
-        private readonly List<TacticalCombatUnit> _fighters = new();
-        private readonly Dictionary<TacticalCombatUnit, float> _indexedPositions = new();
-        private static readonly Comparison<TacticalCombatUnit> _compareBattleOrder = CompareIndices;
+        private readonly List<CombatUnit> _capitalShips = new();
+        private readonly List<CombatUnit> _fighters = new();
+        private readonly Dictionary<CombatUnit, float> _indexedPositions = new();
+        private static readonly Comparison<CombatUnit> _compareBattleOrder = CompareIndices;
 
         /// <summary>
         /// Builds the spatial indexes from the battle's active units.
         /// </summary>
         /// <param name="units">The captured battle roster.</param>
-        public TacticalCombatSpatialIndex(IReadOnlyList<TacticalCombatUnit> units)
+        public TacticalCombatSpatialIndex(IReadOnlyList<CombatUnit> units)
         {
             if (units == null)
                 throw new ArgumentNullException(nameof(units));
@@ -38,9 +39,9 @@ namespace Rebellion.Tactical
         /// Removes a unit from its previous position and inserts its current active position.
         /// </summary>
         /// <param name="unit">The unit whose position or participation changed.</param>
-        public void Update(TacticalCombatUnit unit)
+        public void Update(CombatUnit unit)
         {
-            List<TacticalCombatUnit> index = unit.IsFighter ? _fighters : _capitalShips;
+            List<CombatUnit> index = unit.IsFighter ? _fighters : _capitalShips;
             if (_indexedPositions.TryGetValue(unit, out float previousX))
             {
                 int previous = Find(index, previousX, unit.Index);
@@ -61,9 +62,9 @@ namespace Rebellion.Tactical
         /// <param name="movementDistance">The distance available during this movement update.</param>
         /// <param name="results">Receives neighbors in stable battle order.</param>
         public void QueryCollision(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             float movementDistance,
-            List<TacticalCombatUnit> results
+            List<CombatUnit> results
         )
         {
             results.Clear();
@@ -71,18 +72,22 @@ namespace Rebellion.Tactical
             float verticalRange = (float)((double)movementDistance * 0.4f + unit.HalfHeight);
             for (int index = center - 1; index >= 0; index--)
             {
-                TacticalCombatUnit candidate = _capitalShips[index];
-                float horizontalRange = (float)((double)candidate.Proximity + unit.Proximity);
+                CombatUnit candidate = _capitalShips[index];
+                float horizontalRange = (float)(
+                    (double)GetProximity(candidate) + GetProximity(unit)
+                );
                 if ((double)unit.Position.X - candidate.Position.X > horizontalRange)
                     break;
                 AddCollisionCandidate(unit, candidate, horizontalRange, verticalRange, results);
             }
             for (int index = center; index < _capitalShips.Count; index++)
             {
-                TacticalCombatUnit candidate = _capitalShips[index];
+                CombatUnit candidate = _capitalShips[index];
                 if (ReferenceEquals(candidate, unit))
                     continue;
-                float horizontalRange = (float)((double)candidate.Proximity + unit.Proximity);
+                float horizontalRange = (float)(
+                    (double)GetProximity(candidate) + GetProximity(unit)
+                );
                 if ((double)candidate.Position.X - unit.Position.X > horizontalRange)
                     break;
                 AddCollisionCandidate(unit, candidate, horizontalRange, verticalRange, results);
@@ -97,24 +102,20 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="range">The largest active battery range.</param>
         /// <param name="results">Receives eligible opposing squadrons.</param>
-        public void QueryFighters(
-            TacticalCombatUnit unit,
-            float range,
-            List<TacticalCombatUnit> results
-        )
+        public void QueryFighters(CombatUnit unit, float range, List<CombatUnit> results)
         {
             results.Clear();
             int center = Find(_fighters, unit.Position.X, unit.Index);
             for (int index = center - 1; index >= 0; index--)
             {
-                TacticalCombatUnit candidate = _fighters[index];
+                CombatUnit candidate = _fighters[index];
                 if ((double)unit.Position.X - candidate.Position.X > range)
                     break;
                 AddFighterCandidate(unit, candidate, range, results);
             }
             for (int index = center; index < _fighters.Count; index++)
             {
-                TacticalCombatUnit candidate = _fighters[index];
+                CombatUnit candidate = _fighters[index];
                 if ((double)candidate.Position.X - unit.Position.X > range)
                     break;
                 AddFighterCandidate(unit, candidate, range, results);
@@ -128,7 +129,7 @@ namespace Rebellion.Tactical
         /// <param name="left">The first unit.</param>
         /// <param name="right">The second unit.</param>
         /// <returns>The identifier comparison.</returns>
-        private static int CompareIndices(TacticalCombatUnit left, TacticalCombatUnit right)
+        private static int CompareIndices(CombatUnit left, CombatUnit right)
         {
             return unchecked((uint)left.Index).CompareTo(unchecked((uint)right.Index));
         }
@@ -139,14 +140,11 @@ namespace Rebellion.Tactical
         /// <param name="unit">The moved unit.</param>
         /// <param name="neighbors">The previously resolved collision candidates.</param>
         /// <returns>Whether any hull overlaps the moved unit.</returns>
-        public static bool Overlaps(
-            TacticalCombatUnit unit,
-            IReadOnlyList<TacticalCombatUnit> neighbors
-        )
+        public static bool Overlaps(CombatUnit unit, IReadOnlyList<CombatUnit> neighbors)
         {
             for (int index = 0; index < neighbors.Count; index++)
             {
-                TacticalCombatUnit candidate = neighbors[index];
+                CombatUnit candidate = neighbors[index];
                 if (
                     Math.Abs((double)candidate.Position.Y - unit.Position.Y)
                     >= (double)candidate.HalfHeight + unit.HalfHeight
@@ -170,11 +168,11 @@ namespace Rebellion.Tactical
         /// <param name="verticalRange">The moving unit's vertical envelope.</param>
         /// <param name="results">The reusable query result list.</param>
         private static void AddCollisionCandidate(
-            TacticalCombatUnit unit,
-            TacticalCombatUnit candidate,
+            CombatUnit unit,
+            CombatUnit candidate,
             float horizontalRange,
             float verticalRange,
-            List<TacticalCombatUnit> results
+            List<CombatUnit> results
         )
         {
             if (
@@ -193,15 +191,15 @@ namespace Rebellion.Tactical
         /// <param name="range">The weapon-range bound.</param>
         /// <param name="results">The reusable query result list.</param>
         private static void AddFighterCandidate(
-            TacticalCombatUnit unit,
-            TacticalCombatUnit candidate,
+            CombatUnit unit,
+            CombatUnit candidate,
             float range,
-            List<TacticalCombatUnit> results
+            List<CombatUnit> results
         )
         {
             if (
                 candidate.Side != unit.Side
-                && candidate.Status == TacticalCombatUnitStatus.Active
+                && candidate.Status == CombatUnitStatus.Active
                 && Math.Abs((double)candidate.Position.Y - unit.Position.Y) <= range
                 && Math.Abs((double)candidate.Position.Z - unit.Position.Z) <= range
             )
@@ -215,14 +213,14 @@ namespace Rebellion.Tactical
         /// <param name="x">The indexed horizontal position.</param>
         /// <param name="unitIndex">The stable battle index used for ties.</param>
         /// <returns>The zero-based insertion point.</returns>
-        private int Find(List<TacticalCombatUnit> index, float x, int unitIndex)
+        private int Find(List<CombatUnit> index, float x, int unitIndex)
         {
             int lower = 0;
             int upper = index.Count;
             while (lower < upper)
             {
                 int middle = lower + (upper - lower) / 2;
-                TacticalCombatUnit candidate = index[middle];
+                CombatUnit candidate = index[middle];
                 float candidateX = _indexedPositions[candidate];
                 if (
                     candidateX < x
@@ -235,5 +233,16 @@ namespace Rebellion.Tactical
             }
             return lower;
         }
+
+        /// <summary>
+        /// Calculates the unit's collision lookahead from its velocity and hull radius.
+        /// </summary>
+        /// <param name="unit">The unit whose collision candidates are being queried.</param>
+        /// <returns>The range to check around the unit.</returns>
+        internal static float GetProximity(CombatUnit unit) =>
+            (float)(
+                (double)TacticalCombatGeometry.GetMovementLength(unit.Velocity) * 0.5
+                + (double)unit.CollisionRadius * 0.5555555820465088f
+            );
     }
 }

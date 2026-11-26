@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
@@ -15,8 +16,7 @@ namespace Rebellion.Gameplay
         /// Validates a detached outcome completely before resolving any local campaign references for import.
         /// </summary>
         /// <param name="outcome">The host-issued final pools and participation state.</param>
-        /// <returns>The final result using only this encounter's captured campaign objects.</returns>
-        private SpaceCombatResult RestoreTacticalOutcome(TacticalCombatOutcome outcome)
+        private void ValidateTacticalOutcome(TacticalCombatOutcome outcome)
         {
             if (
                 outcome == null
@@ -30,34 +30,25 @@ namespace Rebellion.Gameplay
             )
                 throw new InvalidDataException("The tactical outcome is incomplete.");
 
-            Dictionary<string, TacticalCombatUnit> units = _tacticalCombat.Units.ToDictionary(
+            Dictionary<string, CombatUnit> units = _tacticalCombat.Units.ToDictionary(
                 unit => unit.InstanceID,
                 StringComparer.Ordinal
             );
             if (
-                outcome.Ships.Length
-                    != units.Values.Count(unit => unit.Combatant.Unit is CapitalShip)
-                || outcome.Fighters.Length
-                    != units.Values.Count(unit => unit.Combatant.Unit is Starfighter)
+                outcome.Ships.Length != units.Values.Count(unit => unit.Unit is CapitalShip)
+                || outcome.Fighters.Length != units.Values.Count(unit => unit.Unit is Starfighter)
             )
                 throw new InvalidDataException(
                     "The tactical outcome does not cover the captured roster."
                 );
 
-            SpaceCombatResult result = new()
-            {
-                Winner = outcome.Winner,
-                AttackerOutcome = outcome.AttackerOutcome,
-                DefenderOutcome = outcome.DefenderOutcome,
-                IterationsCompleted = outcome.IterationsCompleted,
-            };
             HashSet<string> imported = new(StringComparer.Ordinal);
             foreach (TacticalCombatOutcome.ShipOutcome shipOutcome in outcome.Ships)
             {
                 if (
                     shipOutcome == null
                     || string.IsNullOrEmpty(shipOutcome.UnitID)
-                    || !units.TryGetValue(shipOutcome.UnitID, out TacticalCombatUnit unit)
+                    || !units.TryGetValue(shipOutcome.UnitID, out CombatUnit unit)
                     || ResolveTacticalSource(unit) is not CapitalShip ship
                     || !imported.Add(shipOutcome.UnitID)
                     || shipOutcome.Hull < 0
@@ -65,18 +56,6 @@ namespace Rebellion.Gameplay
                     || !IsValidTacticalComponentDamage(shipOutcome.SystemDamage, unit, ship)
                 )
                     throw new InvalidDataException("A tactical ship outcome is invalid.");
-                unit.Combatant.ApplyCapitalShipState(shipOutcome.Hull, shipOutcome.SystemDamage);
-                result.ShipDamage.Add(
-                    new ShipDamageResult
-                    {
-                        Ship = ship,
-                        HullBefore = (int)unit.InitialHull,
-                        HullAfter = shipOutcome.Hull,
-                        SystemDamage = shipOutcome.SystemDamage.CreateCopy(),
-                    }
-                );
-                if (shipOutcome.Withdrawn)
-                    result.WithdrawnUnits.Add(ship);
             }
 
             foreach (TacticalCombatOutcome.FighterOutcome fighterOutcome in outcome.Fighters)
@@ -84,43 +63,23 @@ namespace Rebellion.Gameplay
                 if (
                     fighterOutcome == null
                     || string.IsNullOrEmpty(fighterOutcome.UnitID)
-                    || !units.TryGetValue(fighterOutcome.UnitID, out TacticalCombatUnit unit)
+                    || !units.TryGetValue(fighterOutcome.UnitID, out CombatUnit unit)
                     || ResolveTacticalSource(unit) is not Starfighter fighter
                     || !imported.Add(fighterOutcome.UnitID)
                     || fighterOutcome.SquadronSize < 0
                     || fighterOutcome.SquadronSize > Math.Max(1, fighter.MaxSquadronSize)
                 )
                     throw new InvalidDataException("A tactical fighter outcome is invalid.");
-                CapitalShip carrier = null;
                 if (fighterOutcome.CarrierID != null)
                 {
                     if (
-                        !units.TryGetValue(fighterOutcome.CarrierID, out TacticalCombatUnit host)
-                        || ResolveTacticalSource(host) is not CapitalShip ship
+                        !units.TryGetValue(fighterOutcome.CarrierID, out CombatUnit host)
+                        || ResolveTacticalSource(host) is not CapitalShip
                         || host.Side != unit.Side
                     )
                         throw new InvalidDataException("A tactical recovery host is invalid.");
-                    carrier = ship;
                 }
-                unit.Combatant.ApplyStarfighterState(
-                    fighterOutcome.SquadronSize,
-                    fighterOutcome.CarrierID
-                );
-                result.FighterLosses.Add(
-                    new FighterLossResult
-                    {
-                        Fighter = fighter,
-                        SquadsBefore = unit.InitialSquadronSize,
-                        SquadsAfter = fighterOutcome.SquadronSize,
-                    }
-                );
-                result.FighterRecovery.Add(
-                    new FighterRecoveryResult { Fighter = fighter, Carrier = carrier }
-                );
-                if (fighterOutcome.Withdrawn)
-                    result.WithdrawnUnits.Add(fighter);
             }
-            return result;
         }
 
         /// <summary>
@@ -132,7 +91,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether all component fields are within their supported ranges.</returns>
         private static bool IsValidTacticalComponentDamage(
             CapitalShipSystemDamage damage,
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             CapitalShip ship
         ) =>
             damage?.Shields is >= 0 and <= 4

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -24,7 +25,7 @@ namespace Rebellion.Tactical
             )
                 return;
             Vector3 origin = Vector3.Zero;
-            IReadOnlyList<TacticalCombatUnit> members = Kind
+            IReadOnlyList<CombatUnit> members = Kind
                 is TacticalCombatSelectionKind.ObjectGroup
                     or TacticalCombatSelectionKind.FighterGroup
                 ? Group.RequestedMembers
@@ -33,7 +34,7 @@ namespace Rebellion.Tactical
             {
                 if (members.Count == 0)
                     return;
-                foreach (TacticalCombatUnit unit in members)
+                foreach (CombatUnit unit in members)
                     origin += unit.Position;
                 double inverse = 1d / members.Count;
                 origin = new Vector3(
@@ -42,7 +43,7 @@ namespace Rebellion.Tactical
                     (float)(origin.Z * inverse)
                 );
             }
-            TacticalCombatUnit selected = FindNearest(origin, false);
+            CombatUnit selected = FindNearest(origin, false);
             if (selected == null && Kind != TacticalCombatSelectionKind.StationTarget)
                 selected = FindNearest(origin, true);
             if (selected != null)
@@ -55,11 +56,11 @@ namespace Rebellion.Tactical
         /// <param name="origin">The contextual center.</param>
         /// <param name="fighter">The display category to search.</param>
         /// <returns>The first closest admitted object.</returns>
-        private TacticalCombatUnit FindNearest(Vector3 origin, bool fighter)
+        private CombatUnit FindNearest(Vector3 origin, bool fighter)
         {
-            TacticalCombatUnit selected = null;
+            CombatUnit selected = null;
             float best = float.MaxValue;
-            foreach (TacticalCombatUnit unit in _session.Units)
+            foreach (CombatUnit unit in _session.Units)
             {
                 if (unit.Side == _side || unit.IsFighter != fighter || !IsDisplayObject(unit))
                     continue;
@@ -80,7 +81,7 @@ namespace Rebellion.Tactical
         /// Selects an object for inspection without issuing a gameplay order.
         /// </summary>
         /// <param name="unit">The inspected participant.</param>
-        private void Inspect(TacticalCombatUnit unit)
+        private void Inspect(CombatUnit unit)
         {
             bool opposing = unit.Side != _side;
             uint incoming = opposing && !_session.IsPaused ? EnqueueSelectedNotification(unit) : 0;
@@ -190,7 +191,7 @@ namespace Rebellion.Tactical
                 if (group != null)
                 {
                     if (FindObjectCategory(group) >= 0)
-                        foreach (TacticalCombatUnit unit in group.RequestedMembers)
+                        foreach (CombatUnit unit in group.RequestedMembers)
                             if (IsDisplayObject(unit))
                                 AddUnique(_highlights, unit);
                     CopyRequests(group);
@@ -202,7 +203,7 @@ namespace Rebellion.Tactical
                 _members.RemoveAll(unit => !IsDisplayObject(unit));
                 if (_members.Count < 2)
                 {
-                    TacticalCombatUnit unit = _members.FirstOrDefault();
+                    CombatUnit unit = _members.FirstOrDefault();
                     if (unit == null)
                         Clear();
                     else
@@ -240,7 +241,7 @@ namespace Rebellion.Tactical
         private void CopyRequests(TacticalCombatGroup group)
         {
             _targets.Clear();
-            foreach (TacticalCombatUnit unit in group.RequestedTargets)
+            foreach (CombatUnit unit in group.RequestedTargets)
                 if (IsDisplayObject(unit))
                     AddObject(_targets, unit);
             _waypoints.Clear();
@@ -264,7 +265,7 @@ namespace Rebellion.Tactical
                 StopNotification();
             if (_notification != 0 || _session.IsPaused)
                 return;
-            TacticalCombatUnit unit =
+            CombatUnit unit =
                 Kind
                     is TacticalCombatSelectionKind.SingleObject
                         or TacticalCombatSelectionKind.EnemyInspection
@@ -285,7 +286,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The inspected capital ship or fighter.</param>
         /// <returns>The scheduler-owned loop handle, or zero when the selected bank is silent.</returns>
-        private uint EnqueueSelectedNotification(TacticalCombatUnit unit)
+        private uint EnqueueSelectedNotification(CombatUnit unit)
         {
             if (
                 _session.IsSynchronized
@@ -315,7 +316,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="items">The context-owned object chain.</param>
         /// <param name="unit">The addressed object.</param>
-        private static void AddObject(List<TacticalCombatUnit> items, TacticalCombatUnit unit)
+        private static void AddObject(List<CombatUnit> items, CombatUnit unit)
         {
             if (items.Contains(unit))
                 return;
@@ -341,7 +342,7 @@ namespace Rebellion.Tactical
         /// Validates the identity retained by an object input request.
         /// </summary>
         /// <param name="unit">The addressed encounter participant.</param>
-        private void ValidateUnit(TacticalCombatUnit unit)
+        private void ValidateUnit(CombatUnit unit)
         {
             ThrowIfDisposed();
             if (

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 
@@ -65,7 +66,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The affected unit.</param>
         /// <param name="change">The requested mutation.</param>
-        private void QueueSystemChange(TacticalCombatUnit unit, TacticalSystemEvent change) =>
+        private void QueueSystemChange(CombatUnit unit, TacticalSystemEvent change) =>
             QueueCommand(new Command(CommandKind.System, unit, null, default, change));
 
         /// <summary>
@@ -73,14 +74,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="carrier">The launching carrier.</param>
         /// <param name="fighter">The next docked squadron.</param>
-        private void RequestLaunch(TacticalCombatCarrier carrier, TacticalCombatUnit fighter) =>
+        private void RequestLaunch(TacticalCombatCarrier carrier, CombatUnit fighter) =>
             QueueCommand(new Command(CommandKind.Launch, carrier.Unit, fighter));
 
         /// <summary>
         /// Queues the transition from departure preparation into the hyperspace animation.
         /// </summary>
         /// <param name="unit">The departing unit.</param>
-        private void RequestHyperspace(TacticalCombatUnit unit) =>
+        private void RequestHyperspace(CombatUnit unit) =>
             QueueCommand(new Command(CommandKind.Hyperspace, unit));
 
         /// <summary>
@@ -88,7 +89,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The tractor source.</param>
         /// <param name="target">The designated primary target.</param>
-        private void RequestTractorTarget(TacticalCombatUnit unit, TacticalCombatUnit target)
+        private void RequestTractorTarget(CombatUnit unit, CombatUnit target)
         {
             if (_tractorCommandsPending.Contains(unit) || unit.TractorRange == 0)
                 return;
@@ -131,7 +132,7 @@ namespace Rebellion.Tactical
                     AdvanceRecovery(group);
                 group.AttackRun?.Advance(1000);
             }
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
                 if (unit.IsBattleStation)
@@ -175,7 +176,7 @@ namespace Rebellion.Tactical
             _completedAttackOrders.Clear();
             foreach (TacticalCombatGroup group in _pendingAttackOrders)
             {
-                TacticalCombatUnit target = _targeting.SelectBehaviorTarget(group);
+                CombatUnit target = _targeting.SelectBehaviorTarget(group);
                 if (target == null)
                     continue;
                 SetTarget(group, target);
@@ -191,7 +192,7 @@ namespace Rebellion.Tactical
         /// <param name="first">The first registered unit.</param>
         /// <param name="second">The second registered unit.</param>
         /// <returns>The unsigned registration comparison.</returns>
-        private static int CompareUnits(TacticalCombatUnit first, TacticalCombatUnit second) =>
+        private static int CompareUnits(CombatUnit first, CombatUnit second) =>
             unchecked((uint)first.Index).CompareTo(unchecked((uint)second.Index));
 
         /// <summary>
@@ -222,7 +223,7 @@ namespace Rebellion.Tactical
             _centers[0] = _centers[1] = Vector3.Zero;
             int firstCount = 0;
             int secondCount = 0;
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 if (!unit.IsEngaged || unit.IsBattleStation)
                     continue;
@@ -252,9 +253,9 @@ namespace Rebellion.Tactical
                     GetSide(group.Side).WithdrawalMilliseconds,
                     _groupsByID
                 );
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
-                if (unit.Status == TacticalCombatUnitStatus.EnteringHyperspace)
+                if (unit.Status == CombatUnitStatus.EnteringHyperspace)
                 {
                     unit.Heading = -GetSide(unit.Side).Forward;
                     if (
@@ -266,7 +267,7 @@ namespace Rebellion.Tactical
                     if (unit.HyperspaceMilliseconds >= 4000)
                     {
                         unit.HyperspaceMilliseconds = 0;
-                        unit.Status = TacticalCombatUnitStatus.AwaitingWithdrawal;
+                        unit.Status = CombatUnitStatus.AwaitingWithdrawal;
                         QueueCommand(new Command(CommandKind.Withdraw, unit));
                     }
                     continue;
@@ -281,7 +282,7 @@ namespace Rebellion.Tactical
                         _spatial,
                         elapsedMilliseconds
                     );
-                if (unit.Status == TacticalCombatUnitStatus.Active && unit.HasGravityWell)
+                if (unit.Status == CombatUnitStatus.Active && unit.HasGravityWell)
                     unit.RequestGravityWellPresentation();
             }
             CheckCompletion();
@@ -336,13 +337,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The registered non-station participant.</param>
         /// <returns>Whether the member remains in its side's deployed display chain.</returns>
-        private static bool IsDisplayedMember(TacticalCombatUnit unit) =>
+        private static bool IsDisplayedMember(CombatUnit unit) =>
             unit.Status
-                is TacticalCombatUnitStatus.Active
-                    or TacticalCombatUnitStatus.PreparingHyperspace
-                    or TacticalCombatUnitStatus.EnteringHyperspace
-                    or TacticalCombatUnitStatus.AwaitingWithdrawal
-                    or TacticalCombatUnitStatus.AttackingBattleStation;
+                is CombatUnitStatus.Active
+                    or CombatUnitStatus.PreparingHyperspace
+                    or CombatUnitStatus.EnteringHyperspace
+                    or CombatUnitStatus.AwaitingWithdrawal
+                    or CombatUnitStatus.AttackingBattleStation;
 
         /// <summary>
         /// Compares tactical member keys using their unsigned registration ordering.
@@ -360,7 +361,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The participant being inspected.</param>
         /// <returns>The available movement before a single-precision speed store.</returns>
-        public double GetMovementBudget(TacticalCombatUnit unit) =>
+        public double GetMovementBudget(CombatUnit unit) =>
             unit.Systems.GetAvailableMovement(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
                 GetTractorRestraint(unit)
@@ -371,7 +372,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The participant being inspected.</param>
         /// <returns>The available movement ratio using current command support and retained beams.</returns>
-        public double GetMovementRatio(TacticalCombatUnit unit) =>
+        public double GetMovementRatio(CombatUnit unit) =>
             unit.Systems.GetMovementRatio(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
                 GetTractorRestraint(unit)
@@ -382,7 +383,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The participating capital ship or fighter.</param>
         /// <returns>Whether its hyperdrive and movement budgets are ordered and nonzero.</returns>
-        private bool CheckWithdrawalReadiness(TacticalCombatUnit unit) =>
+        private bool CheckWithdrawalReadiness(CombatUnit unit) =>
             unit.Systems.HasHyperdrive
             && unit.Systems.CanEnterHyperspace(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
@@ -396,7 +397,7 @@ namespace Rebellion.Tactical
         private void AdvanceRecovery(TacticalCombatGroup group)
         {
             bool warned = false;
-            foreach (TacticalCombatUnit fighter in group.Members)
+            foreach (CombatUnit fighter in group.Members)
             {
                 if (!fighter.IsTargetable)
                     continue;
@@ -414,7 +415,7 @@ namespace Rebellion.Tactical
                         carrier = linked;
                     bool full = true;
                     if (carrier == null)
-                        foreach (TacticalCombatUnit candidate in _units)
+                        foreach (CombatUnit candidate in _units)
                             if (
                                 !candidate.IsFighter
                                 && !candidate.IsBattleStation
@@ -483,7 +484,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="fighter">The approaching fighter squadron.</param>
         /// <returns>The assigned carrier, or null before assignment.</returns>
-        private TacticalCombatCarrier GetRecoveryCarrier(TacticalCombatUnit fighter) =>
+        private TacticalCombatCarrier GetRecoveryCarrier(CombatUnit fighter) =>
             _recoveries.TryGetValue(fighter, out Recovery recovery) && recovery.State >= 2
                 ? recovery.Carrier
                 : null;
@@ -492,7 +493,7 @@ namespace Rebellion.Tactical
         /// Releases a fighter's pending recovery reservation.
         /// </summary>
         /// <param name="fighter">The reassigned or destroyed squadron.</param>
-        private void ReleaseRecovery(TacticalCombatUnit fighter)
+        private void ReleaseRecovery(CombatUnit fighter)
         {
             if (!_recoveries.Remove(fighter, out Recovery recovery))
                 return;
@@ -540,8 +541,8 @@ namespace Rebellion.Tactical
         /// <param name="command">The due command.</param>
         private void ApplyCommand(Command command)
         {
-            TacticalCombatUnit source = command.Source;
-            TacticalCombatUnit target = command.Target;
+            CombatUnit source = command.Source;
+            CombatUnit target = command.Target;
             switch (command.Kind)
             {
                 case CommandKind.DeleteGroup:
@@ -751,7 +752,7 @@ namespace Rebellion.Tactical
                         break;
                     if (CheckWithdrawalReadiness(source))
                     {
-                        source.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+                        source.Status = CombatUnitStatus.EnteringHyperspace;
                         _spatial.Update(source);
                     }
                     else
@@ -766,15 +767,15 @@ namespace Rebellion.Tactical
                     else if (
                         source.Status
                         is not (
-                            TacticalCombatUnitStatus.Active
-                            or TacticalCombatUnitStatus.PreparingHyperspace
-                            or TacticalCombatUnitStatus.EnteringHyperspace
-                            or TacticalCombatUnitStatus.AwaitingWithdrawal
+                            CombatUnitStatus.Active
+                            or CombatUnitStatus.PreparingHyperspace
+                            or CombatUnitStatus.EnteringHyperspace
+                            or CombatUnitStatus.AwaitingWithdrawal
                         )
                     )
                         break;
 
-                    source.Status = TacticalCombatUnitStatus.Withdrawn;
+                    source.Status = CombatUnitStatus.Withdrawn;
                     _departed.Add(source);
                     RemoveFromGroup(source);
                     _spatial.Update(source);

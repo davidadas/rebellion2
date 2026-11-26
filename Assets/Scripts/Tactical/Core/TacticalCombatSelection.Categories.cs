@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -60,7 +61,7 @@ namespace Rebellion.Tactical
         {
             TacticalCombatGroup group = _session.CreateGroup(_members.ToArray());
             _session.SetObjectGroup(_side, category, group);
-            foreach (TacticalCombatUnit target in _targets)
+            foreach (CombatUnit target in _targets)
                 _session.SetTarget(group, target, true);
             foreach (Vector3 point in _waypoints)
                 _session.SetWaypoint(group, point, true);
@@ -95,9 +96,9 @@ namespace Rebellion.Tactical
                 SelectGroup(group, free, false);
                 return;
             }
-            TacticalCombatUnit first = _members[0];
+            CombatUnit first = _members[0];
             Notify(0x84, 0x102);
-            foreach (TacticalCombatUnit unit in _members)
+            foreach (CombatUnit unit in _members)
                 apply(_session.CreateGroup(new[] { unit }));
             Inspect(first);
         }
@@ -119,7 +120,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The selected primary object.</param>
         /// <returns>The owner receiving its target or route request.</returns>
-        private TacticalCombatGroup GetUntrackedGroup(TacticalCombatUnit unit)
+        private TacticalCombatGroup GetUntrackedGroup(CombatUnit unit)
         {
             TacticalCombatGroup group = _session.GetRequestedGroup(unit);
             if (group != null && FindObjectCategory(group) < 0)
@@ -180,7 +181,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The proposed friendly target.</param>
         /// <returns>Whether its current applied owner admits the designation.</returns>
-        private bool CanDesignateFriendly(TacticalCombatUnit unit)
+        private bool CanDesignateFriendly(CombatUnit unit)
         {
             TacticalCombatGroup group = _session.GetGroup(unit);
             return group == null
@@ -193,7 +194,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The opposing object.</param>
         /// <returns>Whether the current status admits an enemy designation.</returns>
-        private bool CanDesignateEnemy(TacticalCombatUnit unit) =>
-            IsDisplayObject(unit) && unit.Status != TacticalCombatUnitStatus.PreparingHyperspace;
+        private bool CanDesignateEnemy(CombatUnit unit) =>
+            IsDisplayObject(unit) && unit.Status != CombatUnitStatus.PreparingHyperspace;
     }
 }

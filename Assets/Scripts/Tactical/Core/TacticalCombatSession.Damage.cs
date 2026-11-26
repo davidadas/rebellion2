@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 
@@ -11,11 +12,11 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="victim">The unit whose hull was lost.</param>
         /// <param name="attackerInstanceID">The firing unit's captured identity.</param>
-        private void ReportDestruction(TacticalCombatUnit victim, string attackerInstanceID)
+        private void ReportDestruction(CombatUnit victim, string attackerInstanceID)
         {
             if (
                 attackerInstanceID == null
-                || !_unitsByID.TryGetValue(attackerInstanceID, out TacticalCombatUnit attacker)
+                || !_unitsByID.TryGetValue(attackerInstanceID, out CombatUnit attacker)
             )
                 return;
             if (_synchronizationAuthority)
@@ -32,13 +33,13 @@ namespace Rebellion.Tactical
         /// <param name="attacker">The credited firing participant.</param>
         /// <param name="side">The faction receiving its command report.</param>
         private void ReportFactionDestruction(
-            TacticalCombatUnit victim,
-            TacticalCombatUnit attacker,
+            CombatUnit victim,
+            CombatUnit attacker,
             CombatSide side
         )
         {
             bool credited = attacker.Side == side;
-            TacticalCombatUnit actor = credited ? attacker : victim;
+            CombatUnit actor = credited ? attacker : victim;
             int bank = GetSide(side).FactionIndex == 0 ? 0 : 122;
             int message = credited ? 85 : 98;
             if (actor.GroupID is int groupID)
@@ -104,14 +105,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The registered encounter participant.</param>
         /// <returns>Whether the unit remains in an admitted display state.</returns>
-        private static bool IsActiveDisplayObject(TacticalCombatUnit unit) =>
+        private static bool IsActiveDisplayObject(CombatUnit unit) =>
             unit?.IsActiveDisplayObject == true;
 
         /// <summary>
         /// Applies scuttling only to an active display object with ordered positive hull strength.
         /// </summary>
         /// <param name="unit">The unit addressed by the scuttling request.</param>
-        private void Scuttle(TacticalCombatUnit unit)
+        private void Scuttle(CombatUnit unit)
         {
             if (!IsActiveDisplayObject(unit) || !(unit.Systems.Hull > 0))
                 return;
@@ -124,15 +125,15 @@ namespace Rebellion.Tactical
         /// Applies destruction, carrier payload losses, reservation cleanup, and spatial removal.
         /// </summary>
         /// <param name="unit">The destroyed tactical unit.</param>
-        private void Destroy(TacticalCombatUnit unit)
+        private void Destroy(CombatUnit unit)
         {
-            if (unit.Status == TacticalCombatUnitStatus.Destroyed)
+            if (unit.Status == CombatUnitStatus.Destroyed)
                 return;
             if (unit.IsBattleStation)
                 BattleStation.Destroy();
             else
                 unit.Systems.Destroy();
-            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            unit.Status = CombatUnitStatus.Destroyed;
             _initiallyDockedFighters.Remove(unit);
             if (unit.TractorTargetID != null)
             {
@@ -145,14 +146,10 @@ namespace Rebellion.Tactical
             _spatial.Update(unit);
             if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
             {
-                foreach (TacticalCombatUnit fighter in _units)
+                foreach (CombatUnit fighter in _units)
                     if (fighter.IsFighter && fighter.CarrierID == unit.InstanceID)
                     {
-                        if (
-                            fighter.Status
-                            is TacticalCombatUnitStatus.Docked
-                                or TacticalCombatUnitStatus.Recovered
-                        )
+                        if (fighter.Status is CombatUnitStatus.Docked or CombatUnitStatus.Recovered)
                             Destroy(fighter);
                         else if (_recoveries.ContainsKey(fighter))
                             ReleaseRecovery(fighter);
@@ -178,13 +175,10 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="source">The unit applying the tractor beam.</param>
         /// <param name="target">The unit whose movement chain retains the source.</param>
-        private void ApplyTractorLock(TacticalCombatUnit source, TacticalCombatUnit target)
+        private void ApplyTractorLock(CombatUnit source, CombatUnit target)
         {
             if (
-                !_tractorSources.TryGetValue(
-                    target,
-                    out SortedDictionary<uint, TacticalCombatUnit> sources
-                )
+                !_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources)
             )
             {
                 sources = new();
@@ -205,11 +199,11 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="source">The contributor addressed by the command.</param>
         /// <param name="target">The resolved target whose chain is updated.</param>
-        private void ApplyTractorUnlock(TacticalCombatUnit source, TacticalCombatUnit target)
+        private void ApplyTractorUnlock(CombatUnit source, CombatUnit target)
         {
             bool populated = _tractorSources.TryGetValue(
                 target,
-                out SortedDictionary<uint, TacticalCombatUnit> sources
+                out SortedDictionary<uint, CombatUnit> sources
             );
             if (populated)
                 sources.Remove(unchecked((uint)source.Index));
@@ -226,18 +220,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The unit whose retained tractor chain is read.</param>
         /// <returns>The rounded sum of its current contributors, without a health or participation filter.</returns>
-        private float GetTractorRestraint(TacticalCombatUnit target)
+        private float GetTractorRestraint(CombatUnit target)
         {
             if (_synchronizationReplica)
                 return target.TractorRestraint;
             float restraint = 0;
-            if (
-                _tractorSources.TryGetValue(
-                    target,
-                    out SortedDictionary<uint, TacticalCombatUnit> sources
-                )
-            )
-                foreach (TacticalCombatUnit source in sources.Values)
+            if (_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources))
+                foreach (CombatUnit source in sources.Values)
                     restraint = (float)(
                         (double)restraint + source.Systems.GetTractorContribution()
                     );
@@ -248,9 +237,9 @@ namespace Rebellion.Tactical
         /// Refreshes the one retained target affected by a contributor's hull or tractor-system mutation.
         /// </summary>
         /// <param name="source">The contributor whose current budget changed.</param>
-        private void RefreshTractorContribution(TacticalCombatUnit source)
+        private void RefreshTractorContribution(CombatUnit source)
         {
-            TacticalCombatUnit target = GetUnit(source.TractorTargetID);
+            CombatUnit target = GetUnit(source.TractorTargetID);
             if (target != null)
                 target.TractorRestraint = GetTractorRestraint(target);
         }
@@ -260,7 +249,7 @@ namespace Rebellion.Tactical
         /// </summary>
         private void UpdateTractorRestraint()
         {
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
                 unit.TractorRestraint = GetTractorRestraint(unit);
         }
     }

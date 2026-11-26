@@ -3,8 +3,8 @@ using System.Linq;
 using System.Xml;
 using NUnit.Framework;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
+using Rebellion.Tactical;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.SpaceCombat

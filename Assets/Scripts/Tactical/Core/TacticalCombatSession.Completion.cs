@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
@@ -18,14 +19,14 @@ namespace Rebellion.Tactical
             int allianceFighters = 0;
             int empireFighters = 0;
             int allianceOutsideAttackRuns = 0;
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 if (!unit.IsFighter || !unit.IsEngaged)
                     continue;
                 if (GetSide(unit.Side).FactionIndex == 0)
                 {
                     allianceFighters++;
-                    if (unit.Status != TacticalCombatUnitStatus.AttackingBattleStation)
+                    if (unit.Status != CombatUnitStatus.AttackingBattleStation)
                         allianceOutsideAttackRuns++;
                 }
                 else
@@ -109,7 +110,7 @@ namespace Rebellion.Tactical
             int active = 0;
             bool stillActive = false;
             bool departed = false;
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 if (unit.Side != side.Side || unit.IsBattleStation)
                     continue;
@@ -117,11 +118,11 @@ namespace Rebellion.Tactical
                     active++;
                 stillActive |=
                     unit.Status
-                        is TacticalCombatUnitStatus.Active
-                            or TacticalCombatUnitStatus.PreparingHyperspace
-                            or TacticalCombatUnitStatus.EnteringHyperspace
-                            or TacticalCombatUnitStatus.AwaitingWithdrawal;
-                departed |= unit.Status == TacticalCombatUnitStatus.Withdrawn;
+                        is CombatUnitStatus.Active
+                            or CombatUnitStatus.PreparingHyperspace
+                            or CombatUnitStatus.EnteringHyperspace
+                            or CombatUnitStatus.AwaitingWithdrawal;
+                departed |= unit.Status == CombatUnitStatus.Withdrawn;
             }
             int withdrawalState = side.WithdrawalPhase.HasValue
                 ? (int)side.WithdrawalPhase.Value
@@ -151,7 +152,7 @@ namespace Rebellion.Tactical
                 throw new InvalidOperationException("The tactical encounter has not completed.");
             List<TacticalCombatOutcome.ShipOutcome> ships = new();
             List<TacticalCombatOutcome.FighterOutcome> fighters = new();
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 bool withdrawn = HasDeparted(unit);
                 if (!unit.IsFighter)
@@ -161,7 +162,6 @@ namespace Rebellion.Tactical
                         unit.HasPrimaryHyperdrive,
                         unit.Definition?.BackupHyperdrive > 0
                     );
-                    unit.Combatant.ApplyCapitalShipState(hull, damage);
                     ships.Add(
                         new TacticalCombatOutcome.ShipOutcome
                         {
@@ -174,14 +174,13 @@ namespace Rebellion.Tactical
                 }
                 else
                 {
-                    TacticalCombatUnit carrier = unit.Status
-                        is TacticalCombatUnitStatus.Docked
-                            or TacticalCombatUnitStatus.Recovered
+                    CombatUnit carrier = unit.Status
+                        is CombatUnitStatus.Docked
+                            or CombatUnitStatus.Recovered
                         ? GetUnit(unit.CarrierID)
                         : null;
                     int squadronSize = GetFighterResultCount(unit);
                     string carrierID = carrier?.IsFighter == false ? carrier.InstanceID : null;
-                    unit.Combatant.ApplyStarfighterState(squadronSize, carrierID);
                     fighters.Add(
                         new TacticalCombatOutcome.FighterOutcome
                         {
@@ -198,8 +197,7 @@ namespace Rebellion.Tactical
                 Winner = Winner,
                 AttackerOutcome = _outcomes[0],
                 DefenderOutcome = _outcomes[1],
-                IterationsCompleted =
-                    _scheduler == null ? _progress : unchecked((int)_scheduler.Progress),
+                IterationsCompleted = unchecked((int)(_scheduler?.Progress ?? 0)),
                 TerminalFlags = _ending.Flags.ToArray(),
                 Ships = ships.ToArray(),
                 Fighters = fighters.ToArray(),
@@ -212,12 +210,12 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The capital ship whose final tactical state is being captured.</param>
         /// <returns>The truncated hull count carried into the campaign result.</returns>
-        private static int GetCapitalResultHull(TacticalCombatUnit unit)
+        private static int GetCapitalResultHull(CombatUnit unit)
         {
             float hull = unit.Systems.Hull;
             if (unit.IsBattleStation)
                 return TruncateResultCount(hull);
-            if (unit.Status == TacticalCombatUnitStatus.Destroyed)
+            if (unit.Status == CombatUnitStatus.Destroyed)
                 return 0;
             return TruncateResultCount(hull < 1 ? 1 : hull);
         }
@@ -227,9 +225,9 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The fighter squadron whose final tactical state is being captured.</param>
         /// <returns>Zero for a destroyed squadron, or its truncated count with a zero count replaced by one.</returns>
-        private static int GetFighterResultCount(TacticalCombatUnit unit)
+        private static int GetFighterResultCount(CombatUnit unit)
         {
-            if (unit.Status == TacticalCombatUnitStatus.Destroyed)
+            if (unit.Status == CombatUnitStatus.Destroyed)
                 return 0;
             int count = TruncateResultCount((double)unit.Systems.Hull / 8);
             return count == 0 ? 1 : count;
@@ -257,13 +255,11 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The surviving encounter unit.</param>
         /// <returns>Whether its final campaign location must follow a departure route.</returns>
-        public bool HasDeparted(TacticalCombatUnit unit)
+        public bool HasDeparted(CombatUnit unit)
         {
-            TacticalCombatUnit carrier =
+            CombatUnit carrier =
                 unit.IsFighter
-                && unit.Status
-                    is TacticalCombatUnitStatus.Docked
-                        or TacticalCombatUnitStatus.Recovered
+                && unit.Status is CombatUnitStatus.Docked or CombatUnitStatus.Recovered
                     ? GetUnit(unit.CarrierID)
                     : null;
             return _departed.Contains(carrier ?? unit);
@@ -279,7 +275,7 @@ namespace Rebellion.Tactical
         {
             if (active)
                 return SpaceCombatSideOutcome.Active;
-            foreach (TacticalCombatUnit unit in _departed)
+            foreach (CombatUnit unit in _departed)
                 if (unit.Side == side)
                     return SpaceCombatSideOutcome.Withdrawn;
             return SpaceCombatSideOutcome.Destroyed;
@@ -293,31 +289,31 @@ namespace Rebellion.Tactical
             _directCommandsSuspended = true;
             foreach (WithdrawalMember fighterMember in _orderedWithdrawalMembers)
             {
-                TacticalCombatUnit fighter = fighterMember.Unit;
+                CombatUnit fighter = fighterMember.Unit;
                 if (
                     !fighter.IsFighter
                     || !(
                         fighter.IsActiveDisplayObject
                         || fighter.Status
-                            is TacticalCombatUnitStatus.Docked
-                                or TacticalCombatUnitStatus.Recovered
-                                or TacticalCombatUnitStatus.Withdrawn
+                            is CombatUnitStatus.Docked
+                                or CombatUnitStatus.Recovered
+                                or CombatUnitStatus.Withdrawn
                     )
                 )
                     continue;
                 bool attached = false;
                 foreach (WithdrawalMember carrierMember in _orderedWithdrawalMembers)
                 {
-                    TacticalCombatUnit carrier = carrierMember.Unit;
+                    CombatUnit carrier = carrierMember.Unit;
                     if (
                         !carrier.IsFighter
                         && carrier.Side == fighter.Side
                         && (
                             carrier.IsActiveDisplayObject
                             || carrier.Status
-                                is TacticalCombatUnitStatus.EnteringHyperspace
-                                    or TacticalCombatUnitStatus.AwaitingWithdrawal
-                                    or TacticalCombatUnitStatus.Withdrawn
+                                is CombatUnitStatus.EnteringHyperspace
+                                    or CombatUnitStatus.AwaitingWithdrawal
+                                    or CombatUnitStatus.Withdrawn
                         )
                         && _carriers[carrier.InstanceID].AttachSurvivor(fighter)
                     )

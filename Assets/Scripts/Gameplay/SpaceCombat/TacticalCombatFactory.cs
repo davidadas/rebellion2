@@ -207,11 +207,11 @@ namespace Rebellion.Gameplay
                 decision.DefenderOwnerInstanceID,
             };
             List<string> personnelHostInstanceIDs = new();
-            Dictionary<string, TacticalCombatUnit> byID = new(StringComparer.Ordinal);
+            Dictionary<string, CombatUnit> byID = new(StringComparer.Ordinal);
             TacticalCombatFactionDefinition[] factionDefinitions =
                 new TacticalCombatFactionDefinition[2];
             int[] counters = new int[2];
-            Dictionary<string, (int Side, List<TacticalCombatUnit> Units)> rostersByOwner = new(
+            Dictionary<string, (int Side, List<CombatUnit> Units)> rostersByOwner = new(
                 StringComparer.Ordinal
             );
             for (int side = 0; side < 2; side++)
@@ -231,7 +231,7 @@ namespace Rebellion.Gameplay
                     );
                 factionDefinitions[side] = faction;
                 counters[side] = faction.FactionIndex * 1000000;
-                rostersByOwner.Add(owners[side], (side, new List<TacticalCombatUnit>()));
+                rostersByOwner.Add(owners[side], (side, new List<CombatUnit>()));
             }
             if (factionDefinitions[0].FactionIndex == factionDefinitions[1].FactionIndex)
                 throw new InvalidDataException(
@@ -295,19 +295,16 @@ namespace Rebellion.Gameplay
                     constructionIndex
                 );
 
-            List<TacticalCombatUnit> units = new(byID.Count);
             int maxDeployedCount = 0;
             foreach (string owner in owners)
             {
-                List<TacticalCombatUnit> sideUnits = rostersByOwner[owner].Units;
+                List<CombatUnit> sideUnits = rostersByOwner[owner].Units;
                 sideUnits.Sort(CompareUnitRegistration);
-                units.AddRange(sideUnits);
                 int deployedCount = sideUnits.Count(unit =>
-                    !unit.IsBattleStation && unit.Status == TacticalCombatUnitStatus.Active
+                    !unit.IsBattleStation && unit.Status == CombatUnitStatus.Active
                 );
                 maxDeployedCount = Math.Max(maxDeployedCount, deployedCount);
             }
-            units.Sort(CompareUnitRegistration);
             float depth = 100 + 3 * maxDeployedCount;
             List<TacticalCombatGroup> groups = new();
             TacticalCombatSide[] sides = new TacticalCombatSide[2];
@@ -317,7 +314,7 @@ namespace Rebellion.Gameplay
                     : CombatSide.Defender;
             for (int side = 0; side < 2; side++)
             {
-                List<TacticalCombatUnit> sideUnits = rostersByOwner[owners[side]].Units;
+                List<CombatUnit> sideUnits = rostersByOwner[owners[side]].Units;
                 Vector3 forward = new(0, 0, factionDefinitions[side].ForwardZ);
                 Deploy(sideUnits, forward, depth);
                 (Officer admiral, Officer commander) = SpaceCombatCommands.GetCommandOfficers(
@@ -360,7 +357,7 @@ namespace Rebellion.Gameplay
                     commander?.GetEffectiveRating(SkillRating.Combat) ?? 0,
                     (CombatSide)side != playerSide
                 );
-                foreach (TacticalCombatUnit unit in sideUnits)
+                foreach (CombatUnit unit in sideUnits)
                     unit.CommandBudget = sides[side].GetCommandBudget(unit.IsFighter);
                 CreateGroups(sideUnits, groups, forward, ref counters[side]);
             }
@@ -369,7 +366,7 @@ namespace Rebellion.Gameplay
                 ? new LinearCongruentialRandomProvider(seed.Value)
                 : _createRandom();
             TacticalCombatSession session = new TacticalCombatSession(
-                units,
+                battle,
                 groups,
                 sides[0],
                 sides[1],
@@ -394,7 +391,7 @@ namespace Rebellion.Gameplay
             _game.ActiveBattle = battle;
             return session;
 
-            (int Side, List<TacticalCombatUnit> Units) GetFactionRoster(string ownerID)
+            (int Side, List<CombatUnit> Units) GetFactionRoster(string ownerID)
             {
                 if (ownerID != null && rostersByOwner.TryGetValue(ownerID, out var roster))
                     return roster;
@@ -405,21 +402,20 @@ namespace Rebellion.Gameplay
 
             void RegisterUnit(
                 BaseSceneNode source,
-                (int Side, List<TacticalCombatUnit> Units) roster,
+                (int Side, List<CombatUnit> Units) roster,
                 int index
             )
             {
                 CombatUnit combatant = battle.AddCombatant(source);
                 if (source is CapitalShip ship)
                     combatant.HasPlanetaryProtection = HasPlanetaryProtection(ship, planet);
-                TacticalCombatUnit unit = new(
-                    combatant,
+                combatant.InitializeTacticalState(
                     (CombatSide)roster.Side,
                     index,
                     RequireDefinition(source.TypeID)
                 );
-                roster.Units.Add(unit);
-                byID.Add(unit.InstanceID, unit);
+                roster.Units.Add(combatant);
+                byID.Add(combatant.InstanceID, combatant);
             }
         }
 
@@ -481,13 +477,13 @@ namespace Rebellion.Gameplay
         /// <param name="officer">The selected command officer.</param>
         /// <param name="units">The captured unit index.</param>
         /// <returns>The hosting unit, or null for a ground-based or absent officer.</returns>
-        private static TacticalCombatUnit FindOfficerHost(
+        private static CombatUnit FindOfficerHost(
             Officer officer,
-            IReadOnlyDictionary<string, TacticalCombatUnit> units
+            IReadOnlyDictionary<string, CombatUnit> units
         )
         {
             string carrierID = officer?.GetParentOfType<CapitalShip>()?.InstanceID;
-            return carrierID != null && units.TryGetValue(carrierID, out TacticalCombatUnit carrier)
+            return carrierID != null && units.TryGetValue(carrierID, out CombatUnit carrier)
                 ? carrier
                 : null;
         }
@@ -498,21 +494,17 @@ namespace Rebellion.Gameplay
         /// <param name="units">The side's units in registration order.</param>
         /// <param name="forward">The authored initial heading.</param>
         /// <param name="depth">The battle's deployment span.</param>
-        private static void Deploy(
-            IEnumerable<TacticalCombatUnit> units,
-            Vector3 forward,
-            float depth
-        )
+        private static void Deploy(IEnumerable<CombatUnit> units, Vector3 forward, float depth)
         {
             int capitalIndex = 0;
             int fighterIndex = 0;
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
             {
                 if (unit.IsBattleStation)
                     continue;
                 unit.Heading = forward;
                 unit.DesiredHeading = forward;
-                if (unit.Status == TacticalCombatUnitStatus.Docked)
+                if (unit.Status == CombatUnitStatus.Docked)
                     continue;
                 int index = unit.IsFighter ? fighterIndex++ : capitalIndex++;
                 float x = index == 0 ? 0 : ((index + 1) / 2) * 5 * (index % 2 == 1 ? 1 : -1);
@@ -532,15 +524,15 @@ namespace Rebellion.Gameplay
         /// <param name="forward">The side's heading.</param>
         /// <param name="counter">The side's shared registration counter.</param>
         private static void CreateGroups(
-            IEnumerable<TacticalCombatUnit> units,
+            IEnumerable<CombatUnit> units,
             List<TacticalCombatGroup> groups,
             Vector3 forward,
             ref int counter
         )
         {
-            List<TacticalCombatUnit>[] fighters = { new(), new(), new(), new() };
+            List<CombatUnit>[] fighters = { new(), new(), new(), new() };
             List<TacticalCombatDeployment>[] capitals = { new(), new(), new() };
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
             {
                 if (unit.IsBattleStation)
                     continue;
@@ -590,7 +582,7 @@ namespace Rebellion.Gameplay
         /// <param name="forward">The side's heading.</param>
         /// <param name="counter">The side's shared registration counter.</param>
         private static void CreateFighterGroups(
-            IReadOnlyList<List<TacticalCombatUnit>> fighters,
+            IReadOnlyList<List<CombatUnit>> fighters,
             List<TacticalCombatGroup> groups,
             Vector3 forward,
             ref int counter
@@ -625,10 +617,10 @@ namespace Rebellion.Gameplay
                 int count = source?.Members.Count ?? 0;
                 if (count < 8)
                     continue;
-                List<TacticalCombatUnit> moved = new(count / 2);
+                List<CombatUnit> moved = new(count / 2);
                 for (int index = 0; index < count / 2; index++)
                     moved.Add(source.Members[index]);
-                foreach (TacticalCombatUnit unit in moved)
+                foreach (CombatUnit unit in moved)
                 {
                     source.RemoveRequestedMember(unit);
                     source.RemoveMember(unit);
@@ -673,7 +665,7 @@ namespace Rebellion.Gameplay
             TacticalCombatGroup group = null;
             for (int index = 0; index < ships.Count; index++)
             {
-                TacticalCombatUnit unit = ships[index].Unit;
+                CombatUnit unit = ships[index].Unit;
                 if (index % spacing == 0 && created < selected)
                 {
                     int slot = lower + created++;
@@ -708,7 +700,7 @@ namespace Rebellion.Gameplay
         /// <param name="group">The active capital group being aligned.</param>
         private static void AlignCapitalGroup(TacticalCombatGroup group)
         {
-            foreach (TacticalCombatUnit unit in group.Members)
+            foreach (CombatUnit unit in group.Members)
             {
                 Vector3 position = unit.Position;
                 Vector3 offset = group.Formation.GetMemberMovement(unit);
@@ -812,10 +804,8 @@ namespace Rebellion.Gameplay
         /// <param name="first">The first unit.</param>
         /// <param name="second">The second unit.</param>
         /// <returns>The registration comparison.</returns>
-        private static int CompareUnitRegistration(
-            TacticalCombatUnit first,
-            TacticalCombatUnit second
-        ) => first.Index.CompareTo(second.Index);
+        private static int CompareUnitRegistration(CombatUnit first, CombatUnit second) =>
+            first.Index.CompareTo(second.Index);
 
         /// <summary>
         /// Orders groups by their shared battle registration identifier.

@@ -18,24 +18,24 @@ namespace Rebellion.Tests.Tactical
             float expected
         )
         {
-            TacticalCombatUnit host = CreateHost();
+            CombatUnit host = CreateHost();
             TacticalCombatSide side = CreateSide(host, 50, 60);
             host.Systems.Destroy();
 
             Assert.AreEqual(expected, side.GetCommandBudget(fighter));
         }
 
-        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace, 4f)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace, 1f)]
-        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal, 1f)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn, 1f)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed, 1f)]
+        [TestCase(CombatUnitStatus.PreparingHyperspace, 4f)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace, 1f)]
+        [TestCase(CombatUnitStatus.AwaitingWithdrawal, 1f)]
+        [TestCase(CombatUnitStatus.Withdrawn, 1f)]
+        [TestCase(CombatUnitStatus.Destroyed, 1f)]
         public void GetCommandBudget_HostParticipation_UsesOrdinaryActiveDisplayDomain(
-            TacticalCombatUnitStatus status,
+            CombatUnitStatus status,
             float expected
         )
         {
-            TacticalCombatUnit host = CreateHost();
+            CombatUnit host = CreateHost();
             TacticalCombatSide side = CreateSide(host, 50, 60);
             host.Status = status;
 
@@ -55,18 +55,16 @@ namespace Rebellion.Tests.Tactical
         /// Creates an active mobile capital host with completed campaign construction.
         /// </summary>
         /// <returns>The captured host used by both command-officer lanes.</returns>
-        private static TacticalCombatUnit CreateHost() =>
+        private static CombatUnit CreateHost() =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "host",
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                        Hyperdrive = 1,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = "host",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    Hyperdrive = 1,
+                },
                 CombatSide.Attacker,
                 0
             );
@@ -79,7 +77,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="combat">The commander's captured effective combat rating.</param>
         /// <returns>The supported side state.</returns>
         private static TacticalCombatSide CreateSide(
-            TacticalCombatUnit host,
+            CombatUnit host,
             float leadership,
             float combat
         ) =>

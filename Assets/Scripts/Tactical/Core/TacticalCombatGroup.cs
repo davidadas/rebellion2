@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical
@@ -19,14 +20,15 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed partial class TacticalCombatGroup
     {
-        private static readonly Comparer<TacticalCombatUnit> _memberComparer =
-            Comparer<TacticalCombatUnit>.Create(CompareMembers);
-        private readonly List<TacticalCombatUnit> _members = new();
-        private readonly List<TacticalCombatUnit> _requestedMembers = new();
-        private readonly List<TacticalCombatUnit> _targets = new();
-        private readonly List<TacticalCombatUnit> _firingTargets = new();
+        private static readonly Comparer<CombatUnit> _memberComparer = Comparer<CombatUnit>.Create(
+            CompareMembers
+        );
+        private readonly List<CombatUnit> _members = new();
+        private readonly List<CombatUnit> _requestedMembers = new();
+        private readonly List<CombatUnit> _targets = new();
+        private readonly List<CombatUnit> _firingTargets = new();
         private readonly List<Vector3> _waypoints = new();
-        private readonly List<TacticalCombatUnit> _requestedTargets = new();
+        private readonly List<CombatUnit> _requestedTargets = new();
         private readonly List<Vector3> _requestedWaypoints = new();
         private float _orbitPhase;
         public int ID { get; }
@@ -52,17 +54,17 @@ namespace Rebellion.Tactical
         /// Gets the first applied navigation point without exposing later requested route changes.
         /// </summary>
         public Vector3? PrimaryWaypoint => _waypoints.Count > 0 ? _waypoints[0] : null;
-        public TacticalCombatUnit PrimaryTarget => _targets.Count > 0 ? _targets[0] : null;
-        public IReadOnlyList<TacticalCombatUnit> ComputedTargets { get; }
-        public IReadOnlyList<TacticalCombatUnit> Targets { get; }
-        public IReadOnlyList<TacticalCombatUnit> RequestedTargets { get; }
+        public CombatUnit PrimaryTarget => _targets.Count > 0 ? _targets[0] : null;
+        public IReadOnlyList<CombatUnit> ComputedTargets { get; }
+        public IReadOnlyList<CombatUnit> Targets { get; }
+        public IReadOnlyList<CombatUnit> RequestedTargets { get; }
         public IReadOnlyList<Vector3> RequestedWaypoints { get; }
-        public IReadOnlyList<TacticalCombatUnit> Members { get; }
-        public IReadOnlyList<TacticalCombatUnit> RequestedMembers { get; }
-        public TacticalCombatUnit PrimaryMember { get; private set; }
-        public TacticalCombatUnit RequestedLeader { get; private set; }
-        public event Action<TacticalCombatUnit> HyperspaceRequested;
-        public event Action<TacticalCombatGroup, TacticalCombatUnit> TargetRemoved;
+        public IReadOnlyList<CombatUnit> Members { get; }
+        public IReadOnlyList<CombatUnit> RequestedMembers { get; }
+        public CombatUnit PrimaryMember { get; private set; }
+        public CombatUnit RequestedLeader { get; private set; }
+        public event Action<CombatUnit> HyperspaceRequested;
+        public event Action<TacticalCombatGroup, CombatUnit> TargetRemoved;
         public event Action<TacticalCombatGroup> NavigationCompleted;
 
         /// <summary>
@@ -71,11 +73,7 @@ namespace Rebellion.Tactical
         /// <param name="id">The battle-local group identifier.</param>
         /// <param name="units">The initial members.</param>
         /// <param name="sideLane">The side's forward direction.</param>
-        public TacticalCombatGroup(
-            int id,
-            IReadOnlyList<TacticalCombatUnit> units,
-            Vector3 sideLane
-        )
+        public TacticalCombatGroup(int id, IReadOnlyList<CombatUnit> units, Vector3 sideLane)
             : this(
                 id,
                 ValidateMembers(units),
@@ -85,7 +83,7 @@ namespace Rebellion.Tactical
                     : TacticalCombatGroupKind.Command
             )
         {
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
             {
                 AddRequestedMember(unit);
                 AddMember(unit);
@@ -98,7 +96,7 @@ namespace Rebellion.Tactical
         /// <param name="id">The battle-local group identifier.</param>
         /// <param name="first">The requested leader.</param>
         /// <param name="sideLane">The side's forward direction.</param>
-        internal TacticalCombatGroup(int id, TacticalCombatUnit first, Vector3 sideLane)
+        internal TacticalCombatGroup(int id, CombatUnit first, Vector3 sideLane)
             : this(id, first, sideLane, TacticalCombatGroupKind.Command) { }
 
         /// <summary>
@@ -110,7 +108,7 @@ namespace Rebellion.Tactical
         /// <param name="kind">The command or deployed fighter group kind.</param>
         private TacticalCombatGroup(
             int id,
-            TacticalCombatUnit first,
+            CombatUnit first,
             Vector3 sideLane,
             TacticalCombatGroupKind kind
         )
@@ -142,14 +140,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="units">The initial members.</param>
         /// <returns>The first member supplying the group's side and category.</returns>
-        private static TacticalCombatUnit ValidateMembers(IReadOnlyList<TacticalCombatUnit> units)
+        private static CombatUnit ValidateMembers(IReadOnlyList<CombatUnit> units)
         {
             if (units == null || units.Count == 0)
                 throw new ArgumentException(
                     "A tactical group requires at least one unit.",
                     nameof(units)
                 );
-            TacticalCombatUnit first = units[0];
+            CombatUnit first = units[0];
             for (int index = 0; index < units.Count; index++)
             {
                 if (units[index].Side != first.Side || units[index].IsFighter != first.IsFighter)
@@ -171,7 +169,7 @@ namespace Rebellion.Tactical
         /// Adds requested ownership without changing the movement and firing roster.
         /// </summary>
         /// <param name="unit">The requested member.</param>
-        internal void AddRequestedMember(TacticalCombatUnit unit)
+        internal void AddRequestedMember(CombatUnit unit)
         {
             if (!_requestedMembers.Contains(unit))
             {
@@ -185,7 +183,7 @@ namespace Rebellion.Tactical
         /// Releases requested ownership while retaining the active formation until dispatch.
         /// </summary>
         /// <param name="unit">The member being reassigned.</param>
-        internal void RemoveRequestedMember(TacticalCombatUnit unit)
+        internal void RemoveRequestedMember(CombatUnit unit)
         {
             _requestedMembers.Remove(unit);
             if (ReferenceEquals(RequestedLeader, unit))
@@ -198,7 +196,7 @@ namespace Rebellion.Tactical
         /// Applies a queued membership addition to the movement and firing roster.
         /// </summary>
         /// <param name="unit">The joining member.</param>
-        internal void AddMember(TacticalCombatUnit unit)
+        internal void AddMember(CombatUnit unit)
         {
             if (!_members.Contains(unit))
             {
@@ -214,7 +212,7 @@ namespace Rebellion.Tactical
         /// Removes applied ownership without overwriting a later requested reassignment.
         /// </summary>
         /// <param name="unit">The departing member.</param>
-        internal void RemoveMember(TacticalCombatUnit unit)
+        internal void RemoveMember(CombatUnit unit)
         {
             _members.Remove(unit);
             if (ReferenceEquals(PrimaryMember, unit))
@@ -230,7 +228,7 @@ namespace Rebellion.Tactical
         /// <param name="first">The first member.</param>
         /// <param name="second">The second member.</param>
         /// <returns>The registry ordering.</returns>
-        private static int CompareMembers(TacticalCombatUnit first, TacticalCombatUnit second) =>
+        private static int CompareMembers(CombatUnit first, CombatUnit second) =>
             ((uint)first.Index).CompareTo((uint)second.Index);
 
         /// <summary>
@@ -315,7 +313,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The designated unit.</param>
         /// <param name="append">Whether to append instead of replace.</param>
-        public void SetTarget(TacticalCombatUnit target, bool append = false)
+        public void SetTarget(CombatUnit target, bool append = false)
         {
             RequestTarget(target, append);
             ApplyTarget(target, append);
@@ -326,7 +324,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The designated unit.</param>
         /// <param name="append">Whether to extend the requested list.</param>
-        internal void RequestTarget(TacticalCombatUnit target, bool append)
+        internal void RequestTarget(CombatUnit target, bool append)
         {
             if (target == null)
                 throw new ArgumentNullException(nameof(target));
@@ -341,7 +339,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The designated target.</param>
         /// <param name="append">Whether to extend the active list.</param>
-        internal void ApplyTarget(TacticalCombatUnit target, bool append)
+        internal void ApplyTarget(CombatUnit target, bool append)
         {
             if (!append)
                 _targets.Clear();
@@ -355,7 +353,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The target being removed.</param>
         /// <param name="requested">Whether to update the requested list before dispatch.</param>
-        internal void RemoveTarget(TacticalCombatUnit target, bool requested)
+        internal void RemoveTarget(CombatUnit target, bool requested)
         {
             if (requested)
                 _requestedTargets.Remove(target);
@@ -458,14 +456,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="units">The battle's captured active roster.</param>
         /// <param name="systemTime">The elapsed whole seconds.</param>
-        public void Refresh(IReadOnlyList<TacticalCombatUnit> units, float systemTime)
+        public void Refresh(IReadOnlyList<CombatUnit> units, float systemTime)
         {
             Engagement.Update(Members, PrimaryTarget, ActiveCloseAttack);
             Formation.Refresh(systemTime);
-            TacticalCombatUnit computed = null;
+            CombatUnit computed = null;
             if (Members.Count > 0)
             {
-                TacticalCombatUnit primary = Members[0];
+                CombatUnit primary = Members[0];
                 bool hasLaser = false;
                 bool hasOther = false;
                 for (int arc = 0; arc < 4; arc++)
@@ -489,7 +487,7 @@ namespace Rebellion.Tactical
                 if (hasLaser || hasOther)
                     for (int index = 0; index < units.Count; index++)
                     {
-                        TacticalCombatUnit candidate = units[index];
+                        CombatUnit candidate = units[index];
                         if (
                             candidate.Side == Side
                             || !candidate.IsTargetable
@@ -549,7 +547,7 @@ namespace Rebellion.Tactical
                 if (!IsFighterGroup)
                     return;
             }
-            TacticalCombatUnit target = PrimaryTarget;
+            CombatUnit target = PrimaryTarget;
             if (target == null)
                 return;
             if (!target.IsTargetable)
@@ -575,9 +573,9 @@ namespace Rebellion.Tactical
         /// <param name="recoveryCarrier">The carrier selected for recovery, if any.</param>
         /// <returns>The requested displacement.</returns>
         public Vector3 GetMemberMovement(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             float battleDepth,
-            TacticalCombatUnit recoveryCarrier
+            CombatUnit recoveryCarrier
         )
         {
             Vector3 movement;
@@ -608,14 +606,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The moving member.</param>
         /// <returns>The normalized requested heading.</returns>
-        public Vector3 GetMemberHeading(TacticalCombatUnit unit)
+        public Vector3 GetMemberHeading(CombatUnit unit)
         {
             if (!unit.IsFighter && ActiveOrder == TacticalCombatOrder.Withdraw)
                 return -SideLane;
             Vector3 heading = unit.DesiredMovement;
             if (IsZeroOrUnordered(heading))
             {
-                TacticalCombatUnit target = PrimaryTarget;
+                CombatUnit target = PrimaryTarget;
                 if (unit.IsFighter)
                 {
                     if (target == null)
@@ -677,7 +675,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The candidate target.</param>
         /// <returns>The aggregate attack budget of active members.</returns>
-        public float GetAttackRate(TacticalCombatUnit target)
+        public float GetAttackRate(CombatUnit target)
         {
             float total = 0;
             for (int index = 0; index < Members.Count; index++)
@@ -693,7 +691,7 @@ namespace Rebellion.Tactical
         /// Rebuilds the computed firing fallback independently of the designated primary target.
         /// </summary>
         /// <param name="computed">The computed category-specific fallback.</param>
-        private void RebuildFiringTargets(TacticalCombatUnit computed)
+        private void RebuildFiringTargets(CombatUnit computed)
         {
             _firingTargets.Clear();
             if (computed != null)
@@ -705,9 +703,9 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The opposing group's primary target.</param>
         /// <returns>Whether this formation contains the target.</returns>
-        private bool ContainsMember(TacticalCombatUnit unit)
+        private bool ContainsMember(CombatUnit unit)
         {
-            foreach (TacticalCombatUnit member in Members)
+            foreach (CombatUnit member in Members)
                 if (ReferenceEquals(member, unit))
                     return true;
             return false;
@@ -720,7 +718,7 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
         /// <param name="groups">The encounter's indexed group ownership.</param>
         private void AdvanceCapitalEngagement(
-            TacticalCombatUnit target,
+            CombatUnit target,
             float elapsedMilliseconds,
             IReadOnlyDictionary<int, TacticalCombatGroup> groups
         )
@@ -787,7 +785,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The designated opposing unit.</param>
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
-        private void AdvanceFighterEngagement(TacticalCombatUnit target, float elapsedMilliseconds)
+        private void AdvanceFighterEngagement(CombatUnit target, float elapsedMilliseconds)
         {
             Vector3 delta = target.Position - Formation.Position;
             Vector3 direction = TacticalCombatGeometry.NormalizeMovement(
@@ -840,17 +838,17 @@ namespace Rebellion.Tactical
             int count = IsFighterGroup ? Members.Count : Math.Min(Members.Count, 1);
             for (int index = 0; index < count; index++)
             {
-                TacticalCombatUnit unit = Members[index];
+                CombatUnit unit = Members[index];
                 if (!unit.IsTargetable || !unit.Systems.HasHyperdrive || unit.GetSpeed() == 0)
                     continue;
                 float separation = (float)(-((double)origin - unit.Position.Z) * SideLane.Z);
                 if (IsFighterGroup)
                     origin = separation;
-                if (separation <= 8 && unit.Status != TacticalCombatUnitStatus.PreparingHyperspace)
+                if (separation <= 8 && unit.Status != CombatUnitStatus.PreparingHyperspace)
                 {
                     unit.DesiredHeading = -SideLane;
                     unit.Heading = -SideLane;
-                    unit.Status = TacticalCombatUnitStatus.PreparingHyperspace;
+                    unit.Status = CombatUnitStatus.PreparingHyperspace;
                     HyperspaceRequested?.Invoke(unit);
                 }
             }

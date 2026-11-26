@@ -40,7 +40,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatAttackRun run = CreateRun(3);
             run.ApplyState(TacticalCombatAttackRunState.Starting);
-            List<TacticalCombatUnit> destroyed = new();
+            List<CombatUnit> destroyed = new();
             run.UnitDestroyed += destroyed.Add;
             run.ApplyState(TacticalCombatAttackRunState.Succeeded);
             Assert.AreEqual(1, destroyed.Count);
@@ -52,11 +52,11 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatAttackRun run = CreateRun(1);
             run.ApplyState(TacticalCombatAttackRunState.Starting);
-            List<TacticalCombatUnit> destroyed = new();
+            List<CombatUnit> destroyed = new();
             run.UnitDestroyed += destroyed.Add;
             run.ApplyState(TacticalCombatAttackRunState.Succeeded);
             Assert.IsEmpty(destroyed);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, run.Group.Members[0].Status);
+            Assert.AreEqual(CombatUnitStatus.Active, run.Group.Members[0].Status);
         }
 
         [Test]
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatAttackRun run = CreateRun(3);
             run.ApplyState(TacticalCombatAttackRunState.Starting);
-            List<TacticalCombatUnit> destroyed = new();
+            List<CombatUnit> destroyed = new();
             run.UnitDestroyed += destroyed.Add;
             run.ApplyState(TacticalCombatAttackRunState.Failed);
             Assert.AreEqual(3, destroyed.Count);
@@ -76,7 +76,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatAttackRun run = CreateRun(1);
             run.ApplyState(TacticalCombatAttackRunState.Starting);
             run.ApplyState(TacticalCombatAttackRunState.Cancelled);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, run.Group.Members[0].Status);
+            Assert.AreEqual(CombatUnitStatus.Active, run.Group.Members[0].Status);
         }
 
         [Test]
@@ -249,20 +249,18 @@ namespace Rebellion.Tests.Tactical
             IRandomNumberProvider random = null
         )
         {
-            List<TacticalCombatUnit> fighters = new();
+            List<CombatUnit> fighters = new();
             for (int index = 0; index < count; index++)
                 fighters.Add(
-                    new TacticalCombatUnit(
-                        CombatUnit.Create(
-                            new Starfighter
-                            {
-                                InstanceID = "fighter" + index,
-                                MaxSquadronSize = 12,
-                                CurrentSquadronSize = 12,
-                                Agility = maneuver,
-                                Torpedoes = torpedoes,
-                            }
-                        ),
+                    new CombatUnit(
+                        new Starfighter
+                        {
+                            InstanceID = "fighter" + index,
+                            MaxSquadronSize = 12,
+                            CurrentSquadronSize = 12,
+                            Agility = maneuver,
+                            Torpedoes = torpedoes,
+                        },
                         CombatSide.Attacker,
                         index + 1
                     )

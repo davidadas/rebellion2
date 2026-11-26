@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -16,8 +17,8 @@ namespace Rebellion.Tactical
         public bool HasWithdrawalDestination { get; }
         public float InitialWithdrawalMilliseconds { get; }
         public float RetreatStrengthRatio { get; }
-        public TacticalCombatUnit CapitalCommandCarrier { get; }
-        public TacticalCombatUnit FighterCommandCarrier { get; }
+        public CombatUnit CapitalCommandCarrier { get; }
+        public CombatUnit FighterCommandCarrier { get; }
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
@@ -74,8 +75,8 @@ namespace Rebellion.Tactical
             bool hasWithdrawalDestination,
             float withdrawalMilliseconds,
             float retreatStrengthRatio,
-            TacticalCombatUnit capitalCommandCarrier,
-            TacticalCombatUnit fighterCommandCarrier,
+            CombatUnit capitalCommandCarrier,
+            CombatUnit fighterCommandCarrier,
             float admiralLeadership,
             float commanderCombat,
             bool isAutomated
@@ -110,7 +111,7 @@ namespace Rebellion.Tactical
         /// <returns>The ordered supported movement budget between one and nine.</returns>
         internal double GetMovementSupport(bool isFighter)
         {
-            TacticalCombatUnit host = isFighter ? FighterCommandCarrier : CapitalCommandCarrier;
+            CombatUnit host = isFighter ? FighterCommandCarrier : CapitalCommandCarrier;
             if (host?.IsActiveDisplayObject != true)
                 return 1;
             float scalar = isFighter ? CommanderCombat / 20 : AdmiralLeadership / 10;

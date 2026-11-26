@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical
@@ -17,12 +18,9 @@ namespace Rebellion.Tactical
         private CombatSide _candidateSide;
         private List<TargetCandidate> FallbackCandidates =>
             _candidateSets[(int)_candidateSide].Fallback;
-        private readonly List<TacticalCombatUnit> _assessedUnits = new();
+        private readonly List<CombatUnit> _assessedUnits = new();
         private readonly List<TacticalCombatGroup> _assessedGroups = new();
-        private readonly Dictionary<
-            TacticalCombatUnit,
-            List<TacticalCombatGroup>
-        > _targetingGroups = new();
+        private readonly Dictionary<CombatUnit, List<TacticalCombatGroup>> _targetingGroups = new();
 
         /// <summary>
         /// Indexes the captured battle participants once for subsequent side assessments.
@@ -31,7 +29,7 @@ namespace Rebellion.Tactical
         public TacticalCombatTargeting(TacticalCombatSession session)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            foreach (TacticalCombatUnit unit in session.Units)
+            foreach (CombatUnit unit in session.Units)
             {
                 _targetingGroups.Add(unit, new List<TacticalCombatGroup>());
                 if (!unit.IsBattleStation)
@@ -88,7 +86,7 @@ namespace Rebellion.Tactical
         /// <returns>The elimination metric, or minus one when recharge exceeds available attack.</returns>
         public static float GetTargetMetric(
             TacticalCombatGroup group,
-            TacticalCombatUnit target,
+            CombatUnit target,
             ref float attack
         )
         {
@@ -136,12 +134,12 @@ namespace Rebellion.Tactical
             CandidateSet candidates = _candidateSets[(int)side.Side];
             candidates.Ordered.Clear();
             FallbackCandidates.Clear();
-            foreach (TacticalCombatUnit unit in _session.Units)
+            foreach (CombatUnit unit in _session.Units)
             {
                 if (
                     unit.Side == side.Side
                     || unit.IsBattleStation
-                    || !unit.IsTargetable && unit.Status != TacticalCombatUnitStatus.Docked
+                    || !unit.IsTargetable && unit.Status != CombatUnitStatus.Docked
                 )
                     continue;
                 TargetCandidate candidate = new(unit, -GetPriority(unit));
@@ -205,7 +203,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The group running its attack behavior.</param>
         /// <returns>The first category-matching target, or null when its current target should be retained.</returns>
-        internal TacticalCombatUnit SelectBehaviorTarget(TacticalCombatGroup group)
+        internal CombatUnit SelectBehaviorTarget(TacticalCombatGroup group)
         {
             if (CanRetainTarget(group))
                 return null;
@@ -235,10 +233,10 @@ namespace Rebellion.Tactical
             )
                 return true;
             if (group.IsFighterGroup)
-                foreach (TacticalCombatUnit unit in group.Members)
-                    if (unit.Status == TacticalCombatUnitStatus.Docked)
+                foreach (CombatUnit unit in group.Members)
+                    if (unit.Status == CombatUnitStatus.Docked)
                         return true;
-            TacticalCombatUnit target = group.PrimaryTarget;
+            CombatUnit target = group.PrimaryTarget;
             if (target == null || !IsCandidateAvailable(target))
                 return false;
             float attack = 0;
@@ -260,7 +258,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The opposing unit.</param>
         /// <returns>Whether the unit is a preferred assignment candidate.</returns>
-        internal bool IsCandidateAvailable(TacticalCombatUnit target)
+        internal bool IsCandidateAvailable(CombatUnit target)
         {
             if (!target.IsTargetable)
                 return false;
@@ -281,7 +279,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The opposing candidate.</param>
         /// <returns>The candidate priority before category ordering.</returns>
-        private float GetPriority(TacticalCombatUnit unit)
+        private float GetPriority(CombatUnit unit)
         {
             int payload = unit.PayloadCount;
             float priority = (float)(
@@ -290,7 +288,7 @@ namespace Rebellion.Tactical
             double rechargeRatio = unit.Systems.GetShieldRechargeRatio();
             priority = (float)((double)priority - rechargeRatio * 0.01f);
             priority = (float)((double)priority - unit.Systems.HullFraction * 0.01f);
-            if (unit.Status == TacticalCombatUnitStatus.Docked)
+            if (unit.Status == CombatUnitStatus.Docked)
                 priority -= 0.01f;
             return priority;
         }
@@ -311,7 +309,7 @@ namespace Rebellion.Tactical
             foreach (TacticalCombatGroup group in _assessedGroups)
                 _targetingGroups[group.PrimaryTarget].Add(group);
             float total = 0;
-            foreach (TacticalCombatUnit unit in _assessedUnits)
+            foreach (CombatUnit unit in _assessedUnits)
             {
                 if (unit.Side != side.Side || unit.IsFighter || !unit.IsEngaged)
                     continue;
@@ -330,9 +328,9 @@ namespace Rebellion.Tactical
                     total = (float)(TacticalCombatEngagement.GetAttackRate(unit, null) + total);
             }
             if (side.FactionIndex == 1)
-                foreach (TacticalCombatUnit unit in _session.InitiallyDockedFighters)
+                foreach (CombatUnit unit in _session.InitiallyDockedFighters)
                     total = (float)(TacticalCombatEngagement.GetAttackRate(unit, null) + total);
-            foreach (TacticalCombatUnit unit in _assessedUnits)
+            foreach (CombatUnit unit in _assessedUnits)
                 if (unit.Side == side.Side && unit.IsFighter && unit.IsEngaged)
                     total = (float)(TacticalCombatEngagement.GetAttackRate(unit, null) + total);
             if (_session.BattleStation?.IsOperational == true)
@@ -364,7 +362,7 @@ namespace Rebellion.Tactical
         /// <param name="first">The first unit.</param>
         /// <param name="second">The second unit.</param>
         /// <returns>The unsigned object-key comparison.</returns>
-        private static int CompareUnits(TacticalCombatUnit first, TacticalCombatUnit second) =>
+        private static int CompareUnits(CombatUnit first, CombatUnit second) =>
             unchecked((uint)first.Index).CompareTo(unchecked((uint)second.Index));
 
         /// <summary>
@@ -408,7 +406,7 @@ namespace Rebellion.Tactical
     /// </summary>
     internal readonly struct TargetCandidate
     {
-        public TacticalCombatUnit Unit { get; }
+        public CombatUnit Unit { get; }
         public float Score { get; }
 
         /// <summary>
@@ -416,7 +414,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The target unit.</param>
         /// <param name="score">Its stored ascending ordering score.</param>
-        public TargetCandidate(TacticalCombatUnit unit, float score)
+        public TargetCandidate(CombatUnit unit, float score)
         {
             Unit = unit;
             Score = score;

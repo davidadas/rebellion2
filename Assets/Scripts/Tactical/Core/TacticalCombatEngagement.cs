@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -32,11 +33,7 @@ namespace Rebellion.Tactical
         /// <param name="members">The group's ordered member roster.</param>
         /// <param name="target">The primary target, if one is assigned.</param>
         /// <param name="closeAttack">Whether the group is using close attack.</param>
-        public void Update(
-            IReadOnlyList<TacticalCombatUnit> members,
-            TacticalCombatUnit target,
-            bool closeAttack
-        )
+        public void Update(IReadOnlyList<CombatUnit> members, CombatUnit target, bool closeAttack)
         {
             if (closeAttack)
             {
@@ -55,7 +52,7 @@ namespace Rebellion.Tactical
             float largestMemberRange = 0;
             for (int index = 0; index < members.Count; index++)
             {
-                TacticalCombatUnit member = members[index];
+                CombatUnit member = members[index];
                 AppendRanges(member, target.IsFighter, false);
                 largestMemberRange = Math.Max(
                     largestMemberRange,
@@ -113,8 +110,8 @@ namespace Rebellion.Tactical
         /// <param name="targetIsFighter">The target category used when no target is provided.</param>
         /// <returns>The normalized attack budget.</returns>
         public static double GetAttackRate(
-            TacticalCombatUnit unit,
-            TacticalCombatUnit target,
+            CombatUnit unit,
+            CombatUnit target,
             bool targetIsFighter = false
         )
         {
@@ -189,7 +186,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="targetIsFighter">The opposing unit's category.</param>
         /// <param name="subtract">Whether to subtract the opposing unit's attack profile.</param>
-        private void AppendRanges(TacticalCombatUnit unit, bool targetIsFighter, bool subtract)
+        private void AppendRanges(CombatUnit unit, bool targetIsFighter, bool subtract)
         {
             TacticalWeaponArc? selected = TacticalCombatFireControl.GetStrongestArc(
                 unit,

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical.Synchronization;
@@ -96,7 +97,7 @@ namespace Rebellion.Tactical
                 () => { },
                 () => { }
             );
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
             {
                 unit.TractorSourcesChanged += populated =>
                     RecordSynchronizedEvent(
@@ -129,7 +130,7 @@ namespace Rebellion.Tactical
         /// <param name="replica">Whether this encounter is a passive view.</param>
         private void ConfigureSynchronization(bool replica)
         {
-            if (IsSynchronized || _legacyTimeAdvanced || _scheduler != null || SystemTime != 3)
+            if (IsSynchronized || _scheduler != null || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Synchronized combat ownership must be configured before playback starts."
                 );
@@ -448,7 +449,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The registered participant.</param>
         /// <returns>The participant projection.</returns>
-        private static TacticalCombatUnitSnapshot CaptureUnitSnapshot(TacticalCombatUnit unit)
+        private static TacticalCombatUnitSnapshot CaptureUnitSnapshot(CombatUnit unit)
         {
             TacticalCombatUnitSnapshot state = new()
             {
@@ -489,7 +490,8 @@ namespace Rebellion.Tactical
                 HasRequestedGroup = unit.RequestedGroupID.HasValue,
                 RequestedGroupID = unit.RequestedGroupID ?? 0,
             };
-            unit.Systems.CaptureSnapshotSamples(state);
+            state.WeaponRechargeSample = unit.Systems.WeaponRechargeSample;
+            state.ShieldRechargeSample = unit.Systems.ShieldRechargeSample;
             return state;
         }
 

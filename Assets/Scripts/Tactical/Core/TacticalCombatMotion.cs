@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -9,8 +10,8 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatMotion
     {
-        private readonly List<TacticalCombatUnit> _neighbors = new();
-        private readonly List<TacticalCombatUnit> _equalHeight = new();
+        private readonly List<CombatUnit> _neighbors = new();
+        private readonly List<CombatUnit> _equalHeight = new();
         private float _lower;
         private float _upper;
         private bool _hasLower;
@@ -28,15 +29,15 @@ namespace Rebellion.Tactical
         /// <param name="spatialIndex">The battle's spatial indexes.</param>
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
         public void Advance(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalCombatGroup group,
-            TacticalCombatUnit recoveryCarrier,
+            CombatUnit recoveryCarrier,
             float battleDepth,
             TacticalCombatSpatialIndex spatialIndex,
             float elapsedMilliseconds
         )
         {
-            if (unit.Status != TacticalCombatUnitStatus.Active)
+            if (unit.Status != CombatUnitStatus.Active)
                 return;
             if (unit.IsFighter)
                 AdvanceFighter(
@@ -89,9 +90,9 @@ namespace Rebellion.Tactical
         /// <param name="index">The battle spatial index.</param>
         /// <param name="elapsed">The movement interval in milliseconds.</param>
         private void AdvanceCapitalShip(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalCombatGroup group,
-            TacticalCombatUnit carrier,
+            CombatUnit carrier,
             float depth,
             TacticalCombatSpatialIndex index,
             float elapsed
@@ -217,9 +218,9 @@ namespace Rebellion.Tactical
         /// <param name="index">The battle spatial index.</param>
         /// <param name="elapsed">The movement interval in milliseconds.</param>
         private void AdvanceFighter(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalCombatGroup group,
-            TacticalCombatUnit carrier,
+            CombatUnit carrier,
             float depth,
             TacticalCombatSpatialIndex index,
             float elapsed
@@ -273,7 +274,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The steering squadron.</param>
         /// <param name="elapsed">The movement interval in milliseconds.</param>
         /// <returns>The normalized heading after steering.</returns>
-        private static Vector3 TurnFighter(TacticalCombatUnit unit, float elapsed)
+        private static Vector3 TurnFighter(CombatUnit unit, float elapsed)
         {
             float angle = TacticalCombatGeometry.GetHeadingAngle(unit.Heading, unit.DesiredHeading);
             if (
@@ -320,7 +321,7 @@ namespace Rebellion.Tactical
         /// Resolves upper and lower separation bounds, including equal-height tie handling.
         /// </summary>
         /// <param name="unit">The moving unit.</param>
-        private void ResolveVerticalBounds(TacticalCombatUnit unit)
+        private void ResolveVerticalBounds(CombatUnit unit)
         {
             _lower = -float.MaxValue;
             _upper = float.MaxValue;
@@ -331,7 +332,7 @@ namespace Rebellion.Tactical
             _equalHeight.Clear();
             for (int index = 0; index < _neighbors.Count; index++)
             {
-                TacticalCombatUnit candidate = _neighbors[index];
+                CombatUnit candidate = _neighbors[index];
                 double delta = (double)candidate.Position.Y - unit.Position.Y;
                 if (delta > 0)
                     UpdateUpper(unit, candidate);
@@ -342,7 +343,7 @@ namespace Rebellion.Tactical
             }
             for (int index = 0; index < _equalHeight.Count; index++)
             {
-                TacticalCombatUnit candidate = _equalHeight[index];
+                CombatUnit candidate = _equalHeight[index];
                 if (unchecked((uint)unit.Index) < unchecked((uint)candidate.Index))
                 {
                     if (!_hasLower)
@@ -371,7 +372,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The moving unit.</param>
         /// <param name="candidate">The higher capital ship.</param>
-        private void UpdateUpper(TacticalCombatUnit unit, TacticalCombatUnit candidate)
+        private void UpdateUpper(CombatUnit unit, CombatUnit candidate)
         {
             _hasUpper = true;
             double value = (double)candidate.Position.Y - candidate.HalfHeight - unit.HalfHeight;
@@ -385,7 +386,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The moving unit.</param>
         /// <param name="candidate">The lower capital ship.</param>
-        private void UpdateLower(TacticalCombatUnit unit, TacticalCombatUnit candidate)
+        private void UpdateLower(CombatUnit unit, CombatUnit candidate)
         {
             _hasLower = true;
             double value = (double)candidate.Position.Y + candidate.HalfHeight + unit.HalfHeight;
@@ -400,7 +401,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The moving unit.</param>
         /// <param name="delta">The requested signed vertical displacement.</param>
         /// <param name="maximumStep">The available vertical movement.</param>
-        private static void MoveY(TacticalCombatUnit unit, double delta, float maximumStep)
+        private static void MoveY(CombatUnit unit, double delta, float maximumStep)
         {
             if (delta > 0)
                 SetY(unit, (float)(unit.Position.Y + Math.Min(delta, maximumStep)));
@@ -413,7 +414,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The moving unit.</param>
         /// <param name="y">The new vertical coordinate.</param>
-        private static void SetY(TacticalCombatUnit unit, float y)
+        private static void SetY(CombatUnit unit, float y)
         {
             Vector3 position = unit.Position;
             position.Y = y;

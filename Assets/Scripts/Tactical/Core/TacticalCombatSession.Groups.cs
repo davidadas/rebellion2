@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical
@@ -91,8 +92,8 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="instanceID">The campaign unit identifier.</param>
         /// <returns>The unit, or null when it is outside this encounter.</returns>
-        public TacticalCombatUnit GetUnit(string instanceID) =>
-            instanceID != null && _unitsByID.TryGetValue(instanceID, out TacticalCombatUnit unit)
+        public CombatUnit GetUnit(string instanceID) =>
+            instanceID != null && _unitsByID.TryGetValue(instanceID, out CombatUnit unit)
                 ? unit
                 : null;
 
@@ -101,7 +102,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The group's member.</param>
         /// <returns>The member's group, or null after removal.</returns>
-        public TacticalCombatGroup GetGroup(TacticalCombatUnit unit) =>
+        public TacticalCombatGroup GetGroup(CombatUnit unit) =>
             unit.GroupID is int groupID
             && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
                 ? group
@@ -112,7 +113,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The selected unit.</param>
         /// <returns>The requested group, or null after requested removal.</returns>
-        public TacticalCombatGroup GetRequestedGroup(TacticalCombatUnit unit) =>
+        public TacticalCombatGroup GetRequestedGroup(CombatUnit unit) =>
             unit.RequestedGroupID is int groupID
             && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
                 ? group
@@ -123,7 +124,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="members">The ordered members of one side.</param>
         /// <returns>The newly registered tactical group.</returns>
-        public TacticalCombatGroup CreateGroup(IReadOnlyList<TacticalCombatUnit> members)
+        public TacticalCombatGroup CreateGroup(IReadOnlyList<CombatUnit> members)
         {
             RequireSimulationAuthority();
             if (members == null || members.Count == 0)
@@ -132,22 +133,22 @@ namespace Rebellion.Tactical
                     nameof(members)
                 );
             CombatSide side = members[0].Side;
-            foreach (TacticalCombatUnit member in members)
+            foreach (CombatUnit member in members)
                 if (
                     member.Side != side
-                    || !_unitsByID.TryGetValue(member.InstanceID, out TacticalCombatUnit registered)
+                    || !_unitsByID.TryGetValue(member.InstanceID, out CombatUnit registered)
                     || !ReferenceEquals(member, registered)
                 )
                     throw new ArgumentException(
                         "A tactical group requires registered members of one side.",
                         nameof(members)
                     );
-            if (new HashSet<TacticalCombatUnit>(members).Count != members.Count)
+            if (new HashSet<CombatUnit>(members).Count != members.Count)
                 throw new ArgumentException(
                     "A tactical group cannot repeat a member.",
                     nameof(members)
                 );
-            TacticalCombatUnit first = members[0];
+            CombatUnit first = members[0];
             RequestMemberRemoval(first);
             TacticalCombatGroup group = new(
                 ++_nextGroupID[(int)side],
@@ -166,13 +167,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The requested destination group.</param>
         /// <param name="unit">The transferring unit.</param>
-        public void AddGroupMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        public void AddGroupMember(TacticalCombatGroup group, CombatUnit unit)
         {
             ValidateGroup(group);
             if (
                 unit == null
                 || unit.Side != group.Side
-                || !_unitsByID.TryGetValue(unit.InstanceID, out TacticalCombatUnit registered)
+                || !_unitsByID.TryGetValue(unit.InstanceID, out CombatUnit registered)
                 || !ReferenceEquals(registered, unit)
             )
                 throw new ArgumentException(
@@ -189,12 +190,12 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The group losing the member.</param>
         /// <param name="unit">The requested member to remove.</param>
-        public void RemoveGroupMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        public void RemoveGroupMember(TacticalCombatGroup group, CombatUnit unit)
         {
             ValidateGroup(group);
             if (
                 unit == null
-                || !_unitsByID.TryGetValue(unit.InstanceID, out TacticalCombatUnit registered)
+                || !_unitsByID.TryGetValue(unit.InstanceID, out CombatUnit registered)
                 || !ReferenceEquals(registered, unit)
             )
                 throw new ArgumentException(
@@ -211,7 +212,7 @@ namespace Rebellion.Tactical
         /// Removes requested membership and queues the corresponding active-roster removal.
         /// </summary>
         /// <param name="unit">The member leaving its requested group.</param>
-        private void RequestMemberRemoval(TacticalCombatUnit unit)
+        private void RequestMemberRemoval(CombatUnit unit)
         {
             TacticalCombatGroup previous = GetRequestedGroup(unit);
             if (previous == null)
@@ -236,16 +237,12 @@ namespace Rebellion.Tactical
         /// <param name="group">The attacking group.</param>
         /// <param name="target">The designated encounter unit.</param>
         /// <param name="append">Whether to append to the existing target list.</param>
-        public void SetTarget(
-            TacticalCombatGroup group,
-            TacticalCombatUnit target,
-            bool append = false
-        )
+        public void SetTarget(TacticalCombatGroup group, CombatUnit target, bool append = false)
         {
             ValidateGroup(group);
             if (
                 target == null
-                || !_unitsByID.TryGetValue(target.InstanceID, out TacticalCombatUnit registered)
+                || !_unitsByID.TryGetValue(target.InstanceID, out CombatUnit registered)
                 || !ReferenceEquals(target, registered)
             )
                 throw new ArgumentException(
@@ -275,7 +272,7 @@ namespace Rebellion.Tactical
         /// Removes both ownership lanes when a unit stops participating in the battle.
         /// </summary>
         /// <param name="unit">The destroyed, departing, or recovering member.</param>
-        private void RemoveFromGroup(TacticalCombatUnit unit)
+        private void RemoveFromGroup(CombatUnit unit)
         {
             TacticalCombatGroup requested = GetRequestedGroup(unit);
             requested?.RemoveRequestedMember(unit);
@@ -291,7 +288,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The previous applied owner.</param>
         /// <param name="unit">The departing member.</param>
-        private void RemoveAppliedMember(TacticalCombatGroup group, TacticalCombatUnit unit)
+        private void RemoveAppliedMember(TacticalCombatGroup group, CombatUnit unit)
         {
             group.RemoveMember(unit);
             if (group.Members.Count == 0)
@@ -391,7 +388,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The attacking group.</param>
         /// <param name="target">The target to remove.</param>
-        public void RemoveTarget(TacticalCombatGroup group, TacticalCombatUnit target)
+        public void RemoveTarget(TacticalCombatGroup group, CombatUnit target)
         {
             ValidateGroup(group);
             group.RemoveTarget(target, true);

@@ -9,7 +9,6 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -26,7 +25,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateDischargeSession(weapon);
-            TacticalCombatUnit source = session.GetUnit("a");
+            CombatUnit source = session.GetUnit("a");
             int shots = 0;
             session.ShotFired += shot =>
             {
@@ -389,7 +388,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             int shots = 0;
             int effects = 0;
             int deaths = 0;
@@ -406,7 +405,7 @@ namespace Rebellion.Tests.Tactical
             Assert.That(shots, Is.GreaterThan(0));
             Assert.AreEqual(0, target.Systems.Hull);
             Assert.AreEqual(37, target.Systems.Shields);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, target.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, target.Status);
             Assert.IsNotNull(session.GetGroup(target));
             Assert.AreEqual(0, effects);
             Assert.AreEqual(0, deaths);
@@ -420,8 +419,7 @@ namespace Rebellion.Tests.Tactical
             int shots = 0;
             session.ShotFired += _ => shots++;
             WaitForQueuedDischarge(session);
-            session.GetUnit(sourceLeaves ? "a" : "b").Status =
-                TacticalCombatUnitStatus.EnteringHyperspace;
+            session.GetUnit(sourceLeaves ? "a" : "b").Status = CombatUnitStatus.EnteringHyperspace;
 
             AdvanceSeconds(session, 12);
 
@@ -432,9 +430,9 @@ namespace Rebellion.Tests.Tactical
         public void Advance_QueuedImpactSourceLeavesAfterDischarge_StillDamagesActiveTarget()
         {
             TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
-            TacticalCombatUnit source = session.GetUnit("a");
-            TacticalCombatUnit target = session.GetUnit("b");
-            session.ShotFired += _ => source.Status = TacticalCombatUnitStatus.Withdrawn;
+            CombatUnit source = session.GetUnit("a");
+            CombatUnit target = session.GetUnit("b");
+            session.ShotFired += _ => source.Status = CombatUnitStatus.Withdrawn;
 
             AdvanceSeconds(session, 20);
 
@@ -448,7 +446,7 @@ namespace Rebellion.Tests.Tactical
             ship.SystemDamage.Weapons = 4;
             ship.DamageControl = 100;
             TacticalCombatSession session = CreateSession(ship, CreateShip("b", 1000, 0));
-            TacticalCombatUnit target = session.GetUnit("a");
+            CombatUnit target = session.GetUnit("a");
             int repairs = 0;
             session.SystemChanged += (unit, change) =>
             {
@@ -462,18 +460,18 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(4, target.Systems.GetDamage(TacticalShipSystem.Weapons));
         }
 
-        [TestCase(TacticalCombatUnitStatus.Active)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        [TestCase(CombatUnitStatus.Active)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace)]
+        [TestCase(CombatUnitStatus.Destroyed)]
         public void Advance_QueuedComponentDamageAfterParticipationChanges_StillUpdatesRetainedUnit(
-            TacticalCombatUnitStatus status
+            CombatUnitStatus status
         )
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 1000, 0),
                 CreateShip("b", 1000, 0)
             );
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             target.Systems.ApplyHit(
                 TacticalWeaponType.Turbolaser,
                 1,
@@ -493,11 +491,11 @@ namespace Rebellion.Tests.Tactical
         [Test, Combinatorial]
         public void Advance_QueuedIonDisruptionAfterParticipationChanges_AppliesSelectedTimersAndBatteries(
             [Values(
-                TacticalCombatUnitStatus.Active,
-                TacticalCombatUnitStatus.EnteringHyperspace,
-                TacticalCombatUnitStatus.Destroyed
+                CombatUnitStatus.Active,
+                CombatUnitStatus.EnteringHyperspace,
+                CombatUnitStatus.Destroyed
             )]
-                TacticalCombatUnitStatus status,
+                CombatUnitStatus status,
             [Range(0, 9)] int componentOffset
         )
         {
@@ -505,7 +503,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 1000, 0),
                 CreateShip("b", 1000, 1)
             );
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             target.Systems.ApplyDisruption(11, 17);
             TacticalSystemEvent? applied = null;
             session.SystemChanged += (unit, change) =>
@@ -545,17 +543,17 @@ namespace Rebellion.Tests.Tactical
                 );
         }
 
-        [TestCase(TacticalCombatUnitStatus.Active)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed)]
+        [TestCase(CombatUnitStatus.Active)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace)]
+        [TestCase(CombatUnitStatus.Destroyed)]
         public void Advance_QueuedComponentRepairAfterParticipationChanges_StillUpdatesRetainedUnit(
-            TacticalCombatUnitStatus status
+            CombatUnitStatus status
         )
         {
             CapitalShip victim = CreateShip("b", 1000, 0);
             victim.DamageControl = 100;
             TacticalCombatSession session = CreateSession(CreateShip("a", 1000, 0), victim);
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             target.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             target.Systems.Advance(1, new FixedRandom(0));
             target.Status = status;
@@ -574,7 +572,7 @@ namespace Rebellion.Tests.Tactical
             source.TractorBeamnRange = 1000;
             source.DamageControl = 100;
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
-            TacticalCombatUnit unit = session.GetUnit("a");
+            CombatUnit unit = session.GetUnit("a");
             AdvanceSeconds(session, 20);
             Assert.AreEqual("b", unit.TractorTargetID);
             unit.Systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
@@ -594,7 +592,7 @@ namespace Rebellion.Tests.Tactical
             source.TractorBeamPower = 10;
             source.TractorBeamnRange = 1000;
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
             target.TractorSourcesChanged += transitions.Add;
 
@@ -612,7 +610,7 @@ namespace Rebellion.Tests.Tactical
             source.TractorBeamPower = 10;
             source.TractorBeamnRange = 1000;
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
             target.TractorSourcesChanged += transitions.Add;
             AdvanceSeconds(session, 20);
@@ -633,8 +631,8 @@ namespace Rebellion.Tests.Tactical
             source.TractorBeamPower = 10;
             source.TractorBeamnRange = 1000;
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
-            TacticalCombatUnit contributor = session.GetUnit("a");
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit contributor = session.GetUnit("a");
+            CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
             target.TractorSourcesChanged += transitions.Add;
             AdvanceSeconds(session, 20);
@@ -690,7 +688,7 @@ namespace Rebellion.Tests.Tactical
                 Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
                 Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
                 Assert.AreEqual(0, victim.Systems.Hull);
-                Assert.AreEqual(TacticalCombatUnitStatus.Active, victim.Status);
+                Assert.AreEqual(CombatUnitStatus.Active, victim.Status);
                 output.Add("effect");
             };
             session.UnitDestroyed += _ => output.Add("destroyed");
@@ -699,7 +697,7 @@ namespace Rebellion.Tests.Tactical
 
             AdvanceSeconds(session, 20);
 
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, session.GetUnit("b").Status);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, session.GetUnit("b").Status);
             CollectionAssert.AreEqual(new[] { "17", "86", "effect", "9", "destroyed" }, output);
         }
 
@@ -716,9 +714,9 @@ namespace Rebellion.Tests.Tactical
                 NotificationBank(17, 9, 86, 208),
                 player
             );
-            TacticalCombatUnit attacker =
+            CombatUnit attacker =
                 session.Units[0].Side == player ? session.Units[0] : session.Units[1];
-            TacticalCombatUnit victim =
+            CombatUnit victim =
                 session.Units[0].Side != player ? session.Units[0] : session.Units[1];
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
@@ -755,8 +753,8 @@ namespace Rebellion.Tests.Tactical
                 player,
                 new[] { victimID, "unrelated-host", victimID }
             );
-            TacticalCombatUnit victim = session.GetUnit(victimID);
-            TacticalCombatUnit attacker = session.GetUnit(victimID == "a" ? "b" : "a");
+            CombatUnit victim = session.GetUnit(victimID);
+            CombatUnit attacker = session.GetUnit(victimID == "a" ? "b" : "a");
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -783,7 +781,7 @@ namespace Rebellion.Tests.Tactical
         public void Audio_PendingGroupTransfer_UsesAppliedOwnerAndCurrentPlayerSlot()
         {
             TacticalCombatSession session = CreateMembershipSession(NotificationBank(86, 89, 91));
-            TacticalCombatUnit attacker = session.GetUnit("first");
+            CombatUnit attacker = session.GetUnit("first");
             TacticalCombatGroup applied = session.GetGroup(attacker);
             TacticalCombatGroup requested = session.CreateGroup(new[] { attacker });
             session.SetObjectGroup(CombatSide.Attacker, 0, null);
@@ -824,7 +822,7 @@ namespace Rebellion.Tests.Tactical
                 NotificationBank(94, 97, 98),
                 fighterCategory: category
             );
-            TacticalCombatUnit attacker = session.GetUnit("fighter");
+            CombatUnit attacker = session.GetUnit("fighter");
             session.DeleteGroup(session.GetGroup(attacker));
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
@@ -969,7 +967,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 30);
 
             Assert.IsTrue(session.IsComplete);
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, session.GetUnit("b").Status);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, session.GetUnit("b").Status);
             Assert.IsNull(session.GetGroup(session.GetUnit("b")));
         }
 
@@ -1029,7 +1027,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 100);
 
             Assert.IsTrue(session.IsComplete);
-            Assert.AreEqual(TacticalCombatUnitStatus.Withdrawn, session.GetUnit("a").Status);
+            Assert.AreEqual(CombatUnitStatus.Withdrawn, session.GetUnit("a").Status);
             Assert.IsNull(session.GetGroup(session.GetUnit("a")));
             Assert.AreEqual(100, ship.CurrentHullStrength);
         }
@@ -1067,7 +1065,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 100, 0),
                 CreateShip("b", 100, 0)
             );
-            TacticalCombatUnit unit = session.GetUnit("a");
+            CombatUnit unit = session.GetUnit("a");
             TacticalCombatGroup group = session.GetGroup(unit);
             Assert.Throws<ArgumentException>(() => session.CreateGroup(new[] { unit, unit }));
             Assert.AreSame(group, session.GetGroup(unit));
@@ -1082,25 +1080,15 @@ namespace Rebellion.Tests.Tactical
         {
             CombatSide factionZeroSide =
                 factionOneSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-            TacticalCombatUnit first = new(
-                CombatUnit.Create(CreateShip("first", 100, 0)),
-                factionZeroSide,
-                1
-            );
-            TacticalCombatUnit selected = new(
-                CombatUnit.Create(CreateShip("selected", 100, 0)),
-                factionOneSide,
-                2
-            );
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+            CombatUnit first = new(CreateShip("first", 100, 0), factionZeroSide, 1);
+            CombatUnit selected = new(CreateShip("selected", 100, 0), factionOneSide, 2);
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 factionZeroSide,
                 3
             );
@@ -1148,7 +1136,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 100, 0),
                 CreateShip("b", 100, 0)
             );
-            TacticalCombatUnit member = session.GetUnit("a");
+            CombatUnit member = session.GetUnit("a");
             TacticalCombatGroup previous = session.GetGroup(member);
             session.SetOrder(previous, TacticalCombatOrder.Hammer);
 
@@ -1165,7 +1153,7 @@ namespace Rebellion.Tests.Tactical
         public void CreateGroup_BeforeDispatch_PreservesAppliedOwnership()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
+            CombatUnit first = session.GetUnit("first");
             TacticalCombatGroup previous = session.GetGroup(first);
 
             TacticalCombatGroup requested = session.CreateGroup(new[] { first });
@@ -1182,7 +1170,7 @@ namespace Rebellion.Tests.Tactical
         public void CreateGroup_PausedCommands_PreservesAppliedRosterUntilResume()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
+            CombatUnit first = session.GetUnit("first");
             TacticalCombatGroup previous = session.GetGroup(first);
             session.IsPaused = true;
             TacticalCombatGroup requested = session.CreateGroup(new[] { first });
@@ -1200,7 +1188,7 @@ namespace Rebellion.Tests.Tactical
         public void CreateGroup_OrderedMixedSelection_PreservesLeaderAndCommandGroupKind()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit[] ordered =
+            CombatUnit[] ordered =
             {
                 session.GetUnit("fighter"),
                 session.GetUnit("first"),
@@ -1208,7 +1196,7 @@ namespace Rebellion.Tests.Tactical
             };
 
             TacticalCombatGroup requested = session.CreateGroup(ordered);
-            TacticalCombatUnit[] registryOrder = { ordered[2], ordered[0], ordered[1] };
+            CombatUnit[] registryOrder = { ordered[2], ordered[0], ordered[1] };
             CollectionAssert.AreEqual(registryOrder, requested.RequestedMembers);
             Assert.AreSame(ordered[0], requested.RequestedLeader);
             AdvanceSeconds(session, 8);
@@ -1223,7 +1211,7 @@ namespace Rebellion.Tests.Tactical
         public void CreateGroup_TwoReassignmentsBeforeDispatch_AppliesMembershipCommandsInOrder()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
+            CombatUnit first = session.GetUnit("first");
             TacticalCombatGroup transient = session.CreateGroup(new[] { first });
             TacticalCombatGroup final = session.CreateGroup(new[] { first });
 
@@ -1240,8 +1228,8 @@ namespace Rebellion.Tests.Tactical
         public void AddGroupMember_ExistingDestination_AppendsAfterDelayedRemoval()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
-            TacticalCombatUnit second = session.GetUnit("second");
+            CombatUnit first = session.GetUnit("first");
+            CombatUnit second = session.GetUnit("second");
             TacticalCombatGroup previous = session.GetGroup(second);
             TacticalCombatGroup destination = session.GetGroup(first);
 
@@ -1260,7 +1248,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateMembershipSession();
             TacticalCombatGroup group = session.GetGroup(session.GetUnit("first"));
-            TacticalCombatUnit friendly = session.GetUnit("second");
+            CombatUnit friendly = session.GetUnit("second");
             session.SetTarget(group, friendly);
             session.SetOrder(group, TacticalCombatOrder.HoldFire);
             CollectionAssert.AreEqual(new[] { friendly }, group.RequestedTargets);
@@ -1276,9 +1264,9 @@ namespace Rebellion.Tests.Tactical
         public void RemoveGroupMember_DesignatedLeader_PromotesFirstRemainingRegistryMember()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
-            TacticalCombatUnit second = session.GetUnit("second");
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit first = session.GetUnit("first");
+            CombatUnit second = session.GetUnit("second");
+            CombatUnit fighter = session.GetUnit("fighter");
             TacticalCombatGroup group = session.CreateGroup(new[] { first, fighter, second });
             AdvanceSeconds(session, 8);
 
@@ -1294,7 +1282,7 @@ namespace Rebellion.Tests.Tactical
         public void SetObjectGroup_PreviousOwnerRemoved_KeepsReplacementCategory()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
+            CombatUnit first = session.GetUnit("first");
             TacticalCombatGroup replacement = session.CreateGroup(new[] { first });
             Assert.IsNull(session.GetObjectGroup(CombatSide.Attacker, 0));
             session.SetObjectGroup(CombatSide.Attacker, 0, replacement);
@@ -1338,7 +1326,7 @@ namespace Rebellion.Tests.Tactical
         public void DeleteGroup_BeforeDispatch_PreservesAppliedRoster()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit unit = session.GetUnit("first");
+            CombatUnit unit = session.GetUnit("first");
             TacticalCombatGroup previous = session.GetGroup(unit);
 
             session.DeleteGroup(previous);
@@ -1354,7 +1342,7 @@ namespace Rebellion.Tests.Tactical
         public void DeleteGroup_QueuedReplacement_PreservesNewRequestedOwner()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit unit = session.GetUnit("first");
+            CombatUnit unit = session.GetUnit("first");
             TacticalCombatGroup previous = session.GetGroup(unit);
             session.DeleteGroup(previous);
             TacticalCombatGroup replacement = session.CreateGroup(new[] { unit });
@@ -1393,7 +1381,7 @@ namespace Rebellion.Tests.Tactical
         public void CaptureOutcome_ExportedComponentChanges_LeavesEncounterSystemsUnchanged()
         {
             TacticalCombatSession session = CreateCompletedExportSession();
-            TacticalCombatUnit unit = session.GetUnit("exported");
+            CombatUnit unit = session.GetUnit("exported");
             TacticalCombatOutcome outcome = session.CaptureOutcome();
             TacticalCombatOutcome.ShipOutcome ship = outcome.Ships.Single(item =>
                 item.UnitID == unit.InstanceID
@@ -1435,7 +1423,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateCompletedExportSession();
-            TacticalCombatUnit unit = session.GetUnit("exported");
+            CombatUnit unit = session.GetUnit("exported");
             unit.Systems.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
@@ -1454,8 +1442,8 @@ namespace Rebellion.Tests.Tactical
         public void CaptureOutcome_DestroyedCapital_ExportsZeroRegardlessOfRetainedPool(float hull)
         {
             TacticalCombatSession session = CreateCompletedExportSession();
-            TacticalCombatUnit unit = session.GetUnit("exported");
-            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            CombatUnit unit = session.GetUnit("exported");
+            unit.Status = CombatUnitStatus.Destroyed;
             unit.Systems.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
@@ -1484,7 +1472,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
-            TacticalCombatUnit unit = session.GetUnit("exported");
+            CombatUnit unit = session.GetUnit("exported");
             unit.Systems.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
@@ -1503,8 +1491,8 @@ namespace Rebellion.Tests.Tactical
         public void CaptureOutcome_DestroyedFighter_ExportsZeroRegardlessOfRetainedPool(float hull)
         {
             TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
-            TacticalCombatUnit unit = session.GetUnit("exported");
-            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            CombatUnit unit = session.GetUnit("exported");
+            unit.Status = CombatUnitStatus.Destroyed;
             unit.Systems.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
@@ -1527,7 +1515,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateCompletedExportSession(station: true);
-            TacticalCombatUnit unit = session.GetUnit("exported");
+            CombatUnit unit = session.GetUnit("exported");
             unit.Systems.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
@@ -1604,7 +1592,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             TacticalCombatGroup group = session.GetGroup(session.GetUnit("a"));
-            TacticalCombatUnit target = session.GetUnit("b");
+            CombatUnit target = session.GetUnit("b");
             session.RemoveTarget(group, target);
             session.SetTarget(group, target, true);
             AdvanceSeconds(session, 5);
@@ -1675,7 +1663,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateAttackSession();
             TacticalCombatOrder? orderAtLaunch = null;
-            TacticalCombatUnitStatus? stationAtLaunch = null;
+            CombatUnitStatus? stationAtLaunch = null;
             session.AttackRunMovieRequested += request =>
             {
                 orderAtLaunch = request.AttackRun.Group.Order;
@@ -1684,7 +1672,7 @@ namespace Rebellion.Tests.Tactical
 
             session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Succeeded);
 
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, stationAtLaunch);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, stationAtLaunch);
             Assert.AreEqual(TacticalCombatOrder.AttackBattleStation, orderAtLaunch);
             Assert.AreEqual(TacticalCombatOrder.None, session.ActiveAttackRun.Group.Order);
         }
@@ -1693,13 +1681,13 @@ namespace Rebellion.Tests.Tactical
         public void ActiveAttackRun_FailureMovie_DestroysSquadronAfterLaunch()
         {
             TacticalCombatSession session = CreateAttackSession();
-            TacticalCombatUnitStatus? atLaunch = null;
+            CombatUnitStatus? atLaunch = null;
             session.AttackRunMovieRequested += _ => atLaunch = session.GetUnit("fighter").Status;
 
             session.ActiveAttackRun.ApplyState(TacticalCombatAttackRunState.Failed);
 
-            Assert.AreEqual(TacticalCombatUnitStatus.AttackingBattleStation, atLaunch);
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, session.GetUnit("fighter").Status);
+            Assert.AreEqual(CombatUnitStatus.AttackingBattleStation, atLaunch);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, session.GetUnit("fighter").Status);
         }
 
         [Test]
@@ -1774,10 +1762,7 @@ namespace Rebellion.Tests.Tactical
             Assert.IsEmpty(messages);
             Assert.IsNull(session.PendingAttackRunMovie);
             Assert.AreSame(current, group.AttackRun);
-            Assert.AreNotEqual(
-                TacticalCombatUnitStatus.Destroyed,
-                session.GetUnit("fighter").Status
-            );
+            Assert.AreNotEqual(CombatUnitStatus.Destroyed, session.GetUnit("fighter").Status);
         }
 
         [Test]
@@ -1912,7 +1897,7 @@ namespace Rebellion.Tests.Tactical
                 station,
                 NotificationBank(20, 145)
             );
-            TacticalCombatUnit target = session.GetUnit("target");
+            CombatUnit target = session.GetUnit("target");
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -1936,7 +1921,7 @@ namespace Rebellion.Tests.Tactical
                 station,
                 NotificationBank(9, 86, 99, 134)
             );
-            TacticalCombatUnit target = session.GetUnit("target");
+            CombatUnit target = session.GetUnit("target");
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -1949,7 +1934,7 @@ namespace Rebellion.Tests.Tactical
             {
                 Assert.AreSame(target, unit);
                 Assert.AreEqual(1000, unit.Systems.Hull);
-                Assert.AreEqual(TacticalCombatUnitStatus.Active, unit.Status);
+                Assert.AreEqual(CombatUnitStatus.Active, unit.Status);
                 Assert.IsNotNull(session.GetGroup(unit));
                 output.Add("effect");
             };
@@ -1957,7 +1942,7 @@ namespace Rebellion.Tests.Tactical
             {
                 Assert.AreSame(target, unit);
                 Assert.AreEqual(0, unit.Systems.Hull);
-                Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, unit.Status);
+                Assert.AreEqual(CombatUnitStatus.Destroyed, unit.Status);
                 Assert.IsNull(session.GetGroup(unit));
                 output.Add("destroyed");
             };
@@ -1965,7 +1950,8 @@ namespace Rebellion.Tests.Tactical
                 Assert.Fail("A direct command does not apply a weapon impact.");
 
             Assert.IsTrue(session.FireSuperlaser(target));
-            AdvanceSeconds(session, 5);
+            for (int frame = 0; frame < 420 && target.Status != CombatUnitStatus.Destroyed; frame++)
+                session.Advance(1000f / 60);
 
             CollectionAssert.AreEqual(new[] { "9", "effect", "destroyed" }, output);
         }
@@ -1978,7 +1964,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("enemy", 1000, 0),
                 NotificationBank(9, 86, 99, 134)
             );
-            TacticalCombatUnit target = session.GetUnit("target");
+            CombatUnit target = session.GetUnit("target");
             Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
             target.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
             List<string> output = new();
@@ -2001,14 +1987,14 @@ namespace Rebellion.Tests.Tactical
             {
                 Assert.AreSame(target, unit);
                 Assert.AreEqual(0, unit.Systems.Hull);
-                Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, unit.Status);
+                Assert.AreEqual(CombatUnitStatus.Destroyed, unit.Status);
                 Assert.IsNull(session.GetGroup(unit));
                 output.Add("destroyed");
             };
 
             for (
                 int frame = 0;
-                frame < 2400 && target.Status != TacticalCombatUnitStatus.Destroyed;
+                frame < 2400 && target.Status != CombatUnitStatus.Destroyed;
                 frame++
             )
                 session.Advance(50);
@@ -2053,13 +2039,15 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 1000, 0),
                 CreateShip("b", 1000, 0)
             );
-            AdvanceSeconds(session, 3);
-            TacticalCombatUnit unit = session.Units[(int)side];
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            CombatUnit unit = session.Units[(int)side];
             Vector3 position = unit.Position;
-            unit.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            unit.Status = CombatUnitStatus.EnteringHyperspace;
             unit.Heading = Vector3.UnitX;
 
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
 
             Assert.AreEqual(-session.GetSide(side).Forward, unit.Heading);
             Assert.AreEqual(position, unit.Position);
@@ -2073,14 +2061,16 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 1000, 0),
                 CreateShip("b", 1000, 0)
             );
-            AdvanceSeconds(session, 3);
-            TacticalCombatUnit unit = session.Units[0];
-            unit.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            CombatUnit unit = session.Units[0];
+            unit.Status = CombatUnitStatus.EnteringHyperspace;
             unit.HyperspaceMilliseconds = 3990;
 
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
 
-            Assert.AreEqual(TacticalCombatUnitStatus.AwaitingWithdrawal, unit.Status);
+            Assert.AreEqual(CombatUnitStatus.AwaitingWithdrawal, unit.Status);
             Assert.AreEqual(0, unit.HyperspaceMilliseconds);
         }
 
@@ -2097,9 +2087,10 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 0),
                 NotificationBank(31)
             );
-            AdvanceSeconds(session, 3);
-            TacticalCombatUnit unit = session.GetUnit("a");
-            unit.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            CombatUnit unit = session.GetUnit("a");
+            unit.Status = CombatUnitStatus.EnteringHyperspace;
             unit.HyperspaceMilliseconds = elapsed;
             List<float> observedTimers = new();
             session.Audio.Playback = (_, _) =>
@@ -2107,7 +2098,8 @@ namespace Rebellion.Tests.Tactical
                 observedTimers.Add(unit.HyperspaceMilliseconds);
                 return null;
             };
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
             Assert.AreEqual(shouldAnnounce ? 1 : 0, observedTimers.Count);
             if (shouldAnnounce)
                 Assert.AreEqual(elapsed, observedTimers[0]);
@@ -2116,38 +2108,34 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_EnteringHyperspaceFighter_UsesFighterAnimationSound()
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 CombatSide.Attacker,
                 0
             );
-            TacticalCombatUnit enemy = new(
-                CombatUnit.Create(CreateShip("enemy", 1000, 0)),
-                CombatSide.Defender,
-                1000000
-            );
+            CombatUnit enemy = new(CreateShip("enemy", 1000, 0), CombatSide.Defender, 1000000);
             TacticalCombatSession session = CreateEncounter(
                 fighter,
                 enemy,
                 NotificationBank(29),
                 CombatSide.Attacker
             );
-            AdvanceSeconds(session, 3);
-            fighter.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            fighter.Status = CombatUnitStatus.EnteringHyperspace;
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
                 output.Add(clip.Path);
                 return null;
             };
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
             CollectionAssert.AreEqual(new[] { "29" }, output);
         }
 
@@ -2207,8 +2195,9 @@ namespace Rebellion.Tests.Tactical
                 NotificationBank(152, 283),
                 player
             );
-            AdvanceSeconds(session, 3);
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Destroyed;
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -2216,7 +2205,8 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
 
             CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
             CollectionAssert.AreEqual(
@@ -2232,11 +2222,13 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 100, 0),
                 CreateShip("b", 100, 0)
             );
-            AdvanceSeconds(session, 3);
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
             Assert.IsTrue(session.IsDirectControlEnabled);
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Destroyed;
+            session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
 
-            session.Advance(16);
+            clock.Advance(16);
+            session.AdvanceClocked(16);
 
             Assert.IsTrue(session.TerminalFlags[1]);
             Assert.IsFalse(session.IsComplete);
@@ -2251,8 +2243,8 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             AdvanceSeconds(session, 3);
-            session.GetUnit("a").Status = TacticalCombatUnitStatus.Destroyed;
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Destroyed;
+            session.GetUnit("a").Status = CombatUnitStatus.Destroyed;
+            session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
 
             session.Advance(16);
 
@@ -2268,7 +2260,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             TacticalCombatSession session = CreateLiveRecoverySession(carrierCapacity);
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit fighter = session.GetUnit("fighter");
             TacticalCombatGroup group = session.GetGroup(fighter);
             session.SetOrder(group, TacticalCombatOrder.Recover);
 
@@ -2282,20 +2274,20 @@ namespace Rebellion.Tests.Tactical
         public void Advance_RecoveryLinkedStation_RetainsOriginalCarrierPreference()
         {
             TacticalCombatSession session = CreateLiveRecoverySession(preferredStation: true);
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit fighter = session.GetUnit("fighter");
             session.SetOrder(session.GetGroup(fighter), TacticalCombatOrder.Recover);
 
             AdvanceSeconds(session, 60);
 
             Assert.AreEqual("station", fighter.CarrierID);
-            Assert.AreEqual(TacticalCombatUnitStatus.Recovered, fighter.Status);
+            Assert.AreEqual(CombatUnitStatus.Recovered, fighter.Status);
         }
 
         [Test]
         public void Advance_RecoveryFactionZero_DoesNotUseStationFallback()
         {
             TacticalCombatSession session = CreateLiveRecoverySession(0, fighterFaction: 0);
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit fighter = session.GetUnit("fighter");
             TacticalCombatGroup group = session.GetGroup(fighter);
             session.SetOrder(group, TacticalCombatOrder.Recover);
 
@@ -2309,7 +2301,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_RecoveryUnavailableStation_DoesNotReserveFallbackBerth()
         {
             TacticalCombatSession session = CreateLiveRecoverySession(0);
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit fighter = session.GetUnit("fighter");
             session.BattleStation.Unit.Systems.Destroy();
             TacticalCombatGroup group = session.GetGroup(fighter);
             session.SetOrder(group, TacticalCombatOrder.Recover);
@@ -2387,18 +2379,18 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual("station", session.GetUnit("fighter").CarrierID);
         }
 
-        [TestCase(TacticalCombatUnitStatus.Docked, true)]
-        [TestCase(TacticalCombatUnitStatus.UnderConstruction, false)]
-        [TestCase(TacticalCombatUnitStatus.Active, true)]
-        [TestCase(TacticalCombatUnitStatus.Recovered, true)]
-        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace, true)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace, false)]
-        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal, false)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn, true)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed, false)]
-        [TestCase(TacticalCombatUnitStatus.AttackingBattleStation, false)]
+        [TestCase(CombatUnitStatus.Docked, true)]
+        [TestCase(CombatUnitStatus.UnderConstruction, false)]
+        [TestCase(CombatUnitStatus.Active, true)]
+        [TestCase(CombatUnitStatus.Recovered, true)]
+        [TestCase(CombatUnitStatus.PreparingHyperspace, true)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace, false)]
+        [TestCase(CombatUnitStatus.AwaitingWithdrawal, false)]
+        [TestCase(CombatUnitStatus.Withdrawn, true)]
+        [TestCase(CombatUnitStatus.Destroyed, false)]
+        [TestCase(CombatUnitStatus.AttackingBattleStation, false)]
         public void Advance_TerminalAssignmentFighterParticipation_UsesRetainedState(
-            TacticalCombatUnitStatus status,
+            CombatUnitStatus status,
             bool attached
         )
         {
@@ -2426,7 +2418,7 @@ namespace Rebellion.Tests.Tactical
         public void CaptureOutcome_RetainedZeroHullFighter_ExportsFinalCarrier()
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession();
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
+            CombatUnit fighter = session.GetUnit("fighter");
             fighter.Systems.Destroy();
             AdvanceSeconds(session, 10);
 
@@ -2443,8 +2435,8 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession();
             AdvanceSeconds(session, 10);
-            TacticalCombatUnit fighter = session.GetUnit("fighter");
-            fighter.Status = TacticalCombatUnitStatus.Destroyed;
+            CombatUnit fighter = session.GetUnit("fighter");
+            fighter.Status = CombatUnitStatus.Destroyed;
 
             var result = session.CaptureOutcome();
 
@@ -2457,37 +2449,27 @@ namespace Rebellion.Tests.Tactical
         [TestCase(true)]
         public void CaptureOutcome_RetainedZeroHullDeparture_ExportsDeparture(bool fighter)
         {
-            TacticalCombatUnit departed = fighter
-                ? new TacticalCombatUnit(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "departed",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                            Hyperdrive = 1,
-                        }
-                    ),
+            CombatUnit departed = fighter
+                ? new CombatUnit(
+                    new Starfighter
+                    {
+                        InstanceID = "departed",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Hyperdrive = 1,
+                    },
                     CombatSide.Attacker,
                     1
                 )
-                : new TacticalCombatUnit(
-                    CombatUnit.Create(CreateShip("departed", 100, 0)),
-                    CombatSide.Attacker,
-                    1
-                );
-            TacticalCombatUnit enemy = new(
-                CombatUnit.Create(CreateShip("enemy", 100, 0)),
-                CombatSide.Defender,
-                1000001
-            );
+                : new CombatUnit(CreateShip("departed", 100, 0), CombatSide.Attacker, 1);
+            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001);
             TacticalCombatSession session = CreateEncounter(
                 departed,
                 enemy,
                 null,
                 CombatSide.Attacker
             );
-            departed.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            departed.Status = CombatUnitStatus.EnteringHyperspace;
             departed.HyperspaceMilliseconds = 3999;
             AdvanceSeconds(session, 20);
             Assert.IsTrue(session.IsComplete);
@@ -2503,14 +2485,14 @@ namespace Rebellion.Tests.Tactical
             );
         }
 
-        [TestCase(TacticalCombatUnitStatus.Active, false)]
-        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace, false)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace, false)]
-        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal, false)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn, true)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed, true)]
+        [TestCase(CombatUnitStatus.Active, false)]
+        [TestCase(CombatUnitStatus.PreparingHyperspace, false)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace, false)]
+        [TestCase(CombatUnitStatus.AwaitingWithdrawal, false)]
+        [TestCase(CombatUnitStatus.Withdrawn, true)]
+        [TestCase(CombatUnitStatus.Destroyed, true)]
         public void CanWithdraw_OpposingGravityWellParticipation_UsesRetainedCapitalChain(
-            TacticalCombatUnitStatus status,
+            CombatUnitStatus status,
             bool expected
         )
         {
@@ -2699,9 +2681,9 @@ namespace Rebellion.Tests.Tactical
             CapitalShip interdictor = CreateShip("b", 100, 0);
             interdictor.HasGravityWell = true;
             TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Withdrawn;
+            session.GetUnit("b").Status = CombatUnitStatus.Withdrawn;
             Assert.IsTrue(session.PreparePlayerWithdrawal());
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Active;
+            session.GetUnit("b").Status = CombatUnitStatus.Active;
 
             Assert.IsFalse(session.ConfirmPlayerWithdrawal());
             session.Selection.ProcessPendingCommands();
@@ -2714,9 +2696,9 @@ namespace Rebellion.Tests.Tactical
             CapitalShip interdictor = CreateShip("b", 100, 0);
             interdictor.HasGravityWell = true;
             TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Withdrawn;
+            session.GetUnit("b").Status = CombatUnitStatus.Withdrawn;
             Assert.IsTrue(session.ConfirmPlayerWithdrawal());
-            session.GetUnit("b").Status = TacticalCombatUnitStatus.Active;
+            session.GetUnit("b").Status = CombatUnitStatus.Active;
 
             session.Selection.ProcessPendingCommands();
 
@@ -2727,8 +2709,8 @@ namespace Rebellion.Tests.Tactical
         public void BeginWithdrawal_GroupedCapitals_RequestsSeparateDepartureGroups()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit first = session.GetUnit("first");
-            TacticalCombatUnit second = session.GetUnit("second");
+            CombatUnit first = session.GetUnit("first");
+            CombatUnit second = session.GetUnit("second");
             TacticalCombatGroup previous = session.CreateGroup(new[] { first, second });
             AdvanceSeconds(session, 5);
 
@@ -2772,7 +2754,7 @@ namespace Rebellion.Tests.Tactical
         public void BeginWithdrawal_PendingCapitalRegrouping_PreservesLatestDepartureOwnerAtDispatch()
         {
             TacticalCombatSession session = CreateMembershipSession();
-            TacticalCombatUnit unit = session.GetUnit("first");
+            CombatUnit unit = session.GetUnit("first");
             session.CreateGroup(new[] { unit });
             Assert.IsTrue(session.BeginWithdrawal(session.PlayerSide));
             TacticalCombatGroup departure = session.GetRequestedGroup(unit);
@@ -2934,34 +2916,28 @@ namespace Rebellion.Tests.Tactical
         {
             if (weapon == TacticalWeaponType.Torpedo)
             {
-                TacticalCombatUnit source = new(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "a",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                            Hyperdrive = 1,
-                            LaserCannon = 5,
-                            LaserRange = 100,
-                            Torpedoes = 3,
-                            TorpedoRange = 100,
-                            SublightSpeed = 4,
-                            Agility = 1,
-                            ManufacturingStatus = ManufacturingStatus.Complete,
-                        }
-                    ),
+                CombatUnit source = new(
+                    new Starfighter
+                    {
+                        InstanceID = "a",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Hyperdrive = 1,
+                        LaserCannon = 5,
+                        LaserRange = 100,
+                        Torpedoes = 3,
+                        TorpedoRange = 100,
+                        SublightSpeed = 4,
+                        Agility = 1,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
                     CombatSide.Attacker,
                     0
                 )
                 {
                     Position = new Vector3(0, 0, -40),
                 };
-                TacticalCombatUnit target = new(
-                    CombatUnit.Create(CreateShip("b", 1000, 0)),
-                    CombatSide.Defender,
-                    1000000
-                )
+                CombatUnit target = new(CreateShip("b", 1000, 0), CombatSide.Defender, 1000000)
                 {
                     Position = new Vector3(0, 0, 40),
                     Heading = -Vector3.UnitZ,
@@ -2987,7 +2963,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="session">The encounter with one armed firing unit.</param>
         private static void WaitForQueuedDischarge(TacticalCombatSession session)
         {
-            TacticalCombatUnit unit = session.GetUnit("a");
+            CombatUnit unit = session.GetUnit("a");
             float[] initialCharge = new float[4];
             for (int arc = 0; arc < 4; arc++)
                 initialCharge[arc] = unit.Weapons.GetCharge((TacticalWeaponArc)arc);
@@ -3017,29 +2993,19 @@ namespace Rebellion.Tests.Tactical
             CapitalShip stationSource = CreateShip("station", 1000, 0);
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(stationSource),
-                CombatSide.Defender,
-                1000000
-            );
+            CombatUnit station = new(stationSource, CombatSide.Defender, 1000000);
             CapitalShip carrierSource = CreateShip("carrier", 1000, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
-            TacticalCombatUnit carrier = new(
-                CombatUnit.Create(carrierSource),
-                CombatSide.Defender,
-                1000001
-            );
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        SublightSpeed = 9,
-                        Agility = 5,
-                    }
-                ),
+            CombatUnit carrier = new(carrierSource, CombatSide.Defender, 1000001);
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    SublightSpeed = 9,
+                    Agility = 5,
+                },
                 CombatSide.Defender,
                 1000002
             )
@@ -3047,11 +3013,7 @@ namespace Rebellion.Tests.Tactical
                 Position = new Vector3(10, 0, 0),
                 CarrierID = preferredStation ? station.InstanceID : null,
             };
-            TacticalCombatUnit enemy = new(
-                CombatUnit.Create(CreateShip("enemy", 1000, 0)),
-                CombatSide.Attacker,
-                1
-            )
+            CombatUnit enemy = new(CreateShip("enemy", 1000, 0), CombatSide.Attacker, 1)
             {
                 Position = new Vector3(0, 0, 40),
             };
@@ -3089,51 +3051,31 @@ namespace Rebellion.Tests.Tactical
             CapitalShip stationSource = CreateShip("station", 100, 0);
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(stationSource),
-                CombatSide.Defender,
-                1000000
-            );
+            CombatUnit station = new(stationSource, CombatSide.Defender, 1000000);
             CapitalShip carrierSource = CreateShip("carrier", 100, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
-            TacticalCombatUnit carrier = new(
-                CombatUnit.Create(carrierSource),
-                CombatSide.Defender,
-                1000002
-            );
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Hyperdrive = 1,
-                    }
-                ),
+            CombatUnit carrier = new(carrierSource, CombatSide.Defender, 1000002);
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Hyperdrive = 1,
+                },
                 CombatSide.Defender,
                 1000003
             );
-            TacticalCombatUnit enemy = new(
-                CombatUnit.Create(CreateShip("enemy", 100, 0)),
-                CombatSide.Attacker,
-                0
-            )
+            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Attacker, 0)
             {
-                Status = TacticalCombatUnitStatus.Destroyed,
+                Status = CombatUnitStatus.Destroyed,
             };
-            List<TacticalCombatUnit> units = new() { station, carrier, fighter, enemy };
+            List<CombatUnit> units = new() { station, carrier, fighter, enemy };
             if (secondCarrier)
             {
                 CapitalShip secondSource = CreateShip("second-carrier", 100, 0);
                 secondSource.StarfighterCapacity = 1;
-                units.Add(
-                    new TacticalCombatUnit(
-                        CombatUnit.Create(secondSource),
-                        CombatSide.Defender,
-                        1000001
-                    )
-                );
+                units.Add(new CombatUnit(secondSource, CombatSide.Defender, 1000001));
             }
             return new TacticalCombatSession(
                 units,
@@ -3160,17 +3102,15 @@ namespace Rebellion.Tests.Tactical
             bool station = false
         )
         {
-            TacticalCombatUnit first;
+            CombatUnit first;
             if (fighter)
-                first = new TacticalCombatUnit(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "exported",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                        }
-                    ),
+                first = new CombatUnit(
+                    new Starfighter
+                    {
+                        InstanceID = "exported",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                    },
                     CombatSide.Attacker,
                     1
                 );
@@ -3178,16 +3118,12 @@ namespace Rebellion.Tests.Tactical
             {
                 CapitalShip ship = CreateShip("exported", 100, 0);
                 ship.CanDestroyPlanets = station;
-                first = new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, 1);
+                first = new CombatUnit(ship, CombatSide.Attacker, 1);
             }
-            first.Status = TacticalCombatUnitStatus.Withdrawn;
-            TacticalCombatUnit second = new(
-                CombatUnit.Create(CreateShip("enemy", 100, 0)),
-                CombatSide.Defender,
-                1000001
-            )
+            first.Status = CombatUnitStatus.Withdrawn;
+            CombatUnit second = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001)
             {
-                Status = TacticalCombatUnitStatus.Destroyed,
+                Status = CombatUnitStatus.Destroyed,
             };
             TacticalCombatSession session = CreateEncounter(
                 first,
@@ -3248,8 +3184,8 @@ namespace Rebellion.Tests.Tactical
             IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
-            TacticalCombatUnit first = new(
-                CombatUnit.Create(attacker),
+            CombatUnit first = new(
+                attacker,
                 CombatSide.Attacker,
                 0,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }
@@ -3257,8 +3193,8 @@ namespace Rebellion.Tests.Tactical
             {
                 Position = new Vector3(0, 0, -40),
             };
-            TacticalCombatUnit second = new(
-                CombatUnit.Create(defender),
+            CombatUnit second = new(
+                defender,
                 CombatSide.Defender,
                 1000000,
                 new TacticalCombatUnitDefinition { PresentationIndex = 2 }
@@ -3281,8 +3217,8 @@ namespace Rebellion.Tests.Tactical
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
         /// <returns>The isolated tactical encounter.</returns>
         private static TacticalCombatSession CreateEncounter(
-            TacticalCombatUnit first,
-            TacticalCombatUnit second,
+            CombatUnit first,
+            CombatUnit second,
             TacticalCombatDefinition definition,
             CombatSide player,
             IReadOnlyList<string> personnelHostInstanceIDs = null
@@ -3350,34 +3286,20 @@ namespace Rebellion.Tests.Tactical
             CombatSide player = CombatSide.Attacker
         )
         {
-            TacticalCombatUnit first = new(
-                CombatUnit.Create(CreateShip("first", 100, 0)),
-                CombatSide.Attacker,
-                8
-            );
-            TacticalCombatUnit second = new(
-                CombatUnit.Create(CreateShip("second", 100, 0)),
-                CombatSide.Attacker,
-                2
-            );
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        Hyperdrive = fighterHyperdrive ? 1 : 0,
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+            CombatUnit first = new(CreateShip("first", 100, 0), CombatSide.Attacker, 8);
+            CombatUnit second = new(CreateShip("second", 100, 0), CombatSide.Attacker, 2);
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    Hyperdrive = fighterHyperdrive ? 1 : 0,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 CombatSide.Attacker,
                 5
             );
-            TacticalCombatUnit enemy = new(
-                CombatUnit.Create(CreateShip("enemy", 100, 0)),
-                CombatSide.Defender,
-                1000001
-            );
+            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001);
             return new TacticalCombatSession(
                 new[] { first, second, fighter, enemy },
                 new[]
@@ -3530,31 +3452,27 @@ namespace Rebellion.Tests.Tactical
             bool enterAttackSequence = true
         )
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 20,
-                        Torpedoes = 100,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 20,
+                    Torpedoes = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                    }
-                ),
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                },
                 CombatSide.Defender,
                 1000001
             );
@@ -3562,21 +3480,19 @@ namespace Rebellion.Tests.Tactical
             {
                 FighterCategory = fighterCategory,
             };
-            List<TacticalCombatUnit> units = new() { fighter, station };
+            List<CombatUnit> units = new() { fighter, station };
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                TacticalCombatUnit reserve = new(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "reserve",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                            Agility = 20,
-                            Torpedoes = 100,
-                        }
-                    ),
+                CombatUnit reserve = new(
+                    new Starfighter
+                    {
+                        InstanceID = "reserve",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Agility = 20,
+                        Torpedoes = 100,
+                    },
                     CombatSide.Attacker,
                     2
                 );

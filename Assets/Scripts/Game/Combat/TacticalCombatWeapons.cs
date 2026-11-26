@@ -1,22 +1,42 @@
 using System;
-using Rebellion.Tactical.Synchronization;
+using Rebellion.Util.Serialization;
 
-namespace Rebellion.Tactical
+namespace Rebellion.Game.Combat
 {
     /// <summary>
     /// Owns four directional weapon batteries and their ordered recharge queue.
     /// </summary>
+    [PersistableObject]
     public sealed class TacticalCombatWeapons
     {
         private const float _shotScale = 0.26666668f;
         private const float _laserCapitalScale = 0.167f;
-        private readonly int[,] _strengths;
-        private readonly float[] _ranges;
-        private readonly float[] _charge = new float[4];
-        private readonly float[] _maximumCharge = new float[4];
-        private readonly uint[] _ready = new uint[4];
-        private readonly int[] _rechargeOrder = new int[4];
+
+        [PersistableMember(Name = "Strengths")]
+        private int[] _strengths;
+
+        [PersistableMember(Name = "Ranges")]
+        private float[] _ranges;
+
+        [PersistableMember(Name = "Charge")]
+        private float[] _charge = new float[4];
+
+        [PersistableMember(Name = "MaximumCharge")]
+        private float[] _maximumCharge = new float[4];
+
+        [PersistableMember(Name = "Ready")]
+        private uint[] _ready = new uint[4];
+
+        [PersistableMember(Name = "RechargeOrder")]
+        private int[] _rechargeOrder = new int[4];
+
+        [PersistableMember(Name = "RechargeCount")]
         private int _rechargeCount;
+
+        /// <summary>
+        /// Creates weapon state for deserialization.
+        /// </summary>
+        public TacticalCombatWeapons() { }
 
         /// <summary>
         /// Captures clockwise batteries with laser, ion, and turbolaser strengths in each row.
@@ -46,12 +66,15 @@ namespace Rebellion.Tactical
                     "Three weapon ranges are required.",
                     nameof(weaponRanges)
                 );
-            _strengths = (int[,])batteryStrengths.Clone();
+            _strengths = new int[12];
+            for (int arc = 0; arc < 4; arc++)
+            for (int weapon = 0; weapon < 3; weapon++)
+                _strengths[arc * 3 + weapon] = batteryStrengths[arc, weapon];
             _ranges = (float[])weaponRanges.Clone();
             for (int arc = 0; arc < 4; arc++)
             {
                 float total = (float)(
-                    (double)_strengths[arc, 0] + _strengths[arc, 1] + _strengths[arc, 2]
+                    (double)_strengths[arc * 3] + _strengths[arc * 3 + 1] + _strengths[arc * 3 + 2]
                 );
                 _charge[arc] = !isFighter && total > 0 ? total : 0;
                 _maximumCharge[arc] = total;
@@ -77,13 +100,14 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Restores visible battery charge without admitting a local discharge or recharge.
         /// </summary>
-        /// <param name="state">The validated participant projection.</param>
-        internal void ApplySnapshot(TacticalCombatUnitSnapshot state)
+        /// <param name="charge">The charge by battery.</param>
+        /// <param name="ready">Whether each battery can fire.</param>
+        internal void ApplyProjection(float[] charge, bool[] ready)
         {
             for (int arc = 0; arc < 4; arc++)
             {
-                _charge[arc] = state.Charge[arc];
-                _ready[arc] = state.Ready[arc] ? 1u : 0u;
+                _charge[arc] = charge[arc];
+                _ready[arc] = ready[arc] ? 1u : 0u;
             }
         }
 
@@ -115,7 +139,7 @@ namespace Rebellion.Tactical
         /// <returns>The authored weapon strength.</returns>
         public int GetStrength(TacticalWeaponArc arc, TacticalWeaponType weapon)
         {
-            return _strengths[(int)arc, (int)weapon];
+            return _strengths[(int)arc * 3 + (int)weapon];
         }
 
         /// <summary>

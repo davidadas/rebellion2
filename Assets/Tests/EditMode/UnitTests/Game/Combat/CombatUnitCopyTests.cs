@@ -32,7 +32,8 @@ namespace Rebellion.Tests.Game.Combat
             ship.Hyperdrive = 0;
             ship.SystemDamage.Engines = 4;
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 999;
-            TacticalCombatUnit unit = new(combatant, CombatSide.Attacker, 1);
+            combatant.InitializeTacticalState(CombatSide.Attacker, 1, null);
+            CombatUnit unit = combatant;
 
             Assert.AreEqual("Entry name", unit.DisplayName);
             Assert.AreEqual(80, unit.InitialHull);
@@ -64,7 +65,8 @@ namespace Rebellion.Tests.Game.Combat
             fighter.CurrentSquadronSize = 0;
             fighter.LaserCannon = 0;
             fighter.ShieldStrength = 0;
-            TacticalCombatUnit unit = new(combatant, CombatSide.Attacker, 1);
+            combatant.InitializeTacticalState(CombatSide.Attacker, 1, null);
+            CombatUnit unit = combatant;
 
             Assert.IsTrue(unit.IsFighter);
             Assert.AreEqual(7, unit.InitialSquadronSize);

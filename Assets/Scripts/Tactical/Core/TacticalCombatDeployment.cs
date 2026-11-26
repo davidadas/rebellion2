@@ -1,3 +1,5 @@
+using Rebellion.Game.Combat;
+
 namespace Rebellion.Tactical
 {
     /// <summary>
@@ -5,7 +7,7 @@ namespace Rebellion.Tactical
     /// </summary>
     internal readonly struct TacticalCombatDeployment
     {
-        public TacticalCombatUnit Unit { get; }
+        public CombatUnit Unit { get; }
         public int Category { get; }
         public float Score { get; }
 
@@ -13,7 +15,7 @@ namespace Rebellion.Tactical
         /// Captures the immutable deployment assessment used by initial placement and automatic regrouping.
         /// </summary>
         /// <param name="unit">The capital ship being deployed.</param>
-        public TacticalCombatDeployment(TacticalCombatUnit unit)
+        public TacticalCombatDeployment(CombatUnit unit)
         {
             Unit = unit;
             float movement = unit.GetSpeed();

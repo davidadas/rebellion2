@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical.Synchronization
 {
@@ -14,7 +15,7 @@ namespace Rebellion.Tactical.Synchronization
         public TacticalCombatSnapshotVector Velocity;
         public TacticalCombatSnapshotVector DesiredHeading;
         public TacticalCombatSnapshotVector DesiredMovement;
-        public TacticalCombatUnitStatus Status;
+        public CombatUnitStatus Status;
         public string CarrierID;
         public string TargetID;
         public float Hull;

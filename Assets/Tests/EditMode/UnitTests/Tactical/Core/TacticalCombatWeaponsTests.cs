@@ -1,4 +1,5 @@
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using BitConverter = global::System.BitConverter;

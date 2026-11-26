@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -66,7 +67,7 @@ namespace Rebellion.Tactical
         /// <returns>Whether a directional target was available.</returns>
         public bool TryGetManeuver(
             TacticalCombatGroup group,
-            IReadOnlyList<TacticalCombatUnit> units,
+            IReadOnlyList<CombatUnit> units,
             Vector3 opposingCenter,
             out Vector3 waypoint
         )
@@ -81,7 +82,7 @@ namespace Rebellion.Tactical
                 TacticalCombatOrder.Anvil => new Vector3(delta.X, delta.Z, delta.Y),
                 _ => throw new InvalidOperationException("The selected order is not a maneuver."),
             };
-            TacticalCombatUnit selected = SelectDirectional(group.Targets, group, direction, null);
+            CombatUnit selected = SelectDirectional(group.Targets, group, direction, null);
             selected ??= SelectDirectional(units, group, direction, false);
             selected ??= SelectDirectional(units, group, direction, true);
             waypoint = default;
@@ -117,14 +118,14 @@ namespace Rebellion.Tactical
         /// <param name="direction">The maneuver's directional projection.</param>
         /// <param name="fighters">The required category, or null for designated targets.</param>
         /// <returns>The directional target, or null when the candidate root has no qualifying projection.</returns>
-        private static TacticalCombatUnit SelectDirectional(
-            IReadOnlyList<TacticalCombatUnit> candidates,
+        private static CombatUnit SelectDirectional(
+            IReadOnlyList<CombatUnit> candidates,
             TacticalCombatGroup group,
             Vector3 direction,
             bool? fighters
         )
         {
-            TacticalCombatUnit selected = null;
+            CombatUnit selected = null;
             float best = fighters.HasValue ? -float.MaxValue : 0;
             if (direction == Vector3.Zero)
                 direction = group.SideLane;
@@ -149,7 +150,7 @@ namespace Rebellion.Tactical
                     );
                 }
             }
-            foreach (TacticalCombatUnit candidate in candidates)
+            foreach (CombatUnit candidate in candidates)
             {
                 if (
                     fighters.HasValue

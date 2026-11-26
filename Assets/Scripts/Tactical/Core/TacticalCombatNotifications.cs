@@ -2,10 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Rebellion.Game.SpaceCombat;
-using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
-namespace Rebellion.UI.SceneUI.TacticalCombat.Audio
+namespace Rebellion.Tactical
 {
     /// <summary>
     /// Schedules tactical effects and spoken notifications in their shared ordered queue.

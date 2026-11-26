@@ -10,7 +10,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using JsonUtility = global::UnityEngine.JsonUtility;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
@@ -133,8 +132,8 @@ namespace Rebellion.Tests.Tactical
                 defenderDamageControl: 100
             );
             replica.ConfigureSynchronizedReplica();
-            TacticalCombatUnit source = authority.GetUnit("alliance");
-            TacticalCombatUnit projected = replica.GetUnit("alliance");
+            CombatUnit source = authority.GetUnit("alliance");
+            CombatUnit projected = replica.GetUnit("alliance");
             int requests = 0;
             int applications = 0;
             int localRequests = 0;
@@ -244,7 +243,7 @@ namespace Rebellion.Tests.Tactical
 
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(1));
 
-            TacticalCombatUnit source = replica.GetUnit("alliance");
+            CombatUnit source = replica.GetUnit("alliance");
             Assert.AreNotSame(replica.GetGroup(source), replica.GetRequestedGroup(source));
             Assert.AreSame(
                 replica.GetUnit("empire"),
@@ -338,9 +337,9 @@ namespace Rebellion.Tests.Tactical
 
             Assert.Greater(authoritativeShots, 0);
             Assert.AreEqual(authoritativeShots, projectedShots);
-            foreach (TacticalCombatUnit unit in authority.Units)
+            foreach (CombatUnit unit in authority.Units)
             {
-                TacticalCombatUnit projected = replica.GetUnit(unit.InstanceID);
+                CombatUnit projected = replica.GetUnit(unit.InstanceID);
                 Assert.AreEqual(unit.Position, projected.Position);
                 Assert.AreEqual(unit.Systems.Hull, projected.Systems.Hull);
                 Assert.AreEqual(unit.Systems.Shields, projected.Systems.Shields);
@@ -730,31 +729,27 @@ namespace Rebellion.Tests.Tactical
             bool reserveFighter = false
         )
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 20,
-                        Torpedoes = 100,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 20,
+                    Torpedoes = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                    }
-                ),
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                },
                 CombatSide.Defender,
                 1000001
             );
@@ -762,21 +757,19 @@ namespace Rebellion.Tests.Tactical
             {
                 FighterCategory = 0,
             };
-            List<TacticalCombatUnit> units = new() { fighter, station };
+            List<CombatUnit> units = new() { fighter, station };
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                TacticalCombatUnit reserve = new(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "reserve",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                            Agility = 20,
-                            Torpedoes = 100,
-                        }
-                    ),
+                CombatUnit reserve = new(
+                    new Starfighter
+                    {
+                        InstanceID = "reserve",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Agility = 20,
+                        Torpedoes = 100,
+                    },
                     CombatSide.Attacker,
                     2
                 );
@@ -876,13 +869,8 @@ namespace Rebellion.Tests.Tactical
             int defenderDamageControl = 0
         )
         {
-            TacticalCombatUnit empire = CreateUnit(
-                "empire",
-                CombatSide.Attacker,
-                1000001,
-                -Vector3.UnitZ
-            );
-            TacticalCombatUnit alliance = CreateUnit(
+            CombatUnit empire = CreateUnit("empire", CombatSide.Attacker, 1000001, -Vector3.UnitZ);
+            CombatUnit alliance = CreateUnit(
                 "alliance",
                 CombatSide.Defender,
                 1,
@@ -891,7 +879,7 @@ namespace Rebellion.Tests.Tactical
             );
             empire.Position = new Vector3(0, 0, 10);
             alliance.Position = new Vector3(0, 0, -10);
-            List<TacticalCombatUnit> units = new() { alliance, empire };
+            List<CombatUnit> units = new() { alliance, empire };
             List<TacticalCombatGroup> groups = new()
             {
                 new TacticalCombatGroup(10, new[] { alliance }, Vector3.UnitZ),
@@ -899,7 +887,7 @@ namespace Rebellion.Tests.Tactical
             };
             if (additionalDefender)
             {
-                TacticalCombatUnit wing = CreateUnit(
+                CombatUnit wing = CreateUnit(
                     "alliance-wing",
                     CombatSide.Defender,
                     2,
@@ -955,7 +943,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="heading">The deployment heading.</param>
         /// <param name="damageControl">The participant's component repair chance out of 100.</param>
         /// <returns>The captured armed participant.</returns>
-        private static TacticalCombatUnit CreateUnit(
+        private static CombatUnit CreateUnit(
             string id,
             CombatSide side,
             int index,
@@ -977,7 +965,7 @@ namespace Rebellion.Tests.Tactical
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 20, 20, 20, 20, 100 };
             return new(
-                CombatUnit.Create(ship),
+                ship,
                 side,
                 index,
                 new TacticalCombatUnitDefinition { PresentationIndex = 1 }

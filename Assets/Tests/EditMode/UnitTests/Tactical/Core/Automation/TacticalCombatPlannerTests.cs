@@ -9,7 +9,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using static Rebellion.Tests.Tactical.TacticalCombatAssessmentScenario;
 using BitConverter = global::System.BitConverter;
@@ -22,18 +21,16 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         [Test]
         public void Plan_OperationalStationWithUnorderedCharge_QueuesSuperlaser()
         {
-            TacticalCombatUnit target = CreateUnit("target", CombatSide.Attacker, 1, 20, false);
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        MaxHullStrength = 100000,
-                        CurrentHullStrength = 100000,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit target = CreateUnit("target", CombatSide.Attacker, 1, 20, false);
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    MaxHullStrength = 100000,
+                    CurrentHullStrength = 100000,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Defender,
                 1000001
             );
@@ -51,8 +48,13 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         public void Plan_AutomatedSide_AssignsOpposingCapitalTarget()
         {
             TacticalCombatSession session = CreateSession(20, 20, false, 1);
-            Advance(session);
-            TacticalCombatUnit defender = session.GetUnit("defender-0");
+            CombatUnit defender = session.GetUnit("defender-0");
+            for (
+                int frame = 0;
+                frame < 240 && session.GetGroup(defender).PrimaryTarget == null;
+                frame++
+            )
+                session.Advance(50);
             Assert.AreSame(session.GetUnit("attacker"), session.GetGroup(defender).PrimaryTarget);
         }
 
@@ -95,29 +97,27 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         [Test]
         public void Plan_LargeCapitalPriority_OrdersAppendedFighterByStoredScoreTie()
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
-            TacticalCombatUnit capital = CreateUnit(
+            CombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
+            CombatUnit capital = CreateUnit(
                 "priority-capital",
                 CombatSide.Attacker,
                 2,
                 100000000,
                 false
             );
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "priority-fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Hyperdrive = 1,
-                        SublightSpeed = 9,
-                        Agility = 5,
-                        LaserCannon = 5,
-                        LaserRange = 12,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "priority-fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Hyperdrive = 1,
+                    SublightSpeed = 9,
+                    Agility = 5,
+                    LaserCannon = 5,
+                    LaserRange = 12,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 1
             );
@@ -137,7 +137,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         public void Plan_EngineDamageAfterEntry_PreservesCapturedCapitalPartitionOrder()
         {
             TacticalCombatSession session = CreateSession(20, 20, false, 4);
-            TacticalCombatUnit damaged = session.GetUnit("defender-0");
+            CombatUnit damaged = session.GetUnit("defender-0");
             for (int damage = 0; damage < 4; damage++)
                 damaged.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
@@ -152,21 +152,9 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         [Test]
         public void Plan_SixUpdateCadence_ReassignsOnlyOnNextSixthUpdate()
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
-            TacticalCombatUnit preferred = CreateUnit(
-                "preferred",
-                CombatSide.Attacker,
-                1,
-                40,
-                false
-            );
-            TacticalCombatUnit secondary = CreateUnit(
-                "secondary",
-                CombatSide.Attacker,
-                2,
-                20,
-                false
-            );
+            CombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
+            CombatUnit preferred = CreateUnit("preferred", CombatSide.Attacker, 1, 40, false);
+            CombatUnit secondary = CreateUnit("secondary", CombatSide.Attacker, 2, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(
                 new[] { own, preferred, secondary }
             );
@@ -187,14 +175,8 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         [Test]
         public void Plan_PlayerAutomation_PublishesRequestedCommandGroupCategory()
         {
-            TacticalCombatUnit player = CreateUnit("player", CombatSide.Attacker, 1, 20, false);
-            TacticalCombatUnit opposing = CreateUnit(
-                "opposing",
-                CombatSide.Defender,
-                1000001,
-                20,
-                false
-            );
+            CombatUnit player = CreateUnit("player", CombatSide.Attacker, 1, 20, false);
+            CombatUnit opposing = CreateUnit("opposing", CombatSide.Defender, 1000001, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(new[] { player, opposing });
             session.SetAutomated(CombatSide.Attacker, true);
             TacticalCombatGroup previous = session.GetGroup(player);
@@ -212,9 +194,9 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         [Test]
         public void Plan_PartiallyDamagedUnarmedFighters_PrioritizesRetainedRechargeRatio()
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
-            TacticalCombatUnit earlier = CreateUnarmedFighter("earlier", 1, 3.8450623f);
-            TacticalCombatUnit preferred = CreateUnarmedFighter("preferred", 2, 3.8450603f);
+            CombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
+            CombatUnit earlier = CreateUnarmedFighter("earlier", 1, 3.8450623f);
+            CombatUnit preferred = CreateUnarmedFighter("preferred", 2, 3.8450603f);
             TacticalCombatSession session = CreateAssessmentSession(
                 new[] { own, earlier, preferred }
             );

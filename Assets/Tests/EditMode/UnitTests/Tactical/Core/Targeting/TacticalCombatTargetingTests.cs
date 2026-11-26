@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using static Rebellion.Tests.Tactical.TacticalCombatAssessmentScenario;
 using BitConverter = global::System.BitConverter;
@@ -22,14 +21,8 @@ namespace Rebellion.Tests.Tactical
         [TestCase(999.9990234375f)]
         public void GetTargetMetric_DistantTarget_StoresTravelArithmeticBeforeAddingPenalty(float x)
         {
-            TacticalCombatUnit attacker = CreateUnit(
-                "metric-attacker",
-                CombatSide.Attacker,
-                1,
-                20,
-                false
-            );
-            TacticalCombatUnit target = CreateUnit(
+            CombatUnit attacker = CreateUnit("metric-attacker", CombatSide.Attacker, 1, 20, false);
+            CombatUnit target = CreateUnit(
                 "metric-target",
                 CombatSide.Defender,
                 1000001,
@@ -50,18 +43,16 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetTargetMetric_HullAndShields_StoresWeightedHullBeforeAddingShields()
         {
-            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "target",
-                        MaxHullStrength = 7,
-                        CurrentHullStrength = 7,
-                        MaxShieldStrength = 4,
-                    }
-                ),
+            CombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 7,
+                    CurrentHullStrength = 7,
+                    MaxShieldStrength = 4,
+                },
                 CombatSide.Defender,
                 1000001
             )
@@ -79,18 +70,16 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetTargetMetric_RechargeRoundsToAccumulatedAttack_RejectsExhaustedAttack()
         {
-            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "target",
-                        MaxSquadronSize = 1,
-                        CurrentSquadronSize = 1,
-                        Hyperdrive = 1,
-                    }
-                ),
+            CombatUnit target = new(
+                new Starfighter
+                {
+                    InstanceID = "target",
+                    MaxSquadronSize = 1,
+                    CurrentSquadronSize = 1,
+                    Hyperdrive = 1,
+                },
                 CombatSide.Defender,
                 1000001
             );
@@ -110,15 +99,9 @@ namespace Rebellion.Tests.Tactical
             float z
         )
         {
-            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
-            TacticalCombatUnit target = CreateUnit(
-                "target",
-                CombatSide.Defender,
-                1000001,
-                0,
-                false
-            );
+            CombatUnit target = CreateUnit("target", CombatSide.Defender, 1000001, 0, false);
             target.Position = group.Formation.Position + new Vector3(x, y, z);
             float attack = 1;
 
@@ -130,16 +113,10 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetTargetMetric_LargeFiniteSeparation_StoresOverflowedSquaredDistance()
         {
-            TacticalCombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
+            CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
             group.Formation.Refresh(0);
-            TacticalCombatUnit target = CreateUnit(
-                "target",
-                CombatSide.Defender,
-                1000001,
-                0,
-                false
-            );
+            CombatUnit target = CreateUnit("target", CombatSide.Defender, 1000001, 0, false);
             target.Position = group.Formation.Position + Vector3.UnitX * float.MaxValue;
             float attack = 1;
 
@@ -152,7 +129,7 @@ namespace Rebellion.Tests.Tactical
         public void PrepareCandidates_AutomatedSide_DoesNotIssuePlanningCommands()
         {
             TacticalCombatSession session = CreateSession(20, 20, false, 1);
-            TacticalCombatUnit unit = session.GetUnit("defender-0");
+            CombatUnit unit = session.GetUnit("defender-0");
             TacticalCombatGroup group = session.GetGroup(unit);
             TacticalCombatTargeting assessment = new(session);
 
@@ -164,14 +141,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_DepartingCapital_RetainsItsDisplayedAttackBudget()
         {
-            TacticalCombatUnit unit = CreateUnit(
-                "departing",
-                CombatSide.Defender,
-                1000001,
-                20,
-                false
-            );
-            unit.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            CombatUnit unit = CreateUnit("departing", CombatSide.Defender, 1000001, 20, false);
+            unit.Status = CombatUnitStatus.EnteringHyperspace;
             TacticalCombatSession session = CreateAssessmentSession(new[] { unit });
             TacticalCombatTargeting assessment = new(session);
 
@@ -183,22 +154,20 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_RecoveryCompletedFighter_ExcludesItsAttackBudget()
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "recovered",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        LaserCannon = 5,
-                        Hyperdrive = 1,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit unit = new(
+                new Starfighter
+                {
+                    InstanceID = "recovered",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 5,
+                    Hyperdrive = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 1
             );
-            unit.Status = TacticalCombatUnitStatus.Recovered;
+            unit.Status = CombatUnitStatus.Recovered;
             TacticalCombatSession session = CreateAssessmentSession(new[] { unit });
             TacticalCombatTargeting assessment = new(session);
 
@@ -210,7 +179,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_GlobalInitialHangars_AddsOpposingDockedFighterOnlyToEmpire()
         {
-            TacticalCombatSession session = CreateHangarSession(out TacticalCombatUnit fighter);
+            TacticalCombatSession session = CreateHangarSession(out CombatUnit fighter);
             TacticalCombatTargeting assessment = new(session);
 
             assessment.AssessStrength(session.GetSide(CombatSide.Attacker));
@@ -218,21 +187,17 @@ namespace Rebellion.Tests.Tactical
 
             Assert.AreEqual(0, session.GetSide(CombatSide.Attacker).AttackBudget);
             Assert.That(session.GetSide(CombatSide.Defender).AttackBudget, Is.GreaterThan(0));
-            Assert.AreEqual(TacticalCombatUnitStatus.Docked, fighter.Status);
+            Assert.AreEqual(CombatUnitStatus.Docked, fighter.Status);
         }
 
         [Test]
         public void AssessStrength_InitialFighterLaunch_RemovesItFromGlobalHangarAssessment()
         {
-            TacticalCombatSession session = CreateHangarSession(out TacticalCombatUnit fighter);
+            TacticalCombatSession session = CreateHangarSession(out CombatUnit fighter);
             TacticalCombatTargeting assessment = new(session);
-            for (
-                int frame = 0;
-                frame < 600 && fighter.Status == TacticalCombatUnitStatus.Docked;
-                frame++
-            )
+            for (int frame = 0; frame < 600 && fighter.Status == CombatUnitStatus.Docked; frame++)
                 session.Advance(50);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, fighter.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, fighter.Status);
 
             assessment.AssessStrength(session.GetSide(CombatSide.Defender));
 
@@ -242,8 +207,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_AppliedPrimaryTargetWithNoShieldRecharge_SuppressesCapital()
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
-            TacticalCombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
+            CombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
+            CombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(new[] { own, opposing });
             session.GetGroup(opposing).SetTarget(own);
             TacticalCombatTargeting assessment = new(session);
@@ -256,8 +221,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_RequestedTargetBeforeApplication_DoesNotSuppressCapital()
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
-            TacticalCombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
+            CombatUnit own = CreateUnit("own", CombatSide.Defender, 1000001, 20, false);
+            CombatUnit opposing = CreateUnit("opposing", CombatSide.Attacker, 1, 20, false);
             TacticalCombatSession session = CreateAssessmentSession(new[] { own, opposing });
             session.SetTarget(session.GetGroup(opposing), own);
             TacticalCombatTargeting assessment = new(session);
@@ -270,17 +235,15 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_OperationalEmpireStation_AddsItsFixedAttackBudget()
         {
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Defender,
                 1000001
             );

@@ -1,8 +1,7 @@
-using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.SpaceCombat
+namespace Rebellion.Game.Results
 {
     /// <summary>
     /// Transfers a completed authoritative encounter using the identities captured at battle entry.

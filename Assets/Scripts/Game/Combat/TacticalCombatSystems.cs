@@ -1,10 +1,10 @@
 using System;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
-using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
+using Rebellion.Util.Serialization;
 
-namespace Rebellion.Tactical
+namespace Rebellion.Game.Combat
 {
     /// <summary>
     /// Identifies a ship system that can suffer damage or receive repairs in combat.
@@ -104,24 +104,50 @@ namespace Rebellion.Tactical
     /// Owns tactical hull, shield, recharge, and component damage state.
     /// Campaign objects are updated only when the battle result is committed.
     /// </summary>
+    [PersistableObject]
     public sealed class TacticalCombatSystems
     {
-        private readonly uint[] _componentDamage = new uint[5];
+        [PersistableMember(Name = "ComponentDamage")]
+        private uint[] _componentDamage = new uint[5];
+
+        [PersistableMember(Name = "WeaponRecharge")]
         private float _weaponRecharge;
+
+        [PersistableMember(Name = "ShieldRecharge")]
         private float _shieldRecharge;
-        private readonly float _movementBudget;
-        private readonly float _tractorBudget;
-        private readonly float _turnBonus;
-        private readonly uint _hyperdriveCount;
-        private readonly float _damageControl;
-        private readonly int _campaignRepairDueTick;
-        private readonly int _campaignRepairInterval;
+
+        [PersistableMember(Name = "MovementBudget")]
+        private float _movementBudget;
+
+        [PersistableMember(Name = "TractorBudget")]
+        private float _tractorBudget;
+
+        [PersistableMember(Name = "TurnBonus")]
+        private float _turnBonus;
+
+        [PersistableMember(Name = "HyperdriveCount")]
+        private uint _hyperdriveCount;
+
+        [PersistableMember(Name = "DamageControl")]
+        private float _damageControl;
+
+        [PersistableMember(Name = "CampaignRepairDueTick")]
+        private int _campaignRepairDueTick;
+
+        [PersistableMember(Name = "CampaignRepairInterval")]
+        private int _campaignRepairInterval;
+
+        [PersistableMember(Name = "DamageEventCount")]
         private uint _damageEventCount;
+
+        [PersistableMember(Name = "RepairMilliseconds")]
         private float _repairMilliseconds;
+
+        [PersistableMember(Name = "ShieldLimit")]
         private float _shieldLimit;
 
-        public bool IsFighter { get; }
-        public float MaximumHull { get; }
+        public bool IsFighter { get; private set; }
+        public float MaximumHull { get; private set; }
         public float Hull { get; private set; }
         public float Shields { get; private set; }
         public float MaximumShields => _shieldLimit;
@@ -146,31 +172,45 @@ namespace Rebellion.Tactical
         /// </summary>
         public event Action<TacticalWeaponType, TacticalCombatImpactKind> ImpactRequested;
 
+        internal float WeaponRechargeSample => _weaponRecharge;
+        internal float ShieldRechargeSample => _shieldRecharge;
+
         /// <summary>
         /// Restores authoritative visible pools and components without applying damage or requesting repairs.
         /// </summary>
-        /// <param name="state">The validated participant projection.</param>
-        internal void ApplySnapshot(TacticalCombatUnitSnapshot state)
+        /// <param name="hull">The current hull pool.</param>
+        /// <param name="shields">The current shield pool.</param>
+        /// <param name="shieldLimit">The current shield capacity.</param>
+        /// <param name="attackDelay">The remaining firing delay.</param>
+        /// <param name="movementDelay">The remaining movement delay.</param>
+        /// <param name="weaponRecharge">The retained weapon recharge sample.</param>
+        /// <param name="shieldRecharge">The retained shield recharge sample.</param>
+        /// <param name="componentDamage">Damage by ship system.</param>
+        internal void ApplyProjection(
+            float hull,
+            float shields,
+            float shieldLimit,
+            float attackDelay,
+            float movementDelay,
+            float weaponRecharge,
+            float shieldRecharge,
+            uint[] componentDamage
+        )
         {
-            Hull = state.Hull;
-            Shields = state.Shields;
-            _shieldLimit = state.ShieldLimit;
-            AttackDelay = state.AttackDelay;
-            MovementDelay = state.MovementDelay;
-            _weaponRecharge = state.WeaponRechargeSample;
-            _shieldRecharge = state.ShieldRechargeSample;
-            Array.Copy(state.ComponentDamage, _componentDamage, _componentDamage.Length);
+            Hull = hull;
+            Shields = shields;
+            _shieldLimit = shieldLimit;
+            AttackDelay = attackDelay;
+            MovementDelay = movementDelay;
+            _weaponRecharge = weaponRecharge;
+            _shieldRecharge = shieldRecharge;
+            Array.Copy(componentDamage, _componentDamage, _componentDamage.Length);
         }
 
         /// <summary>
-        /// Captures retained recharge samples without calling their stateful budget getters.
+        /// Creates combat system state for deserialization.
         /// </summary>
-        /// <param name="state">The participant projection receiving these samples.</param>
-        internal void CaptureSnapshotSamples(TacticalCombatUnitSnapshot state)
-        {
-            state.WeaponRechargeSample = _weaponRecharge;
-            state.ShieldRechargeSample = _shieldRecharge;
-        }
+        public TacticalCombatSystems() { }
 
         /// <summary>
         /// Captures one unit's combat system values before the battle begins.

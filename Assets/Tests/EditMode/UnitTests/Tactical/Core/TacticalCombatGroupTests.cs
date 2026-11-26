@@ -24,16 +24,14 @@ namespace Rebellion.Tests.Tactical
                 WeaponRecharge = 1,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 6 };
-            TacticalCombatUnit member = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "target",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit member = new(ship, CombatSide.Attacker, 1);
+            CombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Defender,
                 1000001
             )
@@ -56,7 +54,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DistantCapitalEngagement_RetainsRangeScalarUntilStepStores()
         {
-            TacticalCombatUnit[] members = new TacticalCombatUnit[6];
+            CombatUnit[] members = new CombatUnit[6];
             for (int index = 0; index < members.Length; index++)
             {
                 CapitalShip ship = new()
@@ -67,21 +65,15 @@ namespace Rebellion.Tests.Tactical
                     WeaponRecharge = 1,
                 };
                 ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 100 };
-                members[index] = new TacticalCombatUnit(
-                    CombatUnit.Create(ship),
-                    CombatSide.Attacker,
-                    index + 1
-                );
+                members[index] = new CombatUnit(ship, CombatSide.Attacker, index + 1);
             }
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "target",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Defender,
                 1000001
             )
@@ -106,21 +98,19 @@ namespace Rebellion.Tests.Tactical
             int expectedX
         )
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        LaserCannon = 1,
-                        LaserRange = 1,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 1,
+                    LaserRange = 1,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit target = CreateFighter("target", CombatSide.Defender);
+            CombatUnit target = CreateFighter("target", CombatSide.Defender);
             target.Position = new Vector3(-1.125f, 0, 0);
             TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -135,8 +125,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_ThreeDimensionalFighterTarget_UsesRoundedDirectionScale()
         {
-            TacticalCombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
-            TacticalCombatUnit target = CreateFighter("target", CombatSide.Defender);
+            CombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
+            CombatUnit target = CreateFighter("target", CombatSide.Defender);
             target.Position = new Vector3(3, 4, 5);
             TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -149,7 +139,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_StationaryUntargetedFighter_PreservesFormationHeading()
         {
-            TacticalCombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
+            CombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
             Vector3 heading = new(0.57735026f, 0.57735026f, 0.57735026f);
             TacticalCombatGroup group = new(10, new[] { fighter }, heading);
 
@@ -159,7 +149,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_StationaryRearBattery_RetainsRotationBeforeComponentStores()
         {
-            TacticalCombatUnit member = CreateCapital(1, new[] { 0, 1, 0, 0, 100 });
+            CombatUnit member = CreateCapital(1, new[] { 0, 1, 0, 0, 100 });
             TacticalCombatGroup group = CreateStationaryEngagement(
                 member,
                 new Vector3(93.9543686f, 0, 1.07471245e9f)
@@ -177,7 +167,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(true)]
         public void GetMemberHeading_NoPositiveBatteryBudget_AlignsForward(bool clearBattery)
         {
-            TacticalCombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
+            CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
             if (clearBattery)
                 member.Weapons.ClearBattery(TacticalWeaponArc.Starboard);
             TacticalCombatGroup group = CreateStationaryEngagement(member, new Vector3(3, 4, 0));
@@ -188,7 +178,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_ClearedStrongestBattery_RetainsAuthoredAlignment()
         {
-            TacticalCombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 1, 100 });
+            CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 1, 100 });
             member.Weapons.ClearBattery(TacticalWeaponArc.Starboard);
             TacticalCombatGroup group = CreateStationaryEngagement(member, Vector3.UnitZ);
 
@@ -202,7 +192,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_UnorderedStationaryMovement_ResolvesCapitalTarget()
         {
-            TacticalCombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
+            CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
             TacticalCombatGroup group = CreateStationaryEngagement(member, Vector3.UnitX);
             member.DesiredMovement = new Vector3(float.NaN, 0, float.NaN);
 
@@ -212,7 +202,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_UnorderedPlanarMovement_RetainsCurrentCapitalHeading()
         {
-            TacticalCombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
+            CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
             member.DesiredMovement = new Vector3(float.NaN, 4, float.NaN);
             TacticalCombatGroup group = new(10, new[] { member }, Vector3.UnitZ);
 
@@ -222,7 +212,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberHeading_UnorderedUntargetedFighter_PreservesFormationHeading()
         {
-            TacticalCombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
+            CombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
             fighter.DesiredMovement = new Vector3(float.NaN, 0, float.NaN);
             TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
 
@@ -232,8 +222,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_ZeroHullActiveFighter_UpdatesItsRechargeSample()
         {
-            TacticalCombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
-            TacticalCombatUnit target = CreateFighter("target", CombatSide.Defender);
+            CombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
+            CombatUnit target = CreateFighter("target", CombatSide.Defender);
             fighter.Systems.Destroy();
             TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
 
@@ -289,7 +279,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="id">The battle-local identifier.</param>
         /// <param name="weapons">The four strengths followed by their range.</param>
         /// <returns>The captured tactical capital ship.</returns>
-        private static TacticalCombatUnit CreateCapital(int id, int[] weapons)
+        private static CombatUnit CreateCapital(int id, int[] weapons)
         {
             CapitalShip ship = new()
             {
@@ -298,7 +288,7 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 100,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = weapons;
-            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, id);
+            return new CombatUnit(ship, CombatSide.Attacker, id);
         }
 
         /// <summary>
@@ -308,11 +298,11 @@ namespace Rebellion.Tests.Tactical
         /// <param name="targetPosition">The stationary target position.</param>
         /// <returns>The targeted stationary group.</returns>
         private static TacticalCombatGroup CreateStationaryEngagement(
-            TacticalCombatUnit member,
+            CombatUnit member,
             Vector3 targetPosition
         )
         {
-            TacticalCombatUnit target = CreateCapital(1000001, new[] { 0, 0, 0, 0, 0 });
+            CombatUnit target = CreateCapital(1000001, new[] { 0, 0, 0, 0, 0 });
             target.Position = targetPosition;
             TacticalCombatGroup group = new(10, new[] { member }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -327,16 +317,14 @@ namespace Rebellion.Tests.Tactical
         /// <param name="id">The squadron identifier.</param>
         /// <param name="side">The owning combat side.</param>
         /// <returns>The captured tactical squadron.</returns>
-        private static TacticalCombatUnit CreateFighter(string id, CombatSide side) =>
+        private static CombatUnit CreateFighter(string id, CombatSide side) =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = id,
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = id,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 side,
                 side == CombatSide.Attacker ? 1 : 1000001
             );

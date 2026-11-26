@@ -13,7 +13,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_InstalledLaserWithZeroRange_ClassifiesArmedLaserDeployment()
         {
-            TacticalCombatUnit unit = CreateUnit(1, 0);
+            CombatUnit unit = CreateUnit(1, 0);
 
             TacticalCombatDeployment deployment = new(unit);
 
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_EngineDamageAfterCapture_RetainsEntryScore()
         {
-            TacticalCombatUnit unit = CreateUnit(1, 12);
+            CombatUnit unit = CreateUnit(1, 12);
             TacticalCombatDeployment deployment = new(unit);
             for (int damage = 0; damage < 4; damage++)
                 unit.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
@@ -48,7 +48,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The battle registration identifier.</param>
         /// <param name="range">The laser range.</param>
         /// <returns>The deployed capital ship.</returns>
-        private static TacticalCombatUnit CreateUnit(int index, int range)
+        private static CombatUnit CreateUnit(int index, int range)
         {
             CapitalShip ship = new()
             {
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 5, 0, 0, 0, range };
-            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, index);
+            return new CombatUnit(ship, CombatSide.Attacker, index);
         }
     }
 }

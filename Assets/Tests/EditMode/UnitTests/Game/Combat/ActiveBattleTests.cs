@@ -1,8 +1,10 @@
 using System;
 using System.Linq;
+using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
@@ -154,6 +156,38 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(BattleKind.Space, restored.ActiveBattle.Kind);
             Assert.AreEqual("attacker", restored.ActiveBattle.AttackerOwnerInstanceID);
             Assert.AreEqual("defender", restored.ActiveBattle.DefenderOwnerInstanceID);
+        }
+
+        [Test]
+        public void GameRootSerialization_ActiveBattle_RoundTripsLiveDamageAndPosition()
+        {
+            GameRoot game = new GameRoot { ActiveBattle = CreateBattle() };
+            CombatUnit unit = game.ActiveBattle.AddCombatant(
+                new CapitalShip
+                {
+                    InstanceID = "ship",
+                    OwnerInstanceID = "owner",
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                }
+            );
+            unit.InitializeTacticalState(CombatSide.Attacker, 1, null);
+            unit.Position = new Vector3(12, 0, -48);
+            unit.Systems.ApplyHullLoss(99.5f);
+
+            string xml = SerializationHelper.Serialize(game);
+            Assert.That(xml, Does.Contain("<Hull>900.5</Hull>"));
+            CombatUnit restored = SerializationHelper
+                .Deserialize<GameRoot>(xml)
+                .ActiveBattle.GetCombatant("ship");
+
+            Assert.AreEqual(unit.Position, restored.Position);
+            Assert.AreEqual(900.5f, restored.Systems.Hull);
+            Assert.AreEqual("ship", restored.InstanceID);
+            Assert.AreEqual(
+                unit.Weapons.GetCharge(TacticalWeaponArc.Forward),
+                restored.Weapons.GetCharge(TacticalWeaponArc.Forward)
+            );
         }
 
         /// <summary>

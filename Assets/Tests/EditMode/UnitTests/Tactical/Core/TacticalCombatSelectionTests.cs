@@ -9,7 +9,6 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -122,7 +121,7 @@ namespace Rebellion.Tests.Tactical
         public void QueueObject_SingleTrackedOwner_CreatesIndividualRequestedGroupBeforeAppliedTransfer()
         {
             Encounter encounter = Create();
-            TacticalCombatUnit unit = encounter.Friendly[0];
+            CombatUnit unit = encounter.Friendly[0];
             TacticalCombatGroup applied = encounter.Session.GetGroup(unit);
             encounter.Selection.QueueObject(unit);
             encounter.Selection.ProcessPendingCommands();
@@ -145,7 +144,7 @@ namespace Rebellion.Tests.Tactical
         public void QueueObject_SingleUntrackedOwner_ReusesItsRequestedIdentity()
         {
             Encounter encounter = Create();
-            TacticalCombatUnit unit = encounter.Friendly[0];
+            CombatUnit unit = encounter.Friendly[0];
             TacticalCombatGroup group = encounter.Session.GetRequestedGroup(unit);
             encounter.Session.SetObjectGroup(CombatSide.Attacker, 0, null);
             encounter.Selection.QueueObject(unit);
@@ -406,7 +405,7 @@ namespace Rebellion.Tests.Tactical
         public void RequestFormation_SingleObject_DoesNotCreateRequestedGroup()
         {
             Encounter encounter = Create();
-            TacticalCombatUnit unit = encounter.Friendly[0];
+            CombatUnit unit = encounter.Friendly[0];
             TacticalCombatGroup before = encounter.Session.GetRequestedGroup(unit);
             encounter.Selection.QueueObject(unit);
             encounter.Selection.ProcessPendingCommands();
@@ -526,13 +525,13 @@ namespace Rebellion.Tests.Tactical
             Assert.IsTrue(encounter.Selection.IsDisplayObject(encounter.Friendly[0]));
         }
 
-        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace, true)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace, false)]
-        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal, false)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn, false)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed, false)]
+        [TestCase(CombatUnitStatus.PreparingHyperspace, true)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace, false)]
+        [TestCase(CombatUnitStatus.AwaitingWithdrawal, false)]
+        [TestCase(CombatUnitStatus.Withdrawn, false)]
+        [TestCase(CombatUnitStatus.Destroyed, false)]
         public void IsDisplayObject_WithdrawalStatus_UsesDisplayPresenceDomain(
-            TacticalCombatUnitStatus status,
+            CombatUnitStatus status,
             bool expected
         )
         {
@@ -549,7 +548,7 @@ namespace Rebellion.Tests.Tactical
             encounter.Selection.QueueObject(encounter.Friendly[0]);
             encounter.Selection.ProcessPendingCommands();
             TacticalCombatGroup group = encounter.Session.GetRequestedGroup(encounter.Friendly[0]);
-            encounter.Enemy.Status = TacticalCombatUnitStatus.PreparingHyperspace;
+            encounter.Enemy.Status = CombatUnitStatus.PreparingHyperspace;
             encounter.Selection.QueueObject(encounter.Enemy);
 
             encounter.Selection.ProcessPendingCommands();
@@ -596,7 +595,7 @@ namespace Rebellion.Tests.Tactical
         public void QueueDisplayMode_CapitalEnteringHyperspace_DoesNotSkipPastUndisplayableRosterEntry()
         {
             Encounter encounter = Create(count: 3);
-            encounter.Friendly[1].Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            encounter.Friendly[1].Status = CombatUnitStatus.EnteringHyperspace;
             encounter.Selection.QueueObject(encounter.Friendly[0]);
             encounter.Selection.ProcessPendingCommands();
             encounter.Selection.QueueDisplayMode(true);
@@ -744,11 +743,11 @@ namespace Rebellion.Tests.Tactical
         {
             public TacticalCombatSession Session { get; }
             public TacticalCombatSelection Selection => Session.Selection;
-            public List<TacticalCombatUnit> Friendly { get; } = new();
-            public TacticalCombatUnit Enemy { get; }
-            public TacticalCombatUnit SecondEnemy { get; }
-            public TacticalCombatUnit Fighter { get; }
-            public TacticalCombatUnit EnemyFighter { get; }
+            public List<CombatUnit> Friendly { get; } = new();
+            public CombatUnit Enemy { get; }
+            public CombatUnit SecondEnemy { get; }
+            public CombatUnit Fighter { get; }
+            public CombatUnit EnemyFighter { get; }
             public LinearCongruentialRandomProvider Random { get; } = new(42);
             public List<Playback> Playbacks { get; } = new();
 
@@ -772,14 +771,12 @@ namespace Rebellion.Tests.Tactical
                 bool withdrawalRoute
             )
             {
-                List<TacticalCombatUnit> units = new();
+                List<CombatUnit> units = new();
                 List<TacticalCombatGroup> groups = new();
                 for (int index = 0; index < count; index++)
                 {
-                    TacticalCombatUnit unit = new(
-                        CombatUnit.Create(
-                            CreateShip("friendly-" + index, maximumHull, currentHull ?? maximumHull)
-                        ),
+                    CombatUnit unit = new(
+                        CreateShip("friendly-" + index, maximumHull, currentHull ?? maximumHull),
                         CombatSide.Attacker,
                         index + 1
                     );
@@ -787,8 +784,8 @@ namespace Rebellion.Tests.Tactical
                     units.Add(unit);
                     groups.Add(new TacticalCombatGroup(100 + index, new[] { unit }, Vector3.UnitZ));
                 }
-                Enemy = new TacticalCombatUnit(
-                    CombatUnit.Create(CreateShip("enemy", 1000, 1000)),
+                Enemy = new CombatUnit(
+                    CreateShip("enemy", 1000, 1000),
                     CombatSide.Defender,
                     1000001
                 );
@@ -815,8 +812,8 @@ namespace Rebellion.Tests.Tactical
                 }
                 if (secondEnemy)
                 {
-                    SecondEnemy = new TacticalCombatUnit(
-                        CombatUnit.Create(CreateShip("other-enemy", 1000, 1000)),
+                    SecondEnemy = new CombatUnit(
+                        CreateShip("other-enemy", 1000, 1000),
                         CombatSide.Defender,
                         1000003
                     );
@@ -893,20 +890,14 @@ namespace Rebellion.Tests.Tactical
             /// <param name="side">The captured side.</param>
             /// <param name="index">The registration key.</param>
             /// <returns>The captured fighter.</returns>
-            private static TacticalCombatUnit CreateFighter(
-                string id,
-                CombatSide side,
-                int index
-            ) =>
+            private static CombatUnit CreateFighter(string id, CombatSide side, int index) =>
                 new(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = id,
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                        }
-                    ),
+                    new Starfighter
+                    {
+                        InstanceID = id,
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                    },
                     side,
                     index
                 );

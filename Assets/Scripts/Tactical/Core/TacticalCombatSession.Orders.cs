@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -121,7 +122,7 @@ namespace Rebellion.Tactical
                     return false;
             int own = 0;
             int opposing = 0;
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
                 if (unit.IsFighter && unit.IsEngaged)
                 {
                     if (unit.Side == side)
@@ -137,14 +138,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The opposing tactical unit.</param>
         /// <returns>Whether the target resolves within this encounter.</returns>
-        public bool FireSuperlaser(TacticalCombatUnit target)
+        public bool FireSuperlaser(CombatUnit target)
         {
             RequireSimulationAuthority();
             if (
                 BattleStation == null
                 || target == null
                 || target.Side == BattleStation.Unit.Side
-                || !_unitsByID.TryGetValue(target.InstanceID, out TacticalCombatUnit registered)
+                || !_unitsByID.TryGetValue(target.InstanceID, out CombatUnit registered)
                 || !ReferenceEquals(target, registered)
             )
                 return false;
@@ -231,7 +232,7 @@ namespace Rebellion.Tactical
             }
             foreach (WithdrawalMember member in _orderedWithdrawalMembers)
             {
-                TacticalCombatUnit unit = member.Unit;
+                CombatUnit unit = member.Unit;
                 if (unit.Side != side || unit.IsFighter || !IsDisplayedMember(unit))
                     continue;
                 TacticalCombatGroup applied = GetGroup(unit);
@@ -254,7 +255,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The deployed capital whose secondary ownership is inspected.</param>
         /// <returns>Whether a nonempty requested owner is not retained in an object category.</returns>
-        private bool HasUntrackedRequestedOwner(TacticalCombatUnit unit)
+        private bool HasUntrackedRequestedOwner(CombatUnit unit)
         {
             TacticalCombatGroup requested = GetRequestedGroup(unit);
             if (requested == null)
@@ -334,7 +335,7 @@ namespace Rebellion.Tactical
             )
                 group.AttackRun.ApplyState(TacticalCombatAttackRunState.Cancelled);
             if (group.ActiveOrder == TacticalCombatOrder.Recover)
-                foreach (TacticalCombatUnit unit in group.Members)
+                foreach (CombatUnit unit in group.Members)
                     ReleaseRecovery(unit);
             group.ApplyOrder(order);
             if (

@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical.Synchronization

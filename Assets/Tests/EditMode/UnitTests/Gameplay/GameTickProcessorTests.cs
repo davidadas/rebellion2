@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
@@ -848,17 +849,11 @@ namespace Rebellion.Tests.Gameplay
                 unit => _game.NodesByInstanceID[unit.InstanceID],
                 unit => _game.NodesByInstanceID[unit.InstanceID].GetParent()
             );
-            Dictionary<TacticalCombatUnit, int> shots = battle.Units.ToDictionary(
-                unit => unit,
-                _ => 0
-            );
+            Dictionary<CombatUnit, int> shots = battle.Units.ToDictionary(unit => unit, _ => 0);
             battle.ShotFired += shot => shots[shot.Source]++;
             Assert.AreEqual(2, ships.Length);
             Assert.AreEqual(4, fighters.Length);
-            Assert.AreEqual(
-                2,
-                battle.Units.Count(unit => unit.Status == TacticalCombatUnitStatus.Docked)
-            );
+            Assert.AreEqual(2, battle.Units.Count(unit => unit.Status == CombatUnitStatus.Docked));
 
             for (int frame = 0; frame < 120000 && !battle.IsComplete; frame++)
             {
@@ -1164,7 +1159,7 @@ namespace Rebellion.Tests.Gameplay
                     || group.RequestedTargets.Any(target => target.IsTargetable)
                 )
                     continue;
-                TacticalCombatUnit target =
+                CombatUnit target =
                     battle.Units.FirstOrDefault(unit =>
                         unit.Side != group.Side
                         && unit.IsTargetable
@@ -1186,7 +1181,7 @@ namespace Rebellion.Tests.Gameplay
         /// <returns>The state needed to investigate a stalled encounter.</returns>
         private static string DescribeCarrierBattle(
             TacticalCombatSession battle,
-            IReadOnlyDictionary<TacticalCombatUnit, int> shots
+            IReadOnlyDictionary<CombatUnit, int> shots
         ) =>
             $"System time: {battle.SystemTime}; "
             + string.Join(
@@ -1207,10 +1202,8 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="battle">The manually commanded encounter.</param>
         private static void CompleteTacticalEncounter(TacticalCombatSession battle)
         {
-            TacticalCombatUnit player = battle.Units.Single(unit => unit.Side == battle.PlayerSide);
-            TacticalCombatUnit opponent = battle.Units.Single(unit =>
-                unit.Side != battle.PlayerSide
-            );
+            CombatUnit player = battle.Units.Single(unit => unit.Side == battle.PlayerSide);
+            CombatUnit opponent = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             int playerShots = 0;
             battle.ShotFired += shot =>
             {

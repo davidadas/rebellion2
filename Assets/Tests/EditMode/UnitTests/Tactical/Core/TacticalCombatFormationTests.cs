@@ -15,8 +15,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberMovement_RotatedOffsetAtTranslatedReference_PreservesHeadingInput()
         {
-            TacticalCombatUnit first = CreateTurningUnit(1);
-            TacticalCombatUnit second = CreateTurningUnit(2);
+            CombatUnit first = CreateTurningUnit(1);
+            CombatUnit second = CreateTurningUnit(2);
             first.Position = new Vector3(5, -10, -50);
             second.Position = new Vector3(15, -10, -50);
             TacticalCombatFormation formation = new(
@@ -43,8 +43,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberMovement_LargeReferencePosition_RetainsBothSubtractions()
         {
-            TacticalCombatUnit first = CreateTurningUnit(1);
-            TacticalCombatUnit second = CreateTurningUnit(2);
+            CombatUnit first = CreateTurningUnit(1);
+            CombatUnit second = CreateTurningUnit(2);
             first.Position = second.Position = new Vector3(100000000, 0, 0);
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,
@@ -58,7 +58,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMemberMovement_DirectThresholdWithSmallThirdCoordinate_UsesFallbackVelocity()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Direct,
                 new[] { unit },
@@ -88,8 +88,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void MoveTowards_StoredTurnMidpoint_RotatesMemberOffsetWithTheStoredAppliedAngle()
         {
-            TacticalCombatUnit first = CreateTurningUnit(1);
-            TacticalCombatUnit second = CreateTurningUnit(2);
+            CombatUnit first = CreateTurningUnit(1);
+            CombatUnit second = CreateTurningUnit(2);
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,
                 new[] { first, second },
@@ -119,7 +119,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Refresh_EmptyRoster_PreservesStoredLimitsAndStability()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,
                 new[] { unit },
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatFormationKind kind
         )
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             unit.Position = new Vector3(0, 1, 0);
             TacticalCombatFormation formation = new(kind, new[] { unit }, Vector3.UnitZ);
             unit.Position = new Vector3(
@@ -167,7 +167,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatFormationKind kind
         )
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(kind, new[] { unit }, Vector3.UnitZ);
             formation.Refresh(0);
 
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void MoveTowards_DirectDistanceRoundsToThreshold_StillMoves()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Direct,
                 new[] { unit },
@@ -217,7 +217,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void MoveTowards_VerticalSurroundTravel_UsesSideLaneForHeading()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             unit.Heading = Vector3.UnitX;
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Surround,
@@ -235,7 +235,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(TacticalCombatFormationKind.Surround)]
         public void SetKind_ExistingMovement_ResetsMarkerMotion(TacticalCombatFormationKind kind)
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,
                 new[] { unit },
@@ -258,7 +258,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void SetKind_PreviousPosition_DoesNotCarryStableCount()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             unit.Position = new Vector3(10, 0, 0);
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,
@@ -296,8 +296,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void SetKind_RecentCollisionRecovery_PreservesUnitCooldown()
         {
-            (TacticalCombatFormation formation, TacticalCombatUnit unit) =
-                CreateRecoveringFormation();
+            (TacticalCombatFormation formation, CombatUnit unit) = CreateRecoveringFormation();
 
             formation.SetKind(TacticalCombatFormationKind.Surround);
             Stabilize(formation, 14);
@@ -308,8 +307,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void SetKind_ExpiredCollisionRecovery_ContinuesUnitPhase()
         {
-            (TacticalCombatFormation formation, TacticalCombatUnit unit) =
-                CreateRecoveringFormation();
+            (TacticalCombatFormation formation, CombatUnit unit) = CreateRecoveringFormation();
 
             formation.SetKind(TacticalCombatFormationKind.Surround);
             Stabilize(formation, 26);
@@ -320,8 +318,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AddMember_RejoiningUnit_PreservesRecoveryCooldown()
         {
-            (TacticalCombatFormation formation, TacticalCombatUnit unit) =
-                CreateRecoveringFormation();
+            (TacticalCombatFormation formation, CombatUnit unit) = CreateRecoveringFormation();
 
             formation.RemoveMember(unit);
             formation.AddMember(unit);
@@ -333,8 +330,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_PreviouslyGroupedUnit_ContinuesRecoveryPhase()
         {
-            (TacticalCombatFormation previous, TacticalCombatUnit unit) =
-                CreateRecoveringFormation();
+            (TacticalCombatFormation previous, CombatUnit unit) = CreateRecoveringFormation();
             previous.RemoveMember(unit);
             TacticalCombatFormation next = new(
                 TacticalCombatFormationKind.Line,
@@ -352,17 +348,15 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="index">The unit's distinct battle registration identifier.</param>
         /// <returns>The initialized turning unit.</returns>
-        private static TacticalCombatUnit CreateTurningUnit(int index) =>
+        private static CombatUnit CreateTurningUnit(int index) =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "turning-" + index,
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                        Maneuverability = 2,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = "turning-" + index,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    Maneuverability = 2,
+                },
                 CombatSide.Attacker,
                 index
             );
@@ -371,16 +365,14 @@ namespace Rebellion.Tests.Tactical
         /// Captures a mobile unit with one unit of movement budget and a deterministic recovery phase.
         /// </summary>
         /// <returns>The captured tactical unit.</returns>
-        private static TacticalCombatUnit CreateUnit() =>
+        private static CombatUnit CreateUnit() =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "ship",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = "ship",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
@@ -391,10 +383,10 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The formation and its colliding unit.</returns>
         private static (
             TacticalCombatFormation Formation,
-            TacticalCombatUnit Unit
+            CombatUnit Unit
         ) CreateRecoveringFormation()
         {
-            TacticalCombatUnit unit = CreateUnit();
+            CombatUnit unit = CreateUnit();
             unit.HasCollision = true;
             TacticalCombatFormation formation = new(
                 TacticalCombatFormationKind.Line,

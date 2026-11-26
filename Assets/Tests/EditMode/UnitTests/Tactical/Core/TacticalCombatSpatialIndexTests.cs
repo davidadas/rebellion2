@@ -15,11 +15,11 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void QueryCollision_HighBitRegistrations_ReturnsUnsignedBattleOrder()
         {
-            TacticalCombatUnit source = CreateCapital(2);
-            TacticalCombatUnit low = CreateCapital(1);
-            TacticalCombatUnit high = CreateCapital(int.MinValue);
+            CombatUnit source = CreateCapital(2);
+            CombatUnit low = CreateCapital(1);
+            CombatUnit high = CreateCapital(int.MinValue);
             TacticalCombatSpatialIndex spatial = new(new[] { high, source, low });
-            List<TacticalCombatUnit> candidates = new();
+            List<CombatUnit> candidates = new();
 
             spatial.QueryCollision(source, 10, candidates);
 
@@ -29,11 +29,11 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void QueryFighters_HighBitRegistrations_ReturnsUnsignedBattleOrder()
         {
-            TacticalCombatUnit source = CreateCapital(2);
-            TacticalCombatUnit low = CreateFighter(1);
-            TacticalCombatUnit high = CreateFighter(int.MinValue);
+            CombatUnit source = CreateCapital(2);
+            CombatUnit low = CreateFighter(1);
+            CombatUnit high = CreateFighter(int.MinValue);
             TacticalCombatSpatialIndex spatial = new(new[] { high, source, low });
-            List<TacticalCombatUnit> candidates = new();
+            List<CombatUnit> candidates = new();
 
             spatial.QueryFighters(source, 10, candidates);
 
@@ -45,17 +45,15 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical ship.</returns>
-        private static TacticalCombatUnit CreateCapital(int index) =>
+        private static CombatUnit CreateCapital(int index) =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = $"ship-{index}",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = $"ship-{index}",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 index
             );
@@ -65,17 +63,15 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical squadron.</returns>
-        private static TacticalCombatUnit CreateFighter(int index) =>
+        private static CombatUnit CreateFighter(int index) =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = $"fighter-{index}",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = $"fighter-{index}",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Defender,
                 index
             );

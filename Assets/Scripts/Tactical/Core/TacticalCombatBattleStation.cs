@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -7,7 +8,7 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatBattleStation
     {
-        public TacticalCombatUnit Unit { get; }
+        public CombatUnit Unit { get; }
         public bool HasPlanetaryProtection { get; }
         public bool IsConstructionComplete { get; }
         public float MaximumHull { get; }
@@ -39,13 +40,13 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The station's captured tactical unit.</param>
         /// <param name="hasPlanetaryProtection">Whether an operational planetary facility protects it.</param>
-        public TacticalCombatBattleStation(TacticalCombatUnit unit, bool hasPlanetaryProtection)
+        public TacticalCombatBattleStation(CombatUnit unit, bool hasPlanetaryProtection)
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
             if (!unit.IsBattleStation)
                 throw new ArgumentException("A battle station unit is required.", nameof(unit));
             HasPlanetaryProtection = hasPlanetaryProtection;
-            IsConstructionComplete = unit.Status != TacticalCombatUnitStatus.UnderConstruction;
+            IsConstructionComplete = unit.Status != CombatUnitStatus.UnderConstruction;
             MaximumHull = unit.Systems.MaximumHull;
         }
 

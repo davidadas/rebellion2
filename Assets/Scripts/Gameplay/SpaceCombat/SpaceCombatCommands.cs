@@ -242,7 +242,8 @@ namespace Rebellion.Gameplay
             SpaceCombatResult result;
             try
             {
-                result = RestoreTacticalOutcome(outcome);
+                ValidateTacticalOutcome(outcome);
+                result = CreateTacticalResult(outcome);
             }
             catch (InvalidDataException)
             {
@@ -279,7 +280,6 @@ namespace Rebellion.Gameplay
             bool wasBlockaded = planet.IsBlockaded(_game);
             List<GameResult> events = ApplyFighterResults(result);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
-            ReconcileBattleCopies(result);
             if (immediateResult)
                 result = ResolveImmediateTacticalContinuation(
                     decision,

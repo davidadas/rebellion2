@@ -14,16 +14,14 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_UnorderedPosition_UsesLowerBattleBoundary()
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "ship",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit unit = new(
+                new CapitalShip
+                {
+                    InstanceID = "ship",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 1
             )
@@ -42,7 +40,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FighterWithPositiveMovementBelowStoredPrecision_StillTurns()
         {
-            TacticalCombatUnit unit = CreateFighter();
+            CombatUnit unit = CreateFighter();
             unit.CommandBudget = float.Epsilon;
             for (int index = 0; index < 3; index++)
                 unit.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
@@ -59,7 +57,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FighterWithUnorderedElapsed_PreservesHeading()
         {
-            TacticalCombatUnit unit = CreateFighter();
+            CombatUnit unit = CreateFighter();
             TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitX);
             TacticalCombatSpatialIndex spatial = new(new[] { unit });
             TacticalCombatMotion motion = new();
@@ -77,8 +75,8 @@ namespace Rebellion.Tests.Tactical
             float expectedHeight
         )
         {
-            TacticalCombatUnit unit = CreateCapital(movingIndex);
-            TacticalCombatUnit neighbor = CreateCapital(neighborIndex);
+            CombatUnit unit = CreateCapital(movingIndex);
+            CombatUnit neighbor = CreateCapital(neighborIndex);
             TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitZ);
             group.Formation.Refresh(0);
             group.SetWaypoint(new Vector3(0, 0, 100));
@@ -96,18 +94,16 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical ship.</returns>
-        private static TacticalCombatUnit CreateCapital(int index) =>
+        private static CombatUnit CreateCapital(int index) =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = $"ship-{index}",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                        SublightSpeed = 100,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = $"ship-{index}",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                    SublightSpeed = 100,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 index
             );
@@ -116,17 +112,15 @@ namespace Rebellion.Tests.Tactical
         /// Creates a squadron whose stored direction can turn toward a group heading.
         /// </summary>
         /// <returns>The complete tactical squadron.</returns>
-        private static TacticalCombatUnit CreateFighter() =>
+        private static CombatUnit CreateFighter() =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 5,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 5,
+                },
                 CombatSide.Attacker,
                 1
             );

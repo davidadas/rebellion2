@@ -69,19 +69,19 @@ namespace Rebellion.Tests.Tactical
         public void Launch_DockedFighter_ReleasesBayReservation()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            TacticalCombatUnit fighter = CreateFighter();
+            CombatUnit fighter = CreateFighter();
             carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
             Assert.IsTrue(carrier.Launch(fighter));
             Assert.AreEqual(0, carrier.Reserved);
             Assert.AreEqual(0, carrier.Occupied);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, fighter.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, fighter.Status);
         }
 
         [Test]
         public void Launch_DockedFighter_PlacesSquadronAtHangar()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            TacticalCombatUnit fighter = CreateFighter();
+            CombatUnit fighter = CreateFighter();
             carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
             carrier.Launch(fighter);
             Assert.AreEqual(carrier.HangarPosition, fighter.Position);
@@ -99,19 +99,19 @@ namespace Rebellion.Tests.Tactical
         public void Recover_ReservedFighter_OccupiesReservedBay()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            TacticalCombatUnit fighter = CreateFighter();
+            CombatUnit fighter = CreateFighter();
             Assert.IsTrue(carrier.Reserve(fighter));
             Assert.IsTrue(carrier.Recover(fighter));
             Assert.AreEqual(1, carrier.Reserved);
             Assert.AreEqual(1, carrier.Occupied);
-            Assert.AreEqual(TacticalCombatUnitStatus.Recovered, fighter.Status);
+            Assert.AreEqual(CombatUnitStatus.Recovered, fighter.Status);
         }
 
         [Test]
         public void Detach_ApproachingFighter_ReleasesReservation()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            TacticalCombatUnit fighter = CreateFighter();
+            CombatUnit fighter = CreateFighter();
             carrier.Reserve(fighter);
             carrier.Detach(fighter);
             Assert.AreEqual(0, carrier.Reserved);
@@ -121,9 +121,9 @@ namespace Rebellion.Tests.Tactical
         public void Launch_DestroyedCarrier_LeavesDockedFighterInactive()
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
-            TacticalCombatUnit fighter = CreateFighter();
+            CombatUnit fighter = CreateFighter();
             carrier.AddDocked(fighter, 3, new SystemRandomProvider(42));
-            carrier.Unit.Status = TacticalCombatUnitStatus.Destroyed;
+            carrier.Unit.Status = CombatUnitStatus.Destroyed;
             Assert.IsFalse(carrier.Launch(fighter));
         }
 
@@ -141,9 +141,7 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 100,
                 StarfighterCapacity = capacity,
             };
-            return new TacticalCombatCarrier(
-                new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Attacker, 1)
-            );
+            return new TacticalCombatCarrier(new CombatUnit(ship, CombatSide.Attacker, 1));
         }
 
         /// <summary>
@@ -151,16 +149,14 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="id">The squadron identifier.</param>
         /// <returns>The captured squadron.</returns>
-        private static TacticalCombatUnit CreateFighter(string id = "fighter") =>
+        private static CombatUnit CreateFighter(string id = "fighter") =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = id,
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = id,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 CombatSide.Attacker,
                 2
             );

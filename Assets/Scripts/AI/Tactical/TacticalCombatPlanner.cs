@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical;
 
@@ -20,7 +21,7 @@ namespace Rebellion.AI.Tactical
         private readonly List<TargetCandidate> _capitalFirst = new();
         private readonly List<TargetCandidate> _fighterFirst = new();
         private readonly List<TacticalCombatDeployment>[] _deployments = { new(), new() };
-        private readonly List<TacticalCombatUnit>[] _buckets = { new(), new(), new() };
+        private readonly List<CombatUnit>[] _buckets = { new(), new(), new() };
         private readonly bool[] _partitioned = new bool[2];
         private readonly int[] _countdown = new int[2];
 
@@ -36,7 +37,7 @@ namespace Rebellion.AI.Tactical
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
-            foreach (TacticalCombatUnit unit in session.Units)
+            foreach (CombatUnit unit in session.Units)
                 if (!unit.IsFighter && !unit.IsBattleStation)
                     _deployments[(int)unit.Side].Add(new TacticalCombatDeployment(unit));
             foreach (List<TacticalCombatDeployment> deployments in _deployments)
@@ -108,7 +109,7 @@ namespace Rebellion.AI.Tactical
                     }
                 }
                 else if (_session.CanAttackBattleStation(side.Side))
-                    foreach (TacticalCombatUnit unit in _session.Units)
+                    foreach (CombatUnit unit in _session.Units)
                         if (
                             unit.Side == side.Side
                             && unit.IsFighter
@@ -131,7 +132,7 @@ namespace Rebellion.AI.Tactical
             foreach (TacticalCombatGroup group in _session.Groups)
                 if (group.Side == side && !group.IsFighterGroup)
                     _session.DeleteGroup(group);
-            foreach (List<TacticalCombatUnit> bucket in _buckets)
+            foreach (List<CombatUnit> bucket in _buckets)
                 bucket.Clear();
             foreach (TacticalCombatDeployment deployment in _deployments[(int)side])
                 if (deployment.Unit.IsTargetable)
@@ -148,7 +149,7 @@ namespace Rebellion.AI.Tactical
         /// <param name="lower">The first available group slot.</param>
         /// <param name="upper">The final available group slot.</param>
         /// <returns>The number of created groups.</returns>
-        private int PartitionBucket(List<TacticalCombatUnit> bucket, int lower, int upper)
+        private int PartitionBucket(List<CombatUnit> bucket, int lower, int upper)
         {
             uint count = (uint)bucket.Count & 0xffffu;
             uint limit = 1;
@@ -163,7 +164,7 @@ namespace Rebellion.AI.Tactical
             TacticalCombatGroup group = null;
             for (int index = 0; index < bucket.Count; index++)
             {
-                TacticalCombatUnit unit = bucket[index];
+                CombatUnit unit = bucket[index];
                 if (index % (int)spacing == 0 && created < selected)
                 {
                     group = _session.CreateGroup(new[] { unit });
@@ -287,7 +288,7 @@ namespace Rebellion.AI.Tactical
                     break;
                 }
             }
-            TacticalCombatUnit fallback = candidates[0].Unit;
+            CombatUnit fallback = candidates[0].Unit;
             foreach (TargetCandidate candidate in candidates)
                 if (_targeting.IsCandidateAvailable(candidate.Unit))
                 {
@@ -303,7 +304,7 @@ namespace Rebellion.AI.Tactical
         /// </summary>
         /// <param name="unit">The assessed unit.</param>
         /// <returns>Whether a laser lane exists.</returns>
-        private static bool HasLasers(TacticalCombatUnit unit)
+        private static bool HasLasers(CombatUnit unit)
         {
             for (int arc = 0; arc < 4; arc++)
                 if (

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -13,7 +14,7 @@ namespace Rebellion.Tactical
         /// <param name="command">The captured panel object and traversal direction.</param>
         private void ApplyDisplayMode(DisplayModeCommand command)
         {
-            List<TacticalCombatUnit> candidates = new();
+            List<CombatUnit> candidates = new();
             bool category = Kind == TacticalCombatSelectionKind.ObjectGroup;
             if (category)
             {
@@ -24,16 +25,16 @@ namespace Rebellion.Tactical
             }
             else
             {
-                foreach (TacticalCombatUnit unit in _session.Units)
+                foreach (CombatUnit unit in _session.Units)
                     if (
                         unit.Side == command.Unit.Side
                         && !unit.IsFighter
                         && !unit.IsBattleStation
                         && unit.Status
-                            is TacticalCombatUnitStatus.Active
-                                or TacticalCombatUnitStatus.PreparingHyperspace
-                                or TacticalCombatUnitStatus.EnteringHyperspace
-                                or TacticalCombatUnitStatus.AwaitingWithdrawal
+                            is CombatUnitStatus.Active
+                                or CombatUnitStatus.PreparingHyperspace
+                                or CombatUnitStatus.EnteringHyperspace
+                                or CombatUnitStatus.AwaitingWithdrawal
                     )
                         candidates.Add(unit);
                 candidates.Sort(CompareDisplayObjects);
@@ -44,7 +45,7 @@ namespace Rebellion.Tactical
             index = command.Next ? index + 1 : index - 1;
             if (index >= candidates.Count || index < 0)
                 index = command.Next ? 0 : candidates.Count - 1;
-            TacticalCombatUnit selected = candidates[index];
+            CombatUnit selected = candidates[index];
             if (category)
                 _inspected = selected;
             else
@@ -57,17 +58,15 @@ namespace Rebellion.Tactical
         /// <param name="left">The first capital object.</param>
         /// <param name="right">The second capital object.</param>
         /// <returns>The unsigned key ordering.</returns>
-        private static int CompareDisplayObjects(
-            TacticalCombatUnit left,
-            TacticalCombatUnit right
-        ) => ((uint)left.Index).CompareTo((uint)right.Index);
+        private static int CompareDisplayObjects(CombatUnit left, CombatUnit right) =>
+            ((uint)left.Index).CompareTo((uint)right.Index);
 
         /// <summary>
         /// Dispatches one object hit through the current context rather than a universal target rule.
         /// </summary>
         /// <param name="unit">The addressed participant.</param>
         /// <param name="extend">The contextual append or toggle modifier.</param>
-        private void HandleObject(TacticalCombatUnit unit, bool extend)
+        private void HandleObject(CombatUnit unit, bool extend)
         {
             if (!_session.IsSideDirectControlEnabled(_side))
             {
@@ -104,7 +103,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The clicked participant.</param>
         /// <param name="extend">Whether to append or toggle.</param>
-        private void HandleSingleObject(TacticalCombatUnit unit, bool extend)
+        private void HandleSingleObject(CombatUnit unit, bool extend)
         {
             if (unit.Side == _side)
             {
@@ -112,7 +111,7 @@ namespace Rebellion.Tactical
                     return;
                 if (extend)
                 {
-                    TacticalCombatUnit first = _primary;
+                    CombatUnit first = _primary;
                     Replace(TacticalCombatSelectionKind.MultipleObjects);
                     AddObject(_members, first);
                     AddObject(_members, unit);
@@ -142,7 +141,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The clicked participant.</param>
         /// <param name="extend">Whether to toggle friendly membership.</param>
-        private void HandleMultipleObject(TacticalCombatUnit unit, bool extend)
+        private void HandleMultipleObject(CombatUnit unit, bool extend)
         {
             if (unit.Side == _side)
             {
@@ -187,9 +186,9 @@ namespace Rebellion.Tactical
                 CreateCategory(free);
                 return;
             }
-            TacticalCombatUnit first = _members[0];
+            CombatUnit first = _members[0];
             Notify(0x84, 0x102);
-            foreach (TacticalCombatUnit member in _members)
+            foreach (CombatUnit member in _members)
                 _session.SetTarget(_session.CreateGroup(new[] { member }), unit, true);
             Inspect(first);
         }
@@ -199,7 +198,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The clicked participant.</param>
         /// <param name="extend">Whether to use category membership or target toggling.</param>
-        private void HandleObjectGroup(TacticalCombatUnit unit, bool extend)
+        private void HandleObjectGroup(CombatUnit unit, bool extend)
         {
             TacticalCombatGroup group = Group;
             if (unit.Side != _side)
@@ -258,7 +257,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The clicked participant.</param>
         /// <param name="extend">Whether to toggle a designated target.</param>
-        private void HandleFighterGroup(TacticalCombatUnit unit, bool extend)
+        private void HandleFighterGroup(CombatUnit unit, bool extend)
         {
             if (unit.Side != _side)
             {
@@ -289,7 +288,7 @@ namespace Rebellion.Tactical
         /// <param name="empireMessage">The Empire acknowledgment base.</param>
         private void SetEnemyTarget(
             TacticalCombatGroup group,
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             bool extend,
             bool fighter,
             int allianceMessage,
@@ -353,9 +352,9 @@ namespace Rebellion.Tactical
                 }
                 else
                 {
-                    TacticalCombatUnit first = _members[0];
+                    CombatUnit first = _members[0];
                     Notify(0x84, 0x102);
-                    foreach (TacticalCombatUnit unit in _members)
+                    foreach (CombatUnit unit in _members)
                         _session.SetWaypoint(_session.CreateGroup(new[] { unit }), point, true);
                     Inspect(first);
                 }

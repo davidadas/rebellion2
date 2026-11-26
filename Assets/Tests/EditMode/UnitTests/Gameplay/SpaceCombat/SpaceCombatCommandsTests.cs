@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.AI.Tactical;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
@@ -13,7 +14,6 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
 using Vector3 = global::System.Numerics.Vector3;
@@ -4402,15 +4402,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(attacker.GetParentOfType<Fleet>().IsInCombat);
             Assert.IsNotNull(game.ActiveBattle);
             Assert.AreEqual(
-                battle
-                    .Units.Single(unit => unit.Side == CombatSide.Attacker)
-                    .Combatant.Unit.OwnerInstanceID,
+                battle.Units.Single(unit => unit.Side == CombatSide.Attacker).Unit.OwnerInstanceID,
                 game.ActiveBattle.AttackerOwnerInstanceID
             );
             Assert.AreEqual(
-                battle
-                    .Units.Single(unit => unit.Side == CombatSide.Defender)
-                    .Combatant.Unit.OwnerInstanceID,
+                battle.Units.Single(unit => unit.Side == CombatSide.Defender).Unit.OwnerInstanceID,
                 game.ActiveBattle.DefenderOwnerInstanceID
             );
             Assert.AreNotSame(attacker, game.ActiveBattle.GetCombatant(attacker.InstanceID).Unit);
@@ -4584,7 +4580,7 @@ namespace Rebellion.Tests.Gameplay
                 groups[0].Members.Select(unit => unit.Position.X)
             );
             foreach (TacticalCombatGroup group in groups)
-            foreach (TacticalCombatUnit member in group.Members)
+            foreach (CombatUnit member in group.Members)
                 Assert.AreEqual(group.Formation.Position.Y, member.Position.Y);
         }
 
@@ -4705,7 +4701,7 @@ namespace Rebellion.Tests.Gameplay
 
             TacticalCombatSession battle = commands.BeginTacticalCombat();
 
-            TacticalCombatUnit unit = battle.Units.Single(candidate =>
+            CombatUnit unit = battle.Units.Single(candidate =>
                 candidate.InstanceID == attacker.InstanceID
             );
             Assert.AreEqual(4, unit.CommandBudget);
@@ -4758,10 +4754,8 @@ namespace Rebellion.Tests.Gameplay
                 origin
             );
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit victim = battle.GetUnit(attacker.InstanceID);
-            TacticalCombatUnit shooter = battle.Units.Single(unit =>
-                unit.Side != battle.PlayerSide
-            );
+            CombatUnit victim = battle.GetUnit(attacker.InstanceID);
+            CombatUnit shooter = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             string personnelClip = battle
                 .Definition.Notifications.Single(message =>
                     message.MessageID == 260
@@ -4839,7 +4833,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
+            CombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
                 target
@@ -4933,9 +4927,9 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(second, first.GetParent());
             Assert.IsFalse(planet.IsBlockaded());
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit casualty = battle.GetUnit(first.InstanceID);
+            CombatUnit casualty = battle.GetUnit(first.InstanceID);
             casualty.Systems.Destroy();
-            casualty.Status = TacticalCombatUnitStatus.Destroyed;
+            casualty.Status = CombatUnitStatus.Destroyed;
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
 
@@ -4996,8 +4990,8 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(fighter, carrier);
             int originalSquads = fighter.CurrentSquadronSize;
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit unit = battle.GetUnit(fighter.InstanceID);
-            Assert.AreEqual(TacticalCombatUnitStatus.Docked, unit.Status);
+            CombatUnit unit = battle.GetUnit(fighter.InstanceID);
+            Assert.AreEqual(CombatUnitStatus.Docked, unit.Status);
             unit.Systems.ApplyHullLoss(8);
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
@@ -5033,7 +5027,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (_, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
+            CombatUnit target = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
                 target
@@ -5116,7 +5110,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             Assert.IsTrue(battle.CanWithdraw(battle.PlayerSide));
             Assert.AreEqual(0, attacker.GetOperationalHyperdrive());
-            TacticalCombatUnit repaired = battle.GetUnit(attacker.InstanceID);
+            CombatUnit repaired = battle.GetUnit(attacker.InstanceID);
             repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
             repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
             Assert.IsTrue(repaired.Systems.HasHyperdrive);
@@ -5164,14 +5158,11 @@ namespace Rebellion.Tests.Gameplay
             for (
                 int frame = 0;
                 frame < 1000
-                    && battle.GetUnit(fighter.InstanceID).Status == TacticalCombatUnitStatus.Docked;
+                    && battle.GetUnit(fighter.InstanceID).Status == CombatUnitStatus.Docked;
                 frame++
             )
                 battle.Advance(50);
-            Assert.AreEqual(
-                TacticalCombatUnitStatus.Active,
-                battle.GetUnit(fighter.InstanceID).Status
-            );
+            Assert.AreEqual(CombatUnitStatus.Active, battle.GetUnit(fighter.InstanceID).Status);
             battle.SetOrder(group, TacticalCombatOrder.None);
             battle.SetTarget(group, battle.Units.Single(unit => unit.Side != battle.PlayerSide));
             for (int frame = 0; frame < 12000 && !battle.IsComplete; frame++)
@@ -5282,15 +5273,15 @@ namespace Rebellion.Tests.Gameplay
 
             TacticalCombatSession battle = commands.BeginTacticalCombat();
 
-            TacticalCombatUnit docked = battle.GetUnit("placement-fighter-0");
-            TacticalCombatUnit independent = battle.GetUnit("placement-fighter-1");
-            TacticalCombatUnit planetary = battle.GetUnit("placement-fighter-2");
-            Assert.AreEqual(TacticalCombatUnitStatus.Docked, docked.Status);
+            CombatUnit docked = battle.GetUnit("placement-fighter-0");
+            CombatUnit independent = battle.GetUnit("placement-fighter-1");
+            CombatUnit planetary = battle.GetUnit("placement-fighter-2");
+            Assert.AreEqual(CombatUnitStatus.Docked, docked.Status);
             Assert.AreEqual(Vector3.Zero, docked.Position);
             Assert.AreEqual(carrier.InstanceID, docked.CarrierID);
             Assert.AreEqual(40, docked.Systems.Hull);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, independent.Status);
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, planetary.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, independent.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, planetary.Status);
             Assert.AreEqual(0, independent.Position.X);
             Assert.AreEqual(5, planetary.Position.X);
             Assert.AreEqual(109, battle.BattleDepth);
@@ -5410,10 +5401,7 @@ namespace Rebellion.Tests.Gameplay
             planet.AddToManufacturingQueue(construction);
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             Assert.IsNotNull(battle.BattleStation);
-            Assert.AreEqual(
-                TacticalCombatUnitStatus.UnderConstruction,
-                battle.BattleStation.Unit.Status
-            );
+            Assert.AreEqual(CombatUnitStatus.UnderConstruction, battle.BattleStation.Unit.Status);
             Assert.IsFalse(battle.BattleStation.IsOperational);
             Assert.IsFalse(battle.BattleStation.Unit.IsEngaged);
             Assert.AreSame(construction, planet.GetManufacturingQueue()[ManufacturingType.Ship][0]);
@@ -5477,9 +5465,9 @@ namespace Rebellion.Tests.Gameplay
             second.UprisingDefense = 19;
             game.AttachNode(second, first.GetParent());
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            TacticalCombatUnit casualty = battle.GetUnit(first.InstanceID);
+            CombatUnit casualty = battle.GetUnit(first.InstanceID);
             casualty.Systems.Destroy();
-            casualty.Status = TacticalCombatUnitStatus.Destroyed;
+            casualty.Status = CombatUnitStatus.Destroyed;
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
 

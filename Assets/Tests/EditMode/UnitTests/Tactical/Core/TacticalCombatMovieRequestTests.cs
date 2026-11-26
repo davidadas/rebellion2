@@ -7,7 +7,6 @@ using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -61,31 +60,27 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The battle after its attack run has entered the two-minute sequence.</returns>
         private static TacticalCombatSession CreateSession()
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 20,
-                        Torpedoes = 100,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 20,
+                    Torpedoes = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                    }
-                ),
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                },
                 CombatSide.Defender,
                 1000001
             );

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
@@ -115,7 +116,7 @@ namespace Rebellion.Tests.Gameplay
 
             TacticalCombatSession battle = commands.ActiveTacticalCombat;
             Assert.IsNotNull(battle);
-            foreach (TacticalCombatUnit unit in battle.Units)
+            foreach (CombatUnit unit in battle.Units)
             {
                 CapitalShip ship = game.GetSceneNodeByInstanceID<CapitalShip>(unit.InstanceID);
                 Assert.AreEqual(
@@ -309,11 +310,11 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession battle
         )
         {
-            TacticalCombatUnit target = battle.Units.Single(unit =>
+            CombatUnit target = battle.Units.Single(unit =>
                 game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
                 && ship.OwnerInstanceID == "FNALL1"
             );
-            TacticalCombatUnit attacker = battle.Units.Single(unit =>
+            CombatUnit attacker = battle.Units.Single(unit =>
                 game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
                 && ship.OwnerInstanceID == "FNEMP1"
             );

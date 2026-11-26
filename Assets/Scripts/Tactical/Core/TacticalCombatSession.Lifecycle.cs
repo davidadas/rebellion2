@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -22,14 +23,14 @@ namespace Rebellion.Tactical
             {
                 if (group.Side != PlayerSide)
                     continue;
-                foreach (TacticalCombatUnit unit in group.Members)
+                foreach (CombatUnit unit in group.Members)
                     members.Add(
                         new TacticalCombatArrivalMember(
                             unit.Index,
                             unit.Definition.PresentationIndex,
                             unit.Side,
                             unit.IsFighter,
-                            unit.Status == TacticalCombatUnitStatus.Docked,
+                            unit.Status == CombatUnitStatus.Docked,
                             new Vector4(unit.Position, -1),
                             new Vector4(unit.Heading, -1)
                         )
@@ -55,9 +56,9 @@ namespace Rebellion.Tactical
             RequireSimulationAuthority();
             if (clock == null)
                 throw new ArgumentNullException(nameof(clock));
-            if (_scheduler != null || _legacyTimeAdvanced)
+            if (_scheduler != null)
                 throw new InvalidOperationException(
-                    "The battle clock must be bound once before delta-driven time advances."
+                    "The battle clock must be bound before advancement."
                 );
             _scheduler = new TacticalCombatScheduler(clock, new SchedulerSteps(this));
         }
@@ -105,57 +106,33 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
-        /// Advances a delta-driven encounter used without a bound production clock.
-        /// A zero interval can still drain pending commands after entry has completed.
+        /// Advances using the frame intervals as a controllable millisecond clock.
+        /// A zero interval flushes queued orders without advancing battle time.
         /// </summary>
-        /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
+        /// <param name="elapsedMilliseconds">The elapsed frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
             RequireSimulationAuthority();
-            if (_scheduler != null && elapsedMilliseconds != 0)
+            if (!(elapsedMilliseconds > 0) || float.IsInfinity(elapsedMilliseconds))
+            {
+                if (AdvanceArrival(elapsedMilliseconds))
+                    Selection.ProcessPendingCommands();
+                return;
+            }
+            if (_scheduler != null && !_usesFrameClock)
                 throw new InvalidOperationException(
                     "Clock-bound encounters require clocked advancement."
                 );
-            if (elapsedMilliseconds != 0)
-                _legacyTimeAdvanced = true;
-            if (!AdvanceArrival(elapsedMilliseconds))
-                return;
-            Selection.ProcessPendingCommands();
-            if (IsComplete || elapsedMilliseconds <= 0)
-                return;
-            _briefing.Advance(elapsedMilliseconds, CaptureBriefingState());
-            AdvanceSynchronizedNotifications(elapsedMilliseconds);
-            _elapsedInTick += elapsedMilliseconds;
-            if (IsPaused)
-                return;
-            if (_elapsedInTick >= 1000)
+            if (_scheduler == null)
             {
-                _elapsedInTick %= 1000;
-                if (_phase != 5)
-                    elapsedMilliseconds = 0;
-                else if (_completionStarted && _ending.AdvanceTerminalTick())
-                {
-                    Complete();
-                    return;
-                }
-                _progress++;
-                _phase = 0;
+                _usesFrameClock = true;
+                _scheduler = new TacticalCombatScheduler(
+                    () => unchecked((uint)(ulong)_elapsedFrameClock),
+                    new SchedulerSteps(this)
+                );
             }
-            if (_phase == 0)
-            {
-                if (_progress >= 3)
-                    DispatchCommands(_progress - 1);
-                _phase = 1;
-            }
-            else if (_phase == 1)
-            {
-                if (!_completionStarted)
-                    AdvanceSystems();
-                _systemTime++;
-                _phase = 5;
-            }
-            if (_progress >= 3 && !_completionStarted && elapsedMilliseconds > 0)
-                AdvanceMovement(elapsedMilliseconds);
+            _elapsedFrameClock += elapsedMilliseconds;
+            AdvanceClocked(elapsedMilliseconds);
         }
     }
 }

@@ -31,7 +31,7 @@ namespace Rebellion.Gameplay
                 outcome.Ships.ToDictionary(ship => ship.UnitID, StringComparer.Ordinal);
             Dictionary<string, TacticalCombatOutcome.FighterOutcome> fighters =
                 outcome.Fighters.ToDictionary(fighter => fighter.UnitID, StringComparer.Ordinal);
-            foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
+            foreach (CombatUnit unit in _tacticalCombat.Units)
             {
                 ISceneNode source = ResolveTacticalSource(unit);
                 bool withdrawn;
@@ -86,9 +86,9 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="unit">The tactical unit whose campaign source is required.</param>
         /// <returns>The original campaign scene node.</returns>
-        private ISceneNode ResolveTacticalSource(TacticalCombatUnit unit)
+        private ISceneNode ResolveTacticalSource(CombatUnit unit)
         {
-            string sourceID = unit?.Combatant?.SourceUnitInstanceID;
+            string sourceID = unit?.SourceUnitInstanceID;
             ISceneNode source = _game.GetSceneNodeByInstanceID<ISceneNode>(
                 sourceID,
                 includeDisabled: true
@@ -98,36 +98,6 @@ namespace Rebellion.Gameplay
                     $"Tactical source '{sourceID}' is no longer present in the campaign."
                 );
             return source;
-        }
-
-        /// <summary>
-        /// Commits only battle-owned damage and survivor counts after the campaign result pipeline
-        /// has performed its destruction, recovery, and event work.
-        /// </summary>
-        /// <param name="result">The completed combat result containing surviving campaign units.</param>
-        private void ReconcileBattleCopies(SpaceCombatResult result)
-        {
-            Dictionary<string, CapitalShip> ships = result.ShipDamage.ToDictionary(
-                damage => damage.Ship.InstanceID,
-                damage => damage.Ship,
-                StringComparer.Ordinal
-            );
-            Dictionary<string, Starfighter> fighters = result.FighterLosses.ToDictionary(
-                loss => loss.Fighter.InstanceID,
-                loss => loss.Fighter,
-                StringComparer.Ordinal
-            );
-            foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
-            {
-                if (ships.TryGetValue(unit.InstanceID, out CapitalShip ship))
-                    BattleResultReconciler.Apply(unit.Combatant, ship);
-                else if (fighters.TryGetValue(unit.InstanceID, out Starfighter fighter))
-                    BattleResultReconciler.Apply(unit.Combatant, fighter);
-                else
-                    throw new InvalidDataException(
-                        $"Tactical result did not include combatant '{unit.InstanceID}'."
-                    );
-            }
         }
     }
 }

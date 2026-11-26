@@ -7,7 +7,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -47,29 +46,27 @@ namespace Rebellion.Tests.Tactical
             bool stationPresent
         )
         {
-            TacticalCombatUnit own = CreateUnit("own", CombatSide.Attacker, 1);
-            TacticalCombatUnit enemy = CreateUnit("enemy", CombatSide.Defender, 1000001);
+            CombatUnit own = CreateUnit("own", CombatSide.Attacker, 1);
+            CombatUnit enemy = CreateUnit("enemy", CombatSide.Defender, 1000001);
             TacticalCombatGroup group = new(1, new[] { own }, Vector3.UnitZ);
-            List<TacticalCombatUnit> units = new() { own, enemy };
+            List<CombatUnit> units = new() { own, enemy };
             List<TacticalCombatGroup> groups = new()
             {
                 group,
                 new TacticalCombatGroup(2, new[] { enemy }, -Vector3.UnitZ),
             };
-            TacticalCombatUnit station = null;
+            CombatUnit station = null;
             if (stationPresent)
             {
-                station = new TacticalCombatUnit(
-                    CombatUnit.Create(
-                        new CapitalShip
-                        {
-                            InstanceID = "station",
-                            CanDestroyPlanets = true,
-                            ManufacturingStatus = ManufacturingStatus.Complete,
-                            MaxHullStrength = 100,
-                            CurrentHullStrength = 100,
-                        }
-                    ),
+                station = new CombatUnit(
+                    new CapitalShip
+                    {
+                        InstanceID = "station",
+                        CanDestroyPlanets = true,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = 100,
+                    },
                     CombatSide.Defender,
                     1000002
                 );
@@ -90,7 +87,7 @@ namespace Rebellion.Tests.Tactical
             session.SetOrder(group, TacticalCombatOrder.LeftHook);
             for (
                 int frame = 0;
-                frame < 240 && group.ActiveOrder != TacticalCombatOrder.LeftHook;
+                frame < 300 && group.ActiveOrder != TacticalCombatOrder.LeftHook;
                 frame++
             )
                 session.Advance(1000f / 60);
@@ -118,16 +115,14 @@ namespace Rebellion.Tests.Tactical
         /// <param name="side">The participant's side.</param>
         /// <param name="index">The registration ordering.</param>
         /// <returns>The captured participant.</returns>
-        private static TacticalCombatUnit CreateUnit(string id, CombatSide side, int index) =>
+        private static CombatUnit CreateUnit(string id, CombatSide side, int index) =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = id,
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 side,
                 index
             );

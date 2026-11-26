@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
@@ -20,10 +21,11 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatFormation
     {
-        private static readonly Comparer<TacticalCombatUnit> _memberComparer =
-            Comparer<TacticalCombatUnit>.Create(CompareMembers);
-        private readonly Dictionary<TacticalCombatUnit, Member> _members = new();
-        private readonly List<TacticalCombatUnit> _memberOrder = new();
+        private static readonly Comparer<CombatUnit> _memberComparer = Comparer<CombatUnit>.Create(
+            CompareMembers
+        );
+        private readonly Dictionary<CombatUnit, Member> _members = new();
+        private readonly List<CombatUnit> _memberOrder = new();
         private readonly Vector3 _initialHeading;
         private Vector3 _previousPosition;
         private Vector3 _lastMovement;
@@ -39,7 +41,7 @@ namespace Rebellion.Tactical
         public float MovementSpeed => _currentCount == 0 ? 0 : _minimumMovementSpeed;
         public float TurnRate { get; private set; }
         public int StableUpdates { get; private set; }
-        public IReadOnlyList<TacticalCombatUnit> Members { get; }
+        public IReadOnlyList<CombatUnit> Members { get; }
 
         /// <summary>
         /// Restores the visible marker without integrating local movement or collision recovery.
@@ -48,7 +50,7 @@ namespace Rebellion.Tactical
         /// <param name="members">The authoritative applied members in their captured order.</param>
         internal void ApplySnapshot(
             TacticalCombatGroupSnapshot state,
-            IReadOnlyList<TacticalCombatUnit> members
+            IReadOnlyList<CombatUnit> members
         )
         {
             Kind = state.Formation;
@@ -71,7 +73,7 @@ namespace Rebellion.Tactical
         /// <param name="heading">The side's initial heading.</param>
         public TacticalCombatFormation(
             TacticalCombatFormationKind kind,
-            IReadOnlyList<TacticalCombatUnit> units,
+            IReadOnlyList<CombatUnit> units,
             Vector3 heading
         )
         {
@@ -93,7 +95,7 @@ namespace Rebellion.Tactical
         /// Adds a unit and assigns its next formation offset.
         /// </summary>
         /// <param name="unit">The joining unit.</param>
-        public void AddMember(TacticalCombatUnit unit)
+        public void AddMember(CombatUnit unit)
         {
             if (_members.ContainsKey(unit))
                 return;
@@ -114,7 +116,7 @@ namespace Rebellion.Tactical
         /// Removes a member without reassigning surviving members' offsets.
         /// </summary>
         /// <param name="unit">The departing unit.</param>
-        public void RemoveMember(TacticalCombatUnit unit)
+        public void RemoveMember(CombatUnit unit)
         {
             if (!_members.Remove(unit))
                 return;
@@ -142,7 +144,7 @@ namespace Rebellion.Tactical
             StableUpdates = 0;
             for (int index = 0; index < _memberOrder.Count; index++)
             {
-                TacticalCombatUnit unit = _memberOrder[index];
+                CombatUnit unit = _memberOrder[index];
                 _currentCount++;
                 _maximumCount = _currentCount;
                 _spacingFloor = TacticalCombatFormationMath.UpdateSpacing(
@@ -164,14 +166,14 @@ namespace Rebellion.Tactical
         /// <param name="units">The complete active roster in registry order.</param>
         public void SetKind(
             TacticalCombatFormationKind kind,
-            TacticalCombatUnit leader,
-            IReadOnlyList<TacticalCombatUnit> units
+            CombatUnit leader,
+            IReadOnlyList<CombatUnit> units
         )
         {
-            List<TacticalCombatUnit> ordered = new(units.Count);
+            List<CombatUnit> ordered = new(units.Count);
             if (leader != null)
                 ordered.Add(leader);
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
                 if (!ReferenceEquals(unit, leader))
                     ordered.Add(unit);
             _memberOrder.Clear();
@@ -186,7 +188,7 @@ namespace Rebellion.Tactical
         /// <param name="first">The first marker member.</param>
         /// <param name="second">The second marker member.</param>
         /// <returns>The unsigned battle registration ordering.</returns>
-        private static int CompareMembers(TacticalCombatUnit first, TacticalCombatUnit second) =>
+        private static int CompareMembers(CombatUnit first, CombatUnit second) =>
             ((uint)first.Index).CompareTo((uint)second.Index);
 
         /// <summary>
@@ -202,7 +204,7 @@ namespace Rebellion.Tactical
             int eligibleCount = 0;
             for (int index = 0; index < _memberOrder.Count; index++)
             {
-                TacticalCombatUnit unit = _memberOrder[index];
+                CombatUnit unit = _memberOrder[index];
                 float speed = unit.GetSpeed();
                 if (!(speed > 0))
                     continue;
@@ -246,7 +248,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The moving member.</param>
         /// <returns>The displacement toward its formation position, or a direct flight velocity.</returns>
-        public Vector3 GetMemberMovement(TacticalCombatUnit unit)
+        public Vector3 GetMemberMovement(CombatUnit unit)
         {
             if (!_members.TryGetValue(unit, out Member member))
                 return Vector3.Zero;
@@ -375,7 +377,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The joining unit.</param>
         /// <returns>The member's offset from the reference point.</returns>
-        private Vector3 ComputeOffset(TacticalCombatUnit unit)
+        private Vector3 ComputeOffset(CombatUnit unit)
         {
             if (Kind == TacticalCombatFormationKind.Surround)
                 return TacticalCombatFormationMath.SurroundOffset(

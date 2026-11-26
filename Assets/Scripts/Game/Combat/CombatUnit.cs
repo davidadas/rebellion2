@@ -10,7 +10,7 @@ namespace Rebellion.Game.Combat
     /// Owns the independently mutable copy of one strategic battle participant.
     /// </summary>
     [PersistableObject]
-    public sealed class CombatUnit : BaseGameEntity
+    public sealed partial class CombatUnit : BaseGameEntity
     {
         [PersistableMember(Name = nameof(Unit))]
         [PersistableInclude(typeof(CapitalShip))]
@@ -33,6 +33,22 @@ namespace Rebellion.Game.Combat
         /// <returns>An independently mutable combat copy.</returns>
         public static CombatUnit Create(BaseSceneNode sourceUnit)
         {
+            CombatUnit unit = new();
+            unit.CaptureSource(sourceUnit);
+            return unit;
+        }
+
+        /// <summary>
+        /// Creates a battle unit for deserialization.
+        /// </summary>
+        public CombatUnit() { }
+
+        /// <summary>
+        /// Copies the campaign unit and captures its starting carrier and payload.
+        /// </summary>
+        /// <param name="sourceUnit">The campaign unit entering the battle.</param>
+        private void CaptureSource(BaseSceneNode sourceUnit)
+        {
             if (sourceUnit == null)
                 throw new ArgumentNullException(nameof(sourceUnit));
             if (sourceUnit is not CapitalShip && sourceUnit is not Starfighter)
@@ -41,20 +57,16 @@ namespace Rebellion.Game.Combat
                     nameof(sourceUnit)
                 );
 
-            BaseSceneNode battleCopy = (BaseSceneNode)sourceUnit.CreateCopy();
-            CombatUnit combatUnit = new CombatUnit
-            {
-                SourceUnitInstanceID = sourceUnit.InstanceID,
-                CarrierSourceUnitInstanceID =
-                    sourceUnit is Starfighter
-                        ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
-                        : null,
-                _unit = battleCopy,
-            };
+            _unit = (BaseSceneNode)sourceUnit.CreateCopy();
+            SourceUnitInstanceID = sourceUnit.InstanceID;
+            CarrierSourceUnitInstanceID =
+                sourceUnit is Starfighter
+                    ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
+                    : null;
 
             if (sourceUnit is CapitalShip ship)
             {
-                combatUnit.PayloadCount =
+                PayloadCount =
                     ship.GetChildren<Officer>().Count
                     + ship.GetChildren<Regiment>().Count
                     + ship.GetChildren<SpecialForces>().Count;
@@ -65,11 +77,8 @@ namespace Rebellion.Game.Combat
                         && fighter.Movement == null
                         && fighter.CurrentSquadronSize > 0
                     );
-                combatUnit.FighterCapacity =
-                    ship.StarfighterCapacity - fighterCount + activeFighterCount;
+                FighterCapacity = ship.StarfighterCapacity - fighterCount + activeFighterCount;
             }
-
-            return combatUnit;
         }
 
         /// <summary>
