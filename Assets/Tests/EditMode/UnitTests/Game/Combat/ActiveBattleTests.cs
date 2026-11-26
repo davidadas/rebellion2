@@ -135,6 +135,34 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Deserialize_ActiveBattleWithLegacyGroupIndexes_PreservesUnitWithoutIndexes()
+        {
+            const string xml =
+                @"<ActiveBattle>
+                  <Combatants>
+                    <CombatUnit>
+                      <CapitalShip><OwnerInstanceID>first</OwnerInstanceID></CapitalShip>
+                      <SourceUnitInstanceID>ship</SourceUnitInstanceID>
+                      <GroupID>2</GroupID>
+                      <RequestedGroupID>3</RequestedGroupID>
+                    </CombatUnit>
+                  </Combatants>
+                  <Kind>Space</Kind>
+                </ActiveBattle>";
+
+            ActiveBattle battle = SerializationHelper.Deserialize<ActiveBattle>(
+                xml,
+                new GameSerializerSettings { IgnoreUnknownElements = true }
+            );
+
+            Assert.AreEqual("first", battle.GetCombatant("ship").Unit.OwnerInstanceID);
+            Assert.That(
+                SerializationHelper.Serialize(battle),
+                Does.Not.Contain("<GroupID>").And.Not.Contain("<RequestedGroupID>")
+            );
+        }
+
+        [Test]
         public void GameRootSerialization_ActiveBattle_RoundTripsLocationAndSides()
         {
             GameRoot game = new GameRoot

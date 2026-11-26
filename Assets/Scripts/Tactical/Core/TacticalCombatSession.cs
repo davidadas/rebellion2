@@ -19,6 +19,10 @@ namespace Rebellion.Tactical
         private readonly List<CombatUnit> _units;
         private readonly List<TacticalCombatGroup> _groups;
         private readonly Dictionary<int, TacticalCombatGroup> _groupsByID = new();
+
+        // Each index refers back to one of the groups' ordered member lists.
+        private readonly Dictionary<CombatUnit, TacticalCombatGroup> _appliedGroups = new();
+        private readonly Dictionary<CombatUnit, TacticalCombatGroup> _requestedGroups = new();
         private readonly TacticalCombatGroup[,] _objectGroups = new TacticalCombatGroup[2, 8];
         private readonly TacticalCombatGroup[,] _fighterGroups = new TacticalCombatGroup[2, 4];
         private readonly Dictionary<string, CombatUnit> _unitsByID = new(StringComparer.Ordinal);

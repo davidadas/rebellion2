@@ -231,8 +231,6 @@ namespace Rebellion.Game.Combat
 
         public float CommandBudget { get; internal set; }
         public float MaximumTurnRate { get; internal set; }
-        public int? GroupID { get; internal set; }
-        public int? RequestedGroupID { get; internal set; }
         public int Index { get; private set; }
         public string TractorTargetID { get; internal set; }
         public Vector3 DesiredMovement { get; internal set; }
