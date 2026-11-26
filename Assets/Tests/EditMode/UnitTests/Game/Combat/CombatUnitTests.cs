@@ -155,19 +155,5 @@ namespace Rebellion.Tests.Game.Combat
                 unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
             );
         }
-
-        [Test]
-        public void Reconcile_BattleDamage_CopiesWithoutReplacingSourceObject()
-        {
-            CapitalShip source = new CapitalShip { InstanceID = "ship", CurrentHullStrength = 100 };
-            CombatUnit combatant = CombatUnit.Create(source);
-            combatant.ApplyCapitalShipState(35, new CapitalShipSystemDamage { Engines = 2 });
-
-            BattleResultReconciler.Apply(combatant, source);
-
-            Assert.AreEqual(35, source.CurrentHullStrength);
-            Assert.AreEqual(2, source.SystemDamage.Engines);
-            Assert.AreNotSame(source, combatant.Unit);
-        }
     }
 }

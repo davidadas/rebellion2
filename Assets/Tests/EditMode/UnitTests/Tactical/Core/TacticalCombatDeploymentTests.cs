@@ -2,8 +2,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
-using Rebellion.Gameplay;
-using Rebellion.Tactical;
+using CapitalShipRank = Rebellion.Tactical.TacticalCombatDeployment.CapitalShipRank;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -15,7 +14,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit unit = CreateUnit(1, 0);
 
-            TacticalCombatDeployment deployment = new(unit);
+            CapitalShipRank deployment = new(unit);
 
             Assert.AreEqual(1, deployment.Category);
             Assert.AreEqual(-1.96f, deployment.Score);
@@ -25,7 +24,7 @@ namespace Rebellion.Tests.Tactical
         public void Constructor_EngineDamageAfterCapture_RetainsEntryScore()
         {
             CombatUnit unit = CreateUnit(1, 12);
-            TacticalCombatDeployment deployment = new(unit);
+            CapitalShipRank deployment = new(unit);
             for (int damage = 0; damage < 4; damage++)
                 unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
@@ -36,10 +35,10 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Compare_EqualScores_UsesUnsignedRegistrationOrder()
         {
-            TacticalCombatDeployment last = new(CreateUnit(-1, 12));
-            TacticalCombatDeployment first = new(CreateUnit(1, 12));
+            CapitalShipRank last = new(CreateUnit(-1, 12));
+            CapitalShipRank first = new(CreateUnit(1, 12));
 
-            Assert.Greater(TacticalCombatDeployment.Compare(last, first), 0);
+            Assert.Greater(CapitalShipRank.Compare(last, first), 0);
         }
 
         /// <summary>

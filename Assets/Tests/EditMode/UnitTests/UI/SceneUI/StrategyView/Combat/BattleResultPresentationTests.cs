@@ -24,9 +24,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderOwnerInstanceID = _defenderId,
             };
 
-            CombatSide? attacker = BattleResultPresentation.GetSideForOwner(result, _attackerId);
-            CombatSide? defender = BattleResultPresentation.GetSideForOwner(result, _defenderId);
-            CombatSide? unknown = BattleResultPresentation.GetSideForOwner(result, "unknown");
+            CombatSide? attacker = result.GetSideForOwner(_attackerId);
+            CombatSide? defender = result.GetSideForOwner(_defenderId);
+            CombatSide? unknown = result.GetSideForOwner("unknown");
 
             Assert.AreEqual(CombatSide.Attacker, attacker);
             Assert.AreEqual(CombatSide.Defender, defender);

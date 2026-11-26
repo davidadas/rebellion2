@@ -253,7 +253,7 @@ public sealed class BattleAlertWindowController
                 continue;
             playerFactionID ??= GetPlayerFactionID();
             if (
-                BattleResultPresentation.GetSideForOwner(combat, playerFactionID) == null
+                combat.GetSideForOwner(playerFactionID) == null
                 || observedCombats.TryGetValue(combat, out _)
             )
                 continue;
