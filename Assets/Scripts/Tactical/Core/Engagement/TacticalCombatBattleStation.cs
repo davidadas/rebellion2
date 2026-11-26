@@ -33,7 +33,7 @@ namespace Rebellion.Tactical
             public bool AttackRunActive { get; }
             public bool AllianceFighterChainPopulated { get; }
             public bool EmpireFighterChainPopulated { get; }
-            public bool AllianceAttackRunOrdered { get; }
+            public bool AttackRunOrdered { get; }
             public int AllianceActiveFighters { get; }
             public int EmpireActiveFighters { get; }
             public int AllianceActiveFightersOutsideAttackRuns { get; }
@@ -41,7 +41,7 @@ namespace Rebellion.Tactical
             public bool CanAttackBattleStation =>
                 CanStartAttackRun(
                     StationExists && StationOperational && !StationProtected,
-                    AttackRunActive || AllianceAttackRunOrdered,
+                    AttackRunActive || AttackRunOrdered,
                     AllianceActiveFighters,
                     EmpireActiveFighters
                 );
@@ -55,7 +55,7 @@ namespace Rebellion.Tactical
             /// <param name="attackRunActive">Whether an attack-run helper currently exists.</param>
             /// <param name="allianceFighterChainPopulated">Whether the Alliance fighter chain is nonempty.</param>
             /// <param name="empireFighterChainPopulated">Whether the Empire fighter chain is nonempty.</param>
-            /// <param name="allianceAttackRunOrdered">Whether an Alliance group requests or performs an attack run.</param>
+            /// <param name="attackRunOrdered">Whether a group counted by this assessment requests or performs an attack run.</param>
             /// <param name="allianceActiveFighters">Every Alliance fighter in the active root.</param>
             /// <param name="empireActiveFighters">Every Empire fighter in the active root.</param>
             /// <param name="allianceActiveFightersOutsideAttackRuns">Alliance active fighters excluding attack-run members.</param>
@@ -66,7 +66,7 @@ namespace Rebellion.Tactical
                 bool attackRunActive,
                 bool allianceFighterChainPopulated,
                 bool empireFighterChainPopulated,
-                bool allianceAttackRunOrdered,
+                bool attackRunOrdered,
                 int allianceActiveFighters,
                 int empireActiveFighters,
                 int allianceActiveFightersOutsideAttackRuns
@@ -78,7 +78,7 @@ namespace Rebellion.Tactical
                 AttackRunActive = attackRunActive;
                 AllianceFighterChainPopulated = allianceFighterChainPopulated;
                 EmpireFighterChainPopulated = empireFighterChainPopulated;
-                AllianceAttackRunOrdered = allianceAttackRunOrdered;
+                AttackRunOrdered = attackRunOrdered;
                 AllianceActiveFighters = allianceActiveFighters;
                 EmpireActiveFighters = empireActiveFighters;
                 AllianceActiveFightersOutsideAttackRuns = allianceActiveFightersOutsideAttackRuns;
@@ -93,7 +93,7 @@ namespace Rebellion.Tactical
         /// <param name="friendlySquadrons">The number of eligible squadrons on the attacking side.</param>
         /// <param name="opposingSquadrons">The number of eligible squadrons on the opposing side.</param>
         /// <returns>Whether the station can be attacked by the available squadrons.</returns>
-        internal static bool CanStartAttackRun(
+        private static bool CanStartAttackRun(
             bool canReceiveAttackRun,
             bool hasAttackRun,
             int friendlySquadrons,

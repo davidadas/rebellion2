@@ -82,7 +82,6 @@ namespace Rebellion.AI.Tactical
             _targeting.AssessStrength(side);
             TacticalCombatSide opposingState = _session.GetSide(opposing);
             _targeting.AssessStrength(opposingState);
-            _targeting.AssessStrength(opposingState);
             float own = side.AttackBudget;
             float enemy = opposingState.AttackBudget;
             if (

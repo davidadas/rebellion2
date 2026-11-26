@@ -469,6 +469,30 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
+        public void CanAttackBattleStation_Withdrawal_BlocksOrdersAndRetainsGlobalAvailability()
+        {
+            TacticalCombatSession session = CreateStationSession(CombatSide.Attacker);
+            Assert.IsTrue(session.CanAttackBattleStation(CombatSide.Attacker));
+            session.GetSide(CombatSide.Attacker).BeginWithdrawal();
+
+            Assert.IsTrue(session.CanStartBattleStationAttack);
+            Assert.IsFalse(session.CanAttackBattleStation(CombatSide.Attacker));
+        }
+
+        [Test]
+        public void CanAttackBattleStation_PendingRun_BlocksGlobalAvailabilityAndNewOrders()
+        {
+            TacticalCombatSession session = CreateStationSession(CombatSide.Attacker);
+            TacticalCombatGroup group = session.GetGroup(session.GetUnit("fighter"));
+            Assert.IsTrue(session.CanStartBattleStationAttack);
+            session.SetOrder(group, TacticalCombatOrder.AttackBattleStation);
+
+            Assert.AreEqual(TacticalCombatOrder.None, group.ActiveOrder);
+            Assert.IsFalse(session.CanStartBattleStationAttack);
+            Assert.IsFalse(session.CanAttackBattleStation(CombatSide.Attacker));
+        }
+
+        [Test]
         public void CaptureSnapshot_Briefing_AddressesEachFactionsExistingCue()
         {
             TacticalCombatSession authority = CreateAuthority();

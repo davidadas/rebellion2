@@ -131,7 +131,7 @@ namespace Rebellion.Tactical
                     && state.AllianceFighterChainPopulated
                     && state.EmpireFighterChainPopulated
                     && !state.AttackRunActive
-                    && !state.AllianceAttackRunOrdered
+                    && !state.AttackRunOrdered
                 )
                     _requestNotification(_fighterDisadvantageMessage);
             }

@@ -104,8 +104,11 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Captures the station, faction fighter roots, and existing attack runs.
         /// </summary>
+        /// <param name="requestingSide">The side issuing an order, or null for the global Alliance assessment.</param>
         /// <returns>The availability of a new attack run and the active fighter balance.</returns>
-        private TacticalCombatBattleStation.AttackReadiness CaptureBattleStationAttackReadiness()
+        private TacticalCombatBattleStation.AttackReadiness CaptureBattleStationAttackReadiness(
+            CombatSide? requestingSide = null
+        )
         {
             int allianceFighters = 0;
             int empireFighters = 0;
@@ -114,7 +117,10 @@ namespace Rebellion.Tactical
             {
                 if (!unit.IsFighter || !unit.IsEngaged)
                     continue;
-                if (GetSide(unit.Side).FactionIndex == 0)
+                bool allied = requestingSide.HasValue
+                    ? unit.Side == requestingSide.Value
+                    : GetSide(unit.Side).FactionIndex == 0;
+                if (allied)
                 {
                     allianceFighters++;
                     if (unit.Status != CombatUnitStatus.AttackingBattleStation)
@@ -124,14 +130,14 @@ namespace Rebellion.Tactical
                     empireFighters++;
             }
             bool attackRunActive = false;
-            bool allianceAttackRunOrdered = false;
+            bool attackRunOrdered = false;
             foreach (TacticalCombatGroup group in _groups)
             {
                 attackRunActive |=
                     group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
                     && group.AttackRun != null;
-                if (GetSide(group.Side).FactionIndex == 0)
-                    allianceAttackRunOrdered |= IsBattleStationAttackOrdered(group);
+                if (requestingSide.HasValue || GetSide(group.Side).FactionIndex == 0)
+                    attackRunOrdered |= group.HasBattleStationAttackOrder;
             }
             return new TacticalCombatBattleStation.AttackReadiness(
                 BattleStation != null,
@@ -140,7 +146,7 @@ namespace Rebellion.Tactical
                 attackRunActive,
                 allianceFighters != 0,
                 empireFighters != 0,
-                allianceAttackRunOrdered,
+                attackRunOrdered,
                 allianceFighters,
                 empireFighters,
                 allianceOutsideAttackRuns
@@ -161,35 +167,8 @@ namespace Rebellion.Tactical
                 || GetSide(side).IsWithdrawing
             )
                 return false;
-            bool hasAttackRun = false;
-            foreach (TacticalCombatGroup group in _groups)
-                hasAttackRun |= IsBattleStationAttackOrdered(group);
-            int own = 0;
-            int opposing = 0;
-            foreach (CombatUnit unit in _units)
-                if (unit.IsFighter && unit.IsEngaged)
-                {
-                    if (unit.Side == side)
-                        own++;
-                    else
-                        opposing++;
-                }
-            return TacticalCombatBattleStation.CanStartAttackRun(
-                BattleStation.CanReceiveAttackRun,
-                hasAttackRun,
-                own,
-                opposing
-            );
+            return CaptureBattleStationAttackReadiness(side).CanAttackBattleStation;
         }
-
-        /// <summary>
-        /// Checks the group's requested and applied orders for a station attack.
-        /// </summary>
-        /// <param name="group">The tactical group whose orders are checked.</param>
-        /// <returns>Whether the group already requests or performs a station attack.</returns>
-        private static bool IsBattleStationAttackOrdered(TacticalCombatGroup group) =>
-            group.Order == TacticalCombatOrder.AttackBattleStation
-            || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
 
         /// <summary>
         /// Queues the superlaser visual and delayed destruction for an admitted opposing target.
