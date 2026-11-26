@@ -54,6 +54,19 @@ and `BUILD_PLAYER_PATH` are set:
 BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.sh build
 ```
 
+## Rendering
+
+All quality levels use Universal Render Pipeline (URP) 17.4. Runtime GLB models use glTFast's URP
+materials. Keep their shaders in Graphics settings' always-included list because models are loaded
+from external content after the player is built.
+
+Ambient occlusion selects a dedicated renderer per camera without changing shared renderer assets.
+`RenderTargetLighting` scopes ambient lighting to each preview camera and restores scene lighting
+after rendering. Enable post-processing alpha output so model and planet backgrounds stay transparent.
+
+Ray tracing is unavailable in this pipeline version. Orthographic cameras use SMAA when the player
+selects TAA, which requires a perspective camera in this version of URP.
+
 ## Windows on Arm
 
 Windows x64 and ARM64 players share Unity's `StandaloneWindows64` build target and differ only in

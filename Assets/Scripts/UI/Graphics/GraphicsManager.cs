@@ -2,11 +2,11 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 /// <summary>
-/// Applies persisted graphics quality to HDRP and game-facing cameras.
+/// Applies persisted graphics quality to URP and game-facing cameras.
 /// </summary>
 public sealed class GraphicsManager : IDisposable
 {
@@ -16,8 +16,9 @@ public sealed class GraphicsManager : IDisposable
 
     private readonly GameObject _runtimeVolumeObject;
     private readonly VolumeProfile _runtimeVolumeProfile;
-    private readonly ScreenSpaceAmbientOcclusion _ambientOcclusion;
+    private readonly VolumeProfile _disabledBloomProfile;
     private readonly Bloom _bloom;
+    private readonly Bloom _disabledBloom;
     private readonly MotionBlur _motionBlur;
     private readonly HashSet<EntityId> _configuredCameraIds = new HashSet<EntityId>();
 
@@ -25,17 +26,13 @@ public sealed class GraphicsManager : IDisposable
     private bool _ambientOcclusionEnabled = true;
     private bool _bloomEnabled = true;
     private bool _motionBlurEnabled = true;
-    private bool _rayTracingEnabled;
     private bool _hasAppliedSettings;
     private bool _disposed;
 
     /// <summary>
-    /// Gets whether the active graphics device can execute HDRP ray tracing.
+    /// Gets whether the active rendering pipeline provides the ray-tracing option.
     /// </summary>
-    public bool RayTracingAvailable =>
-        SystemInfo.supportsRayTracing
-        && GetActivePipelineAsset() is HDRenderPipelineAsset pipeline
-        && pipeline.currentPlatformRenderPipelineSettings.supportRayTracing;
+    public bool RayTracingAvailable => false;
 
     /// <summary>
     /// Gets whether the primary display can enter HDR output mode.
@@ -57,9 +54,6 @@ public sealed class GraphicsManager : IDisposable
 
         _runtimeVolumeProfile = ScriptableObject.CreateInstance<VolumeProfile>();
         _runtimeVolumeProfile.name = _runtimeVolumeName;
-        _ambientOcclusion = _runtimeVolumeProfile.Add<ScreenSpaceAmbientOcclusion>();
-        _ambientOcclusion.intensity.Override(1f);
-        _ambientOcclusion.rayTracing.Override(false);
         _bloom = _runtimeVolumeProfile.Add<Bloom>();
         _bloom.threshold.Override(1f);
         _bloom.intensity.Override(0.25f);
@@ -70,6 +64,18 @@ public sealed class GraphicsManager : IDisposable
         volume.isGlobal = true;
         volume.priority = 100f;
         volume.sharedProfile = _runtimeVolumeProfile;
+
+        _disabledBloomProfile = ScriptableObject.CreateInstance<VolumeProfile>();
+        _disabledBloom = _disabledBloomProfile.Add<Bloom>();
+        _disabledBloom.intensity.Override(0f);
+        _disabledBloom.active = false;
+        GameObject disabledBloomObject = new GameObject("Disabled bloom", typeof(Volume));
+        disabledBloomObject.layer = RuntimeVolumeLayer;
+        disabledBloomObject.transform.SetParent(_runtimeVolumeObject.transform, false);
+        Volume disabledBloomVolume = disabledBloomObject.GetComponent<Volume>();
+        disabledBloomVolume.isGlobal = true;
+        disabledBloomVolume.priority = float.MaxValue;
+        disabledBloomVolume.sharedProfile = _disabledBloomProfile;
 
         SceneManager.sceneLoaded += HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering += HandleBeginCameraRendering;
@@ -100,11 +106,8 @@ public sealed class GraphicsManager : IDisposable
         _ambientOcclusionEnabled = settings.AmbientOcclusion;
         _bloomEnabled = settings.Bloom;
         _motionBlurEnabled = settings.MotionBlur;
-        _rayTracingEnabled =
-            settings.RayTracing && settings.AmbientOcclusion && RayTracingAvailable;
-        _ambientOcclusion.active = _ambientOcclusionEnabled;
-        _ambientOcclusion.rayTracing.Override(_rayTracingEnabled);
         _bloom.active = _bloomEnabled;
+        _disabledBloom.active = !_bloomEnabled;
         _motionBlur.active = _motionBlurEnabled;
 
         _configuredCameraIds.Clear();
@@ -124,6 +127,7 @@ public sealed class GraphicsManager : IDisposable
         SceneManager.sceneLoaded -= HandleSceneLoaded;
         RenderPipelineManager.beginCameraRendering -= HandleBeginCameraRendering;
         DestroyObject(_runtimeVolumeProfile);
+        DestroyObject(_disabledBloomProfile);
         DestroyObject(_runtimeVolumeObject);
         _disposed = true;
     }
@@ -185,44 +189,20 @@ public sealed class GraphicsManager : IDisposable
     /// <param name="camera">The scene camera to configure.</param>
     private void ApplyToCamera(Camera camera)
     {
-        HDAdditionalCameraData cameraData = camera.GetComponent<HDAdditionalCameraData>();
-        if (cameraData == null)
-        {
-            cameraData = camera.gameObject.AddComponent<HDAdditionalCameraData>();
-            ApplyAuthoredClearMode(camera, cameraData);
-        }
-        cameraData.antialiasing = ConvertAntiAliasing(_antiAliasingMode);
-        cameraData.SMAAQuality = HDAdditionalCameraData.SMAAQualityLevel.High;
-        cameraData.TAAQuality = HDAdditionalCameraData.TAAQualityLevel.High;
-        cameraData.allowDynamicResolution = false;
+        UniversalAdditionalCameraData cameraData =
+            camera.GetComponent<UniversalAdditionalCameraData>()
+            ?? camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
+        cameraData.antialiasing =
+            _antiAliasingMode == UserAntiAliasingMode.Taa && camera.orthographic
+                ? AntialiasingMode.SubpixelMorphologicalAntiAliasing
+                : ConvertAntiAliasing(_antiAliasingMode);
+        cameraData.antialiasingQuality = AntialiasingQuality.High;
+        camera.allowDynamicResolution = false;
+        camera.allowHDR = true;
         cameraData.volumeLayerMask |= 1 << RuntimeVolumeLayer;
-        cameraData.customRenderingSettings = true;
-        SetFrameSetting(cameraData, FrameSettingsField.Postprocess, true);
-        SetFrameSetting(
-            cameraData,
-            FrameSettingsField.Antialiasing,
-            _antiAliasingMode != UserAntiAliasingMode.Off
-        );
-        SetFrameSetting(cameraData, FrameSettingsField.SSAO, _ambientOcclusionEnabled);
-        SetFrameSetting(cameraData, FrameSettingsField.Bloom, _bloomEnabled);
-        SetFrameSetting(cameraData, FrameSettingsField.MotionBlur, _motionBlurEnabled);
-        SetFrameSetting(cameraData, FrameSettingsField.RayTracing, _rayTracingEnabled);
+        cameraData.renderPostProcessing = true;
+        cameraData.SetRenderer(GetRendererIndex(_ambientOcclusionEnabled));
         _configuredCameraIds.Add(camera.GetEntityId());
-    }
-
-    /// <summary>
-    /// Preserves the Unity camera's authored clear behavior when HDRP camera data is first added.
-    /// </summary>
-    /// <param name="camera">The camera whose authored clear settings are authoritative.</param>
-    /// <param name="cameraData">The newly added HDRP camera data.</param>
-    private static void ApplyAuthoredClearMode(Camera camera, HDAdditionalCameraData cameraData)
-    {
-        cameraData.clearColorMode =
-            camera.clearFlags == CameraClearFlags.Skybox ? HDAdditionalCameraData.ClearColorMode.Sky
-            : camera.clearFlags == CameraClearFlags.SolidColor
-                ? HDAdditionalCameraData.ClearColorMode.Color
-            : HDAdditionalCameraData.ClearColorMode.None;
-        cameraData.backgroundColorHDR = camera.backgroundColor.linear;
     }
 
     /// <summary>
@@ -237,42 +217,42 @@ public sealed class GraphicsManager : IDisposable
     }
 
     /// <summary>
-    /// Overrides one HDRP frame setting on a scene camera.
+    /// Selects the renderer with the requested ambient-occlusion feature without changing shared assets.
     /// </summary>
-    /// <param name="cameraData">The HDRP camera data to update.</param>
-    /// <param name="field">The frame setting to override.</param>
-    /// <param name="enabled">Whether the frame setting is enabled.</param>
-    private static void SetFrameSetting(
-        HDAdditionalCameraData cameraData,
-        FrameSettingsField field,
-        bool enabled
-    )
+    /// <param name="ambientOcclusion">Whether this camera should receive ambient occlusion.</param>
+    /// <returns>The matching renderer index, or the pipeline default when none is available.</returns>
+    private static int GetRendererIndex(bool ambientOcclusion)
     {
-        cameraData.renderingPathCustomFrameSettings.SetEnabled(field, enabled);
-        cameraData.renderingPathCustomFrameSettingsOverrideMask.mask[(uint)field] = true;
+        if (GetActivePipelineAsset() is not UniversalRenderPipelineAsset pipeline)
+            return -1;
+
+        for (int index = 0; index < pipeline.rendererDataList.Length; index++)
+        {
+            ScriptableRendererData data = pipeline.rendererDataList[index];
+            if (data == null)
+                continue;
+            bool hasAmbientOcclusion = data.rendererFeatures.Exists(feature =>
+                feature is ScreenSpaceAmbientOcclusion && feature.isActive
+            );
+            if (hasAmbientOcclusion == ambientOcclusion)
+                return index;
+        }
+        return -1;
     }
 
     /// <summary>
-    /// Converts the persisted anti-aliasing value to HDRP's camera setting.
+    /// Converts the persisted anti-aliasing value to URP's camera setting.
     /// </summary>
     /// <param name="mode">The persisted anti-aliasing mode.</param>
-    /// <returns>The matching HDRP anti-aliasing mode.</returns>
-    private static HDAdditionalCameraData.AntialiasingMode ConvertAntiAliasing(
-        UserAntiAliasingMode mode
-    )
+    /// <returns>The matching URP anti-aliasing mode.</returns>
+    private static AntialiasingMode ConvertAntiAliasing(UserAntiAliasingMode mode)
     {
         return mode switch
         {
-            UserAntiAliasingMode.Fxaa => HDAdditionalCameraData
-                .AntialiasingMode
-                .FastApproximateAntialiasing,
-            UserAntiAliasingMode.Smaa => HDAdditionalCameraData
-                .AntialiasingMode
-                .SubpixelMorphologicalAntiAliasing,
-            UserAntiAliasingMode.Taa => HDAdditionalCameraData
-                .AntialiasingMode
-                .TemporalAntialiasing,
-            _ => HDAdditionalCameraData.AntialiasingMode.None,
+            UserAntiAliasingMode.Fxaa => AntialiasingMode.FastApproximateAntialiasing,
+            UserAntiAliasingMode.Smaa => AntialiasingMode.SubpixelMorphologicalAntiAliasing,
+            UserAntiAliasingMode.Taa => AntialiasingMode.TemporalAntiAliasing,
+            _ => AntialiasingMode.None,
         };
     }
 
@@ -299,7 +279,8 @@ public sealed class GraphicsManager : IDisposable
         if (camera.targetTexture == null)
             return camera.CompareTag("MainCamera");
 
-        HDAdditionalCameraData cameraData = camera.GetComponent<HDAdditionalCameraData>();
+        UniversalAdditionalCameraData cameraData =
+            camera.GetComponent<UniversalAdditionalCameraData>();
         return cameraData != null
             && (cameraData.volumeLayerMask.value & (1 << RuntimeVolumeLayer)) != 0;
     }

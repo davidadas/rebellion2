@@ -29,7 +29,7 @@ Shader "Custom/PlanetSurface"
     {
         Tags
         {
-            "RenderPipeline" = "HDRenderPipeline"
+            "RenderPipeline" = "UniversalPipeline"
             "Queue" = "Geometry"
             "RenderType" = "Opaque"
         }
@@ -38,16 +38,15 @@ Shader "Custom/PlanetSurface"
 
         Pass
         {
-            Name "ForwardOnly"
-            Tags { "LightMode" = "ForwardOnly" }
+            Name "UniversalForwardOnly"
+            Tags { "LightMode" = "UniversalForwardOnly" }
 
             HLSLPROGRAM
             #pragma target 4.5
             #pragma only_renderers d3d11 playstation xboxone xboxseries vulkan metal switch switch2
             #pragma vertex Vert
             #pragma fragment Frag
-            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             struct Attributes
             {

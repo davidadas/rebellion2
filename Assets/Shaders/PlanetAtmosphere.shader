@@ -19,7 +19,7 @@ Shader "Custom/PlanetAtmosphere"
     {
         Tags
         {
-            "RenderPipeline" = "HDRenderPipeline"
+            "RenderPipeline" = "UniversalPipeline"
             "Queue" = "Transparent+10"
             "RenderType" = "Transparent"
             "IgnoreProjector" = "True"
@@ -32,8 +32,8 @@ Shader "Custom/PlanetAtmosphere"
 
         Pass
         {
-            Name "ForwardOnly"
-            Tags { "LightMode" = "ForwardOnly" }
+            Name "UniversalForwardOnly"
+            Tags { "LightMode" = "UniversalForwardOnly" }
 
             HLSLPROGRAM
             #pragma target 4.5
@@ -41,8 +41,7 @@ Shader "Custom/PlanetAtmosphere"
             #pragma vertex Vert
             #pragma fragment Frag
 
-            #include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
-            #include "Packages/com.unity.render-pipelines.high-definition/Runtime/ShaderLibrary/ShaderVariables.hlsl"
+            #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
             #define VIEW_STEP_COUNT 12
             #define LIGHT_STEP_COUNT 6

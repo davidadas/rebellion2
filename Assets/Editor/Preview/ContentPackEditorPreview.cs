@@ -56,7 +56,7 @@ public static class ContentPackEditorPreview
             camera.backgroundColor = ContentEditorControlBuilder.Background;
             camera.transform.position = new Vector3(800, -450, -1000);
             camera.transform.rotation = Quaternion.identity;
-            HdrpRenderTargetBuilder.ConfigureCamera(camera);
+            UrpRenderTargetBuilder.ConfigureCamera(camera);
             GameObject root = Object.Instantiate(prefab.transform.Find("Canvas").gameObject);
             preview.AddSingleGO(root);
             Canvas canvas = root.GetComponent<Canvas>();

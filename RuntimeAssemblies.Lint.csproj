@@ -44,13 +44,13 @@
       Condition="'$(RenderPipelinesCoreHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll')"
       >Library/ScriptAssemblies/Unity.RenderPipelines.Core.Runtime.dll</RenderPipelinesCoreHintPath
     >
-    <HighDefinitionRenderPipelineHintPath
-      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
-      >$(UnityManagedAssembliesPath)/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
+    <UniversalRenderPipelineHintPath
+      Condition="Exists('$(UnityManagedAssembliesPath)/Unity.RenderPipelines.Universal.Runtime.dll')"
+      >$(UnityManagedAssembliesPath)/Unity.RenderPipelines.Universal.Runtime.dll</UniversalRenderPipelineHintPath
     >
-    <HighDefinitionRenderPipelineHintPath
-      Condition="'$(HighDefinitionRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll')"
-      >Library/ScriptAssemblies/Unity.RenderPipelines.HighDefinition.Runtime.dll</HighDefinitionRenderPipelineHintPath
+    <UniversalRenderPipelineHintPath
+      Condition="'$(UniversalRenderPipelineHintPath)' == '' And Exists('Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Runtime.dll')"
+      >Library/ScriptAssemblies/Unity.RenderPipelines.Universal.Runtime.dll</UniversalRenderPipelineHintPath
     >
     <UnityServicesCoreHintPath
       Condition="Exists('$(UnityManagedAssembliesPath)/Unity.Services.Core.dll')"
@@ -242,10 +242,10 @@
       <Private>false</Private>
     </Reference>
     <Reference
-      Include="Unity.RenderPipelines.HighDefinition.Runtime"
-      Condition="'$(HighDefinitionRenderPipelineHintPath)' != ''"
+      Include="Unity.RenderPipelines.Universal.Runtime"
+      Condition="'$(UniversalRenderPipelineHintPath)' != ''"
     >
-      <HintPath>$(HighDefinitionRenderPipelineHintPath)</HintPath>
+      <HintPath>$(UniversalRenderPipelineHintPath)</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference

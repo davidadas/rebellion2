@@ -1267,7 +1267,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     }
 
     /// <summary>
-    /// Steps one staged HDRP graphics setting.
+    /// Steps one staged URP graphics setting.
     /// </summary>
     /// <param name="setting">The graphics setting to change.</param>
     /// <param name="delta">The step direction.</param>

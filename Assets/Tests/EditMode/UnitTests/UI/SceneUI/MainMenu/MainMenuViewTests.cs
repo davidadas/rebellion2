@@ -7,7 +7,7 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.UI.SceneUI.MainMenu
@@ -383,7 +383,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 "Assets/Art/MainMenu/Planet/Materials/TerrestrialSurface.mat",
                 AssetDatabase.GetAssetPath(primarySurface)
             );
-            Assert.AreEqual("FORGE3D/Planets HD/HDRP/Terrestrial", primarySurface.shader.name);
+            Assert.AreEqual("FORGE3D/Planets HD/URP/Terrestrial", primarySurface.shader.name);
             Assert.IsNotNull(primarySurface.GetTexture("_CloudsTop"));
             Assert.IsNotNull(primarySurface.GetTexture("_LandMask"));
             Assert.IsNotNull(primarySurface.GetTexture("_NormalMap"));
@@ -399,7 +399,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 AssetDatabase.GetAssetPath(primaryAtmosphereMaterial)
             );
             Assert.AreEqual(
-                "FORGE3D/Planets HD/HDRP/Atmosphere",
+                "FORGE3D/Planets HD/URP/Atmosphere",
                 primaryAtmosphereMaterial.shader.name
             );
 
@@ -410,7 +410,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 "Assets/Art/MainMenu/Planet/Materials/PlanetSurface.mat",
                 AssetDatabase.GetAssetPath(moonSurface)
             );
-            Assert.AreEqual("FORGE3D/Planets HD/HDRP/Thunderstorm", moonSurface.shader.name);
+            Assert.AreEqual("FORGE3D/Planets HD/URP/Thunderstorm", moonSurface.shader.name);
             Assert.AreEqual(
                 "Assets/Art/MainMenu/Planet/Materials/PlanetAtmosphere.mat",
                 AssetDatabase.GetAssetPath(
@@ -424,12 +424,11 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
             Light sun = pivot.Find("Planet Sun").GetComponent<Light>();
             Assert.AreEqual(LightType.Directional, sun.type);
             Assert.AreEqual(1f, sun.intensity);
-            Assert.IsNotNull(sun.GetComponent<HDAdditionalLightData>());
             Assert.AreEqual(1 << 31, sun.cullingMask);
 
             Camera camera = _prefabRoot.transform.Find("PlanetRig/Camera").GetComponent<Camera>();
-            Assert.IsFalse(camera.allowHDR);
-            Assert.IsNotNull(camera.GetComponent<HDAdditionalCameraData>());
+            Assert.IsTrue(camera.allowHDR);
+            Assert.IsNotNull(camera.GetComponent<UniversalAdditionalCameraData>());
             Assert.IsNotNull(planet.material);
             Assert.AreEqual("Custom/PremultipliedTexture", planet.material.shader.name);
         }

@@ -3,7 +3,7 @@ using UnityEditor;
 using UnityEditor.Rendering;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering.Universal;
 
 /// <summary>
 /// Verifies the project-wide render pipeline configuration.
@@ -12,12 +12,12 @@ using UnityEngine.Rendering.HighDefinition;
 public sealed class RenderPipelineConfigurationTests
 {
     /// <summary>
-    /// Verifies that every quality tier uses the same HDRP project configuration.
+    /// Verifies that every quality tier uses the same URP project configuration.
     /// </summary>
     [Test]
-    public void RenderPipeline_AllQualityLevels_UsesHighDefinitionRenderPipeline()
+    public void RenderPipeline_AllQualityLevels_UsesUniversalRenderPipeline()
     {
-        Assert.IsInstanceOf<HDRenderPipelineAsset>(GraphicsSettings.defaultRenderPipeline);
+        Assert.IsInstanceOf<UniversalRenderPipelineAsset>(GraphicsSettings.defaultRenderPipeline);
         Assert.AreEqual(UserVideoSettings.DefaultQualityLevel + 1, QualitySettings.names.Length);
         Assert.AreSame(
             GraphicsSettings.defaultRenderPipeline,
@@ -26,30 +26,77 @@ public sealed class RenderPipelineConfigurationTests
 
         for (int index = 0; index < QualitySettings.names.Length; index++)
         {
-            Assert.IsInstanceOf<HDRenderPipelineAsset>(
+            Assert.IsInstanceOf<UniversalRenderPipelineAsset>(
                 QualitySettings.GetRenderPipelineAssetAt(index),
                 QualitySettings.names[index]
             );
         }
     }
 
-    /// <summary>
-    /// Verifies that HDRP has the capabilities required by raster and ray-traced effects.
-    /// </summary>
     [Test]
-    public void RenderPipeline_ProjectConfiguration_EnablesRayTracingCapabilities()
+    public void RenderPipeline_ProjectConfiguration_PreservesTransparentPostProcessing()
     {
-        HDRenderPipelineAsset pipeline =
-            GraphicsSettings.defaultRenderPipeline as HDRenderPipelineAsset;
-
+        UniversalRenderPipelineAsset pipeline =
+            GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset;
         Assert.IsNotNull(pipeline);
-        RenderPipelineSettings settings = pipeline.currentPlatformRenderPipelineSettings;
-        Assert.IsTrue(settings.supportRayTracing);
-        Assert.IsTrue(settings.supportSSR);
-        Assert.IsTrue(settings.supportSSRTransparent);
-        Assert.IsTrue(settings.supportSSGI);
-        Assert.IsTrue(settings.supportSSAO);
-        Assert.IsTrue(settings.hdShadowInitParams.supportScreenSpaceShadows);
+        Assert.IsTrue(pipeline.allowPostProcessAlphaOutput);
+        Assert.IsTrue(pipeline.supportsHDR);
+        Assert.IsTrue(pipeline.supportsCameraDepthTexture);
+    }
+
+    [TestCase(false)]
+    [TestCase(true)]
+    public void RenderPipeline_AmbientOcclusion_HasDedicatedRenderer(bool ambientOcclusion)
+    {
+        UniversalRenderPipelineAsset pipeline =
+            GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset;
+        bool found = false;
+        foreach (ScriptableRendererData data in pipeline.rendererDataList)
+        {
+            Assert.IsInstanceOf<UniversalRendererData>(data);
+            Assert.IsNotNull(((UniversalRendererData)data).postProcessData);
+            bool hasAmbientOcclusion = data.rendererFeatures.Exists(feature =>
+                feature is ScreenSpaceAmbientOcclusion && feature.isActive
+            );
+            found |= hasAmbientOcclusion == ambientOcclusion;
+        }
+        Assert.IsTrue(found);
+    }
+
+    [Test]
+    public void RenderPipeline_TransparentRenderTarget_PreservesAlpha()
+    {
+        if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+            Assert.Ignore("Reading rendered alpha requires a graphics device.");
+        GameObject root = new GameObject("Transparent render test", typeof(Camera));
+        Camera camera = root.GetComponent<Camera>();
+        camera.enabled = false;
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.clear;
+        camera.cullingMask = 0;
+        camera.allowHDR = true;
+        root.AddComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
+        RenderTexture target = new RenderTexture(16, 16, 24, RenderTextureFormat.ARGB32);
+        Texture2D pixels = new Texture2D(16, 16, TextureFormat.RGBA32, false);
+        RenderTexture previous = RenderTexture.active;
+        try
+        {
+            RenderPipeline.SubmitRenderRequest(
+                camera,
+                new UniversalRenderPipeline.SingleCameraRequest { destination = target }
+            );
+            RenderTexture.active = target;
+            pixels.ReadPixels(new Rect(0, 0, 16, 16), 0, 0);
+            pixels.Apply();
+            Assert.AreEqual(0f, pixels.GetPixel(8, 8).a, 1f / 255f);
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            Object.DestroyImmediate(pixels);
+            Object.DestroyImmediate(target);
+            Object.DestroyImmediate(root);
+        }
     }
 
     /// <summary>
@@ -74,7 +121,7 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
-    /// Verifies that Linux uses the graphics API supported by HDRP.
+    /// Verifies that Linux uses the graphics API supported by URP.
     /// </summary>
     [Test]
     public void LinuxGraphicsApi_ProjectConfiguration_UsesVulkan()
@@ -109,10 +156,10 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
-    /// Verifies shader support for the active backend without compiling HDRP code for OpenGL.
+    /// Verifies shader support for the active backend without compiling URP code for OpenGL.
     /// </summary>
     /// <param name="shaderName">The shader name to resolve.</param>
-    /// <param name="requiresHdrpBackend">Whether the shader uses HDRP-specific shader libraries.</param>
+    /// <param name="requiresUrpBackend">Whether the shader uses URP-specific shader libraries.</param>
     [TestCase("Custom/PlanetAtmosphere", true)]
     [TestCase("Custom/LoadingShuttleExhaust", true)]
     [TestCase("Custom/PlanetClouds", true)]
@@ -122,7 +169,7 @@ public sealed class RenderPipelineConfigurationTests
     [TestCase("UI/Crisp Sprite", false)]
     public void ProjectShader_ActiveBackend_HasExpectedSupport(
         string shaderName,
-        bool requiresHdrpBackend
+        bool requiresUrpBackend
     )
     {
         Shader shader = Shader.Find(shaderName);
@@ -132,7 +179,7 @@ public sealed class RenderPipelineConfigurationTests
             SystemInfo.graphicsDeviceType
             is GraphicsDeviceType.OpenGLCore
                 or GraphicsDeviceType.OpenGLES3;
-        Assert.AreEqual(!requiresHdrpBackend || !isOpenGl, shader.isSupported, shaderName);
+        Assert.AreEqual(!requiresUrpBackend || !isOpenGl, shader.isSupported, shaderName);
         AssertShaderHasNoCompilerErrors(shaderName, shader);
     }
 
@@ -171,11 +218,12 @@ public sealed class RenderPipelineConfigurationTests
     /// Verifies that each packaged shader is available and compiles for the active build target.
     /// </summary>
     /// <param name="shaderName">The shader name to resolve.</param>
-    [TestCase("FORGE3D/Planets HD/HDRP/Atmosphere")]
-    [TestCase("FORGE3D/Planets HD/HDRP/Terrestrial")]
-    [TestCase("FORGE3D/Planets HD/HDRP/Thunderstorm")]
+    [TestCase("Space Graphics Toolkit/Flare")]
+    [TestCase("FORGE3D/Planets HD/URP/Atmosphere")]
+    [TestCase("FORGE3D/Planets HD/URP/Terrestrial")]
+    [TestCase("FORGE3D/Planets HD/URP/Thunderstorm")]
     [Category("RequiresMedia")]
-    public void PackagedShader_HighDefinitionPipeline_IsAvailable(string shaderName)
+    public void PackagedShader_UniversalPipeline_IsAvailable(string shaderName)
     {
         Shader shader = Shader.Find(shaderName);
 
