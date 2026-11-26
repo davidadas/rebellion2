@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Xml;
 using System.Xml.Linq;
 using NUnit.Framework;
@@ -10,6 +12,313 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
+        [Test]
+        public void Save_OneReportPicture_ReopeningInheritsUpdatedBaseTextAndNewReports()
+        {
+            const string baseline =
+                "<MessageDefinitions><MessageDefinition><InstanceID>arrived</InstanceID><ResultType>FleetArrived</ResultType><Body>Old arrival</Body><BackgroundImage Path='base.png'/></MessageDefinition><MessageDefinition><InstanceID>abduction</InstanceID><ResultType>MissionReport</ResultType><Body>Old report</Body></MessageDefinition></MessageDefinitions>";
+            WriteFixtureFile("Data/units.xml", baseline);
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord report = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single(record => record.ID == "arrived");
+            ContentPackEditorField image = report
+                .GetFields()
+                .Single(field =>
+                    field.XmlElement.Name.LocalName == "BackgroundImage"
+                    && field.XmlAttributeName == "Path"
+                );
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "custom.png");
+            File.WriteAllBytes(source, new byte[] { 1 });
+            string address = ContentPackEditorStorage.ImportAsset(project, source);
+            project.SetField(image, address);
+
+            ContentPackEditorStorage.Save(project);
+
+            XElement authored = XElement.Load(report.Catalog.Document.TargetPath);
+            Assert.AreEqual("true", (string)authored.Attribute("Inherit"));
+            Assert.AreEqual(1, authored.Elements().Count());
+            Assert.IsFalse(authored.Descendants("Body").Any());
+            string pack = project.PackRootPath;
+            project.Dispose();
+            WriteFixtureFile(
+                "Data/units.xml",
+                baseline
+                    .Replace("Old arrival", "Corrected arrival")
+                    .Replace(
+                        "</MessageDefinitions>",
+                        "<MessageDefinition><InstanceID>target-killed</InstanceID><ResultType>MissionReport</ResultType><Outcome>TargetKilled</Outcome><Body>Target died</Body></MessageDefinition></MessageDefinitions>"
+                    )
+            );
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                pack
+            );
+            ContentPackEditorRecord[] records = reopened
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.ToArray();
+
+            Assert.AreEqual(3, records.Length);
+            Assert.AreEqual(
+                "Corrected arrival",
+                records.Single(record => record.ID == "arrived").GetField("Body").Value
+            );
+            Assert.AreEqual(
+                address,
+                (string)
+                    records
+                        .Single(record => record.ID == "arrived")
+                        .Element.Element("BackgroundImage")
+                        .Attribute("Path")
+            );
+            Assert.AreEqual(
+                "Target died",
+                records.Single(record => record.ID == "target-killed").GetField("Body").Value
+            );
+        }
+
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void StoreArtworkLayerSource_FailedPublish_RetryWritesAllPreviouslyStagedRecipeSources(
+            int blockedSource
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            Dictionary<string, byte[]> pending = new(StringComparer.Ordinal);
+            string[] addresses = new string[4];
+            for (int index = 0; index < addresses.Length; index++)
+            {
+                string source = Path.Combine(
+                    Directory.GetParent(contentRoot).FullName,
+                    "source-" + index + ".png"
+                );
+                File.WriteAllBytes(source, new[] { (byte)(index + 1) });
+                addresses[index] = ContentPackEditorStorage.StageArtworkLayerSource(
+                    source,
+                    pending
+                );
+            }
+            ContentEditorArtworkRecipe recipe = new()
+            {
+                ExistingSources = new[] { addresses[0] },
+                TravelPatterns = new[] { addresses[1] },
+                TravelSubjects = new[] { addresses[2] },
+            };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { ImageSource = addresses[3] });
+            string blocker = Path.Combine(project.PackRootPath, addresses[blockedSource][5..]);
+            Directory.CreateDirectory(blocker);
+            Assert.Throws<IOException>(() =>
+            {
+                foreach (string address in recipe.SourceAddresses)
+                    ContentPackEditorStorage.StoreArtworkLayerSource(
+                        project,
+                        address,
+                        pending[address]
+                    );
+            });
+            Directory.Delete(blocker);
+
+            foreach (string address in recipe.SourceAddresses)
+                ContentPackEditorStorage.StoreArtworkLayerSource(
+                    project,
+                    address,
+                    pending[address]
+                );
+            ContentPackEditorStorage.Save(project);
+            project.Dispose();
+
+            foreach (string address in addresses)
+                CollectionAssert.AreEqual(
+                    pending[address],
+                    File.ReadAllBytes(Path.Combine(project.PackRootPath, address[5..]))
+                );
+        }
+
+        [Test]
+        public void ImportAsset_ReadOnlySource_KeepsTheSourceReadOnlyAndCleansWritableUndoCopies()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            string source = Path.Combine(
+                Directory.GetParent(contentRoot).FullName,
+                "read-only.wav"
+            );
+            File.WriteAllBytes(source, new byte[] { 1 });
+            File.SetAttributes(source, FileAttributes.ReadOnly);
+            try
+            {
+                string address = ContentPackEditorStorage.ImportAsset(project, source);
+                string history = Path.Combine(
+                    project.PackRootPath,
+                    ".rebellion2-editor",
+                    "History"
+                );
+                Assert.IsTrue((File.GetAttributes(source) & FileAttributes.ReadOnly) != 0);
+                Assert.IsTrue(
+                    Directory
+                        .GetFiles(history, "*", SearchOption.AllDirectories)
+                        .All(file => (File.GetAttributes(file) & FileAttributes.ReadOnly) == 0)
+                );
+
+                project.DiscardChanges();
+                project.Dispose();
+
+                Assert.IsFalse(File.Exists(Path.Combine(project.PackRootPath, address[5..])));
+                Assert.IsEmpty(Directory.GetFiles(history, "*", SearchOption.AllDirectories));
+                Assert.IsTrue((File.GetAttributes(source) & FileAttributes.ReadOnly) != 0);
+            }
+            finally
+            {
+                File.SetAttributes(source, FileAttributes.Normal);
+            }
+        }
+
+        [Test]
+        public void ReplaceAsset_StreamedMedia_SupportsUndoRedoSaveAndDiscardWithoutChangingTheSource()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "large.wav");
+            byte[] block = Enumerable
+                .Range(0, 65536)
+                .Select(index => (byte)(index % 251))
+                .ToArray();
+            const int length = 3 * 1024 * 1024 + 19;
+            using (FileStream output = File.Create(source))
+                for (int offset = 0; offset < length; offset += block.Length)
+                    output.Write(block, 0, Math.Min(block.Length, length - offset));
+            string originalHash = GetFileHash(source);
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
+                .DocumentRecord.GetField("MainMenuMusicPath");
+            string address;
+            using (project.BeginEdit("Import media"))
+            {
+                address = ContentPackEditorStorage.ImportAsset(project, source);
+                project.SetField(field, address);
+            }
+            string imported = Path.Combine(project.PackRootPath, address[5..]);
+            Assert.IsTrue(project.Undo());
+            Assert.IsFalse(File.Exists(imported));
+            Assert.IsTrue(project.Redo());
+            ContentPackEditorStorage.Save(project);
+            Assert.AreEqual(originalHash, GetFileHash(imported));
+            using (FileStream update = File.OpenWrite(source))
+            {
+                update.Position = length - 1;
+                update.WriteByte(255);
+            }
+            string replacementHash = GetFileHash(source);
+            field = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
+                .DocumentRecord.GetField("MainMenuMusicPath");
+
+            ContentPackEditorStorage.ReplaceAsset(project, source, field);
+
+            Assert.AreEqual(replacementHash, GetFileHash(imported));
+            Assert.IsTrue(project.IsDirty);
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(originalHash, GetFileHash(imported));
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsTrue(project.Redo());
+            Assert.AreEqual(replacementHash, GetFileHash(imported));
+            project.DiscardChanges();
+            Assert.AreEqual(originalHash, GetFileHash(imported));
+            Assert.AreEqual(replacementHash, GetFileHash(source));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void StageArtworkLayerSource_UnsavedDraft_DoesNotPublishFilesOrMarkTheProjectDirty()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "draft.png");
+            File.WriteAllBytes(source, new byte[] { 1 });
+            Dictionary<string, byte[]> pending = new();
+
+            string address = ContentPackEditorStorage.StageArtworkLayerSource(source, pending);
+
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(File.Exists(Path.Combine(project.PackRootPath, address[5..])));
+            CollectionAssert.AreEqual(new byte[] { 1 }, pending[address]);
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        public void StageArtworkLayerSource_AbsentOptionalTemplate_DoesNotStageAnAsset(
+            string source
+        )
+        {
+            Dictionary<string, byte[]> pending = new();
+
+            Assert.IsNull(ContentPackEditorStorage.StageArtworkLayerSource(source, pending));
+
+            Assert.IsEmpty(pending);
+        }
+
+        [Test]
+        public void WriteGeneratedPng_NonUnitArtwork_DiscardRestoresTheSavedImageAndRecipe()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<FactionTheme><SavedGameSlotIconImagePath>Pack/Assets/icon</SavedGameSlotIconImagePath></FactionTheme>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single()
+                .GetField("SavedGameSlotIconImagePath");
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1 },
+                layerRecipe: "saved"
+            );
+            project.SetField(field, address);
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 },
+                layerRecipe: "unsaved"
+            );
+            Assert.IsTrue(project.IsDirty);
+
+            project.DiscardChanges();
+
+            string image = Path.Combine(project.PackRootPath, address[5..]);
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(image));
+            Assert.AreEqual("saved", File.ReadAllText(image + ".layers.json"));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void StoreArtworkLayerSource_DiscardAfterSave_PreservesSavedSourcesAndRemovesNewSources()
+        {
+            ContentPackEditorProject project = CreateLoadableProject();
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "source.png");
+            File.WriteAllBytes(source, new byte[] { 1 });
+            string saved = ContentPackEditorStorage.StoreArtworkLayerSource(project, source);
+            ContentPackEditorStorage.Save(project);
+            File.WriteAllBytes(source, new byte[] { 2 });
+            string unsaved = ContentPackEditorStorage.StoreArtworkLayerSource(project, source);
+
+            project.DiscardChanges();
+
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, saved[5..]))
+            );
+            Assert.IsFalse(File.Exists(Path.Combine(project.PackRootPath, unsaved[5..])));
+            Assert.IsFalse(project.IsDirty);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void WriteBytesAtomically_LongArtworkPath_PublishesBytesAndCleansTemporary(
@@ -858,6 +1167,18 @@ namespace Rebellion.Tests.ContentEditor
                     "1.0.0"
                 )
             );
+        }
+
+        /// <summary>
+        /// Hashes a fixture payload without buffering its complete contents.
+        /// </summary>
+        /// <param name="path">The fixture source or imported copy.</param>
+        /// <returns>The complete content digest.</returns>
+        private static string GetFileHash(string path)
+        {
+            using SHA256 hash = SHA256.Create();
+            using FileStream input = File.OpenRead(path);
+            return BitConverter.ToString(hash.ComputeHash(input));
         }
     }
 }

@@ -13,6 +13,50 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentEditorArtworkConversionTests : ContentPackEditorTestBase
     {
         [Test]
+        public void Convert_ExistingBattleResultImage_PreservesBothImages()
+        {
+            const string folder = "Pack/Factions/Fixture/Units/CapitalShips/CSAL016/";
+            WriteFixtureFile(
+                "Factions/Fixture/Data/ships.xml",
+                "<CapitalShips><CapitalShip><TypeID>CSAL016</TypeID>"
+                    + $"<BattleResultImagePath>{folder}battle-result</BattleResultImagePath>"
+                    + "</CapitalShip></CapitalShips>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.CapitalShipsPath = "Factions/Fixture/Data/ships.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.Kind == "CapitalShip" && record.ID == "CSAL016")
+                .GetField("BattleResultImagePath");
+            byte[] existing = CreateImage(Color.red);
+            byte[] imported = CreateImage(Color.blue);
+            string occupied = Local(project, folder + "battle-result.png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, existing);
+            const string previous = "Pack/Assets/custom-battle-result.png";
+            WriteLegacy(project, field, previous, imported);
+
+            Assert.DoesNotThrow(() => ContentEditorArtworkConversion.Convert(project));
+
+            Assert.AreEqual(folder + "battle-result-2", field.Value);
+            CollectionAssert.AreEqual(existing, File.ReadAllBytes(occupied));
+            CollectionAssert.AreEqual(imported, File.ReadAllBytes(Local(project, previous)));
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            CollectionAssert.AreEqual(
+                imported,
+                File.ReadAllBytes(resolver.ResolveFile(previous, ".png"))
+            );
+            Assert.AreEqual(occupied, resolver.ResolveFile(folder + "battle-result", ".png"));
+        }
+
+        [Test]
         public void ImportAsset_ExternalImage_UsesUnitFolderAndSlotName()
         {
             ContentPackEditorProject project = CreateLoadableProject();
@@ -29,6 +73,407 @@ namespace Rebellion.Tests.ContentEditor
             Assert.AreEqual("Pack/Factions/Alliance/Units/Starfighters/SFAL01/display", address);
             Assert.IsTrue(File.Exists(Local(project, address + ".png")));
             CollectionAssert.AreEqual(image, File.ReadAllBytes(source));
+        }
+
+        [Test]
+        public void Convert_MatchingNumberedDestination_ReusesTheExistingImage()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 9 });
+            File.WriteAllBytes(Local(project, preferred + "-2.png"), new byte[] { 1 });
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            Assert.IsFalse(File.Exists(Local(project, preferred + "-3.png")));
+            Assert.IsEmpty(ContentEditorArtworkConversion.Convert(project));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(occupied));
+        }
+
+        [TestCase(".layers.json")]
+        [TestCase(".layers.hash")]
+        public void Convert_OccupiedLayerSidecar_PreservesUnrelatedMetadata(string sidecar)
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 1 });
+            File.WriteAllText(occupied + sidecar, "Unrelated layer metadata");
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            Assert.AreEqual("Unrelated layer metadata", File.ReadAllText(occupied + sidecar));
+            Assert.IsNull(ContentPackEditorStorage.ReadGeneratedLayers(project, field));
+        }
+
+        [Test]
+        public void Convert_InheritedNumberedImage_DoesNotShadowTheExistingImage()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string inherited = Path.Combine(
+                contentRoot,
+                "Packs",
+                "BasePack",
+                preferred[5..] + "-2.png"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(inherited));
+            File.WriteAllBytes(inherited, new byte[] { 9 });
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 8 });
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-3", field.Value);
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Assert.AreEqual(inherited, resolver.ResolveFile(preferred + "-2", ".png"));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(inherited));
+        }
+
+        [TestCase("")]
+        [TestCase(".png")]
+        public void Convert_InheritedNumberedRedirect_DoesNotShadowItsExistingTarget(
+            string extension
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            const string reserved = "Pack/Shared/other.png";
+            string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            string inherited = Path.Combine(inheritedRoot, reserved[5..]);
+            Directory.CreateDirectory(Path.GetDirectoryName(inherited));
+            File.WriteAllBytes(inherited, new byte[] { 9 });
+            File.WriteAllText(
+                Path.Combine(inheritedRoot, ContentArtworkAliases.FileName),
+                ContentArtworkAliases.Serialize(
+                    new Dictionary<string, string> { [preferred + "-2" + extension] = reserved }
+                )
+            );
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 8 });
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-3", field.Value);
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Assert.AreEqual(inherited, resolver.ResolveFile(preferred + "-2" + extension, ".png"));
+        }
+
+        [TestCase("")]
+        [TestCase(".png")]
+        [TestCase(".jpg")]
+        [TestCase(".jpeg")]
+        public void Convert_InheritedPreferredRedirect_DoesNotShadowItsExistingTarget(
+            string extension
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            const string reserved = "Pack/Shared/other.png";
+            string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            string inherited = Path.Combine(inheritedRoot, reserved[5..]);
+            Directory.CreateDirectory(Path.GetDirectoryName(inherited));
+            File.WriteAllBytes(inherited, new byte[] { 9 });
+            string aliasPath = Path.Combine(inheritedRoot, ContentArtworkAliases.FileName);
+            string aliasText = ContentArtworkAliases.Serialize(
+                new Dictionary<string, string> { [preferred + extension] = reserved }
+            );
+            File.WriteAllText(aliasPath, aliasText);
+            const string previous = "Pack/Assets/image.png";
+            WriteLegacy(project, field, previous, new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            Assert.IsFalse(File.Exists(Local(project, preferred + ".png")));
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Assert.AreEqual(inherited, resolver.ResolveFile(preferred + extension, ".png"));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(inherited));
+            Assert.AreEqual(aliasText, File.ReadAllText(aliasPath));
+            Assert.AreEqual(
+                Local(project, field.Value + ".png"),
+                resolver.ResolveFile(previous, ".png")
+            );
+        }
+
+        [TestCase("")]
+        [TestCase(".png")]
+        public void Convert_InheritedPreferredRedirectWithoutTarget_DoesNotClaimItsAddress(
+            string extension
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            File.WriteAllText(
+                Path.Combine(inheritedRoot, ContentArtworkAliases.FileName),
+                ContentArtworkAliases.Serialize(
+                    new Dictionary<string, string>
+                    {
+                        [preferred + extension] = "Pack/Shared/missing.png",
+                    }
+                )
+            );
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            Assert.IsFalse(File.Exists(Local(project, preferred + ".png")));
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Assert.IsNull(resolver.ResolveFile(preferred + extension, ".png"));
+        }
+
+        [TestCase("")]
+        [TestCase(".png")]
+        public void Convert_InheritedPreferredIdentityMapping_KeepsNormalImageOverride(
+            string extension
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
+            string inherited = Path.Combine(inheritedRoot, preferred[5..] + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(inherited));
+            File.WriteAllBytes(inherited, new byte[] { 9 });
+            File.WriteAllText(
+                Path.Combine(inheritedRoot, ContentArtworkAliases.FileName),
+                ContentArtworkAliases.Serialize(
+                    new Dictionary<string, string>
+                    {
+                        [preferred + extension] = preferred + extension,
+                    }
+                )
+            );
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred, field.Value);
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            Assert.AreEqual(
+                Local(project, preferred + ".png"),
+                resolver.ResolveFile(preferred + extension, ".png")
+            );
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(inherited));
+        }
+
+        [Test]
+        public void Convert_PreferredImageExistsInBase_WritesOnlyToTheWorkingPack()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string inherited = Path.Combine(
+                contentRoot,
+                "Packs",
+                "BasePack",
+                preferred[5..] + ".png"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(inherited));
+            File.WriteAllBytes(inherited, new byte[] { 9 });
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred, field.Value);
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(inherited));
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Local(project, preferred + ".png"))
+            );
+        }
+
+        [Test]
+        public void Convert_ConflictingLayerRecipe_PreservesBothEditableImages()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            byte[] bytes = { 1, 2, 3 };
+            const string recipe = "{\"Version\":1}";
+            const string existingRecipe = "{\"Version\":2}";
+            string previous =
+                "Pack/Assets/Generated/starfighter/sfal01/display-"
+                + ContentPackEditorStorage.GetArtworkRevision(bytes, recipe)
+                + ".png";
+            WriteLegacy(project, field, previous, bytes);
+            File.WriteAllText(Local(project, previous) + ".layers.json", recipe);
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, bytes);
+            File.WriteAllText(occupied + ".layers.json", existingRecipe);
+            string existingHash = ContentPackEditorStorage.GetArtworkRevision(
+                bytes,
+                existingRecipe
+            );
+            File.WriteAllText(occupied + ".layers.hash", existingHash);
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            Assert.AreEqual(existingRecipe, File.ReadAllText(occupied + ".layers.json"));
+            Assert.AreEqual(existingHash, File.ReadAllText(occupied + ".layers.hash"));
+            Assert.AreEqual(recipe, ContentPackEditorStorage.ReadGeneratedLayers(project, field));
+        }
+
+        [TestCase("")]
+        [TestCase(".png")]
+        public void Convert_RedirectOwnsDestination_PreservesItsExistingTarget(string extension)
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            const string reserved = "Pack/Assets/reserved.png";
+            WriteLegacy(project, field, reserved, new byte[] { 9 });
+            WriteLegacy(project, field, "Pack/Assets/current.png", new byte[] { 1 });
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 1 });
+            File.WriteAllText(
+                Path.Combine(project.PackRootPath, ContentArtworkAliases.FileName),
+                ContentArtworkAliases.Serialize(
+                    new Dictionary<string, string> { [preferred + extension] = reserved }
+                )
+            );
+
+            ContentEditorArtworkConversion.Convert(project);
+
+            Assert.AreEqual(preferred + "-2", field.Value);
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                project.ContentRootPath,
+                project.PackRootPath,
+                project.Definition
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 9 },
+                File.ReadAllBytes(resolver.ResolveFile(preferred + extension, ".png"))
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(resolver.ResolveFile(field.Value, ".png"))
+            );
+        }
+
+        [Test]
+        public void Save_ConflictingLegacyArtwork_ReopensAtTheAllocatedAddress()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 9 });
+            const string previous = "Pack/Assets/image.png";
+            WriteLegacy(project, field, previous, new byte[] { 1 });
+
+            ContentPackEditorStorage.Save(project);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                project.PackRootPath
+            );
+
+            Assert.AreEqual(preferred + "-2", GetField(reopened).Value);
+            Assert.IsFalse(reopened.IsDirty);
+            var resolver = ContentPackLoader.CreateFolderResolver(
+                reopened.ContentRootPath,
+                reopened.PackRootPath,
+                reopened.Definition
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(resolver.ResolveFile(previous, ".png"))
+            );
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(occupied));
+        }
+
+        [Test]
+        public void WriteGeneratedPng_ConvertedCollision_KeepsTheAllocatedAddress()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 9 });
+            WriteLegacy(project, field, "Pack/Assets/image.png", new byte[] { 1 });
+            ContentEditorArtworkConversion.Convert(project);
+
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 }
+            );
+
+            Assert.AreEqual(preferred + "-2", address);
+            CollectionAssert.AreEqual(
+                new byte[] { 2 },
+                File.ReadAllBytes(Local(project, address + ".png"))
+            );
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(occupied));
+        }
+
+        [Test]
+        public void Convert_AllocatedDestination_UndoRedoRestoresImagesAndAddresses()
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentPackEditorField field = GetField(project);
+            const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
+            string occupied = Local(project, preferred + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(occupied));
+            File.WriteAllBytes(occupied, new byte[] { 9 });
+            const string previous = "Pack/Assets/image.png";
+            WriteLegacy(project, field, previous, new byte[] { 1 });
+            ContentEditorArtworkConversion.Convert(project);
+            string allocated = Local(project, preferred + "-2.png");
+
+            project.Undo();
+
+            Assert.AreEqual(previous, GetField(project).Value);
+            Assert.IsFalse(File.Exists(allocated));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(occupied));
+            project.Redo();
+            Assert.AreEqual(preferred + "-2", GetField(project).Value);
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(allocated));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(occupied));
         }
 
         [Test]
@@ -263,7 +708,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void Convert_ConflictingDestination_ChangesNeitherFilesNorReferences()
+        public void Convert_ConflictingDestination_ConvertsAllWithoutReplacingExistingImages()
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField first = GetField(project);
@@ -277,13 +722,23 @@ namespace Rebellion.Tests.ContentEditor
             WriteLegacy(project, first, "Pack/Assets/first.png", new byte[] { 1 });
             WriteLegacy(project, second, "Pack/Assets/second.png", new byte[] { 2 });
 
-            Assert.Throws<IOException>(() => ContentEditorArtworkConversion.Convert(project));
+            ContentEditorArtworkConversion.Convert(project);
 
-            Assert.AreEqual("Pack/Assets/first.png", first.Value);
-            Assert.IsFalse(
-                File.Exists(
-                    Local(project, "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display.png")
-                )
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display",
+                first.Value
+            );
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Units/Starfighters/SFAL02/display-2",
+                second.Value
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Local(project, first.Value + ".png"))
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 2 },
+                File.ReadAllBytes(Local(project, second.Value + ".png"))
             );
             CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(target));
         }
@@ -326,7 +781,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
-        public void Convert_DifferentImageFormatOccupiesSlot_RejectsBeforeReplacingArtwork()
+        public void Convert_DifferentImageFormatOccupiesSlot_PreservesBothFormats()
         {
             ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField field = GetField(project);
@@ -338,8 +793,16 @@ namespace Rebellion.Tests.ContentEditor
             File.WriteAllBytes(target, new byte[] { 9 });
             WriteLegacy(project, field, "Pack/Assets/image.jpg", new byte[] { 1 });
 
-            Assert.Throws<IOException>(() => ContentEditorArtworkConversion.Convert(project));
+            ContentEditorArtworkConversion.Convert(project);
 
+            Assert.AreEqual(
+                "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display-2",
+                field.Value
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Local(project, field.Value + ".jpg"))
+            );
             CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(target));
         }
 
@@ -425,7 +888,7 @@ namespace Rebellion.Tests.ContentEditor
 
         [TestCase(".png", ".jpg")]
         [TestCase(".jpg", ".png")]
-        public void Convert_PendingHeadquartersFormats_RejectsConflictingImages(
+        public void Convert_PendingHeadquartersFormats_PreservesIndependentImages(
             string firstExtension,
             string secondExtension
         )
@@ -454,14 +917,17 @@ namespace Rebellion.Tests.ContentEditor
                 new byte[] { 2 }
             );
 
-            Assert.Throws<IOException>(() => ContentEditorArtworkConversion.Convert(project));
+            ContentEditorArtworkConversion.Convert(project);
 
-            Assert.AreEqual("Pack/Assets/first" + firstExtension, fields[0].Value);
-            Assert.AreEqual("Pack/Assets/second" + secondExtension, fields[1].Value);
-            Assert.IsFalse(File.Exists(Local(project, icon + firstExtension)));
-            Assert.IsFalse(File.Exists(Local(project, icon + secondExtension)));
-            Assert.IsFalse(
-                File.Exists(Path.Combine(project.PackRootPath, ContentArtworkAliases.FileName))
+            Assert.AreEqual(icon, fields[0].Value);
+            Assert.AreEqual(icon + "-2", fields[1].Value);
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Local(project, fields[0].Value + firstExtension))
+            );
+            CollectionAssert.AreEqual(
+                new byte[] { 2 },
+                File.ReadAllBytes(Local(project, fields[1].Value + secondExtension))
             );
         }
 

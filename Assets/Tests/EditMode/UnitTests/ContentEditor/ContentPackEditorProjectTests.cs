@@ -2,8 +2,10 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml;
 using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Factions;
@@ -17,6 +19,437 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [Test]
+        public void DiscardChanges_LaterAssetCannotBeRemoved_RollsBackEarlierRestoreAndAllowsRetry()
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+                Assert.Ignore(
+                    "This test uses Unix directory permissions to inject a file-operation failure."
+                );
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "import.png");
+            File.WriteAllBytes(source, new byte[] { 3 });
+            string imported = ContentPackEditorStorage.ImportAsset(project, source);
+            string copy = Path.Combine(project.PackRootPath, imported[5..]);
+            string directory = Path.GetDirectoryName(copy);
+            Assert.AreEqual(0, SetDirectoryPermissions(directory, 320));
+            try
+            {
+                string probe = Path.Combine(directory, "permission-probe");
+                try
+                {
+                    File.WriteAllText(probe, "probe");
+                    File.Delete(probe);
+                    Assert.Ignore(
+                        "The filesystem permits writes despite the directory permission change."
+                    );
+                }
+                catch (UnauthorizedAccessException) { }
+                Exception failure = Assert.Catch(project.DiscardChanges);
+                Assert.That(
+                    failure,
+                    Is.InstanceOf<IOException>().Or.InstanceOf<UnauthorizedAccessException>()
+                );
+                CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+                Assert.IsTrue(File.Exists(copy));
+                Assert.IsTrue(project.IsDirty);
+            }
+            finally
+            {
+                Assert.AreEqual(0, SetDirectoryPermissions(directory, 448));
+            }
+
+            project.DiscardChanges();
+
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(image));
+            Assert.IsFalse(File.Exists(copy));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void IsDirty_ArtworkUndoAcrossSave_TracksTheSavedBytes()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            Assert.IsTrue(project.IsDirty);
+
+            ContentPackEditorStorage.Save(project);
+
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsTrue(project.Undo());
+            Assert.IsTrue(project.IsDirty);
+            Assert.IsTrue(project.Redo());
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void DiscardChanges_ArtworkAndSettings_RestoresTheMostRecentSave()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 },
+                layerRecipe: "saved"
+            );
+            ContentPackEditorStorage.Save(project);
+            ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 3 },
+                layerRecipe: "unsaved"
+            );
+            project.SetField(field.Record.GetField("DisplayName"), "Unsaved name");
+
+            project.DiscardChanges();
+
+            Assert.IsFalse(project.IsDirty);
+            Assert.IsFalse(project.CanUndo);
+            Assert.AreEqual("Fighter", GetArtworkField(project).Record.Name);
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+            Assert.AreEqual("saved", File.ReadAllText(image + ".layers.json"));
+            project.Dispose();
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+        }
+
+        [Test]
+        public void DiscardChanges_UnsavedNewArtwork_RemovesItsFileAndAssignment()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 }
+            );
+            project.SetField(field, address);
+
+            project.DiscardChanges();
+
+            Assert.IsFalse(File.Exists(Path.Combine(project.PackRootPath, address[5..] + ".png")));
+            Assert.IsEmpty(GetArtworkField(project).Value);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(".png")]
+        [TestCase(".wav")]
+        public void DiscardChanges_UnsavedMediaImport_RemovesOnlyTheImportedCopy(string extension)
+        {
+            (ContentPackEditorProject project, ContentPackEditorField _) =
+                CreateSavedArtworkProject();
+            string source = Path.Combine(
+                Directory.GetParent(contentRoot).FullName,
+                "incoming" + extension
+            );
+            File.WriteAllBytes(source, new byte[] { 2 });
+            string address = ContentPackEditorStorage.ImportAsset(project, source);
+            Assert.IsTrue(project.IsDirty);
+
+            project.DiscardChanges();
+
+            Assert.IsFalse(File.Exists(Path.Combine(project.PackRootPath, address[5..])));
+            Assert.IsTrue(File.Exists(source));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void Dispose_UnsavedArtworkReplacement_RestoresSavedArtworkBeforeCleanup()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+
+            project.Dispose();
+
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(image));
+            Assert.IsEmpty(
+                Directory.GetDirectories(
+                    Path.Combine(project.PackRootPath, ".rebellion2-editor", "History")
+                )
+            );
+        }
+
+        [Test]
+        public void DiscardChanges_ExternallyChangedAsset_PreservesEveryCurrentFileAndRecoveryCopy()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            string otherAddress = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field.Record.GetField("SmallDisplayImagePath"),
+                new byte[] { 3 }
+            );
+            string otherImage = Path.Combine(project.PackRootPath, otherAddress[5..] + ".png");
+            File.WriteAllBytes(otherImage, new byte[] { 9 });
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            string[] snapshots = Directory.GetFiles(history, "*", SearchOption.AllDirectories);
+
+            Assert.Throws<IOException>(project.DiscardChanges);
+
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(otherImage));
+            CollectionAssert.AreEquivalent(
+                snapshots,
+                Directory.GetFiles(history, "*", SearchOption.AllDirectories)
+            );
+            Assert.IsTrue(project.IsDirty);
+            project.Dispose();
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+            CollectionAssert.AreEqual(new byte[] { 9 }, File.ReadAllBytes(otherImage));
+            CollectionAssert.AreEquivalent(
+                snapshots,
+                Directory.GetFiles(history, "*", SearchOption.AllDirectories)
+            );
+        }
+
+        [Test]
+        public void DiscardChanges_UndoAfterSave_RestoresSavedBytesRatherThanUndoneBytes()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            ContentPackEditorStorage.Save(project);
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(image));
+
+            project.DiscardChanges();
+
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(image));
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void Save_ExternallyChangedArtwork_RejectsSettingsAndAllowsRetryAfterConflictResolution()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string image = Path.Combine(project.PackRootPath, field.Value[5..] + ".png");
+            string savedText = File.ReadAllText(field.Document.TargetPath);
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            project.SetField(field.Record.GetField("DisplayName"), "Unsaved name");
+            File.WriteAllBytes(image, new byte[] { 9 });
+
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
+
+            Assert.AreEqual(savedText, File.ReadAllText(field.Document.TargetPath));
+            Assert.IsTrue(project.IsDirty);
+            File.WriteAllBytes(image, new byte[] { 2 });
+            project.DiscardChanges();
+            Assert.IsFalse(project.IsDirty);
+            CollectionAssert.AreEqual(new byte[] { 1 }, File.ReadAllBytes(image));
+        }
+
+        [Test]
+        public void DiscardChanges_FailedSave_RestoresThePreviousSuccessfulArtworkSave()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+            field.Document.SetText("<invalid");
+            Assert.Throws<XmlException>(() => ContentPackEditorStorage.Save(project));
+
+            project.DiscardChanges();
+
+            Assert.IsFalse(project.IsDirty);
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, field.Value[5..] + ".png"))
+            );
+        }
+
+        [Test]
+        public void Save_LaterDocumentWriteFails_RollsBackEarlierDocumentAndKeepsArtworkUnsaved()
+        {
+            WriteFixtureFile(
+                "Data/zz-regiments.xml",
+                "<Regiments><Regiment><TypeID>REG</TypeID><DisplayName>Saved regiment</DisplayName></Regiment></Regiments>"
+            );
+            UpdateBasePackDefinition(definition =>
+                definition.EncyclopediaEntriesPath = "Data/zz-regiments.xml"
+            );
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateSavedArtworkProject();
+            string savedText = File.ReadAllText(field.Document.TargetPath);
+            project.SetField(field.Record.GetField("DisplayName"), "Unsaved fighter");
+            ContentPackEditorRecord regiment = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/zz-regiments.xml")
+                .Records.Single();
+            project.SetField(regiment.GetField("DisplayName"), "Unsaved regiment");
+            Directory.CreateDirectory(regiment.Catalog.Document.TargetPath);
+            ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 });
+
+            Assert.Throws<IOException>(() => ContentPackEditorStorage.Save(project));
+
+            Assert.AreEqual(savedText, File.ReadAllText(field.Document.TargetPath));
+            Assert.IsTrue(project.IsDirty);
+            project.DiscardChanges();
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, field.Value[5..] + ".png"))
+            );
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Dispose_ArtworkUndoHistory_RemovesOnlyOwnedSnapshots(bool undoBeforeClosing)
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address;
+            using (project.BeginEdit("First artwork"))
+            {
+                address = ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    new byte[] { 1 },
+                    layerRecipe: "first"
+                );
+                project.SetField(field, address);
+            }
+            ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 },
+                layerRecipe: "second"
+            );
+            if (undoBeforeClosing)
+                Assert.IsTrue(project.Undo());
+            ContentPackEditorStorage.Save(project);
+            string image = Path.Combine(project.PackRootPath, address[5..] + ".png");
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            string session = Directory.GetDirectories(history).Single();
+            string legacy = Path.Combine(history, "previous-version-file");
+            string source = Path.Combine(
+                project.PackRootPath,
+                "Assets",
+                "ArtworkSources",
+                "keep.png"
+            );
+            string backup = Path.Combine(
+                project.PackRootPath,
+                ".rebellion2-editor",
+                "Backups",
+                "keep.xml"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(source));
+            Directory.CreateDirectory(Path.GetDirectoryName(backup));
+            File.WriteAllText(legacy, "unowned history");
+            File.WriteAllBytes(source, new byte[] { 3 });
+            File.WriteAllText(backup, "backup");
+            string document = field.Document.Text;
+            string recipe = File.ReadAllText(image + ".layers.json");
+
+            project.Dispose();
+
+            Assert.IsFalse(Directory.Exists(session));
+            CollectionAssert.AreEqual(
+                new byte[] { undoBeforeClosing ? (byte)1 : (byte)2 },
+                File.ReadAllBytes(image)
+            );
+            Assert.AreEqual(recipe, File.ReadAllText(image + ".layers.json"));
+            Assert.IsTrue(File.Exists(image + ".layers.hash"));
+            Assert.AreEqual(document, field.Document.Text);
+            Assert.IsTrue(File.Exists(source));
+            Assert.IsTrue(File.Exists(backup));
+            Assert.IsTrue(File.Exists(legacy));
+            Assert.IsFalse(project.CanUndo);
+            Assert.IsFalse(project.CanRedo);
+            Assert.DoesNotThrow(project.Dispose);
+        }
+
+        [Test]
+        public void Dispose_AnotherWorkspaceIsOpen_PreservesItsSnapshotsAndUndo()
+        {
+            (ContentPackEditorProject first, ContentPackEditorField field) = CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                first,
+                field,
+                new byte[] { 1 }
+            );
+            first.SetField(field, address);
+            ContentPackEditorStorage.Save(first);
+            using ContentPackEditorProject second = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                first.PackRootPath
+            );
+            ContentPackEditorField secondField = second
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single()
+                .GetField("SmallDisplayImagePath");
+            string secondAddress = ContentPackEditorStorage.WriteGeneratedPng(
+                second,
+                secondField,
+                new byte[] { 2 }
+            );
+            string secondImage = Path.Combine(second.PackRootPath, secondAddress[5..] + ".png");
+            string history = Path.Combine(first.PackRootPath, ".rebellion2-editor", "History");
+            Assert.AreEqual(2, Directory.GetDirectories(history).Length);
+
+            first.Dispose();
+
+            Assert.AreEqual(1, Directory.GetDirectories(history).Length);
+            Assert.IsTrue(second.CanUndo);
+            Assert.IsTrue(second.Undo());
+            Assert.IsFalse(File.Exists(secondImage));
+            Assert.IsTrue(second.Redo());
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(secondImage));
+            second.Dispose();
+            Assert.IsEmpty(Directory.GetDirectories(history));
+        }
+
+        [Test]
+        public void Dispose_DocumentOnlyEdits_DoesNotCreateAnArtworkCache()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            project.SetField(field.Record.GetField("DisplayName"), "Renamed fighter");
+
+            project.Dispose();
+
+            Assert.IsFalse(
+                Directory.Exists(
+                    Path.Combine(project.PackRootPath, ".rebellion2-editor", "History")
+                )
+            );
+        }
+
+        [Test]
+        public void Dispose_ClosedProject_RejectsFurtherArtworkWrites()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1 }
+            );
+            project.SetField(field, address);
+            ContentPackEditorStorage.Save(project);
+            project.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() =>
+                ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 })
+            );
+
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, address[5..] + ".png"))
+            );
+        }
+
         [TestCase("theme")]
         [TestCase("dictionary")]
         public void ResetFieldToInherited_OverlaySelector_RejectsResetWithoutChangingTheDocument(
@@ -1549,6 +1982,71 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Throws<ArgumentException>(() =>
                 project.ValidateField(ship.GetField("Hyperdrive"))
             );
+        }
+
+        /// <summary>
+        /// Sets Unix permissions on a fixture-owned directory to exercise real storage failures.
+        /// </summary>
+        /// <param name="path">The temporary fixture directory.</param>
+        /// <param name="mode">The Unix permission bits.</param>
+        /// <returns>Zero when the directory permissions were changed.</returns>
+        [DllImport("libc", EntryPoint = "chmod", SetLastError = true)]
+        private static extern int SetDirectoryPermissions(string path, uint mode);
+
+        /// <summary>
+        /// Creates a saved image baseline for file-only edits and save/discard checks.
+        /// </summary>
+        /// <returns>The saved working project and its display artwork field.</returns>
+        private (
+            ContentPackEditorProject Project,
+            ContentPackEditorField Field
+        ) CreateSavedArtworkProject()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1 },
+                layerRecipe: "first"
+            );
+            project.SetField(field, address);
+            ContentPackEditorStorage.Save(project);
+            return (project, field);
+        }
+
+        /// <summary>
+        /// Resolves the current field wrappers after undo or discard rebuilds the catalogs.
+        /// </summary>
+        /// <param name="project">The working starfighter fixture.</param>
+        /// <returns>The current display artwork field.</returns>
+        private static ContentPackEditorField GetArtworkField(ContentPackEditorProject project) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single()
+                .GetField("DisplayImagePath");
+
+        /// <summary>
+        /// Creates an inherited artwork record without requiring installed game media.
+        /// </summary>
+        /// <returns>The working project and its display artwork field.</returns>
+        private (
+            ContentPackEditorProject Project,
+            ContentPackEditorField Field
+        ) CreateArtworkProject()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID><DisplayName>Fighter</DisplayName><DisplayImagePath/><SmallDisplayImagePath/></Starfighter></Starfighters>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single()
+                .GetField("DisplayImagePath");
+            return (project, field);
         }
 
         /// <summary>
