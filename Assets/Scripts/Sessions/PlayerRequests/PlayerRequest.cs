@@ -4,7 +4,6 @@ using Rebellion.Game.Research;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Tactical;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.PlayerRequests

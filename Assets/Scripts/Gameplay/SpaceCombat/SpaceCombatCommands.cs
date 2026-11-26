@@ -1566,6 +1566,7 @@ namespace Rebellion.Gameplay
         /// <param name="fleets">The participating fleets.</param>
         /// <param name="planet">The combat planet.</param>
         /// <param name="ownerInstanceId">The owner of planetary starfighters to include.</param>
+        /// <param name="battleCopies">Detached participants already owned by the tactical battle.</param>
         /// <returns>The detached unit snapshots for the force.</returns>
         private static List<CombatUnitSnapshot> CaptureCombatUnits(
             IReadOnlyList<Fleet> fleets,

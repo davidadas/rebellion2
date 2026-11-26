@@ -752,10 +752,9 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Calculates the strategic retreat threshold for a defended friendly system.
         /// </summary>
-        /// <param name="fleets">Both sides' participating fleets.</param>
         /// <param name="side">The side being assessed.</param>
+        /// <param name="opposingSide">The opposing side whose fleets supply the comparison.</param>
         /// <param name="planet">The battle system.</param>
-        /// <param name="ownerID">The assessed faction identifier.</param>
         /// <returns>The strategic controller's threshold, bounded above by nine tenths.</returns>
         private float GetRetreatRatio(EncounterSide side, EncounterSide opposingSide, Planet planet)
         {

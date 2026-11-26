@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using Rebellion.Game.Combat;
 using Rebellion.Util.Serialization;
 
@@ -20,6 +21,7 @@ namespace Rebellion.Game.Units
         // Older saves and battle outcomes carried a separate component timer.
         [PersistableMember(Name = "RepairDueTick")]
         [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int LegacyRepairDueTick
         {
             get => 0;
@@ -28,6 +30,7 @@ namespace Rebellion.Game.Units
 
         [PersistableMember(Name = "RepairInterval")]
         [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int LegacyRepairInterval
         {
             get => 0;

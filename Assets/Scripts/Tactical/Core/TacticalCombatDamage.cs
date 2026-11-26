@@ -221,6 +221,7 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Selects a damaged component after a successful damage-control roll.
         /// </summary>
+        /// <param name="unit">The battle unit undergoing repairs.</param>
         /// <param name="random">The battle's random-number stream.</param>
         private void RequestComponentRepair(CombatUnit unit, IRandomNumberProvider random)
         {

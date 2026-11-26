@@ -1,7 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.ShipComponents;
@@ -96,6 +96,7 @@ namespace Rebellion.Game.Units
         private int _maxShieldStrength;
 
         [PersistableMember(Name = nameof(MaxShieldStrength))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyMaxShieldStrength
         {
             get => ShieldGenerator == null ? _maxShieldStrength : null;
@@ -105,6 +106,7 @@ namespace Rebellion.Game.Units
         private int _shieldRechargeRate;
 
         [PersistableMember(Name = nameof(ShieldRechargeRate))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyShieldRechargeRate
         {
             get => ShieldGenerator == null ? _shieldRechargeRate : null;
@@ -115,6 +117,7 @@ namespace Rebellion.Game.Units
         private int _hyperdrive;
 
         [PersistableMember(Name = nameof(Hyperdrive))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyHyperdrive
         {
             get => PrimaryDrive == null ? _hyperdrive : null;
@@ -137,6 +140,7 @@ namespace Rebellion.Game.Units
         private int? _backupHyperdrive;
 
         [PersistableMember(Name = nameof(BackupHyperdrive))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyBackupHyperdrive
         {
             get => BackupDrive == null ? _backupHyperdrive : null;
@@ -146,6 +150,7 @@ namespace Rebellion.Game.Units
         private int _sublightSpeed;
 
         [PersistableMember(Name = nameof(SublightSpeed))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacySublightSpeed
         {
             get => Engine == null ? _sublightSpeed : null;
@@ -155,6 +160,7 @@ namespace Rebellion.Game.Units
         private int _maneuverability;
 
         [PersistableMember(Name = nameof(Maneuverability))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyManeuverability
         {
             get => Engine == null ? _maneuverability : null;
@@ -165,6 +171,7 @@ namespace Rebellion.Game.Units
         private int _starfighterCapacity;
 
         [PersistableMember(Name = nameof(StarfighterCapacity))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private int? LegacyStarfighterCapacity
         {
             get => StarfighterBay == null ? _starfighterCapacity : null;
@@ -202,6 +209,7 @@ namespace Rebellion.Game.Units
         };
 
         [PersistableMember(Name = nameof(PrimaryWeapons))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private Dictionary<PrimaryWeaponType, int[]> LegacyPrimaryWeapons
         {
             get => HardpointGroups is { Count: > 0 } ? null : _primaryWeapons;
@@ -249,6 +257,7 @@ namespace Rebellion.Game.Units
         private bool _hasGravityWell;
 
         [PersistableMember(Name = nameof(HasGravityWell))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private bool? LegacyHasGravityWell
         {
             get => GravityWellGenerator == null ? _hasGravityWell : null;

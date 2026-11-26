@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Results;
@@ -81,6 +82,7 @@ namespace Rebellion.Game.Combat
         // Older active-battle XML stored the rechargeable state in its own element.
         [PersistableMember(Name = "Weapons")]
         [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private LegacyBattleWeapons LegacyWeapons
         {
             get => null;
@@ -109,6 +111,7 @@ namespace Rebellion.Game.Combat
 
         [PersistableMember(Name = "Systems")]
         [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private LegacyBattleSystems LegacySystems
         {
             get => null;

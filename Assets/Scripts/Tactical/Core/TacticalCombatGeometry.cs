@@ -1,6 +1,5 @@
 using System;
 using System.Numerics;
-using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -26,6 +27,7 @@ namespace Rebellion.Game.Combat
         // Older XML grouped combatants by owner.
         [PersistableMember(Name = "Participants")]
         [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
         private List<LegacyBattleParticipant> LegacyParticipants
         {
             get => null;

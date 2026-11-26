@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Combat;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.ShipComponents
