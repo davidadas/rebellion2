@@ -193,6 +193,8 @@ namespace Rebellion.Gameplay
             {
                 Kind = BattleKind.Space,
                 PlanetInstanceID = planet.InstanceID,
+                AttackerOwnerInstanceID = decision.AttackerOwnerInstanceID,
+                DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
             };
             IReadOnlyList<Fleet>[] fleets =
             {

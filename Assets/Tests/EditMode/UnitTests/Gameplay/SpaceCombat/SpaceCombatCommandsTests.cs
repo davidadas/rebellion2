@@ -4401,6 +4401,18 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
             Assert.IsTrue(attacker.GetParentOfType<Fleet>().IsInCombat);
             Assert.IsNotNull(game.ActiveBattle);
+            Assert.AreEqual(
+                battle
+                    .Units.Single(unit => unit.Side == CombatSide.Attacker)
+                    .Combatant.Unit.OwnerInstanceID,
+                game.ActiveBattle.AttackerOwnerInstanceID
+            );
+            Assert.AreEqual(
+                battle
+                    .Units.Single(unit => unit.Side == CombatSide.Defender)
+                    .Combatant.Unit.OwnerInstanceID,
+                game.ActiveBattle.DefenderOwnerInstanceID
+            );
             Assert.AreNotSame(attacker, game.ActiveBattle.GetCombatant(attacker.InstanceID).Unit);
         }
 

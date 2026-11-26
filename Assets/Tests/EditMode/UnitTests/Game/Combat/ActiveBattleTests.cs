@@ -24,29 +24,30 @@ namespace Rebellion.Tests.Game.Combat
 
             CombatUnit combatant = battle.AddCombatant(source);
 
-            Assert.AreEqual("faction", battle.Participants.Single().FactionInstanceID);
-            Assert.AreSame(combatant, battle.Participants.Single().Combatants.Single());
+            Assert.AreEqual("faction", combatant.Unit.OwnerInstanceID);
+            Assert.AreSame(combatant, battle.Combatants.Single());
             Assert.AreNotSame(source, combatant.Unit);
             ((CapitalShip)combatant.Unit).CurrentHullStrength = 10;
             Assert.AreEqual(75, source.CurrentHullStrength);
         }
 
         [Test]
-        public void AddCombatant_DifferentOwners_CreateSeparateParticipants()
+        public void AddCombatant_DifferentOwners_KeepCombatantsInEntryOrder()
         {
             ActiveBattle battle = CreateBattle();
 
             battle.AddCombatant(new CapitalShip { OwnerInstanceID = "first" });
             battle.AddCombatant(new CapitalShip { OwnerInstanceID = "second" });
+            battle.AddCombatant(new CapitalShip { OwnerInstanceID = "first" });
 
-            CollectionAssert.AreEquivalent(
-                new[] { "first", "second" },
-                battle.Participants.Select(participant => participant.FactionInstanceID)
+            CollectionAssert.AreEqual(
+                new[] { "first", "second", "first" },
+                battle.Combatants.Select(combatant => combatant.Unit.OwnerInstanceID)
             );
         }
 
         [Test]
-        public void AddCombatant_DestroyedSquadron_DoesNotCreateParticipant()
+        public void AddCombatant_DestroyedSquadron_DoesNotAddCombatant()
         {
             ActiveBattle battle = CreateBattle();
 
@@ -55,18 +56,18 @@ namespace Rebellion.Tests.Game.Combat
             );
 
             Assert.IsNull(combatant);
-            Assert.IsEmpty(battle.Participants);
+            Assert.IsEmpty(battle.Combatants);
         }
 
         [Test]
-        public void AddCombatant_UnsupportedUnit_ThrowsBeforeCreatingParticipant()
+        public void AddCombatant_UnsupportedUnit_ThrowsBeforeAddingCombatant()
         {
             ActiveBattle battle = CreateBattle();
 
             Assert.Throws<ArgumentException>(() =>
                 battle.AddCombatant(new Regiment { OwnerInstanceID = "faction" })
             );
-            Assert.IsEmpty(battle.Participants);
+            Assert.IsEmpty(battle.Combatants);
         }
 
         [Test]
@@ -93,9 +94,10 @@ namespace Rebellion.Tests.Game.Combat
                 }
             );
 
-            ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(
-                SerializationHelper.Serialize(battle)
-            );
+            string xml = SerializationHelper.Serialize(battle);
+            Assert.That(xml, Does.Contain("<Combatants>").And.Not.Contain("<Participants>"));
+
+            ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
             CombatUnit restoredCombatant = restored.GetCombatant("ship");
 
             Assert.IsNotNull(restoredCombatant);
@@ -104,7 +106,33 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void GameRootSerialization_ActiveBattle_RoundTripsForResume()
+        public void Deserialize_ActiveBattleWithParticipants_RestoresFlatCombatants()
+        {
+            const string xml =
+                @"<ActiveBattle>
+                  <Participants>
+                    <BattleParticipant>
+                      <Combatants>
+                        <CombatUnit>
+                          <CapitalShip>
+                            <OwnerInstanceID>first</OwnerInstanceID>
+                          </CapitalShip>
+                          <SourceUnitInstanceID>ship</SourceUnitInstanceID>
+                        </CombatUnit>
+                      </Combatants>
+                      <FactionInstanceID>first</FactionInstanceID>
+                    </BattleParticipant>
+                  </Participants>
+                  <Kind>Space</Kind>
+                </ActiveBattle>";
+
+            ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
+
+            Assert.AreEqual("first", restored.GetCombatant("ship").Unit.OwnerInstanceID);
+        }
+
+        [Test]
+        public void GameRootSerialization_ActiveBattle_RoundTripsLocationAndSides()
         {
             GameRoot game = new GameRoot
             {
@@ -112,6 +140,8 @@ namespace Rebellion.Tests.Game.Combat
                 {
                     Kind = BattleKind.Space,
                     PlanetInstanceID = "planet",
+                    AttackerOwnerInstanceID = "attacker",
+                    DefenderOwnerInstanceID = "defender",
                 },
             };
 
@@ -122,6 +152,8 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsNotNull(restored.ActiveBattle);
             Assert.AreEqual("planet", restored.ActiveBattle.PlanetInstanceID);
             Assert.AreEqual(BattleKind.Space, restored.ActiveBattle.Kind);
+            Assert.AreEqual("attacker", restored.ActiveBattle.AttackerOwnerInstanceID);
+            Assert.AreEqual("defender", restored.ActiveBattle.DefenderOwnerInstanceID);
         }
 
         /// <summary>

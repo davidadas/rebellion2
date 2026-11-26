@@ -7,43 +7,44 @@ using Rebellion.Util.Serialization;
 namespace Rebellion.Game.Combat
 {
     /// <summary>
-    /// Stores one faction's units participating in an active battle.
-    /// </summary>
-    [PersistableObject]
-    public sealed class BattleParticipant
-    {
-        [PersistableMember(Name = nameof(Combatants))]
-        private List<CombatUnit> _combatants = new List<CombatUnit>();
-
-        public string FactionInstanceID { get; set; }
-
-        [PersistableIgnore]
-        public IReadOnlyList<CombatUnit> Combatants => _combatants;
-
-        /// <summary>
-        /// Adds a detached combat unit to this participant.
-        /// </summary>
-        /// <param name="combatant">The combat unit to add.</param>
-        internal void AddCombatant(CombatUnit combatant) => _combatants.Add(combatant);
-    }
-
-    /// <summary>
     /// Persistent state for a battle that can continue independently of the campaign scene graph.
     /// </summary>
     [PersistableObject]
     public sealed class ActiveBattle
     {
-        [PersistableMember(Name = nameof(Participants))]
-        private List<BattleParticipant> _participants = new List<BattleParticipant>();
+        [PersistableMember(Name = nameof(Combatants))]
+        private List<CombatUnit> _combatants = new List<CombatUnit>();
 
         public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
+        public string AttackerOwnerInstanceID { get; set; }
+        public string DefenderOwnerInstanceID { get; set; }
 
         [PersistableIgnore]
-        public IReadOnlyList<BattleParticipant> Participants => _participants;
+        public IReadOnlyList<CombatUnit> Combatants => _combatants;
+
+        // Older XML grouped combatants by owner.
+        [PersistableMember(Name = "Participants")]
+        [PersistableIgnore]
+        private List<LegacyBattleParticipant> LegacyParticipants
+        {
+            get => null;
+            set
+            {
+                foreach (LegacyBattleParticipant participant in value)
+                    _combatants.AddRange(participant.Combatants);
+            }
+        }
+
+        [PersistableObject(Name = "BattleParticipant")]
+        private sealed class LegacyBattleParticipant
+        {
+            public List<CombatUnit> Combatants { get; set; } = new List<CombatUnit>();
+            public string FactionInstanceID { get; set; }
+        }
 
         /// <summary>
-        /// Adds an independently mutable copy of a strategic unit under its current owner.
+        /// Adds an independently mutable copy of a strategic unit.
         /// </summary>
         /// <param name="sourceUnit">The campaign unit entering battle.</param>
         /// <returns>The detached combat unit, or null for a destroyed squadron.</returns>
@@ -68,20 +69,8 @@ namespace Rebellion.Game.Combat
             if (sourceUnit is Starfighter { CurrentSquadronSize: <= 0 })
                 return null;
 
-            BattleParticipant participant = _participants.Find(candidate =>
-                candidate.FactionInstanceID == sourceUnit.OwnerInstanceID
-            );
-            if (participant == null)
-            {
-                participant = new BattleParticipant
-                {
-                    FactionInstanceID = sourceUnit.OwnerInstanceID,
-                };
-                _participants.Add(participant);
-            }
-
             CombatUnit combatant = CombatUnit.Create(sourceUnit);
-            participant.AddCombatant(combatant);
+            _combatants.Add(combatant);
             return combatant;
         }
 
@@ -94,8 +83,7 @@ namespace Rebellion.Game.Combat
         {
             if (string.IsNullOrEmpty(sourceUnitInstanceID))
                 return null;
-            foreach (BattleParticipant participant in _participants)
-            foreach (CombatUnit combatant in participant.Combatants)
+            foreach (CombatUnit combatant in _combatants)
                 if (
                     string.Equals(
                         combatant.SourceUnitInstanceID,
