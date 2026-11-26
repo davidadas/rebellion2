@@ -57,6 +57,7 @@ namespace Rebellion.Tactical
         private readonly TacticalCombatMotion _motion = new();
         private readonly TacticalCombatSide[] _sides;
         private readonly TacticalCombatTargeting _targeting;
+        private readonly Action<TacticalCombatSound> _queueCombatSound;
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
         private TacticalCombatScheduler _scheduler;
@@ -272,6 +273,7 @@ namespace Rebellion.Tactical
                 ?? throw new InvalidOperationException(
                     "The encounter requires a notification service."
                 );
+            _queueCombatSound = Audio.Enqueue;
             Units = this._units.AsReadOnly();
             Groups = this._groups.AsReadOnly();
             if (personnelHostInstanceIDs != null)
@@ -310,7 +312,6 @@ namespace Rebellion.Tactical
                 unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
                 unit.TurnRate = unit.GetInitialTurnRate();
                 unit.SystemEventRequested += change => QueueSystemChange(unit, change);
-                unit.SoundRequested += Audio.Enqueue;
                 unit.LethalHit += attackerID => ReportDestruction(unit, attackerID);
                 unit.ImpactRequested += (weapon, impact) =>
                     ImpactApplied?.Invoke(unit, weapon, impact);

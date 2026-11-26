@@ -168,4 +168,53 @@ namespace Rebellion.Content
             unit.InitializeTacticalState(side, index);
         }
     }
+
+    /// <summary>
+    /// Associates one semantic tactical image with a private content address.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalCombatHudImage
+    {
+        public string Key { get; set; }
+        public string Path { get; set; }
+    }
+
+    /// <summary>
+    /// Addresses the ordered playback variants for one tactical notification and optional faction.
+    /// An empty variant path records a resource that is unavailable in that faction's sound bank.
+    /// </summary>
+    [PersistableObject]
+    public sealed class TacticalCombatNotificationDefinition
+    {
+        public int MessageID { get; set; }
+        public string FactionInstanceID { get; set; }
+        public List<TacticalCombatSoundClip> Variants { get; set; } = new();
+    }
+
+    /// <summary>
+    /// Identifies a combat sound requested by a weapon, impact, or unit transition.
+    /// </summary>
+    public enum TacticalCombatSound
+    {
+        CapitalLaser,
+        HeavyWeapon,
+        CapitalIon,
+        AllianceFighterLaser,
+        EmpireFighterLaser,
+        FighterIon,
+        TractorEngaged,
+        TractorReleased,
+        TargetLocked,
+        SmallExplosion,
+        MediumExplosion,
+        LargeExplosion,
+        HeavyShieldHit,
+        LaserShieldHit,
+        IonShieldHit,
+        HeavyHullHit,
+        LaserHullHit,
+        IonHullHit,
+        Superlaser,
+        FighterLaunch,
+    }
 }

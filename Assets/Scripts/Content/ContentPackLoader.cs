@@ -645,13 +645,11 @@ public static class ContentPackLoader
                 pack.OfficerTraitsPath,
                 "OfficerTraits"
             );
-        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(
-            pack.TacticalCombatDefinitionsPath
-        )
+        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(pack.TacticalCombatPath)
             ? null
             : DeserializeGameData<TacticalCombatDefinition>(
                 fileResolver,
-                pack.TacticalCombatDefinitionsPath,
+                pack.TacticalCombatPath,
                 "TacticalCombatDefinition"
             );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(

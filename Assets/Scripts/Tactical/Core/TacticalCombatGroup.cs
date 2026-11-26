@@ -3,9 +3,29 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {
+    /// <summary>
+    /// Identifies the behavior assigned to a tactical group.
+    /// </summary>
+    public enum TacticalCombatOrder
+    {
+        None,
+        HoldFire,
+        Recover,
+        Withdraw,
+        AttackFighters,
+        AttackCapitalShips,
+        AttackBattleStation,
+        LeftHook,
+        RightHook,
+        Hammer,
+        Anvil,
+        Stop,
+    }
+
     /// <summary>
     /// Distinguishes general command groups from deployed fighter categories.
     /// </summary>

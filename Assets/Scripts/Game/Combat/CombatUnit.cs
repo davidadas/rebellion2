@@ -348,6 +348,7 @@ namespace Rebellion.Game.Combat
         {
             BaseSceneNode battleUnit = Unit;
             CapitalShip ship = battleUnit as CapitalShip;
+            ship?.InstallLegacyEquipment();
             Starfighter fighter = battleUnit as Starfighter;
             bool isFighter = fighter != null;
             bool isBattleStation = ship?.CanDestroyPlanets == true;
@@ -505,8 +506,10 @@ namespace Rebellion.Game.Combat
             HardpointGroup[] groups = new HardpointGroup[4];
             if (Unit is CapitalShip ship)
             {
-                ship.InstallLegacyEquipment();
-                foreach (HardpointGroup group in ship.HardpointGroups)
+                IReadOnlyList<HardpointGroup> hardpoints = ship.HardpointGroups is { Count: > 0 }
+                    ? ship.HardpointGroups
+                    : ship.CaptureLegacyHardpoints();
+                foreach (HardpointGroup group in hardpoints)
                 {
                     int index = (int)group.Arc;
                     if (index < 0 || index >= groups.Length || groups[index] != null)
@@ -737,7 +740,6 @@ namespace Rebellion.Game.Combat
         public bool HasHyperdrive => GetDamage(TacticalShipSystem.Hyperdrive) < _hyperdriveCount;
         public double HullFraction => (double)Hull / MaximumHull;
         public event Action<TacticalSystemEvent> SystemEventRequested;
-        public event Action<TacticalCombatSound> SoundRequested;
 
         /// <summary>
         /// Reports a lethal weapon impact while its resulting hull value is still stored.
@@ -1128,8 +1130,6 @@ namespace Rebellion.Game.Combat
 
         internal float DamageControl => _damageControl;
         internal uint DamageEventCount => _damageEventCount;
-
-        internal void NotifySound(TacticalCombatSound sound) => SoundRequested?.Invoke(sound);
 
         internal void NotifyImpact(TacticalWeaponType weapon, TacticalCombatImpactKind impact) =>
             ImpactRequested?.Invoke(weapon, impact);

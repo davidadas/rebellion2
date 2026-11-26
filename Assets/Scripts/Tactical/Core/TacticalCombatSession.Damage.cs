@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
@@ -115,7 +116,7 @@ namespace Rebellion.Tactical
         {
             if (!IsActiveDisplayObject(unit) || !(unit.Hull > 0))
                 return;
-            Audio.Enqueue(unit.GetExplosionSound());
+            Audio.Enqueue(TacticalCombatAudio.GetExplosionSound(unit));
             DestructionEffectRequested?.Invoke(unit);
             Destroy(unit);
         }

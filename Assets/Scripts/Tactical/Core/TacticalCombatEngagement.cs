@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {

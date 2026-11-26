@@ -1,4 +1,5 @@
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {

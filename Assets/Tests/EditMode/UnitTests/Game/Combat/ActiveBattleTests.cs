@@ -222,6 +222,14 @@ namespace Rebellion.Tests.Game.Combat
                         }
                     );
             source.HardpointGroups.Add(group);
+            Assert.AreEqual(
+                18,
+                source.GetPrimaryWeaponStrength(
+                    PrimaryWeaponType.LaserCannon,
+                    PrimaryWeaponArc.Starboard
+                )
+            );
+            Assert.AreEqual(200, source.GetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon));
             CombatUnit unit = game.ActiveBattle.AddCombatant(source);
             unit.InitializeTacticalState(CombatSide.Attacker, 1);
             unit.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);

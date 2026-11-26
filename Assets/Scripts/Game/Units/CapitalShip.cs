@@ -50,6 +50,9 @@ namespace Rebellion.Game.Units
 
         public static int PrimaryWeaponRangeIndex => PrimaryWeaponArcs.Count;
 
+        private static readonly IReadOnlyList<PrimaryWeaponType> _primaryWeaponTypes =
+            Array.AsReadOnly((PrimaryWeaponType[])Enum.GetValues(typeof(PrimaryWeaponType)));
+
         [PersistableMember(Name = "HasAssignedName")]
         private bool _hasAssignedName;
 
@@ -430,7 +433,7 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons
         {
-            get => HardpointGroups is { Count: > 0 } ? CapturePrimaryWeapons() : _primaryWeapons;
+            get => _primaryWeapons;
             set
             {
                 _primaryWeapons = value;
@@ -478,13 +481,13 @@ namespace Rebellion.Game.Units
                 HardpointGroups = CaptureLegacyHardpoints();
         }
 
-        private List<HardpointGroup> CaptureLegacyHardpoints()
+        internal List<HardpointGroup> CaptureLegacyHardpoints()
         {
             List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
             foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
             {
                 HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
-                foreach (KeyValuePair<PrimaryWeaponType, int[]> entry in _primaryWeapons)
+                foreach (PrimaryWeaponType weapon in _primaryWeaponTypes)
                 {
                     group
                         .GetHardpoints()
@@ -493,9 +496,9 @@ namespace Rebellion.Game.Units
                             {
                                 Weapon = new WeaponData
                                 {
-                                    WeaponType = GetHardpointWeaponType(entry.Key),
-                                    Damage = entry.Value[(int)arc],
-                                    Range = entry.Value[PrimaryWeaponRangeIndex],
+                                    WeaponType = GetHardpointWeaponType(weapon),
+                                    Damage = GetLegacyWeaponValue(weapon, (int)arc),
+                                    Range = GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex),
                                 },
                             }
                         );
@@ -505,31 +508,43 @@ namespace Rebellion.Game.Units
             return groups;
         }
 
-        private Dictionary<PrimaryWeaponType, int[]> CapturePrimaryWeapons()
+        internal IEnumerable<PrimaryWeaponType> GetPrimaryWeaponTypes() =>
+            HardpointGroups is { Count: > 0 } ? _primaryWeaponTypes : _primaryWeapons.Keys;
+
+        public int GetPrimaryWeaponStrength(PrimaryWeaponType weapon, PrimaryWeaponArc arc)
         {
-            Dictionary<PrimaryWeaponType, int[]> weapons = new();
-            foreach (PrimaryWeaponType type in Enum.GetValues(typeof(PrimaryWeaponType)))
-            {
-                HardpointWeaponType weapon = GetHardpointWeaponType(type);
-                int[] values = new int[PrimaryWeaponRangeIndex + 1];
-                foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
-                {
-                    TacticalWeaponArc batteryArc = GetBatteryArc(arc);
-                    foreach (HardpointGroup group in HardpointGroups)
-                    {
-                        if (group.Arc != batteryArc)
-                            continue;
-                        values[(int)arc] += group.GetStrength(weapon);
-                        values[PrimaryWeaponRangeIndex] = Math.Max(
-                            values[PrimaryWeaponRangeIndex],
-                            (int)group.GetRange(weapon)
-                        );
-                    }
-                }
-                weapons.Add(type, values);
-            }
-            return weapons;
+            if (HardpointGroups is not { Count: > 0 })
+                return GetLegacyWeaponValue(weapon, (int)arc);
+
+            TacticalWeaponArc batteryArc = GetBatteryArc(arc);
+            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
+            int strength = 0;
+            foreach (HardpointGroup group in HardpointGroups)
+                if (group.Arc == batteryArc)
+                    strength += group.GetStrength(mountWeapon);
+            return strength;
         }
+
+        internal int GetPrimaryWeaponRange(PrimaryWeaponType weapon)
+        {
+            if (HardpointGroups is not { Count: > 0 })
+                return GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex);
+
+            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
+            int range = 0;
+            foreach (HardpointGroup group in HardpointGroups)
+                range = Math.Max(range, (int)group.GetRange(mountWeapon));
+            return range;
+        }
+
+        private int GetLegacyWeaponValue(PrimaryWeaponType weapon, int index) =>
+            _primaryWeapons != null
+            && _primaryWeapons.TryGetValue(weapon, out int[] values)
+            && values != null
+            && index >= 0
+            && index < values.Length
+                ? values[index]
+                : 0;
 
         [PersistableIgnore]
         public int WeaponRecharge
@@ -793,29 +808,14 @@ namespace Rebellion.Game.Units
         /// Returns the ship's total primary weapon strength.
         /// </summary>
         /// <returns>The summed primary weapon strength.</returns>
-        public int GetPrimaryWeaponStrength()
-        {
-            return PrimaryWeapons.Values.Sum(GetWeaponStrength);
-        }
+        public int GetPrimaryWeaponStrength() =>
+            GetPrimaryWeaponTypes().Sum(weapon => GetPrimaryWeaponStrength(weapon));
 
-        /// <summary>
-        /// Returns primary weapon strength from weapon values.
-        /// </summary>
-        /// <param name="weaponValues">The weapon values to inspect.</param>
-        /// <returns>The summed weapon strength.</returns>
-        private static int GetWeaponStrength(int[] weaponValues)
+        internal int GetPrimaryWeaponStrength(PrimaryWeaponType weapon)
         {
-            if (weaponValues == null)
-                return 0;
-
             int strength = 0;
-            foreach (PrimaryWeaponArc weaponArc in PrimaryWeaponArcs)
-            {
-                int weaponArcIndex = (int)weaponArc;
-                if (weaponArcIndex < weaponValues.Length)
-                    strength += weaponValues[weaponArcIndex];
-            }
-
+            foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
+                strength += GetPrimaryWeaponStrength(weapon, arc);
             return strength;
         }
 

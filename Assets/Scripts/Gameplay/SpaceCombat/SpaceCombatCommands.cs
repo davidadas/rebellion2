@@ -1378,15 +1378,15 @@ namespace Rebellion.Gameplay
                 StringComparer.Ordinal
             );
             _tacticalAttackingUnits = CaptureCombatUnits(
-                roster.Fleets[0],
+                roster.Attacker.Fleets,
                 roster.Planet,
-                roster.Owners[0],
+                roster.Attacker.OwnerID,
                 battleCopies
             );
             _tacticalDefendingUnits = CaptureCombatUnits(
-                roster.Fleets[1],
+                roster.Defender.Fleets,
                 roster.Planet,
-                roster.Owners[1],
+                roster.Defender.OwnerID,
                 battleCopies
             );
         }

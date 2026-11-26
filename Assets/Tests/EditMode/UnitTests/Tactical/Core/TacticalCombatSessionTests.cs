@@ -6,6 +6,7 @@ using NUnit.Framework;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -724,7 +725,8 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 new SystemRandomProvider(1),
-                attacker.InstanceID
+                attacker.InstanceID,
+                session.Audio.Enqueue
             );
 
             CollectionAssert.AreEqual(new[] { "17", reportID.ToString(), "9" }, output);

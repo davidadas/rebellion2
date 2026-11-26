@@ -268,15 +268,8 @@ namespace Rebellion.Gameplay
         /// <param name="weapon">The weapon category.</param>
         /// <param name="arc">The firing arc.</param>
         /// <returns>The nonnegative weapon count.</returns>
-        private static int GetWeaponCount(CapitalShip ship, PrimaryWeaponType weapon, int arc)
-        {
-            return
-                ship.PrimaryWeapons.TryGetValue(weapon, out int[] counts)
-                && counts != null
-                && arc < counts.Length
-                ? Math.Max(counts[arc], 0)
-                : 0;
-        }
+        private static int GetWeaponCount(CapitalShip ship, PrimaryWeaponType weapon, int arc) =>
+            Math.Max(ship.GetPrimaryWeaponStrength(weapon, (PrimaryWeaponArc)arc), 0);
 
         /// <summary>
         /// Reads the nonnegative range of one capital-ship weapon category.
@@ -284,15 +277,7 @@ namespace Rebellion.Gameplay
         /// <param name="ship">The firing ship.</param>
         /// <param name="weapon">The weapon category.</param>
         /// <returns>The category's configured range.</returns>
-        private static int GetWeaponRange(CapitalShip ship, PrimaryWeaponType weapon)
-        {
-            int rangeIndex = CapitalShip.PrimaryWeaponRangeIndex;
-            return
-                ship.PrimaryWeapons.TryGetValue(weapon, out int[] counts)
-                && counts != null
-                && rangeIndex < counts.Length
-                ? Math.Max(counts[rangeIndex], 0)
-                : 0;
-        }
+        private static int GetWeaponRange(CapitalShip ship, PrimaryWeaponType weapon) =>
+            Math.Max(ship.GetPrimaryWeaponRange(weapon), 0);
     }
 }

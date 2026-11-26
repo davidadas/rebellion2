@@ -45,7 +45,6 @@ namespace Rebellion.Tests.Tactical
             );
             SystemRandomProvider random = new(42);
             List<string> events = new();
-            systems.SoundRequested += _ => events.Add("sound");
             systems.LethalHit += _ => events.Add("report");
             systems.ImpactRequested += (_, _) => events.Add("impact");
             systems.SystemEventRequested += _ => events.Add("component");
@@ -56,7 +55,8 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 random,
-                "attacker"
+                "attacker",
+                playSound: _ => events.Add("sound")
             );
 
             Assert.AreEqual(TacticalCombatImpactKind.None, impact);
@@ -107,7 +107,6 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.SoundRequested += sound => events.Add(sound.ToString());
             systems.LethalHit += attackerID =>
             {
                 Assert.AreEqual("attacker", attackerID);
@@ -128,7 +127,8 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 new SequenceRandom(),
-                "attacker"
+                "attacker",
+                playSound: sound => events.Add(sound.ToString())
             );
 
             Assert.AreEqual(TacticalCombatImpactKind.Destroyed, result);
@@ -883,7 +883,6 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.SoundRequested += _ => events.Add("sound");
             systems.ImpactRequested += (kind, impact) =>
             {
                 Assert.AreEqual(weapon, kind);
@@ -897,7 +896,8 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 new SequenceRandom(weapon == TacticalWeaponType.IonCannon ? 3 : 99),
-                null
+                null,
+                playSound: _ => events.Add("sound")
             );
             CollectionAssert.AreEqual(new[] { "sound", "effect", "component" }, events);
         }
@@ -912,7 +912,6 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<string> events = new();
-            systems.SoundRequested += _ => events.Add("sound");
             systems.SystemEventRequested += _ => events.Add("component");
             systems.ImpactRequested += (kind, impact) =>
             {
@@ -921,7 +920,15 @@ namespace Rebellion.Tests.Tactical
                 events.Add("effect");
             };
 
-            systems.ApplyHit(weapon, 1, 1, 1, new SequenceRandom(0), null);
+            systems.ApplyHit(
+                weapon,
+                1,
+                1,
+                1,
+                new SequenceRandom(0),
+                null,
+                playSound: _ => events.Add("sound")
+            );
 
             CollectionAssert.AreEqual(new[] { "sound", "component", "effect" }, events);
         }
@@ -932,7 +939,6 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, hull, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.SoundRequested += _ => events.Add("sound");
             systems.LethalHit += _ => events.Add("report");
             systems.ImpactRequested += (_, _) => events.Add("effect");
 
@@ -942,7 +948,8 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 new SequenceRandom(),
-                "attacker"
+                "attacker",
+                playSound: _ => events.Add("sound")
             );
 
             Assert.AreEqual(TacticalCombatImpactKind.None, impact);

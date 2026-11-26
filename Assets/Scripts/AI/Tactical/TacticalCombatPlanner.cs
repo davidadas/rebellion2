@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical;
 
 namespace Rebellion.AI.Tactical

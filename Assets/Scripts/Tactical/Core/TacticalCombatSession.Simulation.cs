@@ -1,7 +1,9 @@
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {
@@ -658,7 +660,8 @@ namespace Rebellion.Tactical
                             target.GetManeuverability(),
                             source.GetManeuverability(),
                             _random,
-                            source.InstanceID
+                            source.InstanceID,
+                            _queueCombatSound
                         );
                         RefreshTractorContribution(target);
                         if (impact == TacticalCombatImpactKind.Destroyed)
@@ -790,7 +793,7 @@ namespace Rebellion.Tactical
                         )
                     )
                     {
-                        Audio.Enqueue(source.GetExplosionSound());
+                        Audio.Enqueue(TacticalCombatAudio.GetExplosionSound(source));
                         DestructionEffectRequested?.Invoke(source);
                         if (BattleStation == null || !ReferenceEquals(target, BattleStation.Unit))
                             ReportDestruction(source, target?.InstanceID);

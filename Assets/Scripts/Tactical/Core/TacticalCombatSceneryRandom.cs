@@ -94,4 +94,45 @@ namespace Rebellion.Tactical
             return next < 0 ? unchecked(next + 0x7fffffff) : next;
         }
     }
+
+    /// <summary>
+    /// Supplies the encounter-owned scenery sequence without acquiring a platform clock in battle execution.
+    /// </summary>
+    public interface ITacticalCombatSceneryRandom
+    {
+        /// <summary>
+        /// Draws a bounded scenery value, retaining trivial-bound initialization behavior.
+        /// </summary>
+        /// <param name="upperBound">The requested exclusive bound.</param>
+        /// <returns>The bounded scenery value.</returns>
+        int NextInt(int upperBound);
+
+        /// <summary>
+        /// Captures one decoration's position using the encounter's deployment dimensions.
+        /// </summary>
+        /// <param name="depth">The deployment span.</param>
+        /// <param name="horizontal">The horizontal offset in deployment spans.</param>
+        /// <param name="spread">The vertical and depth half range in deployment spans.</param>
+        /// <returns>The encounter-local decoration position.</returns>
+        Vector3 NextPosition(float depth, float horizontal, float spread);
+    }
+
+    /// <summary>
+    /// Converts a captured local calendar clock into the encounter initialization seed.
+    /// </summary>
+    public static class TacticalCombatSeed
+    {
+        private const int _firstSupportedYear = 1970;
+        private const int _lastSupportedYear = 2038;
+
+        /// <summary>
+        /// Retains the supported calendar range and wrapped epoch-second representation.
+        /// </summary>
+        /// <param name="clock">The local calendar fields and their effective UTC offset.</param>
+        /// <returns>The wrapped epoch seconds, or minus one for an unsupported local year.</returns>
+        public static int FromClock(DateTimeOffset clock) =>
+            clock.Year < _firstSupportedYear || clock.Year > _lastSupportedYear
+                ? -1
+                : unchecked((int)clock.ToUnixTimeSeconds());
+    }
 }

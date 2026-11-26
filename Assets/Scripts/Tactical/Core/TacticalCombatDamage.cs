@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
@@ -70,6 +71,7 @@ namespace Rebellion.Tactical
         /// <param name="attackerTurnBudget">The attacker's current maneuver rating.</param>
         /// <param name="random">The battle's random-number stream.</param>
         /// <param name="attackerInstanceID">The firing unit's identity for a lethal impact report.</param>
+        /// <param name="playSound">The encounter audio callback, when playback is available.</param>
         /// <returns>The affected surface, destruction, or no impact for an inactive target.</returns>
         internal static TacticalCombatImpactKind ApplyHit(
             this CombatUnit unit,
@@ -78,7 +80,8 @@ namespace Rebellion.Tactical
             float ownTurnBudget,
             float attackerTurnBudget,
             IRandomNumberProvider random,
-            string attackerInstanceID
+            string attackerInstanceID,
+            Action<TacticalCombatSound> playSound = null
         )
         {
             if (!unit.IsAlive)
@@ -103,7 +106,7 @@ namespace Rebellion.Tactical
                 unit.Shields = 0;
                 if (weapon == TacticalWeaponType.IonCannon)
                 {
-                    unit.NotifySound(GetImpactSound(weapon, true));
+                    playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, true));
                     unit.NotifyImpact(weapon, TacticalCombatImpactKind.Hull);
                     if (!unit.IsFighter)
                         RequestIonDisruption(unit, (float)-remainingShields, random);
@@ -112,13 +115,13 @@ namespace Rebellion.Tactical
 
                 float remainingHull = (float)(remainingShields + previousHull);
                 unit.Hull = remainingHull;
-                unit.NotifySound(GetImpactSound(weapon, true));
+                playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, true));
                 if (!unit.IsAlive)
                 {
                     unit.NotifyLethalHit(attackerInstanceID);
                     unit.Hull = 0;
                     unit.NotifyImpact(weapon, TacticalCombatImpactKind.Destroyed);
-                    unit.NotifySound(unit.GetExplosionSound());
+                    playSound?.Invoke(TacticalCombatAudio.GetExplosionSound(unit));
                     return TacticalCombatImpactKind.Destroyed;
                 }
 
@@ -128,7 +131,7 @@ namespace Rebellion.Tactical
                 return TacticalCombatImpactKind.Hull;
             }
 
-            unit.NotifySound(GetImpactSound(weapon, false));
+            playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, false));
             if (!unit.IsFighter)
             {
                 double progress =
@@ -142,33 +145,6 @@ namespace Rebellion.Tactical
             unit.NotifyImpact(weapon, TacticalCombatImpactKind.Shield);
             return TacticalCombatImpactKind.Shield;
         }
-
-        /// <summary>
-        /// Selects the explosion size from the captured unit category and complete hull.
-        /// </summary>
-        /// <returns>The unit's destruction sound.</returns>
-        internal static TacticalCombatSound GetExplosionSound(this CombatUnit unit) =>
-            unit.IsFighter || !(unit.MaximumHull >= 1100) ? TacticalCombatSound.SmallExplosion
-            : unit.MaximumHull <= 2000 ? TacticalCombatSound.MediumExplosion
-            : TacticalCombatSound.LargeExplosion;
-
-        /// <summary>
-        /// Selects the impact sound family before any resulting component-damage roll.
-        /// </summary>
-        /// <param name="weapon">The impacting weapon.</param>
-        /// <param name="hull">Whether the impact passed through the shields.</param>
-        /// <returns>The sound associated with this impact.</returns>
-        private static TacticalCombatSound GetImpactSound(TacticalWeaponType weapon, bool hull) =>
-            weapon switch
-            {
-                TacticalWeaponType.LaserCannon => hull
-                    ? TacticalCombatSound.LaserHullHit
-                    : TacticalCombatSound.LaserShieldHit,
-                TacticalWeaponType.IonCannon => hull
-                    ? TacticalCombatSound.IonHullHit
-                    : TacticalCombatSound.IonShieldHit,
-                _ => hull ? TacticalCombatSound.HeavyHullHit : TacticalCombatSound.HeavyShieldHit,
-            };
 
         /// <summary>
         /// Requests the component event selected after a surviving hull impact.
