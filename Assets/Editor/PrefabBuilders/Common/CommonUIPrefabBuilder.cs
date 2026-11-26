@@ -498,13 +498,17 @@ public static class CommonUIPrefabBuilder
     internal static void CreateConfirmationArtworkPreview(Transform parent)
     {
         ConfirmationDialogView view = InstantiateConfirmationDialog(parent);
+        RectTransform dialogSurface = (RectTransform)view.BackgroundArtwork.transform.parent;
+        RectInt bounds = UILayout.GetSourceRect(view.BackgroundArtwork.rectTransform);
+        SetSourceRect((RectTransform)view.transform, 0, 0, bounds.width, bounds.height);
         SetSourceRect(
-            view.GetComponent<RectTransform>(),
-            0,
-            0,
+            dialogSurface,
+            -bounds.x,
+            -bounds.y,
             _confirmationSurfaceWidth,
             _confirmationSurfaceHeight
         );
+        view.transform.Find("InputBlocker").gameObject.SetActive(false);
         view.gameObject.SetActive(false);
     }
 

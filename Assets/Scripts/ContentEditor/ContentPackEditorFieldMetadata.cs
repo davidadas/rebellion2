@@ -339,6 +339,12 @@ internal static class ContentPackEditorFieldMetadata
             return "Percentage added to the officer's base leadership while the trait is active.";
         if (field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath))
             return "A GLB model displayed as this faction's rotating main-menu medallion. The model is centered and scaled to fit automatically.";
+        if (
+            field.MemberName
+            is nameof(ContentPackDefinition.StartupIntroVideoPath)
+                or nameof(ContentPackDefinition.OpeningCrawlVideoPath)
+        )
+            return "Leave empty to use the built-in video. Changes take effect at the next launch.";
         if (field.Record.Kind == "Regiment" && field.MemberName == "InTransitSmallImagePath")
             return "An optional effect drawn over this troop in the Defense window while it is in transit.";
         if (_descriptions.TryGetValue(field.MemberName, out string text))
@@ -432,6 +438,12 @@ internal static class ContentPackEditorFieldMetadata
             "Names" when field.XmlElement.Parent?.Name.LocalName == "NamePool" => "Ship names",
             "BackgroundImagePath" => "Background override",
             nameof(FactionTheme.MainMenuMedallionModelPath) => "Main menu medallion",
+            nameof(FactionTheme.IntroCutscenePath) => "Campaign intro",
+            nameof(FactionTheme.VictoryCutscenePath) => "Victory",
+            nameof(FactionTheme.DefeatCutscenePath) => "Defeat",
+            nameof(FactionTheme.HeadquartersDestroyedCutscenePath) => "Headquarters destroyed",
+            nameof(ContentPackDefinition.StartupIntroVideoPath) => "Startup intro",
+            nameof(ContentPackDefinition.OpeningCrawlVideoPath) => "Opening crawl",
             "PrimaryColorHex" => "Primary faction color",
             "HighlightTextColorHex" => "Highlight text color",
             "SelectionColorHex" => "Selection frames",

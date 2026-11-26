@@ -10,9 +10,10 @@ using UnityEngine.UI;
 /// <summary>
 /// Inspects artwork at its authored aspect ratio without covering the current workspace.
 /// </summary>
-public sealed class ImagePreviewView
+public sealed partial class ImagePreviewView
     : MonoBehaviour,
         ICancelable,
+        IPointerClickHandler,
         IBeginDragHandler,
         IDragHandler,
         IEndDragHandler
@@ -60,8 +61,23 @@ public sealed class ImagePreviewView
         if (texture == null)
             throw new ArgumentNullException(nameof(texture));
         VerifyReferences();
+        StopVideo();
         ClearCuts();
         Present(texture, address + "  /  " + texture.width + " x " + texture.height);
+    }
+
+    /// <summary>
+    /// Returns to the editor when the fullscreen playback surface is clicked.
+    /// </summary>
+    /// <param name="eventData">The completed pointer click.</param>
+    public void OnPointerClick(PointerEventData eventData)
+    {
+        if (
+            eventData.button
+            is PointerEventData.InputButton.Left
+                or PointerEventData.InputButton.Right
+        )
+            EndFullscreenVideo();
     }
 
     /// <summary>
@@ -174,6 +190,7 @@ public sealed class ImagePreviewView
         VerifyReferences();
         if (cutSelectionTemplate == null)
             throw new MissingReferenceException(name + " has no artwork cut checkbox.");
+        StopVideo();
         ClearCuts();
         image.gameObject.SetActive(false);
         moveCut = move;
@@ -318,7 +335,7 @@ public sealed class ImagePreviewView
     /// </summary>
     /// <param name="texture">The ready-to-display image.</param>
     /// <param name="title">The visible image caption.</param>
-    private void Present(Texture2D texture, string title)
+    private void Present(Texture texture, string title)
     {
         image.texture = texture;
         image.GetComponent<AspectRatioFitter>().aspectRatio = (float)texture.width / texture.height;
@@ -465,6 +482,9 @@ public sealed class ImagePreviewView
     {
         if (!gameObject.activeSelf)
             return false;
+        if (EndFullscreenVideo())
+            return true;
+        StopVideo();
         image.texture = null;
         ClearCuts();
         gameObject.SetActive(false);
@@ -474,5 +494,9 @@ public sealed class ImagePreviewView
     /// <summary>
     /// Releases any owned preview textures during workspace teardown.
     /// </summary>
-    private void OnDestroy() => ClearCuts();
+    private void OnDestroy()
+    {
+        StopVideo();
+        ClearCuts();
+    }
 }

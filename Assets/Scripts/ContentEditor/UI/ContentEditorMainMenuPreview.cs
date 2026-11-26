@@ -234,8 +234,11 @@ public sealed class ContentEditorMainMenuPreview
     /// Highlights the artwork under the preview pointer.
     /// </summary>
     /// <param name="eventData">The current pointer position.</param>
-    public void OnPointerMove(PointerEventData eventData) =>
-        SetHoveredSlot(FindHotspot(eventData.position, eventData.enterEventCamera));
+    public void OnPointerMove(PointerEventData eventData)
+    {
+        if (!ContentEditorArtworkEditTarget.IsPreviewDragging)
+            SetHoveredSlot(FindHotspot(eventData.position, eventData.enterEventCamera));
+    }
 
     /// <summary>
     /// Clears the highlight when the pointer leaves the preview.
@@ -249,7 +252,13 @@ public sealed class ContentEditorMainMenuPreview
     /// <param name="eventData">The pointer click.</param>
     public void OnPointerClick(PointerEventData eventData)
     {
+        if (
+            eventData.button != PointerEventData.InputButton.Left
+            || ContentEditorArtworkEditTarget.IsPreviewDragging
+        )
+            return;
         int slot = FindHotspot(eventData.position, eventData.pressEventCamera);
+        ContentEditorArtworkEditTarget.Select(slot < 0 ? null : hotspots[slot]);
         if (slot >= 0 && hotspots[slot].Field.MediaType != ContentPackEditorMediaType.None)
             hotspots[slot].TryOpen(eventData);
     }
@@ -392,6 +401,12 @@ public sealed class ContentEditorMainMenuPreview
     /// </summary>
     protected override void OnDisable()
     {
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
+        if (draggingSlot >= 0)
+        {
+            Place(draggingSlot, dragOffset);
+            draggingSlot = -1;
+        }
         if (renderWorld != null && renderWorld.parent == null)
             renderWorld.gameObject.SetActive(false);
         base.OnDisable();
@@ -433,19 +448,31 @@ public sealed class ContentEditorMainMenuPreview
         )
             return;
         draggingSlot = slot;
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
+        SetHoveredSlot(-1);
+        ContentEditorArtworkEditTarget.Select(hotspots[slot]);
         dragOffset = ContentEditorMainMenuSettings.GetOffset(placements[slot]);
+        dragBounds = GetMovementBounds(slot);
+    }
+
+    /// <summary>
+    /// Measures the available motion for a menu element in the preview's source coordinates.
+    /// </summary>
+    /// <param name="slot">The menu element index.</param>
+    /// <returns>The permitted displacement from the current position.</returns>
+    private Rect GetMovementBounds(int slot)
+    {
         RectTransform control = targets[slot];
         Vector2 pivot = viewport.InverseTransformPoint(control.position);
         Rect bounds = viewport.rect;
         Rect button = control.rect;
-        dragBounds = Rect.MinMaxRect(
+        Rect movement = Rect.MinMaxRect(
             bounds.xMin - pivot.x - button.xMin,
             bounds.yMin - pivot.y - button.yMin,
             bounds.xMax - pivot.x - button.xMax,
             bounds.yMax - pivot.y - button.yMax
         );
-        if (dragBounds.width <= 0 || dragBounds.height <= 0)
-            dragBounds = bounds;
+        return movement.width <= 0 || movement.height <= 0 ? bounds : movement;
     }
 
     /// <summary>
@@ -468,9 +495,46 @@ public sealed class ContentEditorMainMenuPreview
             return;
         int slot = draggingSlot;
         draggingSlot = -1;
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
         Vector2Int offset = GetDraggedOffset(eventData);
+        CommitPlacement(slot, dragOffset, offset);
+    }
+
+    /// <summary>
+    /// Applies a keyboard move using the same source pixels and bounds as dragging.
+    /// </summary>
+    /// <param name="target">The selected menu artwork.</param>
+    /// <param name="delta">The source-pixel displacement, with positive Y down.</param>
+    /// <returns>True when the selected menu artwork can move.</returns>
+    bool IContentEditorArtworkDragPreview.NudgeArtwork(
+        ContentEditorArtworkEditTarget target,
+        Vector2Int delta
+    )
+    {
+        if (draggingSlot >= 0 || hotspots == null)
+            return false;
+        int slot = Array.IndexOf(hotspots, target);
+        if (slot < 0)
+            return false;
+        Vector2Int origin = ContentEditorMainMenuSettings.GetOffset(placements[slot]);
+        CommitPlacement(
+            slot,
+            origin,
+            origin + ConstrainMovement(new Vector2(delta.x, -delta.y), GetMovementBounds(slot))
+        );
+        return true;
+    }
+
+    /// <summary>
+    /// Submits the resulting offset as one undoable layout edit.
+    /// </summary>
+    /// <param name="slot">The menu element index.</param>
+    /// <param name="origin">The authored offset before the move.</param>
+    /// <param name="offset">The new authored offset.</param>
+    private void CommitPlacement(int slot, Vector2Int origin, Vector2Int offset)
+    {
         Place(slot, offset);
-        if (offset == dragOffset)
+        if (offset == origin)
             return;
         ContentEditorArtworkPlacement fields = placements[slot];
         PlacementChanged?.Invoke(
@@ -552,13 +616,20 @@ public sealed class ContentEditorMainMenuPreview
             )
         )
             return dragOffset;
-        Vector2 delta = point - dragOrigin;
-        return dragOffset
-            + new Vector2Int(
-                Mathf.RoundToInt(Mathf.Clamp(delta.x, dragBounds.xMin, dragBounds.xMax)),
-                -Mathf.RoundToInt(Mathf.Clamp(delta.y, dragBounds.yMin, dragBounds.yMax))
-            );
+        return dragOffset + ConstrainMovement(point - dragOrigin, dragBounds);
     }
+
+    /// <summary>
+    /// Keeps menu artwork within its movement bounds.
+    /// </summary>
+    /// <param name="delta">The proposed displacement in local coordinates.</param>
+    /// <param name="bounds">The permissible displacement.</param>
+    /// <returns>The constrained source displacement, with positive Y down.</returns>
+    private static Vector2Int ConstrainMovement(Vector2 delta, Rect bounds) =>
+        new(
+            Mathf.RoundToInt(Mathf.Clamp(delta.x, bounds.xMin, bounds.xMax)),
+            -Mathf.RoundToInt(Mathf.Clamp(delta.y, bounds.yMin, bounds.yMax))
+        );
 
     /// <summary>
     /// Applies an authored offset to one slot relative to its generated position.

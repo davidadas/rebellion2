@@ -35,6 +35,8 @@ public sealed class ContentEditorArtworkWindowPreview
     private const float _maximumStrategyZoom = 4f;
     private const float _zoomStep = 0.05f;
     internal const string ConfirmationCategory = "Confirmation Window";
+    internal const string PlanetHeaderCategory = "Planet Window Header";
+    public const string PlanetHeaderWindowName = "PlanetWindowShell";
 
     private static readonly IReadOnlyDictionary<string, string[]> _windowNames = new Dictionary<
         string,
@@ -49,6 +51,7 @@ public sealed class ContentEditorArtworkWindowPreview
         ["Messages"] = new[] { "MessagesWindow" },
         ["Combat"] = new[] { "BattleAlertWindow" },
         [ConfirmationCategory] = new[] { "ConfirmationDialog" },
+        [PlanetHeaderCategory] = new[] { PlanetHeaderWindowName },
         ["Encyclopedia"] = new[] { "EncyclopediaWindow", EncyclopediaDetailWindowName },
         ["Galactic information"] = new[] { "FinderWindow" },
         ["Advisor"] = new[] { "AdvisorReportWindow" },
@@ -114,17 +117,6 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="category">The faction-artwork category.</param>
     /// <returns>True when at least one matching window exists.</returns>
     public bool Supports(string category) => GetWindows(category).Count > 0;
-
-    /// <summary>
-    /// Gets shared header buttons from the authored window previews for a category.
-    /// </summary>
-    /// <param name="category">The category supplying the header artwork.</param>
-    /// <returns>The press visuals from the windows' button layers.</returns>
-    internal IEnumerable<RawImagePressVisual> GetWindowControls(string category) =>
-        GetWindows(category)
-            .Select(window => window.Find("Buttons"))
-            .Where(buttons => buttons != null)
-            .SelectMany(buttons => buttons.GetComponentsInChildren<RawImagePressVisual>(true));
 
     /// <summary>
     /// Binds the Strategy view's own zoom controls.
@@ -349,6 +341,7 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="surfaceFields">The theme fields represented by the selected surface.</param>
     /// <param name="themeRecord">The working theme document that owns the layouts.</param>
     /// <param name="state">The interaction state to project across compatible controls.</param>
+    /// <param name="headerLayout">The working pack's shared planet window header overrides.</param>
     public void Render(
         string category,
         ContentPackEditorProject project,
@@ -357,7 +350,8 @@ public sealed class ContentEditorArtworkWindowPreview
         IReadOnlyList<ContentPackEditorField> themeFields,
         IReadOnlyList<ContentPackEditorField> surfaceFields,
         ContentPackEditorRecord themeRecord,
-        ContentEditorArtworkPreviewState state = ContentEditorArtworkPreviewState.Default
+        ContentEditorArtworkPreviewState state = ContentEditorArtworkPreviewState.Default,
+        PlanetWindowHeaderLayout headerLayout = null
     )
     {
         if (project == null)
@@ -394,6 +388,8 @@ public sealed class ContentEditorArtworkWindowPreview
                 binding.Apply(theme, assets);
             }
             ContentEditorArtworkWindowPreviewRenderer.Render(window, content, theme, assets);
+            if (window.TryGetComponent(out PlanetWindowHeader header))
+                header.Apply(headerLayout, assets);
             DisableGameplayInput(window);
             AttachEditCommands(window, themeFields, surfaceFields, assets, state);
             if (category == "Strategy view")
@@ -405,10 +401,38 @@ public sealed class ContentEditorArtworkWindowPreview
     }
 
     /// <summary>
+    /// Shows the blank planet window shell and applies the shared header override.
+    /// </summary>
+    /// <param name="assets">The working pack's resolved artwork.</param>
+    /// <param name="layout">The shared header's artwork and placement overrides.</param>
+    /// <returns>The rendered header when the preview shell is available.</returns>
+    internal PlanetWindowHeader RenderPlanetHeader(
+        ContentAssets assets,
+        PlanetWindowHeaderLayout layout
+    )
+    {
+        Clear();
+        IReadOnlyList<RectTransform> windows = GetWindows(PlanetHeaderCategory);
+        if (windows.Count == 0)
+            return null;
+
+        RectTransform shell = windows[0];
+        PlanetWindowHeader header = shell.GetComponent<PlanetWindowHeader>();
+        header.Apply(layout, assets);
+        DisableGameplayInput(shell);
+        shell.gameObject.SetActive(true);
+        gameObject.SetActive(true);
+        activeCategory = PlanetHeaderCategory;
+        Layout(windows);
+        return header;
+    }
+
+    /// <summary>
     /// Shows the standard non-faction confirmation dialog in the shared preview surface.
     /// </summary>
     /// <param name="assets">The installed content supplying the dialog artwork.</param>
-    internal void RenderConfirmation(ContentAssets assets)
+    /// <param name="artwork">The working pack's confirmation artwork overrides.</param>
+    internal void RenderConfirmation(ContentAssets assets, ConfirmationWindowArtwork artwork)
     {
         Clear();
         IReadOnlyList<RectTransform> windows = GetWindows(ConfirmationCategory);
@@ -416,8 +440,8 @@ public sealed class ContentEditorArtworkWindowPreview
         foreach (RectTransform window in windows)
         {
             ConfirmationDialogView dialog = window.GetComponent<ConfirmationDialogView>();
-            dialog.InitializeContent(assets);
-            dialog.Show("Are you sure you want to quit?");
+            dialog.InitializeContent(assets, artwork);
+            dialog.Show("Are you sure you want to quit?", takeFocus: false);
             DisableGameplayInput(window);
         }
         activeCategory = ConfirmationCategory;
@@ -432,6 +456,8 @@ public sealed class ContentEditorArtworkWindowPreview
     {
         foreach (Selectable selectable in window.GetComponentsInChildren<Selectable>(true))
             selectable.enabled = false;
+        foreach (UIRaycastArea hitArea in window.GetComponentsInChildren<UIRaycastArea>(true))
+            hitArea.enabled = false;
     }
 
     /// <summary>
@@ -687,9 +713,8 @@ public sealed class ContentEditorArtworkWindowPreview
             ContentPackEditorField releasedField = ResolveBoundField(image, surfaceFields);
             ContentEditorArtworkPlacement advisorPlacement = ResolveAdvisorPlacement(
                 image,
-                surfaceFields
+                themeFields
             );
-            releasedField ??= advisorPlacement?.XField;
             releasedField ??= ResolveTextureField(releasedTexture, fieldsByAddress, assets);
             RawImagePressVisual visual = image.GetComponent<RawImagePressVisual>();
             Texture authoredHoverTexture = visual?.PressedTexture;
@@ -699,7 +724,7 @@ public sealed class ContentEditorArtworkWindowPreview
             );
             hoverField ??= ResolveTextureField(authoredHoverTexture, fieldsByAddress, assets);
             hoverField ??= releasedField;
-            if (releasedField == null && hoverField == null)
+            if (releasedField == null && hoverField == null && advisorPlacement == null)
                 continue;
             if (state != ContentEditorArtworkPreviewState.Default)
             {
@@ -721,28 +746,63 @@ public sealed class ContentEditorArtworkWindowPreview
             Texture hoverTexture = ResolveFieldTexture(hoverField, assets) ?? authoredHoverTexture;
             if (visual != null && hoverTexture != null)
                 visual.SetTextures(releasedTexture, hoverTexture);
-            ContentEditorArtworkEditTarget target =
-                image.GetComponent<ContentEditorArtworkEditTarget>()
-                ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
-            target.Bind(
+            BindArtwork(
+                image,
                 releasedField,
                 hoverField,
-                OpenArtwork,
-                assets.GetTextureContentBounds(releasedTexture as Texture2D),
-                assets.GetTextureContentBounds(hoverTexture as Texture2D),
-                visual == null && hoverTexture != releasedTexture ? hoverTexture : null,
+                assets,
+                hoverTexture,
                 advisorPlacement == null
                     ? ResolvePlacementFields(releasedField, hoverField, themeFields)
                     : new[] { advisorPlacement },
-                ResolveInteractionArea(image, window),
-                requiresPress: visual != null
+                ResolveInteractionArea(image, window)
             );
-            if (advisorPlacement != null && !renderedFields.Contains(advisorPlacement.YField))
-                renderedFields.Add(advisorPlacement.YField);
-            foreach (ContentPackEditorField field in target.Fields)
-                if (!renderedFields.Contains(field))
-                    renderedFields.Add(field);
         }
+    }
+
+    /// <summary>
+    /// Connects artwork on a rendered interface to the inspector and its optional placement.
+    /// </summary>
+    /// <param name="image">The displayed graphic.</param>
+    /// <param name="released">The field supplying the normal artwork.</param>
+    /// <param name="alternate">The field supplying the alternate artwork, when present.</param>
+    /// <param name="assets">The content source supplying image bounds.</param>
+    /// <param name="authoredHoverTexture">The current alternate texture, when present.</param>
+    /// <param name="placements">The fields moved by dragging the graphic.</param>
+    /// <param name="hitArea">The optional gameplay pointer area.</param>
+    /// <param name="bounds">The optional placement limits within the authored window.</param>
+    internal void BindArtwork(
+        RawImage image,
+        ContentPackEditorField released,
+        ContentPackEditorField alternate,
+        ContentAssets assets,
+        Texture authoredHoverTexture = null,
+        IReadOnlyList<ContentEditorArtworkPlacement> placements = null,
+        RectTransform hitArea = null,
+        RectInt? bounds = null
+    )
+    {
+        Texture normalTexture = image.texture;
+        Texture alternateTexture = authoredHoverTexture ?? normalTexture;
+        bool requiresPress = image.GetComponent<RawImagePressVisual>() != null;
+        ContentEditorArtworkEditTarget target =
+            image.GetComponent<ContentEditorArtworkEditTarget>()
+            ?? image.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+        target.Bind(
+            released,
+            alternate,
+            OpenArtwork,
+            assets.GetTextureContentBounds(normalTexture as Texture2D),
+            assets.GetTextureContentBounds(alternateTexture as Texture2D),
+            !requiresPress && alternateTexture != normalTexture ? alternateTexture : null,
+            placements,
+            hitArea,
+            requiresPress,
+            bounds
+        );
+        foreach (ContentPackEditorField field in target.Fields)
+            if (!renderedFields.Contains(field))
+                renderedFields.Add(field);
     }
 
     /// <summary>
@@ -788,7 +848,7 @@ public sealed class ContentEditorArtworkWindowPreview
     /// Binds the animated strategy portraits to the coordinates used to place them in gameplay.
     /// </summary>
     /// <param name="image">The rendered preview image.</param>
-    /// <param name="fields">The selected surface's fields.</param>
+    /// <param name="fields">The selected faction theme's fields.</param>
     /// <returns>The portrait's coordinates, or null for other images.</returns>
     private static ContentEditorArtworkPlacement ResolveAdvisorPlacement(
         RawImage image,
@@ -1072,10 +1132,34 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="eventData">The completed pointer gesture.</param>
     public void OnPointerClick(PointerEventData eventData)
     {
-        if (eventData?.used != false)
+        if (
+            eventData?.used != false
+            || eventData.button != PointerEventData.InputButton.Left
+            || ContentEditorArtworkEditTarget.IsPreviewDragging
+        )
             return;
         UpdatePointerTarget(eventData);
+        ContentEditorArtworkEditTarget.Select(hoveredTarget);
         hoveredTarget?.TryOpen(eventData);
+    }
+
+    /// <summary>
+    /// Nudges the selected artwork using the same coordinate bindings as dragging.
+    /// </summary>
+    /// <param name="target">The selected artwork.</param>
+    /// <param name="delta">The source-pixel displacement.</param>
+    /// <returns>True when the artwork supports movement.</returns>
+    bool IContentEditorArtworkDragPreview.NudgeArtwork(
+        ContentEditorArtworkEditTarget target,
+        Vector2Int delta
+    )
+    {
+        if (draggedTarget != null || !target.BeginMove())
+            return false;
+        IReadOnlyList<ContentEditorArtworkPlacementChange> changes = target.CompleteMove(delta);
+        if (changes.Count > 0)
+            ArtworkMoved?.Invoke(changes);
+        return true;
     }
 
     /// <summary>
@@ -1087,14 +1171,9 @@ public sealed class ContentEditorArtworkWindowPreview
         if (eventData == null)
             return;
         bool primary = eventData.button == PointerEventData.InputButton.Left;
-        ContentEditorArtworkEditTarget directTarget = primary
-            ? eventData.pointerDrag?.GetComponent<ContentEditorArtworkEditTarget>()
-            : null;
-        if (primary && !CanDragArtwork(directTarget))
+        if (primary)
             UpdatePointerTarget(eventData, fromPress: true);
-        ContentEditorArtworkEditTarget target = CanDragArtwork(directTarget)
-            ? directTarget
-            : hoveredTarget;
+        ContentEditorArtworkEditTarget target = hoveredTarget;
         if (CanZoom && (!primary || !CanDragArtwork(target)))
         {
             if (
@@ -1103,6 +1182,7 @@ public sealed class ContentEditorArtworkWindowPreview
             )
             {
                 panning = true;
+                ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
                 ResetHover();
                 RefreshCursor();
             }
@@ -1125,6 +1205,9 @@ public sealed class ContentEditorArtworkWindowPreview
         }
 
         draggedTarget = target;
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
+        ResetHover();
+        ContentEditorArtworkEditTarget.Select(target);
         draggedWindow = window;
         artworkDragDelta = Vector2Int.zero;
         RefreshCursor();
@@ -1169,6 +1252,7 @@ public sealed class ContentEditorArtworkWindowPreview
         if (panning)
         {
             panning = false;
+            ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
             if (pointerInPreview)
                 UpdatePointerTarget(eventData);
             RefreshCursor();
@@ -1179,6 +1263,7 @@ public sealed class ContentEditorArtworkWindowPreview
             return;
         if (eventData?.button == PointerEventData.InputButton.Left)
             OnDrag(eventData);
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
         IReadOnlyList<ContentEditorArtworkPlacementChange> changes = draggedTarget.CompleteMove(
             artworkDragDelta
         );
@@ -1291,6 +1376,7 @@ public sealed class ContentEditorArtworkWindowPreview
     /// </summary>
     private void CancelArtworkMove()
     {
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
         draggedTarget?.CancelMove();
         draggedTarget = null;
         draggedWindow = null;
@@ -1304,20 +1390,27 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="fromPress">Whether to locate the image beneath the original press.</param>
     private void UpdatePointerTarget(PointerEventData eventData, bool fromPress = false)
     {
-        if (eventData == null || panning || draggedTarget != null)
+        if (eventData == null || ContentEditorArtworkEditTarget.IsPreviewDragging)
             return;
         Camera camera = eventData.pressEventCamera ?? eventData.enterEventCamera;
         Vector2 position = fromPress ? eventData.pressPosition : eventData.position;
         ContentEditorArtworkEditTarget next =
             GetComponentsInChildren<ContentEditorArtworkEditTarget>()
                 .Where(target => target.Field != null || target.CanMove)
-                .Where(target => target.ContainsScreenPoint(position, camera))
-                .OrderByDescending(target => target.GetComponent<Graphic>().depth)
-                .ThenBy(target =>
+                .Select(target =>
                 {
-                    Rect rect = ((RectTransform)target.transform).rect;
+                    bool hit = target.TryHitScreenPoint(position, camera, out bool onArtwork);
+                    return (Target: target, Hit: hit, DirectPlacement: onArtwork && target.CanMove);
+                })
+                .Where(candidate => candidate.Hit)
+                .OrderByDescending(candidate => candidate.DirectPlacement)
+                .ThenByDescending(candidate => candidate.Target.GetComponent<Graphic>().depth)
+                .ThenBy(candidate =>
+                {
+                    Rect rect = ((RectTransform)candidate.Target.transform).rect;
                     return rect.width * rect.height;
                 })
+                .Select(candidate => candidate.Target)
                 .FirstOrDefault();
         if (next == hoveredTarget)
             return;

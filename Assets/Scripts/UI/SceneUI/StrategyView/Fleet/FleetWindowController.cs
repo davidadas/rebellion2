@@ -201,17 +201,11 @@ public sealed class FleetWindowController
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowLayer.CreatePlanetWindow(
+            windowManager,
             windowLayer.FleetWindowPrefab,
-            windowLayer.GetWindowParent(false),
             $"FleetWindow-{planet.Planet.GetDisplayName()}",
-            position.x,
-            position.y,
-            windowLayer.GetWindowSize(windowLayer.FleetWindowPrefab),
-            false,
-            true,
-            true,
-            false,
+            position,
             out FleetWindowView view
         );
         if (!TryInitializeWindow(view, window, planet))

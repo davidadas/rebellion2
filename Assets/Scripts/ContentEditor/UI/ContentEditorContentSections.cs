@@ -71,8 +71,30 @@ internal static class ContentEditorContentSections
 
     internal const string NeutralThemePageKey = "factions/neutral-theme";
     internal const string PlanetSectorWindowPageKey = "interfaces/window-controls";
+    internal const string PlanetWindowHeaderPageKey = "interfaces/planet-window-header";
     internal const string ConfirmationWindowPageKey = "interfaces/confirmation-window";
     internal const string FacilityResearchIconsArtworkCategory = "Facility research icons";
+    internal const string CutscenesSection = "Cutscenes";
+
+    private static readonly string[] _factionCutsceneMembers =
+    {
+        nameof(FactionTheme.IntroCutscenePath),
+        nameof(FactionTheme.VictoryCutscenePath),
+        nameof(FactionTheme.DefeatCutscenePath),
+        nameof(FactionTheme.HeadquartersDestroyedCutscenePath),
+    };
+
+    /// <summary>
+    /// Projects the faction's campaign video slots, including optional slots with no authored path.
+    /// </summary>
+    /// <param name="theme">The faction's presentation record, when assigned.</param>
+    /// <returns>The editable campaign video fields in playback-related order.</returns>
+    internal static IEnumerable<ContentPackEditorField> FactionCutsceneFields(
+        ContentPackEditorRecord theme
+    ) =>
+        theme == null
+            ? Enumerable.Empty<ContentPackEditorField>()
+            : _factionCutsceneMembers.Select(theme.GetField);
 
     /// <summary>
     /// Separates faction authoring tasks while retaining their existing XML documents.
@@ -84,13 +106,17 @@ internal static class ContentEditorContentSections
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionBackgroundField(field) ? "Default backgrounds"
         : field.Group == nameof(FactionTheme.ColorScheme) ? "Colors"
+        : !neutral
+        && field.Record.Kind == nameof(FactionTheme)
+        && _factionCutsceneMembers.Contains(field.MemberName)
+            ? CutscenesSection
         : field.Record.Kind == nameof(FactionTheme)
         && field.Group == nameof(FactionTheme.ConfirmDialogTheme)
             ? "Advanced"
         : neutral
             ? IsFactionInterfaceField(field, neutral: true) ? "Interfaces"
                 : "Advanced"
-        : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
+        : IsFactionArtworkField(field) ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
         : field.MemberName == "DisallowedMissionTypeIDs" ? "Rules"
@@ -234,17 +260,12 @@ internal static class ContentEditorContentSections
         ContentPackEditorField field,
         bool neutral = false
     ) =>
-        !neutral && IsAdvisorPlacementField(field)
-        || IsFactionArtworkField(field, neutral)
-            && field.Group != nameof(FactionTheme.ConfirmDialogTheme)
-            && !IsFactionBackgroundField(field)
-            && !IsUnusedUnitTileField(field)
-            && !IsRemovedMixedPlanetMarker(field)
-            && (
-                neutral
-                    ? IsNeutralInterfaceArtwork(field)
-                    : IsFactionOwnedArtworkAddress(field.Value)
-            );
+        IsFactionArtworkField(field, neutral)
+        && field.Group != nameof(FactionTheme.ConfirmDialogTheme)
+        && !IsFactionBackgroundField(field)
+        && !IsUnusedUnitTileField(field)
+        && !IsRemovedMixedPlanetMarker(field)
+        && (neutral ? IsNeutralInterfaceArtwork(field) : IsFactionOwnedArtworkAddress(field.Value));
 
     /// <summary>
     /// Selects the artwork for interfaces that use the neutral theme instead of the player's theme.
@@ -336,7 +357,7 @@ internal static class ContentEditorContentSections
             return Array.Empty<ContentPackEditorField>();
         List<ContentPackEditorField> fields = theme
             .GetFields()
-            .Where(field => IsFactionArtworkField(field, neutral) || IsAdvisorPlacementField(field))
+            .Where(field => IsFactionArtworkField(field, neutral))
             .ToList();
         XElement defaults = theme.Element.Element(nameof(FactionTheme.ArtworkDefaults));
         XElement owner = defaults ?? new XElement(nameof(FactionTheme.ArtworkDefaults));
@@ -504,8 +525,6 @@ internal static class ContentEditorContentSections
                     )
                     ?.Name.LocalName
                 : null;
-        if (IsAdvisorPlacementField(field))
-            return "Strategy view";
         if (root == nameof(FactionTheme.GalaxyBackground))
             return neutral
                 && field.XmlElement.Parent?.Name.LocalName == nameof(GalaxyBackground.PlanetIcons)
@@ -603,8 +622,6 @@ internal static class ContentEditorContentSections
     /// <returns>At most one heading naming the related view and state group.</returns>
     internal static IReadOnlyList<string> FactionArtworkSections(ContentPackEditorField field)
     {
-        if (IsAdvisorPlacementField(field))
-            return new[] { "Advisor placement" };
         XElement top = field
             .XmlElement.AncestorsAndSelf()
             .FirstOrDefault(element => element.Parent == field.Record.Element);

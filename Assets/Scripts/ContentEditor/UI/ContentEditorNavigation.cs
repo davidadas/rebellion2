@@ -214,6 +214,10 @@ public sealed class ContentEditorNavigation
                         ContentEditorContentSections.PlanetSectorWindowPageKey,
                         "Planet Sector Window"
                     ),
+                    (
+                        ContentEditorContentSections.PlanetWindowHeaderPageKey,
+                        "Planet Window Header"
+                    ),
                     (ContentEditorContentSections.ConfirmationWindowPageKey, "Confirmation Window"),
                 }
             )
@@ -383,6 +387,7 @@ public sealed class ContentEditorNavigation
             ContentPackEditorField[] fields = records
                 .SelectMany(ContentEditorInspectorLayout.GetFields)
                 .Concat(ContentEditorContentSections.FactionArtworkFields(theme))
+                .Concat(ContentEditorContentSections.FactionCutsceneFields(theme))
                 .ToArray();
             ContentEditorTreeNode faction = new ContentEditorTreeNode(
                 "factions/" + group.Key,
@@ -657,8 +662,16 @@ public sealed class ContentEditorNavigation
     {
         List<ContentEditorTreeNode> rows = new List<ContentEditorTreeNode>();
         string text = filter?.Trim() ?? string.Empty;
-        foreach (ContentEditorTreeNode root in roots)
-            AddVisibleRows(root, text, false, rows);
+        if (text.Length == 0)
+        {
+            foreach (ContentEditorTreeNode root in roots)
+                AddExpandedRows(root, rows);
+        }
+        else
+        {
+            foreach (ContentEditorTreeNode root in roots)
+                AddSearchRows(root, text, false, rows);
+        }
         return rows;
     }
 
@@ -986,38 +999,39 @@ public sealed class ContentEditorNavigation
     }
 
     /// <summary>
-    /// Appends visible branches and search matches in hierarchy order.
+    /// Appends the branches visible under the author's disclosure state.
+    /// </summary>
+    /// <param name="node">The current branch.</param>
+    /// <param name="rows">The accumulated rows.</param>
+    private void AddExpandedRows(ContentEditorTreeNode node, List<ContentEditorTreeNode> rows)
+    {
+        rows.Add(node);
+        if (expanded.Contains(node.Key))
+            foreach (ContentEditorTreeNode child in node.Children)
+                AddExpandedRows(child, rows);
+    }
+
+    /// <summary>
+    /// Appends matching branches in hierarchy order with one visit per node.
     /// </summary>
     /// <param name="node">The current branch.</param>
     /// <param name="filter">The active search.</param>
     /// <param name="ancestorMatches">Whether a matching ancestor exposes this whole branch.</param>
     /// <param name="rows">The accumulated rows.</param>
-    private void AddVisibleRows(
+    private static void AddSearchRows(
         ContentEditorTreeNode node,
         string filter,
         bool ancestorMatches,
         List<ContentEditorTreeNode> rows
     )
     {
-        bool searching = filter.Length > 0;
         bool matches = ancestorMatches || Matches(node, filter);
-        if (searching && !matches && !node.Children.Any(child => ContainsMatch(child, filter)))
-            return;
+        int index = rows.Count;
         rows.Add(node);
-        if (searching || expanded.Contains(node.Key))
-            foreach (ContentEditorTreeNode child in node.Children)
-                AddVisibleRows(child, filter, searching && matches, rows);
-    }
-
-    /// <summary>
-    /// Checks a branch and its descendants for a search match.
-    /// </summary>
-    /// <param name="node">The branch to inspect.</param>
-    /// <param name="filter">The search text.</param>
-    /// <returns>True when a matching row exists.</returns>
-    private static bool ContainsMatch(ContentEditorTreeNode node, string filter)
-    {
-        return Matches(node, filter) || node.Children.Any(child => ContainsMatch(child, filter));
+        foreach (ContentEditorTreeNode child in node.Children)
+            AddSearchRows(child, filter, matches, rows);
+        if (!matches && rows.Count == index + 1)
+            rows.RemoveAt(index);
     }
 
     /// <summary>

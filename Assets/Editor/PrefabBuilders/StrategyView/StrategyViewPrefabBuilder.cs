@@ -85,6 +85,8 @@ public static class StrategyViewPrefabBuilder
         "Application/Strategy/UI/Windows/ui_strategyview_galaxy_star_preview.png";
     private const string _planetPreviewPath =
         "Application/Strategy/UI/Windows/ui_strategyview_planetsector_planet_preview.png";
+    private const int _planetWindowWidth = 235;
+    private const int _planetWindowHeight = 304;
     private const string _windowOpenSectorPreviewPath =
         "Application/Strategy/UI/Shell/ui_strategyview_window_open_sector_button.png";
     private const string _windowOpenSectorDownPreviewPath =
@@ -1543,7 +1545,7 @@ public static class StrategyViewPrefabBuilder
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_facilityWindowPrefabPath));
         const int windowWidth = 226;
-        const int windowHeight = 304;
+        const int windowHeight = _planetWindowHeight;
 
         GameObject window = new GameObject(
             "FacilityWindow",
@@ -1570,57 +1572,11 @@ public static class StrategyViewPrefabBuilder
         );
         background.raycastTarget = true;
 
-        RawImage title = CreateWindowTitleImage(window.GetComponent<UIWindow>(), windowWidth);
-        TextMeshProUGUI caption = CreateTextLabel("CaptionTextField", window.transform);
-        caption.text = "Corellia";
-        caption.color = Color.black;
-        caption.fontSize = 12;
-        caption.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(caption.rectTransform, 19, 4, 150, 16);
-
-        RectTransform buttons = CreateSourceRectLayer(
-            "Buttons",
-            window.transform,
+        (RawImage title, TextMeshProUGUI caption) = CreatePlanetWindowHeader(
+            window.GetComponent<UIWindow>(),
             windowWidth,
             windowHeight
         );
-        List<RawImage> buttonImages = new List<RawImage>
-        {
-            CreateRawImage(
-                "OpenSectorButtonImage",
-                buttons,
-                _windowOpenSectorPreviewPath,
-                3,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "MinimizeButtonImage",
-                buttons,
-                _windowMinimizePreviewPath,
-                windowWidth - 31,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "CloseButtonImage",
-                buttons,
-                _windowClosePreviewPath,
-                windowWidth - 17,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-        };
-        int[] buttonActions =
-        {
-            StrategyWindowButtonActions.OpenSector,
-            StrategyWindowButtonActions.MinimizeWindow,
-            StrategyWindowButtonActions.CloseWindow,
-        };
-        ConfigureWindowButtons(window.GetComponent<UIWindow>(), buttonImages, buttonActions);
 
         RectTransform tabs = CreateSourceRectLayer(
             "Tabs",
@@ -2239,8 +2195,8 @@ public static class StrategyViewPrefabBuilder
     private static DefenseWindowView BuildDefenseWindowPrefab()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_defenseWindowPrefabPath));
-        const int windowWidth = 235;
-        const int windowHeight = 304;
+        const int windowWidth = _planetWindowWidth;
+        const int windowHeight = _planetWindowHeight;
 
         GameObject window = new GameObject(
             "DefenseWindow",
@@ -2267,57 +2223,11 @@ public static class StrategyViewPrefabBuilder
         );
         background.raycastTarget = true;
 
-        RawImage title = CreateWindowTitleImage(window.GetComponent<UIWindow>(), windowWidth);
-        TextMeshProUGUI caption = CreateTextLabel("CaptionTextField", window.transform);
-        caption.text = "Corellia";
-        caption.color = Color.black;
-        caption.fontSize = 12;
-        caption.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(caption.rectTransform, 19, 4, 150, 16);
-
-        RectTransform buttons = CreateSourceRectLayer(
-            "Buttons",
-            window.transform,
+        (RawImage title, TextMeshProUGUI caption) = CreatePlanetWindowHeader(
+            window.GetComponent<UIWindow>(),
             windowWidth,
             windowHeight
         );
-        List<RawImage> buttonImages = new List<RawImage>
-        {
-            CreateRawImage(
-                "OpenSectorButtonImage",
-                buttons,
-                _windowOpenSectorPreviewPath,
-                3,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "MinimizeButtonImage",
-                buttons,
-                _windowMinimizePreviewPath,
-                windowWidth - 31,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "CloseButtonImage",
-                buttons,
-                _windowClosePreviewPath,
-                windowWidth - 17,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-        };
-        int[] buttonActions =
-        {
-            StrategyWindowButtonActions.OpenSector,
-            StrategyWindowButtonActions.MinimizeWindow,
-            StrategyWindowButtonActions.CloseWindow,
-        };
-        ConfigureWindowButtons(window.GetComponent<UIWindow>(), buttonImages, buttonActions);
 
         RectTransform tabs = CreateSourceRectLayer(
             "Tabs",
@@ -2524,8 +2434,8 @@ public static class StrategyViewPrefabBuilder
     private static FleetWindowView BuildFleetWindowPrefab()
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_fleetWindowPrefabPath));
-        const int windowWidth = 235;
-        const int windowHeight = 304;
+        const int windowWidth = _planetWindowWidth;
+        const int windowHeight = _planetWindowHeight;
 
         GameObject window = new GameObject("FleetWindow", typeof(RectTransform), typeof(UIWindow));
         window.SetActive(false);
@@ -2543,57 +2453,11 @@ public static class StrategyViewPrefabBuilder
         );
         background.raycastTarget = true;
 
-        RawImage title = CreateWindowTitleImage(window.GetComponent<UIWindow>(), windowWidth);
-        TextMeshProUGUI caption = CreateTextLabel("CaptionTextField", window.transform);
-        caption.text = "Corellia";
-        caption.color = Color.black;
-        caption.fontSize = 12;
-        caption.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(caption.rectTransform, 19, 4, 150, 16);
-
-        RectTransform buttons = CreateSourceRectLayer(
-            "Buttons",
-            window.transform,
+        (RawImage title, TextMeshProUGUI caption) = CreatePlanetWindowHeader(
+            window.GetComponent<UIWindow>(),
             windowWidth,
             windowHeight
         );
-        List<RawImage> buttonImages = new List<RawImage>
-        {
-            CreateRawImage(
-                "OpenSectorButtonImage",
-                buttons,
-                _windowOpenSectorPreviewPath,
-                3,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "MinimizeButtonImage",
-                buttons,
-                _windowMinimizePreviewPath,
-                windowWidth - 31,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "CloseButtonImage",
-                buttons,
-                _windowClosePreviewPath,
-                windowWidth - 17,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-        };
-        int[] buttonActions =
-        {
-            StrategyWindowButtonActions.OpenSector,
-            StrategyWindowButtonActions.MinimizeWindow,
-            StrategyWindowButtonActions.CloseWindow,
-        };
-        ConfigureWindowButtons(window.GetComponent<UIWindow>(), buttonImages, buttonActions);
 
         ScrollAreaView fleetListScrollArea = CreateScrollAreaView(
             window.transform,
@@ -3023,8 +2887,8 @@ public static class StrategyViewPrefabBuilder
     {
         Directory.CreateDirectory(Path.GetDirectoryName(_missionsWindowPrefabPath));
         MissionParticipantRowView participantRowPrefab = BuildMissionsParticipantRowPrefab();
-        const int windowWidth = 235;
-        const int windowHeight = 304;
+        const int windowWidth = _planetWindowWidth;
+        const int windowHeight = _planetWindowHeight;
 
         GameObject window = new GameObject(
             "MissionsWindow",
@@ -3046,57 +2910,11 @@ public static class StrategyViewPrefabBuilder
         );
         background.raycastTarget = true;
 
-        RawImage title = CreateWindowTitleImage(window.GetComponent<UIWindow>(), windowWidth);
-        TextMeshProUGUI caption = CreateTextLabel("CaptionTextField", window.transform);
-        caption.text = "Corellia";
-        caption.color = Color.black;
-        caption.fontSize = 12;
-        caption.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(caption.rectTransform, 19, 4, 150, 16);
-
-        RectTransform buttons = CreateSourceRectLayer(
-            "Buttons",
-            window.transform,
+        (RawImage title, TextMeshProUGUI caption) = CreatePlanetWindowHeader(
+            window.GetComponent<UIWindow>(),
             windowWidth,
             windowHeight
         );
-        List<RawImage> buttonImages = new List<RawImage>
-        {
-            CreateRawImage(
-                "OpenSectorButtonImage",
-                buttons,
-                _windowOpenSectorPreviewPath,
-                3,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "MinimizeButtonImage",
-                buttons,
-                _windowMinimizePreviewPath,
-                windowWidth - 31,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-            CreateRawImage(
-                "CloseButtonImage",
-                buttons,
-                _windowClosePreviewPath,
-                windowWidth - 17,
-                3,
-                _windowChromeButtonWidth,
-                _windowChromeButtonHeight
-            ),
-        };
-        int[] buttonActions =
-        {
-            StrategyWindowButtonActions.OpenSector,
-            StrategyWindowButtonActions.MinimizeWindow,
-            StrategyWindowButtonActions.CloseWindow,
-        };
-        ConfigureWindowButtons(window.GetComponent<UIWindow>(), buttonImages, buttonActions);
 
         ScrollAreaView missionListScrollArea = CreateScrollAreaView(
             window.transform,
@@ -8244,6 +8062,35 @@ public static class StrategyViewPrefabBuilder
     }
 
     /// <summary>
+    /// Authors a blank shell with the shared planet window header for the Interfaces editor.
+    /// </summary>
+    /// <param name="parent">The surface receiving the header preview.</param>
+    internal static void CreatePlanetWindowHeaderPreview(Transform parent)
+    {
+        GameObject shell = new GameObject(
+            ContentEditorArtworkWindowPreview.PlanetHeaderWindowName,
+            typeof(RectTransform),
+            typeof(UIWindow)
+        );
+        shell.SetActive(false);
+        shell.transform.SetParent(parent, false);
+        SetSourceRect(
+            (RectTransform)shell.transform,
+            0,
+            0,
+            _planetWindowWidth,
+            _planetWindowHeight
+        );
+        CreateBlackWindowUnderlay(shell.transform, _planetWindowWidth, _planetWindowHeight);
+        var (_, caption) = CreatePlanetWindowHeader(
+            shell.GetComponent<UIWindow>(),
+            _planetWindowWidth,
+            _planetWindowHeight
+        );
+        caption.text = "Header Text";
+    }
+
+    /// <summary>
     /// Authors inactive, connected instances of the exact gameplay-window prefabs used by the
     /// content editor's faction-artwork browser.
     /// </summary>
@@ -9053,6 +8900,79 @@ public static class StrategyViewPrefabBuilder
         title.raycastTarget = true;
         ConfigureWindowDragHandle(title.gameObject, window);
         return title;
+    }
+
+    /// <summary>
+    /// Builds the shared title and action controls for the four planet windows.
+    /// </summary>
+    /// <param name="window">The window shell owning the header.</param>
+    /// <param name="windowWidth">The source width of the window.</param>
+    /// <param name="windowHeight">The source height of the window.</param>
+    /// <returns>The title artwork and caption used by the window's render data.</returns>
+    private static (RawImage Title, TextMeshProUGUI Caption) CreatePlanetWindowHeader(
+        UIWindow window,
+        int windowWidth,
+        int windowHeight
+    )
+    {
+        RawImage title = CreateWindowTitleImage(window, windowWidth);
+        TextMeshProUGUI caption = CreateTextLabel("CaptionTextField", window.transform);
+        caption.text = "Corellia";
+        caption.color = Color.black;
+        caption.fontSize = 12;
+        caption.alignment = TextAlignmentOptions.TopLeft;
+        SetSourceRect(caption.rectTransform, 19, 4, 150, 16);
+
+        RectTransform buttons = CreateSourceRectLayer(
+            "Buttons",
+            window.transform,
+            windowWidth,
+            windowHeight
+        );
+        List<RawImage> buttonImages = new List<RawImage>
+        {
+            CreateRawImage(
+                "OpenSectorButtonImage",
+                buttons,
+                _windowOpenSectorPreviewPath,
+                3,
+                3,
+                _windowChromeButtonWidth,
+                _windowChromeButtonHeight
+            ),
+            CreateRawImage(
+                "MinimizeButtonImage",
+                buttons,
+                _windowMinimizePreviewPath,
+                windowWidth - 31,
+                3,
+                _windowChromeButtonWidth,
+                _windowChromeButtonHeight
+            ),
+            CreateRawImage(
+                "CloseButtonImage",
+                buttons,
+                _windowClosePreviewPath,
+                windowWidth - 17,
+                3,
+                _windowChromeButtonWidth,
+                _windowChromeButtonHeight
+            ),
+        };
+        int[] buttonActions =
+        {
+            StrategyWindowButtonActions.OpenSector,
+            StrategyWindowButtonActions.MinimizeWindow,
+            StrategyWindowButtonActions.CloseWindow,
+        };
+        ConfigureWindowButtons(window, buttonImages, buttonActions);
+        PlanetWindowHeader header = window.gameObject.AddComponent<PlanetWindowHeader>();
+        AssignReference(header, "title", title);
+        AssignReference(header, "caption", caption);
+        AssignReference(header, "openSector", buttonImages[0].GetComponent<RawImagePressVisual>());
+        AssignReference(header, "minimize", buttonImages[1].GetComponent<RawImagePressVisual>());
+        AssignReference(header, "close", buttonImages[2].GetComponent<RawImagePressVisual>());
+        return (title, caption);
     }
 
     /// <summary>

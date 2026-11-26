@@ -130,17 +130,11 @@ public sealed class MissionsWindowController : IStrategyContextMenuProvider, ICo
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowLayer.CreatePlanetWindow(
+            windowManager,
             windowLayer.MissionsWindowPrefab,
-            windowLayer.GetWindowParent(false),
             $"MissionsWindow-{planet.Planet.GetDisplayName()}",
-            position.x,
-            position.y,
-            windowLayer.GetWindowSize(windowLayer.MissionsWindowPrefab),
-            false,
-            true,
-            true,
-            false,
+            position,
             out MissionsWindowView view
         );
         if (!TryInitializeWindow(view, planet))

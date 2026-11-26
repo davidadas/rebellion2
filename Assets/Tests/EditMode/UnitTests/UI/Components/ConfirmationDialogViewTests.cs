@@ -123,6 +123,56 @@ namespace Rebellion.Tests.UI.Components
         }
 
         [Test]
+        public void Show_ActivePackHasConfirmationArtwork_UsesTheConfiguredStates()
+        {
+            const string background = "Application/Common/UI/ui_common_acknowledgment_dialog";
+            const string pressed = "Application/Common/UI/ui_common_confirmation_no_button_pressed";
+            using ContentAssets assets = new(
+                TestContent.Pack.FileResolver,
+                new ContentPackDefinition
+                {
+                    ConfirmationWindowArtwork = new ConfirmationWindowArtwork
+                    {
+                        BackgroundImagePath = background,
+                        YesPressedImagePath = pressed,
+                    },
+                }
+            );
+            _view.InitializeContent(assets);
+            _view.Show("Confirm");
+
+            Assert.AreSame(assets.GetTexture(background), _view.BackgroundArtwork.texture);
+            Assert.AreSame(assets.GetTexture(pressed), _view.YesArtwork.PressedTexture);
+        }
+
+        [Test]
+        public void Show_ActivePackHasButtonPositions_MovesTheInteractiveButtons()
+        {
+            using ContentAssets assets = new(
+                TestContent.Pack.FileResolver,
+                new ContentPackDefinition
+                {
+                    ConfirmationWindowArtwork = new ConfirmationWindowArtwork
+                    {
+                        YesPosition = new SourcePointLayout { X = 240, Y = 280 },
+                        NoPosition = new SourcePointLayout { X = 335, Y = 279 },
+                    },
+                }
+            );
+            _view.InitializeContent(assets);
+            _view.Show("Confirm");
+
+            Assert.AreEqual(
+                new Vector2(240, -280),
+                ((RectTransform)_view.YesArtwork.transform).anchoredPosition
+            );
+            Assert.AreEqual(
+                new Vector2(335, -279),
+                ((RectTransform)_view.NoArtwork.transform).anchoredPosition
+            );
+        }
+
+        [Test]
         public void Show_VisibleDialog_SelectsConfirmButton()
         {
             _view.Show("Confirm");

@@ -591,6 +591,10 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController
     )
     {
+        strategyWindowLayerView.SetPlanetWindowHeader(
+            _appBootstrap.GetContentPack().Definition.PlanetWindowHeaderLayout,
+            _appBootstrap.GetContentAssets()
+        );
         Func<SelectionModifierState> getSelectionModifiers = () =>
             AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(

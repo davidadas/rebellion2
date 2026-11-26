@@ -67,6 +67,31 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public void Save_StartupVideoImported_PersistsThePackVideoAddress()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord manifest = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
+                .Records.Single();
+            ContentPackEditorField field = manifest.GetField(
+                nameof(ContentPackDefinition.StartupIntroVideoPath)
+            );
+            string source = Path.Combine(contentRoot, "custom-intro.mp4");
+            File.WriteAllText(source, "fixture");
+            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
+
+            project.SetField(field, address);
+            ContentPackEditorStorage.Save(project);
+
+            ContentPackDefinition reopened =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(project.PackRootPath, "pack.xml")
+                );
+            Assert.AreEqual("Pack/Assets/custom-intro.mp4", reopened.StartupIntroVideoPath);
+        }
+
+        [Test]
         public void ImportAsset_RelativeAdvisorAudio_KeepsTheDeclaredRootAndClipName()
         {
             WriteFixtureFile(

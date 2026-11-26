@@ -264,6 +264,7 @@ public static class ContentPackEditorPrefabBuilder
             "Default backgrounds",
             "Colors",
             "Mission presentation",
+            "Cutscenes",
         };
         Button[] tabButtons = new Button[sections.Length];
         for (int i = 0; i < sections.Length; i++)
@@ -293,6 +294,8 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "defaultBackgroundsTab", tabButtons[9]);
         Assign(view, "colorsTab", tabButtons[10]);
         Assign(view, "missionPresentationTab", tabButtons[11]);
+        tabButtons[12].name = "CutscenesTab";
+        Assign(view, "cutscenesTab", tabButtons[12]);
         Button[] generationTabs = ContentPackEditorView
             .GenerationSections.Select(
                 (caption, index) =>
@@ -406,6 +409,7 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorArtworkWindowPreview artworkWindowPreview =
             artworkWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
         StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(artworkWindowSurface.transform);
+        StrategyViewPrefabBuilder.CreatePlanetWindowHeaderPreview(artworkWindowSurface.transform);
         CommonUIPrefabBuilder.CreateConfirmationArtworkPreview(artworkWindowSurface.transform);
         BuildStrategyPreviewZoom(fields.ScrollArea.ContentRoot, artworkWindowPreview);
         artworkWindowSurface.gameObject.SetActive(false);

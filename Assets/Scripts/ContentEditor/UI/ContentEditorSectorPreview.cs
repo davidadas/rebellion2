@@ -15,7 +15,8 @@ public sealed class ContentEditorSectorPreview
     : UIBehaviour,
         IContentEditorArtworkDragPreview,
         IPointerMoveHandler,
-        IPointerExitHandler
+        IPointerExitHandler,
+        IPointerClickHandler
 {
     private readonly List<ContentPackEditorField> renderedFields = new();
     private RawImagePressVisual[] windowControls;
@@ -40,15 +41,15 @@ public sealed class ContentEditorSectorPreview
     internal Color DefaultBackgroundColor => window.DefaultBackgroundColor;
 
     /// <summary>
+    /// Gets the faction-theme fields currently represented by literal editable images.
+    /// </summary>
+    internal IReadOnlyList<ContentPackEditorField> RenderedFields => renderedFields;
+
+    /// <summary>
     /// Applies the pack's presentation to the same sector view used by the game.
     /// </summary>
     /// <param name="layout">The optional sector-window overrides.</param>
     internal void ApplyWindowLayout(PlanetSectorWindowLayout layout) => window.ApplyLayout(layout);
-
-    /// <summary>
-    /// Gets the faction-theme fields currently represented by literal editable images.
-    /// </summary>
-    internal IReadOnlyList<ContentPackEditorField> RenderedFields => renderedFields;
 
     /// <summary>
     /// Gets the shared press visuals attached directly to the sector window.
@@ -110,10 +111,47 @@ public sealed class ContentEditorSectorPreview
             return;
         }
         draggedControl = target;
-        RectTransform button = (RectTransform)target.transform;
-        draggedControlBounds = button.rect;
-        draggedControlBounds.position += (Vector2)button.localPosition;
+        draggedControlBounds = GetControlBounds(target);
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
+        ClearControlHover();
+        ContentEditorArtworkEditTarget.Select(target);
         eventData.Use();
+    }
+
+    /// <summary>
+    /// Selects a header button or clears focus on an empty portion of the sector preview.
+    /// </summary>
+    /// <param name="eventData">The completed pointer click.</param>
+    void IPointerClickHandler.OnPointerClick(PointerEventData eventData)
+    {
+        if (
+            eventData.button == PointerEventData.InputButton.Left
+            && !ContentEditorArtworkEditTarget.IsPreviewDragging
+        )
+            ContentEditorArtworkEditTarget.Select(
+                GetWindowControlAt(eventData.position, eventData.pressEventCamera)
+            );
+    }
+
+    /// <summary>
+    /// Nudges a selected sector control within the window bounds.
+    /// </summary>
+    /// <param name="target">The selected control.</param>
+    /// <param name="delta">The source-pixel movement, with positive Y down.</param>
+    /// <returns>True when the control supports placement.</returns>
+    bool IContentEditorArtworkDragPreview.NudgeArtwork(
+        ContentEditorArtworkEditTarget target,
+        Vector2Int delta
+    )
+    {
+        if (draggedControl != null || !target.BeginMove())
+            return false;
+        var changes = target.CompleteMove(
+            ConstrainControlMovement(GetControlBounds(target), new Vector2(delta.x, -delta.y))
+        );
+        if (changes.Count > 0)
+            ArtworkMoved?.Invoke(changes);
+        return true;
     }
 
     /// <summary>
@@ -122,7 +160,7 @@ public sealed class ContentEditorSectorPreview
     /// <param name="eventData">The current pointer position and camera.</param>
     void IPointerMoveHandler.OnPointerMove(PointerEventData eventData)
     {
-        if (draggedControl != null)
+        if (ContentEditorArtworkEditTarget.IsPreviewDragging)
             return;
         ContentEditorArtworkEditTarget control = GetWindowControlAt(
             eventData.position,
@@ -139,7 +177,12 @@ public sealed class ContentEditorSectorPreview
     /// Clears the movable header outline after the pointer leaves the preview.
     /// </summary>
     /// <param name="eventData">The pointer exit event.</param>
-    void IPointerExitHandler.OnPointerExit(PointerEventData eventData)
+    void IPointerExitHandler.OnPointerExit(PointerEventData eventData) => ClearControlHover();
+
+    /// <summary>
+    /// Removes the sector's transient header hover while preserving selection.
+    /// </summary>
+    private void ClearControlHover()
     {
         hoveredControl?.SetHovered(false);
         hoveredControl = null;
@@ -193,6 +236,7 @@ public sealed class ContentEditorSectorPreview
             );
             return;
         }
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
         var changes = draggedControl.CompleteMove(GetControlDragDelta(eventData));
         draggedControl = null;
         eventData.Use();
@@ -208,24 +252,47 @@ public sealed class ContentEditorSectorPreview
     {
         if (!TryGetWindowPoint(eventData.position, eventData, out Vector2 point))
             return Vector2Int.zero;
-        Vector2 delta = point - dragOrigin;
+        return ConstrainControlMovement(draggedControlBounds, point - dragOrigin);
+    }
+
+    /// <summary>
+    /// Keeps the entire button inside the sector window during a drag or keyboard nudge.
+    /// </summary>
+    /// <param name="buttonBounds">The button rectangle before movement.</param>
+    /// <param name="delta">The proposed displacement from the start of the move.</param>
+    /// <returns>The constrained source-pixel displacement.</returns>
+    private Vector2Int ConstrainControlMovement(Rect buttonBounds, Vector2 delta)
+    {
         Rect bounds = ((RectTransform)window.transform).rect;
         return new Vector2Int(
             Mathf.RoundToInt(
                 Mathf.Clamp(
                     delta.x,
-                    bounds.xMin - draggedControlBounds.xMin,
-                    bounds.xMax - draggedControlBounds.xMax
+                    bounds.xMin - buttonBounds.xMin,
+                    bounds.xMax - buttonBounds.xMax
                 )
             ),
             -Mathf.RoundToInt(
                 Mathf.Clamp(
                     delta.y,
-                    bounds.yMin - draggedControlBounds.yMin,
-                    bounds.yMax - draggedControlBounds.yMax
+                    bounds.yMin - buttonBounds.yMin,
+                    bounds.yMax - buttonBounds.yMax
                 )
             )
         );
+    }
+
+    /// <summary>
+    /// Measures one header button in the window's local coordinate space.
+    /// </summary>
+    /// <param name="target">The moving button.</param>
+    /// <returns>The dimensions and position before a move.</returns>
+    private static Rect GetControlBounds(ContentEditorArtworkEditTarget target)
+    {
+        RectTransform button = (RectTransform)target.transform;
+        Rect bounds = button.rect;
+        bounds.position += (Vector2)button.localPosition;
+        return bounds;
     }
 
     /// <summary>
@@ -255,12 +322,14 @@ public sealed class ContentEditorSectorPreview
     /// <param name="assets">The working pack's resolved artwork.</param>
     /// <param name="theme">The optional faction whose overlay icons and colors are previewed.</param>
     /// <param name="editableFields">The optional faction-interface fields rendered in the preview.</param>
+    /// <param name="enablePlanetPlacement">Whether this preview edits the map's planet positions.</param>
     public void Render(
         ContentPackEditorProject project,
         ContentPackEditorRecord sector,
         ContentAssets assets,
         FactionTheme theme = null,
-        IReadOnlyList<ContentPackEditorField> editableFields = null
+        IReadOnlyList<ContentPackEditorField> editableFields = null,
+        bool enablePlanetPlacement = false
     )
     {
         ContentPackEditorRecord[] planets = sector.Planets.ToArray();
@@ -304,6 +373,29 @@ public sealed class ContentEditorSectorPreview
             )
         );
         PlanetSectorPlanetView[] views = window.GetComponentsInChildren<PlanetSectorPlanetView>();
+        if (enablePlanetPlacement)
+            BindPlanetPlacement(sector, planets, views);
+        else
+            AttachEditCommands(
+                editableFields ?? Array.Empty<ContentPackEditorField>(),
+                assets,
+                neutralIndex >= 0 ? views[neutralIndex].transform : null
+            );
+        Fit();
+    }
+
+    /// <summary>
+    /// Connects the planet views to coordinate editing in the map workspace.
+    /// </summary>
+    /// <param name="sector">The open sector definition.</param>
+    /// <param name="planets">The planet definitions in rendering order.</param>
+    /// <param name="views">The corresponding gameplay views.</param>
+    private void BindPlanetPlacement(
+        ContentPackEditorRecord sector,
+        ContentPackEditorRecord[] planets,
+        PlanetSectorPlanetView[] views
+    )
+    {
         for (int i = 0; i < planets.Length; i++)
         {
             ContentEditorPlanetDrag drag =
@@ -319,18 +411,36 @@ public sealed class ContentEditorSectorPreview
                 () => DragEnded?.Invoke()
             );
         }
-        AttachEditCommands(
-            editableFields ?? Array.Empty<ContentPackEditorField>(),
-            assets,
-            neutralIndex >= 0 ? views[neutralIndex].transform : null
-        );
-        Fit();
     }
 
     /// <summary>
     /// Hides the sector window while the galaxy overview is displayed.
     /// </summary>
-    public void Hide() => window.gameObject.SetActive(false);
+    public void Hide()
+    {
+        CancelControlDrag();
+        window.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Releases pointer state if the sector preview is closed mid-gesture.
+    /// </summary>
+    protected override void OnDisable()
+    {
+        CancelControlDrag();
+        base.OnDisable();
+    }
+
+    /// <summary>
+    /// Restores an interrupted header edit and releases hover suppression.
+    /// </summary>
+    private void CancelControlDrag()
+    {
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
+        draggedControl?.CancelMove();
+        draggedControl = null;
+        ClearControlHover();
+    }
 
     /// <summary>
     /// Releases project references held by the reused gameplay planet views.
@@ -338,8 +448,7 @@ public sealed class ContentEditorSectorPreview
     public void Clear()
     {
         renderedFields.Clear();
-        draggedControl = null;
-        hoveredControl = null;
+        CancelControlDrag();
         foreach (
             ContentEditorPlanetDrag drag in window.GetComponentsInChildren<ContentEditorPlanetDrag>(
                 true

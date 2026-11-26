@@ -591,7 +591,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     public string GetVideoUrl(string path)
     {
         ThrowIfDisposed();
-        return new Uri(ResolveAssetFile(path, ".mp4")).AbsoluteUri;
+        return new Uri(ResolveAssetFile(path, ".mp4", ".webm")).AbsoluteUri;
     }
 
     /// <summary>

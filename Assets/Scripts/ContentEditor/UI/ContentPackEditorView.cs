@@ -108,6 +108,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private Button audioTab;
 
     [SerializeField]
+    private Button cutscenesTab;
+
+    [SerializeField]
     private Button advancedTab;
 
     [SerializeField]
@@ -241,7 +244,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action<ContentEditorColorMode> ColorModeChanged;
     public event Action<float, float> LayoutChanged;
     public event Action<ContentEditorPlayOptions> PlayRequested;
-    public event Action<ContentPackEditorField, string> PreviewRequested;
+    public event Action<ContentPackEditorField, string, Vector2Int?> PreviewRequested;
     public event Action PreviewCancelled;
     internal event Action<ContentPackEditorRecord> DuplicateRequested;
     internal event Action<ContentPackEditorCatalog, string> AddUnitRequested;
@@ -405,6 +408,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || recordSubtitle == null
             || propertiesTab == null
             || artworkTab == null
+            || cutscenesTab == null
             || defaultBackgroundsTab == null
             || colorsTab == null
             || audioTab == null
@@ -464,6 +468,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
         defaultBackgroundsTab.onClick.AddListener(() => ShowSection("Default backgrounds"));
         audioTab.onClick.AddListener(() => ShowSection("Audio"));
+        cutscenesTab.onClick.AddListener(() =>
+            ShowSection(ContentEditorContentSections.CutscenesSection)
+        );
         advancedTab.onClick.AddListener(() => ShowSection("Advanced"));
         encyclopediaTab.onClick.AddListener(() => ShowSection("Encyclopedia"));
         rulesTab.onClick.AddListener(() => ShowSection("Rules"));
@@ -691,6 +698,41 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (!notice.activeSelf)
             return false;
         HideNotice();
+        return true;
+    }
+
+    /// <summary>
+    /// Moves the selected preview element when an unmodified direction key is pressed.
+    /// </summary>
+    /// <param name="key">The incoming desktop key event.</param>
+    /// <returns>True when the focused artwork or planet handled the key.</returns>
+    private bool TryNudgePreview(Event key)
+    {
+        if (key?.type != EventType.KeyDown || key.control || key.command || key.alt)
+            return false;
+        ContentEditorArtworkEditTarget target =
+            EventSystem.current?.currentSelectedGameObject?.GetComponent<ContentEditorArtworkEditTarget>();
+        if (target?.isActiveAndEnabled != true)
+            return false;
+        Vector2Int delta = key.keyCode switch
+        {
+            KeyCode.LeftArrow or KeyCode.A => Vector2Int.left,
+            KeyCode.RightArrow or KeyCode.D => Vector2Int.right,
+            KeyCode.UpArrow or KeyCode.W => Vector2Int.down,
+            KeyCode.DownArrow or KeyCode.S => Vector2Int.up,
+            _ => Vector2Int.zero,
+        };
+        if (delta == Vector2Int.zero)
+            return false;
+        bool moved = target.transform.IsChildOf(form.transform)
+            ? target.Nudge(delta)
+            : target.transform.IsChildOf(map.transform)
+                && target
+                    .GetComponentInParent<ContentEditorPlanetDrag>()
+                    ?.Nudge(selectedRecord, delta) == true;
+        if (!moved)
+            return false;
+        key.Use();
         return true;
     }
 
@@ -1166,10 +1208,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Keeps the clear action synchronized with the current navigation filter.
+    /// Filters the current navigation tree as the author types.
     /// </summary>
     /// <param name="text">The entered filter.</param>
-    private void HandleSearchChanged(string text) => RenderRecords(revealSelection: false);
+    private void HandleSearchChanged(string text)
+    {
+        if (project != null)
+            RenderRecordRows(navigation.GetRows(text), revealSelection: false);
+    }
 
     /// <summary>
     /// Removes the navigation filter and reveals the selected entry in its hierarchy.
@@ -1191,20 +1237,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Renders the hierarchy through the shared selectable-list control.
+    /// Rebuilds the hierarchy after record or workspace changes and refreshes the sidebar.
     /// </summary>
     /// <param name="revealSelection">Whether to scroll to the selected record instead of retaining the viewport.</param>
     private void RenderRecords(bool revealSelection = true)
     {
         if (project == null)
             return;
-        bool filtered = !string.IsNullOrEmpty(searchInput.text);
-        clearSearchButton.gameObject.SetActive(filtered);
-        searchInput.textViewport.offsetMax = new Vector2(
-            filtered ? -62 : -8,
-            searchInput.textViewport.offsetMax.y
-        );
-        float scrollOffset = recordScroll.ScrollArea.ContentRoot.anchoredPosition.y;
         bool selectionWasVisible = navigation.GetRows(searchInput.text).Any(IsSelected);
         navigation.Render(catalogs);
         IReadOnlyList<ContentEditorTreeNode> rows = navigation.GetRows(searchInput.text);
@@ -1214,6 +1253,27 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             rows = navigation.GetRows(searchInput.text);
             revealSelection = true;
         }
+        RenderRecordRows(rows, revealSelection);
+    }
+
+    /// <summary>
+    /// Applies the visible navigation rows through the shared selectable-list control.
+    /// </summary>
+    /// <param name="rows">The current expanded or filtered rows.</param>
+    /// <param name="revealSelection">Whether to scroll to the selected record instead of retaining the viewport.</param>
+    private void RenderRecordRows(IReadOnlyList<ContentEditorTreeNode> rows, bool revealSelection)
+    {
+        string filter = searchInput.text;
+        bool hasText = !string.IsNullOrEmpty(filter);
+        bool allowDisclosure = string.IsNullOrWhiteSpace(filter);
+        if (clearSearchButton.gameObject.activeSelf != hasText)
+            clearSearchButton.gameObject.SetActive(hasText);
+        RectTransform viewport = searchInput.textViewport;
+        Vector2 offset = viewport.offsetMax;
+        float rightInset = hasText ? -62 : -8;
+        if (offset.x != rightInset)
+            viewport.offsetMax = new Vector2(rightInset, offset.y);
+        float scrollOffset = recordScroll.ScrollArea.ContentRoot.anchoredPosition.y;
         recordScroll.SetContentHeight(rows.Count * 36);
         recordList.Render(
             rows,
@@ -1226,9 +1286,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     node,
                     index,
                     IsSelected(node),
-                    navigation.IsExpanded(node) || !string.IsNullOrEmpty(searchInput.text),
+                    hasText || navigation.IsExpanded(node),
                     assets,
-                    string.IsNullOrWhiteSpace(searchInput.text) ? ToggleBranch : null
+                    allowDisclosure ? ToggleBranch : null
                 ),
             revealSelection ? (node, _) => IsSelected(node) : null
         );
@@ -1428,6 +1488,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || imagePreview.gameObject.activeSelf
         )
             return false;
+        if (TryNudgePreview(key))
+            return true;
         if (
             key == null
             || key.type != EventType.KeyDown
@@ -1709,6 +1771,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 selectedPage?.Key
                 is ContentEditorMainMenuSettings.PageKey
                     or ContentEditorContentSections.PlanetSectorWindowPageKey
+                    or ContentEditorContentSections.PlanetWindowHeaderPageKey
                     or ContentEditorContentSections.ConfirmationWindowPageKey
             )
                 BindInspectorXml();
@@ -1730,19 +1793,44 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (selectedPage?.Key == ContentEditorMainMenuSettings.PageKey)
             xml.BindScopes(ContentEditorMainMenuSettings.GetXmlScopes(project, selectedRecord));
+        else if (selectedPage?.Key == ContentEditorContentSections.ConfirmationWindowPageKey)
+        {
+            XElement manifest = selectedRecord.Element;
+            var scopes = new[]
+            {
+                (
+                    manifest.Element(nameof(ContentPackDefinition.ConfirmationWindowArtwork)),
+                    "Artwork"
+                ),
+                (
+                    manifest.Element(nameof(ContentPackDefinition.ConfirmationMessageArea)),
+                    "Message area"
+                ),
+            }
+                .Where(scope => scope.Item1 != null)
+                .Select(scope => new ContentEditorXmlScope(
+                    selectedRecord,
+                    scope.Item1,
+                    scope.Item2
+                ))
+                .ToArray();
+            xml.BindScopes(
+                scopes.Length == 0
+                    ? new[] { new ContentEditorXmlScope(selectedRecord, manifest, "Pack manifest") }
+                    : scopes
+            );
+        }
         else if (
             selectedPage?.Key
             is ContentEditorContentSections.PlanetSectorWindowPageKey
-                or ContentEditorContentSections.ConfirmationWindowPageKey
+                or ContentEditorContentSections.PlanetWindowHeaderPageKey
         )
         {
-            bool isConfirmation =
-                selectedPage.Key == ContentEditorContentSections.ConfirmationWindowPageKey;
-            XElement layout = selectedRecord.Element.Element(
-                isConfirmation
-                    ? nameof(ContentPackDefinition.ConfirmationMessageArea)
-                    : nameof(ContentPackDefinition.PlanetSectorWindowLayout)
-            );
+            string layoutName =
+                selectedPage.Key == ContentEditorContentSections.PlanetSectorWindowPageKey
+                    ? nameof(ContentPackDefinition.PlanetSectorWindowLayout)
+                    : nameof(ContentPackDefinition.PlanetWindowHeaderLayout);
+            XElement layout = selectedRecord.Element.Element(layoutName);
             xml.BindScopes(
                 new[]
                 {
@@ -1777,6 +1865,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 && fields.Any(field =>
                     field.IsMedia
                     && field.MediaType != ContentPackEditorMediaType.Audio
+                    && (
+                        selectedRecord.Kind != "ContentPack"
+                        || field.MediaType != ContentPackEditorMediaType.Video
+                    )
                     && !ContentEditorContentSections.IsEncyclopediaField(field)
                 )
         );
@@ -1793,6 +1885,14 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         bool faction = selectedPage?.Key.StartsWith("factions/", StringComparison.Ordinal) == true;
         bool neutral = selectedPage?.Key == ContentEditorContentSections.NeutralThemePageKey;
         bool generation = selectedRecord.Kind == "GameGenerationConfig";
+        cutscenesTab.gameObject.SetActive(
+            faction && !neutral
+                ? selectedPage.Fields.Any(field =>
+                    ContentEditorContentSections.FactionSection(field)
+                    == ContentEditorContentSections.CutscenesSection
+                )
+                : selectedPage?.Fields == null && selectedRecord.Kind == "ContentPack"
+        );
         bool missionRulesOnly =
             selectedPage?.MissionID != null
             && selectedPage.Fields.Count > 0
@@ -1864,6 +1964,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     shipNamesTab,
                     factionMessagesTab,
                     missionPresentationTab,
+                    cutscenesTab,
                     artworkTab,
                     defaultBackgroundsTab,
                     referenceTab,
@@ -1875,6 +1976,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 encyclopediaTab,
                 artworkTab,
                 audioTab,
+                cutscenesTab,
                 rulesTab,
                 referenceTab,
                 advancedTab,
@@ -1894,6 +1996,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     "Ship names",
                     "Messages",
                     "Mission presentation",
+                    ContentEditorContentSections.CutscenesSection,
                     "Interfaces",
                     "Default backgrounds",
                     "Encyclopedia",
@@ -1905,6 +2008,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 "Encyclopedia",
                 "Artwork",
                 "Audio",
+                ContentEditorContentSections.CutscenesSection,
                 "Rules",
                 ContentEditorMissionReport.Section,
                 "Advanced",
@@ -2084,10 +2188,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     /// <param name="field">The media field.</param>
     /// <param name="address">The selected media item.</param>
-    private void PreviewMedia(ContentPackEditorField field, string address)
+    /// <param name="resolution">The fullscreen resolution selected for a video.</param>
+    private void PreviewMedia(ContentPackEditorField field, string address, Vector2Int? resolution)
     {
         if (!string.IsNullOrWhiteSpace(address))
-            PreviewRequested?.Invoke(field, address);
+            PreviewRequested?.Invoke(field, address, resolution);
     }
 
     /// <summary>
@@ -2097,6 +2202,22 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="address">The content address shown in the preview caption.</param>
     public void ShowImagePreview(Texture2D texture, string address) =>
         imagePreview.Show(texture, address);
+
+    /// <summary>
+    /// Plays a cutscene in the shared media viewer at a selected game resolution.
+    /// </summary>
+    /// <param name="url">The resolved video URL.</param>
+    /// <param name="resolution">The player's selected fullscreen render size.</param>
+    internal void ShowVideoPreview(string url, Vector2Int resolution)
+    {
+        StopAudioPreview();
+        imagePreview.ShowVideo(
+            url,
+            resolution,
+            (message, failed) =>
+                RenderStatus(failed ? "Video playback failed. " + message : message, failed)
+        );
+    }
 
     /// <summary>
     /// Presents an editable gameplay artwork draft in the dedicated workspace.
@@ -2917,6 +3038,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             );
         if (record.Kind == "GameGenerationConfig")
             return ContentEditorContentSections.GenerationSection(field);
+        if (record.Kind == "ContentPack" && field.MediaType == ContentPackEditorMediaType.Video)
+            return ContentEditorContentSections.CutscenesSection;
         if (page?.MissionID != null)
             return field.Record.Kind == "GameConfig" ? "Rules" : "General";
         if (

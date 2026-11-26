@@ -20,6 +20,12 @@ public sealed class ContentCatalogDefinition
 [XmlRoot("ContentPack")]
 public sealed class ContentPackDefinition
 {
+    // The built-in video used when the pack's startup intro slot is empty.
+    public const string DefaultStartupIntroVideoPath = "Application/Boot/Videos/intro";
+
+    // The built-in video used when the pack's opening crawl slot is empty.
+    public const string DefaultOpeningCrawlVideoPath = "Application/Boot/Videos/opening-crawl";
+
     [XmlElement]
     public string ID { get; set; }
 
@@ -38,17 +44,35 @@ public sealed class ContentPackDefinition
     [XmlElement]
     public string MainMenuMusicPath { get; set; }
 
+    /// <summary>
+    /// Gets or sets the optional video shown first at startup.
+    /// </summary>
+    [XmlElement]
+    public string StartupIntroVideoPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional opening crawl shown before the main menu.
+    /// </summary>
+    [XmlElement]
+    public string OpeningCrawlVideoPath { get; set; }
+
     [XmlElement]
     public MainMenuLayout MainMenuLayout { get; set; }
 
     [XmlElement]
     public PlanetSectorWindowLayout PlanetSectorWindowLayout { get; set; }
 
+    [XmlElement]
+    public PlanetWindowHeaderLayout PlanetWindowHeaderLayout { get; set; }
+
     /// <summary>
     /// Gets or sets the prompt area in the shared confirmation dialog's source coordinates.
     /// </summary>
     [XmlElement]
     public SourceRectLayout ConfirmationMessageArea { get; set; }
+
+    [XmlElement]
+    public ConfirmationWindowArtwork ConfirmationWindowArtwork { get; set; }
 
     [XmlElement]
     public string GameConfigPath { get; set; }
@@ -96,6 +120,39 @@ public sealed class PlanetSectorWindowLayout
     public string BackgroundColorHex { get; set; }
     public SourcePointLayout SwapButton { get; set; }
     public SourcePointLayout CloseButton { get; set; }
+}
+
+/// <summary>
+/// Overrides the shared header of the Defense, Fleet, Facilities, and Missions windows.
+/// Positions are displacements from each window's authored header in source pixels.
+/// </summary>
+public sealed class PlanetWindowHeaderLayout
+{
+    public SourcePointLayout TitleOffset { get; set; }
+    public SourcePointLayout CaptionOffset { get; set; }
+    public SourcePointLayout OpenSectorOffset { get; set; }
+    public SourcePointLayout MinimizeOffset { get; set; }
+    public SourcePointLayout CloseOffset { get; set; }
+    public string OpenSectorImagePath { get; set; }
+    public string OpenSectorPressedImagePath { get; set; }
+    public string MinimizeImagePath { get; set; }
+    public string MinimizePressedImagePath { get; set; }
+    public string CloseImagePath { get; set; }
+    public string ClosePressedImagePath { get; set; }
+}
+
+/// <summary>
+/// Overrides the artwork of the shared two-choice confirmation window.
+/// </summary>
+public sealed class ConfirmationWindowArtwork
+{
+    public string BackgroundImagePath { get; set; }
+    public string YesImagePath { get; set; }
+    public string YesPressedImagePath { get; set; }
+    public string NoImagePath { get; set; }
+    public string NoPressedImagePath { get; set; }
+    public SourcePointLayout YesPosition { get; set; }
+    public SourcePointLayout NoPosition { get; set; }
 }
 
 /// <summary>

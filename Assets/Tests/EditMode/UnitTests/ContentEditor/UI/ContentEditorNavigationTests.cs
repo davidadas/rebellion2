@@ -155,7 +155,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual("Neutral", neutral.Caption);
             CollectionAssert.Contains(navigation.Find("factions").Children, neutral);
             CollectionAssert.AreEqual(
-                new[] { "Main Menu", "Planet Sector Window", "Confirmation Window" },
+                new[]
+                {
+                    "Main Menu",
+                    "Planet Sector Window",
+                    "Planet Window Header",
+                    "Confirmation Window",
+                },
                 navigation.Find("interfaces").Children.Select(node => node.Caption)
             );
         }
