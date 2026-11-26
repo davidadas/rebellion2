@@ -17,18 +17,7 @@ namespace Rebellion.Tactical
             int id,
             CombatUnit unit,
             TacticalCombatSession session
-        )
-        {
-            int? requested = unit.RequestedGroupID;
-            TacticalCombatGroup group = new(
-                id,
-                unit,
-                session.GetSide(unit.Side).Forward,
-                TacticalCombatGroupKind.Fighter
-            );
-            unit.RequestedGroupID = requested;
-            return group;
-        }
+        ) => new(id, unit, session.GetSide(unit.Side).Forward, TacticalCombatGroupKind.Fighter);
 
         /// <summary>
         /// Creates a passive group identity before authoritative requested and applied ownership is restored.

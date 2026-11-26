@@ -82,20 +82,11 @@ namespace Rebellion.Tactical
                     group.AttackRun = null;
             }
             foreach (TacticalCombatUnitSnapshot state in snapshot.Units)
-            {
-                CombatUnit unit = GetUnit(state.UnitID);
-                unit.GroupID = null;
-                unit.RequestedGroupID = null;
-                ApplySnapshotUnit(unit, state);
-            }
+                ApplySnapshotUnit(GetUnit(state.UnitID), state);
+            _appliedGroups.Clear();
+            _requestedGroups.Clear();
             foreach (TacticalCombatGroupSnapshot state in snapshot.Groups)
-            {
-                TacticalCombatGroup group = _groupsByID[state.GroupID];
-                foreach (CombatUnit unit in group.Members)
-                    unit.GroupID = group.ID;
-                foreach (CombatUnit unit in group.RequestedMembers)
-                    unit.RequestedGroupID = group.ID;
-            }
+                IndexGroupMembership(_groupsByID[state.GroupID]);
             _synchronizedSystemTime = snapshot.SystemTime;
             _userPaused = snapshot.Paused;
             IsComplete = snapshot.Complete;

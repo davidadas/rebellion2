@@ -139,7 +139,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     StringComparer.Ordinal
                 )
             )
-                WriteUnit(writer, unit);
+                WriteUnit(writer, session, unit);
             writer.Prefix = string.Empty;
             writer.WriteField("Groups.Count", groups.Count);
             foreach (
@@ -194,8 +194,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Writes the public unit facts carried by complete tactical state updates.
         /// </summary>
         /// <param name="writer">The canonical binary destination.</param>
+        /// <param name="session">The battle owning the membership indexes.</param>
         /// <param name="unit">The participant to compare.</param>
-        private static void WriteUnit(StateWriter writer, CombatUnit unit)
+        private static void WriteUnit(
+            StateWriter writer,
+            TacticalCombatSession session,
+            CombatUnit unit
+        )
         {
             writer.Prefix = "Units." + unit.InstanceID;
             writer.WriteField("InstanceID", unit.InstanceID);
@@ -234,8 +239,8 @@ namespace Rebellion.Tests.MultiplayerIntegration
             writer.WriteField("CommandBudget", unit.CommandBudget);
             writer.WriteField("TurnRate", unit.TurnRate);
             writer.WriteField("HasCollision", unit.HasCollision);
-            WriteGroupID(writer, "GroupID", unit.GroupID);
-            WriteGroupID(writer, "RequestedGroupID", unit.RequestedGroupID);
+            WriteGroupID(writer, "GroupID", session.GetGroup(unit)?.ID);
+            WriteGroupID(writer, "RequestedGroupID", session.GetRequestedGroup(unit)?.ID);
         }
 
         /// <summary>

@@ -1148,7 +1148,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 8);
             Assert.AreSame(requested, session.GetGroup(selected));
             Assert.AreSame(fighterGroup, session.GetGroup(fighter));
-            Assert.AreEqual(105, fighter.GroupID);
+            Assert.AreEqual(105, session.GetGroup(fighter)?.ID);
             Assert.IsEmpty(previous.Members);
             CollectionAssert.DoesNotContain(session.Groups, previous);
         }
@@ -1789,7 +1789,7 @@ namespace Rebellion.Tests.Tactical
 
             CollectionAssert.DoesNotContain(session.Groups, failed.Group);
             Assert.IsNull(session.GetGroup(session.GetUnit("fighter")));
-            Assert.IsNull(session.GetUnit("fighter").GroupID);
+            Assert.IsNull(session.GetGroup(session.GetUnit("fighter")));
             Assert.IsTrue(session.CanAttackBattleStation(CombatSide.Attacker));
             session.SetOrder(reserve, TacticalCombatOrder.AttackBattleStation);
             AdvanceSeconds(session, 5);

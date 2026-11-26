@@ -42,11 +42,11 @@ namespace Rebellion.Tactical
             CombatUnit actor = credited ? attacker : victim;
             int bank = GetSide(side).FactionIndex == 0 ? 0 : 122;
             int message = credited ? 85 : 98;
-            if (actor.GroupID is int groupID)
+            if (GetGroup(actor) is TacticalCombatGroup group)
             {
                 if (actor.IsFighter)
                 {
-                    int category = GetReportFighterCategory(groupID, side);
+                    int category = GetReportFighterCategory(group, side);
                     if (category < 0)
                         return;
                     message = (credited ? 94 : 107) + category;
@@ -59,7 +59,7 @@ namespace Rebellion.Tactical
                     )
                         for (int index = 0; index < count; index++)
                             EnqueueFactionNotification(side, bank == 0 ? 134 : 260);
-                    int category = GetReportObjectCategory(groupID, side);
+                    int category = GetReportObjectCategory(group, side);
                     if (category >= 0)
                         message += 1 + category;
                 }
@@ -70,13 +70,13 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Finds an applied capital group in the player's current command slots.
         /// </summary>
-        /// <param name="groupID">The applied group identity.</param>
+        /// <param name="group">The applied capital group.</param>
         /// <param name="side">The receiving faction's retained category owner.</param>
         /// <returns>The matching command slot, or minus one when it has no slot.</returns>
-        private int GetReportObjectCategory(int groupID, CombatSide side)
+        private int GetReportObjectCategory(TacticalCombatGroup group, CombatSide side)
         {
             for (int category = 0; category < 8; category++)
-                if (_objectGroups[(int)side, category]?.ID == groupID)
+                if (ReferenceEquals(_objectGroups[(int)side, category], group))
                     return category;
             return -1;
         }
@@ -84,19 +84,15 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Resolves a fighter group's current slot or retained deployment category.
         /// </summary>
-        /// <param name="groupID">The applied group identity.</param>
+        /// <param name="group">The applied fighter group.</param>
         /// <param name="side">The receiving faction's retained category owner.</param>
         /// <returns>The resolved category, or minus one for an unavailable fighter group.</returns>
-        private int GetReportFighterCategory(int groupID, CombatSide side)
+        private int GetReportFighterCategory(TacticalCombatGroup group, CombatSide side)
         {
             for (int category = 0; category < 4; category++)
-                if (_fighterGroups[(int)side, category]?.ID == groupID)
+                if (ReferenceEquals(_fighterGroups[(int)side, category], group))
                     return category;
-            return
-                _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
-                && group.IsFighterGroup
-                ? group.FighterCategory
-                : -1;
+            return group.IsFighterGroup ? group.FighterCategory : -1;
         }
 
         /// <summary>

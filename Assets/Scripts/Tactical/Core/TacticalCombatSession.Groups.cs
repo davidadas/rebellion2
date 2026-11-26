@@ -103,8 +103,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The group's member.</param>
         /// <returns>The member's group, or null after removal.</returns>
         public TacticalCombatGroup GetGroup(CombatUnit unit) =>
-            unit.GroupID is int groupID
-            && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
+            unit != null && _appliedGroups.TryGetValue(unit, out TacticalCombatGroup group)
                 ? group
                 : null;
 
@@ -114,8 +113,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The selected unit.</param>
         /// <returns>The requested group, or null after requested removal.</returns>
         public TacticalCombatGroup GetRequestedGroup(CombatUnit unit) =>
-            unit.RequestedGroupID is int groupID
-            && _groupsByID.TryGetValue(groupID, out TacticalCombatGroup group)
+            unit != null && _requestedGroups.TryGetValue(unit, out TacticalCombatGroup group)
                 ? group
                 : null;
 
@@ -182,6 +180,7 @@ namespace Rebellion.Tactical
                 );
             RequestMemberRemoval(unit);
             group.AddRequestedMember(unit);
+            _requestedGroups[unit] = group;
             QueueCommand(new Command(CommandKind.AddGroupMember, unit, group: group));
         }
 
@@ -202,7 +201,7 @@ namespace Rebellion.Tactical
                     "The member does not belong to this encounter.",
                     nameof(unit)
                 );
-            group.RemoveRequestedMember(unit);
+            RemoveRequestedMember(group, unit);
             if (group.RequestedMembers.Count == 0)
                 ClearGroupCategories(group);
             QueueCommand(new Command(CommandKind.RemoveGroupMember, unit, group: group));
@@ -262,10 +261,35 @@ namespace Rebellion.Tactical
         private void RegisterGroup(TacticalCombatGroup group)
         {
             _groupsByID.Add(group.ID, group);
+            IndexGroupMembership(group);
             group.IsAutomated = GetSide(group.Side).IsAutomated;
             group.HyperspaceRequested += RequestHyperspace;
             group.OrderRequested += RequestOrder;
             group.AttackModeRequested += QueueAttackMode;
+        }
+
+        /// <summary>
+        /// Indexes the requested and applied rosters of a registered group.
+        /// </summary>
+        /// <param name="group">The group whose ordered rosters supply the membership.</param>
+        private void IndexGroupMembership(TacticalCombatGroup group)
+        {
+            foreach (CombatUnit unit in group.Members)
+                _appliedGroups[unit] = group;
+            foreach (CombatUnit unit in group.RequestedMembers)
+                _requestedGroups[unit] = group;
+        }
+
+        /// <summary>
+        /// Removes a requested member while retaining any newer requested assignment.
+        /// </summary>
+        /// <param name="group">The group from which the unit is being removed.</param>
+        /// <param name="unit">The departing member.</param>
+        private void RemoveRequestedMember(TacticalCombatGroup group, CombatUnit unit)
+        {
+            group.RemoveRequestedMember(unit);
+            if (ReferenceEquals(GetRequestedGroup(unit), group))
+                _requestedGroups.Remove(unit);
         }
 
         /// <summary>
@@ -275,7 +299,8 @@ namespace Rebellion.Tactical
         private void RemoveFromGroup(CombatUnit unit)
         {
             TacticalCombatGroup requested = GetRequestedGroup(unit);
-            requested?.RemoveRequestedMember(unit);
+            if (requested != null)
+                RemoveRequestedMember(requested, unit);
             TacticalCombatGroup applied = GetGroup(unit);
             if (applied != null)
                 RemoveAppliedMember(applied, unit);
@@ -291,6 +316,8 @@ namespace Rebellion.Tactical
         private void RemoveAppliedMember(TacticalCombatGroup group, CombatUnit unit)
         {
             group.RemoveMember(unit);
+            if (ReferenceEquals(GetGroup(unit), group))
+                _appliedGroups.Remove(unit);
             if (group.Members.Count == 0)
                 DeregisterGroup(group);
         }
@@ -303,7 +330,7 @@ namespace Rebellion.Tactical
         {
             ClearGroupCategories(group);
             while (group.RequestedMembers.Count != 0)
-                group.RemoveRequestedMember(group.RequestedMembers[0]);
+                RemoveRequestedMember(group, group.RequestedMembers[0]);
             group.HyperspaceRequested -= RequestHyperspace;
             group.OrderRequested -= RequestOrder;
             group.AttackModeRequested -= QueueAttackMode;

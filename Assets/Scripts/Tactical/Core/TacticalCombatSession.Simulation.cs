@@ -252,7 +252,7 @@ namespace Rebellion.Tactical
                     elapsedMilliseconds,
                     BattleDepth,
                     GetSide(group.Side).WithdrawalMilliseconds,
-                    _groupsByID
+                    _appliedGroups
                 );
             foreach (CombatUnit unit in _units)
             {
@@ -541,9 +541,10 @@ namespace Rebellion.Tactical
                         && ReferenceEquals(deleted, command.Group)
                     )
                     {
+                        if (deleted.Members.Count == 0)
+                            DeregisterGroup(deleted);
                         while (deleted.Members.Count != 0)
-                            deleted.RemoveMember(deleted.Members[0]);
-                        DeregisterGroup(deleted);
+                            RemoveAppliedMember(deleted, deleted.Members[0]);
                     }
                     break;
                 case CommandKind.CreateGroup:
@@ -559,6 +560,7 @@ namespace Rebellion.Tactical
                         else
                         {
                             owner.AddMember(source);
+                            _appliedGroups[source] = owner;
                             if (command.Kind == CommandKind.CreateGroup)
                             {
                                 owner.Formation.SetPosition(source.Position);

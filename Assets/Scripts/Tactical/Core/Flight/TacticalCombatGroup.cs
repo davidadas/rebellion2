@@ -196,7 +196,6 @@ namespace Rebellion.Tactical
                 int index = _requestedMembers.BinarySearch(unit, _memberComparer);
                 _requestedMembers.Insert(index < 0 ? ~index : index, unit);
             }
-            unit.RequestedGroupID = ID;
         }
 
         /// <summary>
@@ -208,8 +207,6 @@ namespace Rebellion.Tactical
             _requestedMembers.Remove(unit);
             if (ReferenceEquals(RequestedLeader, unit))
                 RequestedLeader = _requestedMembers.Count > 0 ? _requestedMembers[0] : null;
-            if (unit.RequestedGroupID == ID)
-                unit.RequestedGroupID = null;
         }
 
         /// <summary>
@@ -225,7 +222,6 @@ namespace Rebellion.Tactical
             }
             PrimaryMember ??= unit;
             Formation.AddMember(unit);
-            unit.GroupID = ID;
         }
 
         /// <summary>
@@ -238,8 +234,6 @@ namespace Rebellion.Tactical
             if (ReferenceEquals(PrimaryMember, unit))
                 PrimaryMember = _members.Count > 0 ? _members[0] : null;
             Formation.RemoveMember(unit);
-            if (unit.GroupID == ID)
-                unit.GroupID = null;
         }
 
         /// <summary>
@@ -536,12 +530,12 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
         /// <param name="battleDepth">The battle's deployment span.</param>
         /// <param name="withdrawalMilliseconds">The side's remaining retreat delay.</param>
-        /// <param name="groups">The encounter's indexed groups for reciprocal targeting checks.</param>
+        /// <param name="appliedGroups">The current group of each unit for reciprocal targeting checks.</param>
         public void Advance(
             float elapsedMilliseconds,
             float battleDepth,
             float withdrawalMilliseconds,
-            IReadOnlyDictionary<int, TacticalCombatGroup> groups = null
+            IReadOnlyDictionary<CombatUnit, TacticalCombatGroup> appliedGroups = null
         )
         {
             if (ActiveOrder == TacticalCombatOrder.AttackBattleStation && AttackRun != null)
@@ -582,7 +576,7 @@ namespace Rebellion.Tactical
             if (IsFighterGroup)
                 AdvanceFighterEngagement(target, elapsedMilliseconds);
             else
-                AdvanceCapitalEngagement(target, elapsedMilliseconds, groups);
+                AdvanceCapitalEngagement(target, elapsedMilliseconds, appliedGroups);
         }
 
         /// <summary>
@@ -736,11 +730,11 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The designated opposing unit.</param>
         /// <param name="elapsedMilliseconds">The continuous movement interval.</param>
-        /// <param name="groups">The encounter's indexed group ownership.</param>
+        /// <param name="appliedGroups">The encounter's applied group membership.</param>
         private void AdvanceCapitalEngagement(
             CombatUnit target,
             float elapsedMilliseconds,
-            IReadOnlyDictionary<int, TacticalCombatGroup> groups
+            IReadOnlyDictionary<CombatUnit, TacticalCombatGroup> appliedGroups
         )
         {
             Vector3 delta = target.Position - Formation.Position;
@@ -764,9 +758,7 @@ namespace Rebellion.Tactical
                 if (distance < Engagement.MinimumRange)
                 {
                     if (
-                        target.GroupID is int targetGroupID
-                        && groups?.TryGetValue(targetGroupID, out TacticalCombatGroup opposing)
-                            == true
+                        appliedGroups?.TryGetValue(target, out TacticalCombatGroup opposing) == true
                         && opposing.PrimaryTarget != null
                         && ContainsMember(opposing.PrimaryTarget)
                     )
