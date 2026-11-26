@@ -61,11 +61,14 @@ materials. Keep their shaders in Graphics settings' always-included list because
 from external content after the player is built.
 
 Ambient occlusion selects a dedicated renderer per camera without changing shared renderer assets.
+It reconstructs normals from depth and composites after opaque geometry so custom surface shaders
+receive the effect without requiring their own depth-normal or lighting integration.
 `RenderTargetLighting` scopes ambient lighting to each preview camera and restores scene lighting
 after rendering. Enable post-processing alpha output so model and planet backgrounds stay transparent.
 
-Ray tracing is unavailable in this pipeline version. Orthographic cameras use SMAA when the player
-selects TAA, which requires a perspective camera in this version of URP.
+Ray tracing is unavailable in this pipeline version and has no menu control. TAA applies to both
+perspective and orthographic cameras. Opaque model and planet materials provide motion-vector
+passes for temporal anti-aliasing and object motion blur.
 
 ## Windows on Arm
 

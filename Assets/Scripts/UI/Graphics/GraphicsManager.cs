@@ -30,11 +30,6 @@ public sealed class GraphicsManager : IDisposable
     private bool _disposed;
 
     /// <summary>
-    /// Gets whether the active rendering pipeline provides the ray-tracing option.
-    /// </summary>
-    public bool RayTracingAvailable => false;
-
-    /// <summary>
     /// Gets whether the primary display can enter HDR output mode.
     /// </summary>
     public bool HdrOutputAvailable => HDROutputSettings.main.available;
@@ -59,6 +54,8 @@ public sealed class GraphicsManager : IDisposable
         _bloom.intensity.Override(0.25f);
         _motionBlur = _runtimeVolumeProfile.Add<MotionBlur>();
         _motionBlur.intensity.Override(0.25f);
+        _motionBlur.mode.Override(MotionBlurMode.CameraAndObjects);
+        _motionBlur.quality.Override(MotionBlurQuality.High);
 
         Volume volume = _runtimeVolumeObject.GetComponent<Volume>();
         volume.isGlobal = true;
@@ -192,10 +189,7 @@ public sealed class GraphicsManager : IDisposable
         UniversalAdditionalCameraData cameraData =
             camera.GetComponent<UniversalAdditionalCameraData>()
             ?? camera.gameObject.AddComponent<UniversalAdditionalCameraData>();
-        cameraData.antialiasing =
-            _antiAliasingMode == UserAntiAliasingMode.Taa && camera.orthographic
-                ? AntialiasingMode.SubpixelMorphologicalAntiAliasing
-                : ConvertAntiAliasing(_antiAliasingMode);
+        cameraData.antialiasing = ConvertAntiAliasing(_antiAliasingMode);
         cameraData.antialiasingQuality = AntialiasingQuality.High;
         camera.allowDynamicResolution = false;
         camera.allowHDR = true;

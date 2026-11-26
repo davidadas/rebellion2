@@ -332,5 +332,7 @@ Shader "Custom/PlanetSurface"
             }
             ENDHLSL
         }
+
+        UsePass "Hidden/Universal Render Pipeline/ObjectMotionVectorFallback/MotionVectors"
     }
 }

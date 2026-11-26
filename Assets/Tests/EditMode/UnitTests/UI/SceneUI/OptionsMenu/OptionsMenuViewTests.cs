@@ -157,6 +157,24 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 Assert.LessOrEqual(UILayout.GetSourceRect(badge).xMax, area.ViewportWidth);
         }
 
+        [Test]
+        public void Render_GraphicsPage_OmitsUnsupportedRayTracing()
+        {
+            _view.Render(CreateRenderDataForTab(OptionsMenuTab.Graphics));
+            ScrollAreaView area = GetField<ScrollAreaView>("_graphicsScrollArea");
+            Assert.IsNull(area.ContentRoot.Find("RayTracingHeader"));
+            Assert.IsFalse(
+                area.ContentRoot.GetComponentsInChildren<TextMeshProUGUI>(true)
+                    .Any(text =>
+                        text.text.IndexOf("Ray-Traced", StringComparison.OrdinalIgnoreCase) >= 0
+                    )
+            );
+            Assert.AreEqual(
+                Enum.GetValues(typeof(UserGraphicsSetting)).Length,
+                GetField<TextMeshProUGUI[]>("_graphicsValueFields").Length
+            );
+        }
+
         /// <summary>
         /// Preserves Graphics scrolling through value refreshes and resets it when returning.
         /// </summary>

@@ -30,8 +30,6 @@ public enum UserGraphicsSetting
 
     FrameRateLimit,
 
-    RayTracing,
-
     AmbientOcclusion,
 
     Bloom,

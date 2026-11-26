@@ -33,6 +33,15 @@ public static class ContentModelLoader
             if (!loaded)
                 throw new InvalidOperationException($"glTFast rejected the GLB file: {filePath}");
 
+            for (int index = 0; index < gltf.MaterialCount; index++)
+            {
+                Material material = gltf.GetMaterial(index);
+                if (material == null || material.FindPass("MotionVectors") < 0)
+                    continue;
+                material.SetShaderPassEnabled("MotionVectors", true);
+                material.SetShaderPassEnabled("MOTIONVECTORS", true);
+            }
+
             return new ContentModelResource(gltf, filePath);
         }
         catch (Exception exception)

@@ -234,15 +234,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             Dictionary<UserGraphicsSetting, OptionsGraphicsValue> values =
                 _session.GetGraphicsValues();
 
-            Assert.IsFalse(values[UserGraphicsSetting.RayTracing].Available);
-            Assert.AreEqual("Unavailable", values[UserGraphicsSetting.RayTracing].Label);
             Assert.IsFalse(values[UserGraphicsSetting.HdrOutput].Available);
             Assert.AreEqual("Unavailable", values[UserGraphicsSetting.HdrOutput].Label);
             Assert.IsTrue(values[UserGraphicsSetting.Bloom].Available);
 
-            _session.StepGraphics(UserGraphicsSetting.RayTracing, 1);
-
-            Assert.IsFalse(_session.Video.RayTracing);
             Assert.IsFalse(_session.IsDirty);
         }
 

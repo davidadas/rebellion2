@@ -99,6 +99,92 @@ public sealed class RenderPipelineConfigurationTests
         }
     }
 
+    [Test]
+    public void RenderPipeline_AmbientOcclusion_DarkensCustomOpaqueSurfaces()
+    {
+        if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
+            Assert.Ignore("Reading rendered occlusion requires a graphics device.");
+        int originalQuality = QualitySettings.GetQualityLevel();
+        int originalVSync = QualitySettings.vSyncCount;
+        int originalFrameRate = Application.targetFrameRate;
+        GameObject root = new GameObject("Occlusion test", typeof(Camera));
+        Camera camera = root.GetComponent<Camera>();
+        camera.enabled = false;
+        camera.tag = "MainCamera";
+        camera.orthographic = true;
+        camera.orthographicSize = 0.8f;
+        camera.transform.position = new Vector3(0.8f, 0.7f, -1.3f);
+        camera.transform.LookAt(Vector3.zero);
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Color.clear;
+        camera.cullingMask = 1 << 31;
+        Material material = new Material(Shader.Find("Custom/PlanetSurface"));
+        material.SetFloat("_CloudOpacity", 0f);
+        material.SetFloat("_CityLightIntensity", 0f);
+        material.SetFloat("_SurfaceRelief", 0f);
+        GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        cube.transform.localScale = Vector3.one * 0.3f;
+        GameObject floor = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        floor.transform.position = new Vector3(0f, -0.2f, 0f);
+        floor.transform.localScale = new Vector3(1.5f, 0.1f, 1.5f);
+        foreach (GameObject surface in new[] { cube, floor })
+        {
+            surface.layer = 31;
+            surface.GetComponent<Renderer>().sharedMaterial = material;
+        }
+        RenderTexture target = new RenderTexture(128, 128, 24, RenderTextureFormat.ARGB32);
+        Texture2D pixels = new Texture2D(128, 128, TextureFormat.RGBA32, false);
+        RenderTexture previous = RenderTexture.active;
+        using GraphicsManager manager = new GraphicsManager(root.transform);
+        try
+        {
+            Color[] unoccluded = null;
+            float largestShadow = 0f;
+            foreach (bool occlusion in new[] { false, true })
+            {
+                manager.Apply(
+                    new UserVideoSettings
+                    {
+                        AntiAliasingMode = (int)UserAntiAliasingMode.Off,
+                        AmbientOcclusion = occlusion,
+                        Bloom = false,
+                        MotionBlur = false,
+                    }
+                );
+                RenderPipeline.SubmitRenderRequest(
+                    camera,
+                    new UniversalRenderPipeline.SingleCameraRequest { destination = target }
+                );
+                RenderTexture.active = target;
+                pixels.ReadPixels(new Rect(0, 0, 128, 128), 0, 0);
+                pixels.Apply();
+                Color[] rendered = pixels.GetPixels();
+                if (!occlusion)
+                    unoccluded = rendered;
+                else
+                    for (int index = 0; index < rendered.Length; index++)
+                        largestShadow = Mathf.Max(
+                            largestShadow,
+                            unoccluded[index].grayscale - rendered[index].grayscale
+                        );
+            }
+            Assert.Greater(largestShadow, 0.01f);
+        }
+        finally
+        {
+            RenderTexture.active = previous;
+            Object.DestroyImmediate(pixels);
+            Object.DestroyImmediate(target);
+            Object.DestroyImmediate(cube);
+            Object.DestroyImmediate(floor);
+            Object.DestroyImmediate(material);
+            Object.DestroyImmediate(root);
+            QualitySettings.SetQualityLevel(originalQuality, true);
+            QualitySettings.vSyncCount = originalVSync;
+            Application.targetFrameRate = originalFrameRate;
+        }
+    }
+
     /// <summary>
     /// Verifies that Windows starts with DirectX 12 while retaining the raster DirectX 11 fallback.
     /// </summary>
@@ -211,6 +297,27 @@ public sealed class RenderPipelineConfigurationTests
             Assert.GreaterOrEqual(propertyIndex, 0, $"{shaderName}: {property}");
             Assert.AreEqual(expectedType, shader.GetPropertyType(propertyIndex), shaderName);
             AssertShaderHasNoCompilerErrors(shaderName, shader);
+        }
+    }
+
+    [TestCase("Custom/PlanetSurface")]
+    [TestCase("FORGE3D/Planets HD/URP/Terrestrial")]
+    [TestCase("FORGE3D/Planets HD/URP/Thunderstorm")]
+    [Category("RequiresMedia")]
+    public void PlanetShader_OpaqueSurface_ProvidesMotionVectors(string shaderName)
+    {
+        Shader shader = Shader.Find(shaderName);
+        Assert.IsNotNull(shader);
+        Material material = new Material(shader);
+        try
+        {
+            Assert.GreaterOrEqual(material.FindPass("MotionVectors"), 0);
+            Assert.IsTrue(material.GetShaderPassEnabled("MotionVectors"));
+            AssertShaderHasNoCompilerErrors(shaderName, shader);
+        }
+        finally
+        {
+            Object.DestroyImmediate(material);
         }
     }
 

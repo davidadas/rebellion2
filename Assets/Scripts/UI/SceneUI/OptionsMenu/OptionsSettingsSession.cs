@@ -408,11 +408,6 @@ internal sealed class OptionsSettingsSession
             case UserGraphicsSetting.FrameRateLimit:
                 Video.FrameRateLimit = StepValue(_frameRateLimits, Video.FrameRateLimit, delta);
                 break;
-            case UserGraphicsSetting.RayTracing:
-                Video.RayTracing = !Video.RayTracing;
-                if (Video.RayTracing)
-                    Video.AmbientOcclusion = true;
-                break;
             case UserGraphicsSetting.AmbientOcclusion:
                 Video.AmbientOcclusion = !Video.AmbientOcclusion;
                 if (!Video.AmbientOcclusion)
@@ -736,7 +731,6 @@ internal sealed class OptionsSettingsSession
             UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
                 ? "Unlimited"
                 : $"{Video.FrameRateLimit} FPS",
-            UserGraphicsSetting.RayTracing => GetToggleLabel(Video.RayTracing),
             UserGraphicsSetting.AmbientOcclusion => GetToggleLabel(Video.AmbientOcclusion),
             UserGraphicsSetting.Bloom => GetToggleLabel(Video.Bloom),
             UserGraphicsSetting.MotionBlur => GetToggleLabel(Video.MotionBlur),
@@ -755,7 +749,6 @@ internal sealed class OptionsSettingsSession
         return setting switch
         {
             UserGraphicsSetting.FrameRateLimit => !Video.VerticalSync,
-            UserGraphicsSetting.RayTracing => _graphicsManager?.RayTracingAvailable == true,
             UserGraphicsSetting.HdrOutput => _graphicsManager?.HdrOutputAvailable == true,
             _ => true,
         };

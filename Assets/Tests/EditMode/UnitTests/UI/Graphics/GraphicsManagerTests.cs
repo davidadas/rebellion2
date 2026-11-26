@@ -136,7 +136,6 @@ namespace Rebellion.Tests.Managers
                 AmbientOcclusion = true,
                 Bloom = false,
                 MotionBlur = false,
-                RayTracing = true,
             };
 
             _manager.Apply(settings);
@@ -144,7 +143,6 @@ namespace Rebellion.Tests.Managers
             Volume volume = _owner.GetComponentInChildren<Volume>();
             Assert.IsTrue(volume.sharedProfile.TryGet(out Bloom bloom));
             Assert.IsTrue(volume.sharedProfile.TryGet(out MotionBlur motionBlur));
-            Assert.IsFalse(_manager.RayTracingAvailable);
             Assert.IsFalse(bloom.active);
             Assert.IsFalse(motionBlur.active);
 
@@ -153,17 +151,29 @@ namespace Rebellion.Tests.Managers
             Assert.IsTrue(cameraData.renderPostProcessing);
         }
 
-        [Test]
-        public void Apply_OrthographicCamera_UsesSpatialAntialiasing()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Apply_TemporalAntialiasing_PreservesSelectedMode(bool orthographic)
         {
-            _cameraObject.GetComponent<Camera>().orthographic = true;
+            _cameraObject.GetComponent<Camera>().orthographic = orthographic;
             _manager.Apply(
                 new UserVideoSettings { AntiAliasingMode = (int)UserAntiAliasingMode.Taa }
             );
             Assert.AreEqual(
-                AntialiasingMode.SubpixelMorphologicalAntiAliasing,
+                AntialiasingMode.TemporalAntiAliasing,
                 _cameraObject.GetComponent<UniversalAdditionalCameraData>().antialiasing
             );
+        }
+
+        [Test]
+        public void Apply_MotionBlurEnabled_IncludesMovingObjects()
+        {
+            _manager.Apply(new UserVideoSettings { MotionBlur = true });
+            Volume volume = _owner.GetComponentInChildren<Volume>();
+            Assert.IsTrue(volume.sharedProfile.TryGet(out MotionBlur motionBlur));
+            Assert.IsTrue(motionBlur.active);
+            Assert.IsTrue(motionBlur.mode.overrideState);
+            Assert.AreEqual(MotionBlurMode.CameraAndObjects, motionBlur.mode.value);
         }
 
         [Test]
