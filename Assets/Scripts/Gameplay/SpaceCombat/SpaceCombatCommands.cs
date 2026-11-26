@@ -97,50 +97,44 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Captures an ordered multiplayer encounter with host-issued entry seeds and identity.
+        /// Starts the committed multiplayer encounter using the first manual response's identity and seeds.
         /// </summary>
-        /// <param name="battleID">The host-issued identity for this encounter.</param>
-        /// <param name="seed">The authoritative battle random seed.</param>
-        /// <param name="scenerySeed">The authoritative scenery calendar seed.</param>
-        /// <returns>The authority-owned encounter or its local participant's passive projection.</returns>
-        public TacticalCombatSession BeginNetworkTacticalCombat(
-            string battleID,
-            uint seed,
-            int scenerySeed
+        /// <param name="decision">The encounter whose response barrier has been satisfied.</param>
+        /// <param name="roster">The validated roster when the final response was manual.</param>
+        private void BeginNetworkTacticalCombat(
+            SpaceCombatDecision decision,
+            TacticalCombatFactory.EncounterRoster roster
         )
         {
-            if (!Guid.TryParseExact(battleID, "N", out _))
-                throw new ArgumentException(
-                    "A valid battle identity is required.",
-                    nameof(battleID)
-                );
-            if (_game.Metadata?.IsMultiplayer != true)
-                throw new InvalidOperationException("A multiplayer campaign is required.");
             if (
-                _tacticalEncounter.HasValue
-                || _tacticalFactory == null
-                || !_tacticalFactory.TryPrepare(_pendingDecision, out var roster)
-                || _pendingDecision.AttackerRetreatResponse != false
-                || _pendingDecision.DefenderRetreatResponse != false
-                || !_pendingDecision.AttackerTakeCommand && !_pendingDecision.DefenderTakeCommand
+                decision.AttackerRetreatResponse != false
+                || decision.DefenderRetreatResponse != false
             )
                 throw new InvalidOperationException("The encounter cannot enter tactical combat.");
 
-            Planet planet = roster.Planet;
-            _aftermath?.ValidateBattle(planet);
+            if (roster == null)
+            {
+                if (!_tacticalFactory.TryPrepare(decision, out roster))
+                    throw new InvalidOperationException(
+                        "The encounter cannot enter tactical combat."
+                    );
+                _aftermath?.ValidateBattle(roster.Planet);
+            }
+
+            bool isReplica =
+                _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID;
             (ActiveBattle battle, TacticalCombatSession session) = _tacticalFactory.Create(
                 roster,
-                seed,
-                unchecked((uint)scenerySeed),
-                _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID
+                decision.TacticalSeed,
+                unchecked((uint)decision.TacticalScenerySeed),
+                isReplica
             );
-            if (_game.LocalPlayerFactionID == _game.Metadata.MultiplayerCampaign.HostFactionID)
+            if (!isReplica)
             {
-                session.SetAutomated(CombatSide.Attacker, !_pendingDecision.AttackerTakeCommand);
-                session.SetAutomated(CombatSide.Defender, !_pendingDecision.DefenderTakeCommand);
+                session.SetAutomated(CombatSide.Attacker, !decision.AttackerTakeCommand);
+                session.SetAutomated(CombatSide.Defender, !decision.DefenderTakeCommand);
             }
-            PublishTacticalEncounter(roster, battle, session, battleID);
-            return session;
+            PublishTacticalEncounter(roster, battle, session, decision.TacticalBattleID);
         }
 
         /// <summary>

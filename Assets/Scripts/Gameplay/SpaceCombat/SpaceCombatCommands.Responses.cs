@@ -17,13 +17,13 @@ namespace Rebellion.Gameplay
         /// <param name="factionID">The authenticated responding faction.</param>
         /// <param name="retreat">Whether that faction chooses withdrawal.</param>
         /// <param name="results">The resolved results, or null while another human response is outstanding.</param>
-        /// <param name="takeCommand">Whether this explicit response selects manual tactical control.</param>
+        /// <param name="tacticalRoster">The admitted roster for a response taking manual control.</param>
         /// <returns>Whether the response was valid for the pending encounter.</returns>
         internal bool TrySubmitResponse(
             string factionID,
             bool retreat,
             out List<GameResult> results,
-            bool takeCommand = false
+            TacticalCombatFactory.EncounterRoster tacticalRoster = null
         )
         {
             results = null;
@@ -37,6 +37,7 @@ namespace Rebellion.Gameplay
                 )
             )
                 return false;
+            bool takeCommand = tacticalRoster != null;
             bool attacker = factionID == decision.AttackerOwnerInstanceID;
             bool? previous = attacker
                 ? decision.AttackerRetreatResponse
@@ -91,11 +92,7 @@ namespace Rebellion.Gameplay
                 );
             else if (decision.AttackerTakeCommand || decision.DefenderTakeCommand)
             {
-                BeginNetworkTacticalCombat(
-                    decision.TacticalBattleID,
-                    decision.TacticalSeed,
-                    decision.TacticalScenerySeed
-                );
+                BeginNetworkTacticalCombat(decision, tacticalRoster);
                 return true;
             }
             else
@@ -133,24 +130,26 @@ namespace Rebellion.Gameplay
         )
         {
             results = null;
+            SpaceCombatDecision decision = _pendingDecision;
             if (
                 _game.Metadata?.IsMultiplayer != true
                 || !Guid.TryParseExact(battleID, "N", out _)
                 || _tacticalEncounter.HasValue
-                || !CanTakeCommand
-                || factionID != _pendingDecision.AttackerOwnerInstanceID
-                    && factionID != _pendingDecision.DefenderOwnerInstanceID
+                || decision == null
+                || factionID != decision.AttackerOwnerInstanceID
+                    && factionID != decision.DefenderOwnerInstanceID
+                || _tacticalFactory == null
+                || !_tacticalFactory.TryPrepare(decision, out var roster)
             )
                 return false;
             try
             {
-                _aftermath?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
+                _aftermath?.ValidateBattle(roster.Planet);
             }
             catch (InvalidOperationException)
             {
                 return false;
             }
-            SpaceCombatDecision decision = _pendingDecision;
             if (
                 string.IsNullOrEmpty(decision.TacticalBattleID)
                 || !decision.AttackerTakeCommand && !decision.DefenderTakeCommand
@@ -160,7 +159,7 @@ namespace Rebellion.Gameplay
                 decision.TacticalSeed = seed;
                 decision.TacticalScenerySeed = scenerySeed;
             }
-            return TrySubmitResponse(factionID, false, out results, takeCommand: true);
+            return TrySubmitResponse(factionID, false, out results, roster);
         }
 
         /// <summary>
