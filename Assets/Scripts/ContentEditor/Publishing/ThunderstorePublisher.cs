@@ -5,7 +5,6 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
@@ -118,7 +117,7 @@ internal sealed class ThunderstorePublisher : IDisposable
             cancellationToken
         );
         string[] teams = (profile.teams ?? Array.Empty<string>())
-            .Where(team => Regex.IsMatch(team, "^[A-Za-z0-9_]+$"))
+            .Where(ThunderstorePackage.IsValidName)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         if (string.IsNullOrEmpty(profile.username) || teams.Length == 0)

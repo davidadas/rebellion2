@@ -12,12 +12,15 @@ namespace Rebellion.Tests.ContentEditor.Publishing
     [TestFixture]
     public sealed class ThunderstorePackageExporterTests : ContentPackEditorTestBase
     {
-        [Test]
-        public async Task WriteArchiveAsync_PinnedDependencies_ExportsMetadataAndExcludesPrivateDraftsAsync()
+        [TestCase("Team-Dependency-1.2.3")]
+        [TestCase("team-name-pack-name-1.2.3")]
+        public async Task WriteArchiveAsync_PinnedDependencies_ExportsMetadataAndExcludesPrivateDraftsAsync(
+            string dependency
+        )
         {
             using ContentPackEditorProject project = CreateLoadableProject();
             ContentEditorPublishingSettings settings = CreateSettings(project);
-            settings.Dependencies = "Team-Dependency-1.2.3";
+            settings.Dependencies = dependency;
             ContentEditorPublishingStorage.Save(project, settings);
             string editor = Path.Combine(
                 project.PackRootPath,
@@ -48,9 +51,27 @@ namespace Rebellion.Tests.ContentEditor.Publishing
             Assert.That(manifest.website_url, Is.EqualTo(settings.WebsiteUrl));
             using var changelog = new StreamReader(archive.GetEntry("CHANGELOG.md").Open());
             Assert.That(changelog.ReadToEnd(), Is.EqualTo(settings.Changelog));
-            CollectionAssert.AreEqual(new[] { "Team-Dependency-1.2.3" }, manifest.dependencies);
+            CollectionAssert.AreEqual(new[] { dependency }, manifest.dependencies);
             using var readme = new StreamReader(archive.GetEntry("README.md").Open());
             Assert.That(readme.ReadToEnd(), Is.EqualTo(settings.Readme));
+        }
+
+        [TestCase("team-name-pack-name-1.2.3-beta")]
+        [TestCase("team-name-pack-name-01.2.3")]
+        public async Task WriteArchiveAsync_InvalidDependencyVersion_RejectsArchiveAsync(
+            string dependency
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            ContentEditorPublishingSettings settings = CreateSettings(project);
+            settings.Dependencies = dependency;
+            string destination = Path.Combine(contentRoot, "release.zip");
+
+            await ExpectFailureAsync<ArgumentException>(() =>
+                ThunderstorePackageExporter.WriteArchiveAsync(project, settings, destination)
+            );
+
+            Assert.That(File.Exists(destination), Is.False);
         }
 
         [Test]

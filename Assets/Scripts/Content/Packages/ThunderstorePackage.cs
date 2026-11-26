@@ -30,9 +30,17 @@ public sealed class ThunderstorePackage
     /// <param name="label">The field being checked.</param>
     public static void ValidateName(string value, string label)
     {
-        if (string.IsNullOrWhiteSpace(value) || !Regex.IsMatch(value, "^[A-Za-z0-9_-]+$"))
+        if (!IsValidName(value))
             throw new InvalidDataException("The listing contains an invalid " + label + ".");
     }
+
+    /// <summary>
+    /// Checks a namespace or package-name segment using the catalog's accepted syntax.
+    /// </summary>
+    /// <param name="value">The segment to check.</param>
+    /// <returns>Whether the segment contains only supported name characters.</returns>
+    public static bool IsValidName(string value) =>
+        !string.IsNullOrWhiteSpace(value) && Regex.IsMatch(value, "^[A-Za-z0-9_-]+$");
 
     /// <summary>
     /// Checks the numeric distribution version used by Thunderstore.

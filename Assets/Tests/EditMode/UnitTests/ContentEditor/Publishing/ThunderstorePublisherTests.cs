@@ -11,6 +11,20 @@ namespace Rebellion.Tests.ContentEditor.Publishing
     [TestFixture]
     public sealed class ThunderstorePublisherTests
     {
+        [TestCase("team-name")]
+        [TestCase("team_name")]
+        public async Task ConnectAsync_SupportedTeamName_RetainsAuthorizedTeamAsync(string team)
+        {
+            using ResponseHandler handler = new() { Team = team };
+            MemoryCredentialStore credentials = new();
+            using ThunderstorePublisher publisher = new(handler, credentials);
+
+            await publisher.ConnectAsync("fixture-token", CancellationToken.None);
+
+            CollectionAssert.AreEqual(new[] { team }, publisher.Teams);
+            Assert.That(credentials.HasCredential, Is.True);
+        }
+
         [TestCase(HttpStatusCode.Unauthorized)]
         [TestCase(HttpStatusCode.Forbidden)]
         public async Task PublishAsync_RejectedSession_ClearsTeamsAndRetainsSavedCredentialAsync(

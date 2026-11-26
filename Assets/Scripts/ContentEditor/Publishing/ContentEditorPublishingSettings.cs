@@ -80,7 +80,7 @@ internal sealed class ContentEditorPublishingSettings
                 .Any(dependency =>
                     !Regex.IsMatch(
                         dependency,
-                        "^[A-Za-z0-9_]+-[A-Za-z0-9_]+-(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
+                        "^[A-Za-z0-9_-]+-[A-Za-z0-9_-]+-(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
                     )
                 )
         )
