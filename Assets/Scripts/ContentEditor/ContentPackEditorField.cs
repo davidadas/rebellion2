@@ -18,14 +18,12 @@ public sealed class ContentPackEditorField
     private readonly bool numeric;
     private readonly XAttribute attribute;
     private readonly Type valueType;
-    private readonly bool nullableEnum;
     private readonly string groupOverride;
     private readonly Action attach;
     private readonly Action detach;
     private readonly XElement parentOverride;
 
     public string Name { get; }
-    internal bool IsNullableEnum => nullableEnum;
     public string Caption { get; }
     public string HelpText => ContentPackEditorFieldMetadata.GetDescription(this);
     public IReadOnlyList<string> SectionPath { get; }
@@ -89,10 +87,7 @@ public sealed class ContentPackEditorField
         MemberName is "DisallowedMissionTypeIDs" or "AllowedMissionTypeIDs"
             ? ContentPackEditorFieldSchema.MissionIDs
         : (list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType)?.IsEnum == true
-            ? nullableEnum ? new[] { string.Empty }.Concat(Enum.GetNames(valueType)).ToArray()
-                : Enum.GetNames(
-                    list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType
-                )
+            ? Enum.GetNames(list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType)
         : Array.Empty<string>();
     public IReadOnlyList<string> Values =>
         list ? element.Elements().Select(child => child.Value).ToArray() : new[] { Value };
@@ -161,8 +156,6 @@ public sealed class ContentPackEditorField
         valueType =
             valueTypeOverride
             ?? ContentPackEditorFieldSchema.GetValueType(record.Element, element, attribute);
-        nullableEnum =
-            !list && Nullable.GetUnderlyingType(valueType ?? typeof(string))?.IsEnum == true;
         valueType = Nullable.GetUnderlyingType(valueType ?? typeof(string)) ?? valueType;
         Type itemType = ContentPackEditorFieldSchema.GetItemType(valueType);
         this.list = list || itemType != null && TypeHelper.IsScalar(itemType);
@@ -203,7 +196,7 @@ public sealed class ContentPackEditorField
         Type type = list ? ContentPackEditorFieldSchema.GetItemType(valueType) : valueType;
         foreach (string value in values)
         {
-            if (value.Length == 0 && (detach != null || nullableEnum))
+            if (value.Length == 0 && detach != null)
                 continue;
             ContentPackEditorFieldSchema.ValidateScalar(value, type);
             ContentEditorValueValidator.Validate(this, value);
@@ -290,8 +283,7 @@ public sealed class ContentPackEditorField
             );
             return;
         }
-        if (!nullableEnum || value.Length != 0)
-            ContentPackEditorFieldSchema.ValidateScalar(value, valueType);
+        ContentPackEditorFieldSchema.ValidateScalar(value, valueType);
         if (IsBoolean && !bool.TryParse(value, out _))
             throw new ArgumentException("Enter true or false.", nameof(value));
         if (

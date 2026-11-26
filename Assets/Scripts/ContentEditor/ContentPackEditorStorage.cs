@@ -4,9 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
-using UnityEngine;
-using Object = UnityEngine.Object;
-using XElement = global::System.Xml.Linq.XElement;
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -341,7 +338,7 @@ public static class ContentPackEditorStorage
         bool hasInheritedPackDocument = sources.Keys.Any(path =>
             !string.Equals(path, targetPath, StringComparison.OrdinalIgnoreCase)
         );
-        if (XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
+        if (System.Xml.Linq.XElement.Parse(sources[sourcePath]).Name.LocalName == "GameConfig")
         {
             applicationDefaults = ContentXmlOverrides.Load(resolver, "Application/Rules/game.xml");
             baseline = applicationDefaults;
@@ -476,19 +473,19 @@ public static class ContentPackEditorStorage
         if (unitAddress != null)
         {
             byte[] bytes = File.ReadAllBytes(sourcePath);
-            Texture2D texture = new Texture2D(2, 2);
+            UnityEngine.Texture2D texture = new UnityEngine.Texture2D(2, 2);
             try
             {
-                if (!ImageConversion.LoadImage(texture, bytes))
+                if (!UnityEngine.ImageConversion.LoadImage(texture, bytes))
                     throw new InvalidDataException("The selected image could not be read.");
-                bytes = ImageConversion.EncodeToPNG(texture);
+                bytes = UnityEngine.ImageConversion.EncodeToPNG(texture);
             }
             finally
             {
-                if (Application.isPlaying)
-                    Object.Destroy(texture);
+                if (UnityEngine.Application.isPlaying)
+                    UnityEngine.Object.Destroy(texture);
                 else
-                    Object.DestroyImmediate(texture);
+                    UnityEngine.Object.DestroyImmediate(texture);
             }
             string candidate = unitAddress;
             int suffix = 2;
@@ -866,7 +863,7 @@ public static class ContentPackEditorStorage
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         hash.AppendData(png);
         if (recipe != null)
-            hash.AppendData(Encoding.UTF8.GetBytes(recipe));
+            hash.AppendData(System.Text.Encoding.UTF8.GetBytes(recipe));
         return BitConverter
             .ToString(hash.GetHashAndReset(), 0, 12)
             .Replace("-", "")

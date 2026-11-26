@@ -4,7 +4,6 @@ using TMPro;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
-using MissingMemberException = global::System.MissingMemberException;
 
 /// <summary>
 /// Adapts shared application controls to resizable content-authoring panes.
@@ -558,7 +557,7 @@ internal static class ContentEditorControlBuilder
         SerializedObject serialized = new SerializedObject(target);
         SerializedProperty property = serialized.FindProperty(field);
         if (property == null)
-            throw new MissingMemberException(target.GetType().Name, field);
+            throw new System.MissingMemberException(target.GetType().Name, field);
         property.objectReferenceValue = value;
         serialized.ApplyModifiedPropertiesWithoutUndo();
     }
@@ -574,7 +573,7 @@ internal static class ContentEditorControlBuilder
         SerializedObject serialized = new SerializedObject(target);
         SerializedProperty property =
             serialized.FindProperty(field)
-            ?? throw new MissingMemberException(target.GetType().Name, field);
+            ?? throw new System.MissingMemberException(target.GetType().Name, field);
         property.arraySize = values.Count;
         for (int index = 0; index < values.Count; index++)
             property.GetArrayElementAtIndex(index).objectReferenceValue = values[index];

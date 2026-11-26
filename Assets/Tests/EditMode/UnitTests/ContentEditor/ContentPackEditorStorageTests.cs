@@ -735,14 +735,14 @@ namespace Rebellion.Tests.ContentEditor
                 document.Address == "Pack/Data/units.xml"
             );
             Assert.AreEqual(
-                XElement
-                    .Parse(
+                System
+                    .Xml.Linq.XElement.Parse(
                         localOverride
                             ? "<Units><Unit ID=\"local\" /></Units>"
                             : "<Units><Unit ID=\"base\" /></Units>"
                     )
                     .ToString(),
-                XElement.Parse(effective.Text).ToString()
+                System.Xml.Linq.XElement.Parse(effective.Text).ToString()
             );
             Assert.AreEqual(!localOverride, effective.IsInherited);
             Assert.AreEqual(
@@ -850,7 +850,7 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsFalse(document.IsDirty);
             Assert.IsFalse(document.IsInherited);
             Assert.IsTrue(ContentXmlOverrides.IsOverlay(File.ReadAllText(document.TargetPath)));
-            Assert.AreEqual(1, XElement.Parse(document.Text).Elements().Count());
+            Assert.AreEqual(1, System.Xml.Linq.XElement.Parse(document.Text).Elements().Count());
             Assert.AreEqual(
                 "<Units />",
                 File.ReadAllText(
@@ -968,9 +968,9 @@ namespace Rebellion.Tests.ContentEditor
             );
 
             Assert.AreEqual(
-                XElement.Parse(units.Text).ToString(),
-                XElement
-                    .Parse(
+                System.Xml.Linq.XElement.Parse(units.Text).ToString(),
+                System
+                    .Xml.Linq.XElement.Parse(
                         reopened
                             .Documents.Single(document => document.Address == units.Address)
                             .Text

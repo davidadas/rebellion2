@@ -5,8 +5,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using NUnit.Framework;
-using SaveOptions = global::System.Xml.Linq.SaveOptions;
-using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.ContentEditor
 {
@@ -135,14 +133,14 @@ namespace Rebellion.Tests.ContentEditor
 
             Assert.AreEqual(
                 "<Units><Unit /></Units>",
-                XElement
-                    .Parse(
+                System
+                    .Xml.Linq.XElement.Parse(
                         ContentXmlOverrides.Merge(
                             File.ReadAllText(document.SourcePath),
                             File.ReadAllText(Path.Combine(physical, "NewPack", "Data", "units.xml"))
                         )
                     )
-                    .ToString(SaveOptions.DisableFormatting)
+                    .ToString(System.Xml.Linq.SaveOptions.DisableFormatting)
             );
             Assert.AreEqual(
                 "<Units/>",

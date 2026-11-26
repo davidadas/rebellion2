@@ -1,6 +1,5 @@
 using UnityEngine;
 using UnityEngine.UI;
-using ArgumentNullException = global::System.ArgumentNullException;
 
 /// <summary>
 /// Owns a clipped editor card and constrains every child to one consistent content inset.
@@ -60,7 +59,7 @@ public sealed class ContentEditorCardView : MonoBehaviour
     public RectInt SetChildRect(RectTransform child, Rect requested)
     {
         if (child == null)
-            throw new ArgumentNullException(nameof(child));
+            throw new System.ArgumentNullException(nameof(child));
         if (child.parent != transform)
             child.SetParent(transform, false);
 

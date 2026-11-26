@@ -9,7 +9,6 @@
         "Rebellion.Generation",
         "Rebellion.Sessions",
         "Rebellion.Gameplay",
-        "Rebellion.Tactical.Core",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
         "Rebellion.Util"

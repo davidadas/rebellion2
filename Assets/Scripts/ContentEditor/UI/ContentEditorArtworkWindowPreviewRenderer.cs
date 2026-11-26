@@ -3,7 +3,6 @@ using System.Linq;
 using Rebellion.Game.Messages;
 using UnityEngine;
 using UnityEngine.UI;
-using Array = global::System.Array;
 
 /// <summary>
 /// Supplies representative content to exact gameplay windows displayed by the artwork editor.
@@ -1046,7 +1045,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     )
     {
         if (themes == null)
-            return Array.Empty<StrategyHudButtonViewData>();
+            return System.Array.Empty<StrategyHudButtonViewData>();
         return themes
             .Where(button => button?.HitArea != null)
             .Select(button => new StrategyHudButtonViewData(
@@ -1071,7 +1070,7 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
     )
     {
         if (themes == null)
-            return Array.Empty<StrategyHudMessageNotificationViewData>();
+            return System.Array.Empty<StrategyHudMessageNotificationViewData>();
         return themes
             .Where(notification => notification?.SourceLayout != null)
             .Select(notification => new StrategyHudMessageNotificationViewData(
