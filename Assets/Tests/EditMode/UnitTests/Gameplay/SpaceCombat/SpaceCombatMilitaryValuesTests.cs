@@ -10,6 +10,11 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class SpaceCombatMilitaryValuesTests
     {
+        /// <summary>
+        /// Attaches the fixture participant through the campaign's scene registry.
+        /// </summary>
+        /// <param name="game">The active campaign providing the required state.</param>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
         private static void Register(GameRoot game, ISceneNode unit) =>
             game.NodesByInstanceID.Add(unit.InstanceID, unit);
 

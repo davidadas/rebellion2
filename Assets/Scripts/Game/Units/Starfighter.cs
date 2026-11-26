@@ -186,8 +186,6 @@ namespace Rebellion.Game.Units
             set => _backupHyperdrive = value;
         }
 
-        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
-
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
         /// An omitted count provides one system when the travel rating is positive.
@@ -264,6 +262,12 @@ namespace Rebellion.Game.Units
 
         // Movement Info.
         public MovementState Movement { get; set; }
+
+        /// <summary>
+        /// Supplies a fighter's backup travel rating when an older record omitted it.
+        /// </summary>
+        /// <param name="rating">The fallback rating from the legacy tactical catalog.</param>
+        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
 
         /// <summary>
         /// Default constructor used for deserialization.

@@ -181,6 +181,13 @@ namespace Rebellion.Gameplay
             return (first, second);
         }
 
+        /// <summary>
+        /// Totals accepted military losses for the two specified owners.
+        /// </summary>
+        /// <param name="events">The results evaluated for accepted military losses.</param>
+        /// <param name="firstOwner">The first campaign owner ID.</param>
+        /// <param name="secondOwner">The second campaign owner ID.</param>
+        /// <returns>The two unchecked military-value sums in owner order.</returns>
         internal static (int FirstSide, int SecondSide) CaptureLostMilitaryValues(
             IEnumerable<GameResult> events,
             string firstOwner,

@@ -55,6 +55,9 @@ namespace Rebellion.Tactical
         public event Action<TacticalCombatShot> ShotRequested;
         public event Action<CombatUnit, CombatUnit> TractorTargetRequested;
 
+        private const float _shotScale = 0.26666668f;
+        private const float _laserCapitalScale = 0.167f;
+
         /// <summary>
         /// Attempts designated targets first, followed by opportunity shots at nearby fighters.
         /// </summary>
@@ -374,9 +377,6 @@ namespace Rebellion.Tactical
                     return true;
             return false;
         }
-
-        private const float _shotScale = 0.26666668f;
-        private const float _laserCapitalScale = 0.167f;
 
         /// <summary>
         /// Calculates a weapon's attack strength against a designated target.

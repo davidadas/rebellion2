@@ -227,6 +227,8 @@ namespace Rebellion.Game
             set => PersistedGalaxy = value;
         }
 
+        internal IReadOnlyList<string> BlockadeFactionIds => _blockadeFactionIds;
+
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
@@ -315,8 +317,6 @@ namespace Rebellion.Game
                     ? new[] { factionIds[0], factionIds[1] }
                     : Array.Empty<string>();
         }
-
-        internal IReadOnlyList<string> BlockadeFactionIds => _blockadeFactionIds;
 
         /// <summary>
         /// Gets the game configuration.

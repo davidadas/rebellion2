@@ -215,6 +215,11 @@ namespace Rebellion.Tactical
             target.TractorRestraint = GetTractorRestraint(target);
         }
 
+        /// <summary>
+        /// Stores and publishes the change to a unit's tractor restraint source chain.
+        /// </summary>
+        /// <param name="target">The unit whose restraint sources changed.</param>
+        /// <param name="populated">Whether at least one tractor source remains.</param>
         private void SetTractorSources(CombatUnit target, bool populated)
         {
             target.HasTractorSources = populated;

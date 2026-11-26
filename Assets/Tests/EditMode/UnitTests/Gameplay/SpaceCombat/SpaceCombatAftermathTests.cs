@@ -324,11 +324,16 @@ namespace Rebellion.Tests.Gameplay
         /// Publishes the encounter through the campaign's ordinary and settled reaction phases.
         /// </summary>
         /// <returns>The encounter and all of its campaign reactions.</returns>
+        /// <param name="unit">The campaign unit recorded as lost.</param>
         private void RecordCombatLoss(Rebellion.SceneGraph.ISceneNode unit) =>
             _result.Events.Add(
                 SpaceCombatCommands.CreateCombatDestructionResult(unit, _planet, _result.Tick)
             );
 
+        /// <summary>
+        /// Publishes the battle result through the session's normal result pipeline.
+        /// </summary>
+        /// <returns>The settled results available to the assertions.</returns>
         private List<GameResult> Publish() =>
             _session.Pipeline.ProcessResults(new[] { _result }, false);
 

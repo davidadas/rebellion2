@@ -8,6 +8,12 @@ namespace Rebellion.Tactical
     public interface ITacticalCombatEntry
     {
         bool IsComplete { get; }
+
+        /// <summary>
+        /// Advances the view's entry sequence by one presentation frame.
+        /// </summary>
+        /// <param name="elapsedMilliseconds">The elapsed interval in milliseconds.</param>
+        /// <returns>Whether the local entry sequence has released battle admission.</returns>
         bool Advance(float elapsedMilliseconds);
     }
 

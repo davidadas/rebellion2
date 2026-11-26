@@ -30,6 +30,7 @@ namespace Rebellion.Tactical
         /// Selects the explosion size from the captured unit category and complete hull.
         /// </summary>
         /// <returns>The unit's destruction sound.</returns>
+        /// <param name="unit">The destroyed unit whose size selects the explosion.</param>
         internal static TacticalCombatSound GetExplosionSound(CombatUnit unit) =>
             unit.IsFighter || !(unit.MaximumHull >= 1100) ? TacticalCombatSound.SmallExplosion
             : unit.MaximumHull <= 2000 ? TacticalCombatSound.MediumExplosion

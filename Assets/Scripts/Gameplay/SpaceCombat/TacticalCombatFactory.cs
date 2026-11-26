@@ -86,6 +86,14 @@ namespace Rebellion.Gameplay
             )> Units { get; }
             internal IReadOnlyList<string> PersonnelHostIDs { get; }
 
+            /// <summary>
+            /// Captures the admitted encounter before any units are deployed.
+            /// </summary>
+            /// <param name="planet">The campaign planet where the battle takes place.</param>
+            /// <param name="attacker">The force that entered as the attacker.</param>
+            /// <param name="defender">The force that entered as the defender.</param>
+            /// <param name="units">The participants and their assigned registration indexes.</param>
+            /// <param name="personnelHostIDs">The ships carrying available officers.</param>
             internal EncounterRoster(
                 Planet planet,
                 EncounterSide attacker,
@@ -115,6 +123,12 @@ namespace Rebellion.Gameplay
             internal string OwnerID => Faction.FactionInstanceID;
             internal int LastRegistrationIndex { get; private set; }
 
+            /// <summary>
+            /// Captures one faction and starts its tactical registration range.
+            /// </summary>
+            /// <param name="side">The side identified by the encounter.</param>
+            /// <param name="faction">The faction providing the side's registration range.</param>
+            /// <param name="fleets">The campaign fleets participating on this side.</param>
             internal EncounterSide(
                 CombatSide side,
                 TacticalCombatFactionDefinition faction,
@@ -127,14 +141,26 @@ namespace Rebellion.Gameplay
                 LastRegistrationIndex = faction.FactionIndex * 1000000;
             }
 
+            /// <summary>
+            /// Reserves the next index in this faction's registration range.
+            /// </summary>
+            /// <returns>The reserved tactical index.</returns>
             internal int ReserveRegistrationIndex() => ++LastRegistrationIndex;
         }
 
         /// <summary>
         /// Checks admission against the same roster used by deployment.
         /// </summary>
+        /// <param name="decision">The pending campaign encounter.</param>
+        /// <returns>Whether all required participants and tactical data are available.</returns>
         internal bool Supports(SpaceCombatDecision decision) => TryPrepare(decision, out _);
 
+        /// <summary>
+        /// Checks whether a pending campaign decision has a deployable roster.
+        /// </summary>
+        /// <param name="decision">The pending campaign encounter to prepare.</param>
+        /// <param name="roster">The validated roster when the pending decision admits a battle.</param>
+        /// <returns>Whether the decision and all its tactical data passed admission.</returns>
         internal bool TryPrepare(SpaceCombatDecision decision, out EncounterRoster roster)
         {
             roster = null;
@@ -163,6 +189,11 @@ namespace Rebellion.Gameplay
         internal TacticalCombatSession Create(SpaceCombatDecision decision) =>
             Create(Prepare(decision));
 
+        /// <summary>
+        /// Deploys an admitted roster for the selected local or network battle.
+        /// </summary>
+        /// <param name="roster">The validated roster captured for this encounter.</param>
+        /// <returns>The isolated tactical session.</returns>
         internal TacticalCombatSession Create(EncounterRoster roster) =>
             CreateCore(roster, null, null, null);
 
@@ -181,6 +212,14 @@ namespace Rebellion.Gameplay
             bool isReplica
         ) => Create(Prepare(decision), seed, scenerySeed, isReplica);
 
+        /// <summary>
+        /// Deploys an admitted roster for the selected local or network battle.
+        /// </summary>
+        /// <param name="roster">The validated roster captured for this encounter.</param>
+        /// <param name="seed">The authoritative simulation seed.</param>
+        /// <param name="scenerySeed">The separately captured presentation seed.</param>
+        /// <param name="isReplica">Whether the session is a passive view of the host battle.</param>
+        /// <returns>The isolated tactical session.</returns>
         internal TacticalCombatSession Create(
             EncounterRoster roster,
             uint seed,
@@ -205,6 +244,11 @@ namespace Rebellion.Gameplay
             return session;
         }
 
+        /// <summary>
+        /// Resolves campaign participants in the order used for tactical registration.
+        /// </summary>
+        /// <param name="decision">The pending campaign encounter to prepare.</param>
+        /// <returns>The roster and its resolved authored data.</returns>
         private EncounterRoster Prepare(SpaceCombatDecision decision)
         {
             Planet planet =
@@ -306,6 +350,13 @@ namespace Rebellion.Gameplay
                 units.Add((unit, side.Side, index, RequireDefinition(unit.TypeID)));
         }
 
+        /// <summary>
+        /// Resolves the faction definition and participating campaign fleets for a side.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <param name="ownerID">The campaign faction's instance ID.</param>
+        /// <param name="fleetIDs">The campaign fleet IDs recorded for the force.</param>
+        /// <returns>The side with its independent registration range.</returns>
         private EncounterSide CaptureSide(
             CombatSide side,
             string ownerID,
@@ -326,6 +377,11 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Deploys the validated roster and initializes the isolated battle clock.
         /// </summary>
+        /// <param name="roster">The validated participants and admission state.</param>
+        /// <param name="seed">The explicit simulation seed, when supplied.</param>
+        /// <param name="scenerySeed">The explicit presentation seed, when supplied.</param>
+        /// <param name="localFactionID">The peer's locally controlled faction, when supplied.</param>
+        /// <returns>The deployed encounter ready for its local view.</returns>
         private TacticalCombatSession CreateCore(
             EncounterRoster roster,
             uint? seed,

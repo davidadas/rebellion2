@@ -371,13 +371,6 @@ namespace Rebellion.Game.Units
             }
         }
 
-        // Old content and saves omitted the rating and used the tactical definition.
-        internal void MigrateBackupHyperdrive(int rating)
-        {
-            if (BackupDrive == null && (rating != 0 || _backupHyperdrive.HasValue))
-                BackupDrive = new Hyperdrive { Rating = _backupHyperdrive ?? rating };
-        }
-
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
         /// An omitted count provides one system when the travel rating is positive.
@@ -450,111 +443,6 @@ namespace Rebellion.Game.Units
             }
         }
 
-        internal static HardpointWeaponType GetHardpointWeaponType(PrimaryWeaponType weapon) =>
-            weapon switch
-            {
-                PrimaryWeaponType.LaserCannon => HardpointWeaponType.LaserCannon,
-                PrimaryWeaponType.IonCannon => HardpointWeaponType.IonCannon,
-                PrimaryWeaponType.Turbolaser => HardpointWeaponType.Turbolaser,
-                _ => throw new ArgumentOutOfRangeException(nameof(weapon)),
-            };
-
-        internal static TacticalWeaponArc GetBatteryArc(PrimaryWeaponArc arc) =>
-            arc switch
-            {
-                PrimaryWeaponArc.Fore => TacticalWeaponArc.Forward,
-                PrimaryWeaponArc.Starboard => TacticalWeaponArc.Starboard,
-                PrimaryWeaponArc.Aft => TacticalWeaponArc.Aft,
-                PrimaryWeaponArc.Port => TacticalWeaponArc.Port,
-                _ => throw new ArgumentOutOfRangeException(nameof(arc)),
-            };
-
-        internal void InstallLegacyEquipment()
-        {
-            Engine ??= new Engine
-            {
-                SublightSpeed = _sublightSpeed,
-                Maneuverability = _maneuverability,
-            };
-            PrimaryDrive ??= new Hyperdrive { Rating = _hyperdrive };
-            MigrateBackupHyperdrive(0);
-            ShieldGenerator ??= new ShieldGenerator
-            {
-                Capacity = _maxShieldStrength,
-                RechargeRate = _shieldRechargeRate,
-            };
-            StarfighterBay ??= new StarfighterBay { Capacity = _starfighterCapacity };
-            if (_hasGravityWell)
-                GravityWellGenerator ??= new GravityWellGenerator();
-            if (HardpointGroups is not { Count: > 0 })
-                HardpointGroups = CaptureLegacyHardpoints();
-        }
-
-        internal List<HardpointGroup> CaptureLegacyHardpoints()
-        {
-            List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
-            foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
-            {
-                HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
-                foreach (PrimaryWeaponType weapon in _primaryWeaponTypes)
-                {
-                    group
-                        .GetHardpoints()
-                        .Add(
-                            new Hardpoint
-                            {
-                                Weapon = new WeaponData
-                                {
-                                    WeaponType = GetHardpointWeaponType(weapon),
-                                    Damage = GetLegacyWeaponValue(weapon, (int)arc),
-                                    Range = GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex),
-                                },
-                            }
-                        );
-                }
-                groups.Add(group);
-            }
-            return groups;
-        }
-
-        internal IEnumerable<PrimaryWeaponType> GetPrimaryWeaponTypes() =>
-            HardpointGroups is { Count: > 0 } ? _primaryWeaponTypes : _primaryWeapons.Keys;
-
-        public int GetPrimaryWeaponStrength(PrimaryWeaponType weapon, PrimaryWeaponArc arc)
-        {
-            if (HardpointGroups is not { Count: > 0 })
-                return GetLegacyWeaponValue(weapon, (int)arc);
-
-            TacticalWeaponArc batteryArc = GetBatteryArc(arc);
-            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
-            int strength = 0;
-            foreach (HardpointGroup group in HardpointGroups)
-                if (group.Arc == batteryArc)
-                    strength += group.GetStrength(mountWeapon);
-            return strength;
-        }
-
-        internal int GetPrimaryWeaponRange(PrimaryWeaponType weapon)
-        {
-            if (HardpointGroups is not { Count: > 0 })
-                return GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex);
-
-            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
-            int range = 0;
-            foreach (HardpointGroup group in HardpointGroups)
-                range = Math.Max(range, (int)group.GetRange(mountWeapon));
-            return range;
-        }
-
-        private int GetLegacyWeaponValue(PrimaryWeaponType weapon, int index) =>
-            _primaryWeapons != null
-            && _primaryWeapons.TryGetValue(weapon, out int[] values)
-            && values != null
-            && index >= 0
-            && index < values.Length
-                ? values[index]
-                : 0;
-
         [PersistableIgnore]
         public int WeaponRecharge
         {
@@ -604,6 +492,160 @@ namespace Rebellion.Game.Units
 
         // Owner Info.
         public string InitialParentInstanceID { get; set; }
+
+        // Old content and saves omitted the rating and used the tactical definition.
+        /// <summary>
+        /// Promotes a legacy backup drive rating into ship-owned equipment.
+        /// </summary>
+        /// <param name="rating">The fallback rating from the legacy tactical catalog.</param>
+        internal void MigrateBackupHyperdrive(int rating)
+        {
+            if (BackupDrive == null && (rating != 0 || _backupHyperdrive.HasValue))
+                BackupDrive = new Hyperdrive { Rating = _backupHyperdrive ?? rating };
+        }
+
+        /// <summary>
+        /// Maps a campaign weapon category to its hardpoint weapon type.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The equivalent type used by the installed mounts.</returns>
+        internal static HardpointWeaponType GetHardpointWeaponType(PrimaryWeaponType weapon) =>
+            weapon switch
+            {
+                PrimaryWeaponType.LaserCannon => HardpointWeaponType.LaserCannon,
+                PrimaryWeaponType.IonCannon => HardpointWeaponType.IonCannon,
+                PrimaryWeaponType.Turbolaser => HardpointWeaponType.Turbolaser,
+                _ => throw new ArgumentOutOfRangeException(nameof(weapon)),
+            };
+
+        /// <summary>
+        /// Maps a legacy ship weapon arc into the battery's arc.
+        /// </summary>
+        /// <param name="arc">The requested ship-relative weapon arc.</param>
+        /// <returns>The corresponding ship-relative arc.</returns>
+        internal static TacticalWeaponArc GetBatteryArc(PrimaryWeaponArc arc) =>
+            arc switch
+            {
+                PrimaryWeaponArc.Fore => TacticalWeaponArc.Forward,
+                PrimaryWeaponArc.Starboard => TacticalWeaponArc.Starboard,
+                PrimaryWeaponArc.Aft => TacticalWeaponArc.Aft,
+                PrimaryWeaponArc.Port => TacticalWeaponArc.Port,
+                _ => throw new ArgumentOutOfRangeException(nameof(arc)),
+            };
+
+        /// <summary>
+        /// Installs any missing equipment from legacy flat ship ratings.
+        /// </summary>
+        internal void InstallLegacyEquipment()
+        {
+            Engine ??= new Engine
+            {
+                SublightSpeed = _sublightSpeed,
+                Maneuverability = _maneuverability,
+            };
+            PrimaryDrive ??= new Hyperdrive { Rating = _hyperdrive };
+            MigrateBackupHyperdrive(0);
+            ShieldGenerator ??= new ShieldGenerator
+            {
+                Capacity = _maxShieldStrength,
+                RechargeRate = _shieldRechargeRate,
+            };
+            StarfighterBay ??= new StarfighterBay { Capacity = _starfighterCapacity };
+            if (_hasGravityWell)
+                GravityWellGenerator ??= new GravityWellGenerator();
+            if (HardpointGroups is not { Count: > 0 })
+                HardpointGroups = CaptureLegacyHardpoints();
+        }
+
+        /// <summary>
+        /// Builds battery groups from a ship's legacy per-arc weapon ratings.
+        /// </summary>
+        /// <returns>The generated forward, starboard, aft, and port batteries.</returns>
+        internal List<HardpointGroup> CaptureLegacyHardpoints()
+        {
+            List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
+            foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
+            {
+                HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
+                foreach (PrimaryWeaponType weapon in _primaryWeaponTypes)
+                {
+                    group
+                        .GetHardpoints()
+                        .Add(
+                            new Hardpoint
+                            {
+                                Weapon = new WeaponData
+                                {
+                                    WeaponType = GetHardpointWeaponType(weapon),
+                                    Damage = GetLegacyWeaponValue(weapon, (int)arc),
+                                    Range = GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex),
+                                },
+                            }
+                        );
+                }
+                groups.Add(group);
+            }
+            return groups;
+        }
+
+        /// <summary>
+        /// Enumerates the primary weapon categories used by older ship data.
+        /// </summary>
+        /// <returns>The supported categories.</returns>
+        internal IEnumerable<PrimaryWeaponType> GetPrimaryWeaponTypes() =>
+            HardpointGroups is { Count: > 0 } ? _primaryWeaponTypes : _primaryWeapons.Keys;
+
+        /// <summary>
+        /// Reads a weapon strength using installed equipment or legacy ratings.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <param name="arc">The requested ship-relative weapon arc.</param>
+        /// <returns>The weapon strength in one arc or across all arcs.</returns>
+        public int GetPrimaryWeaponStrength(PrimaryWeaponType weapon, PrimaryWeaponArc arc)
+        {
+            if (HardpointGroups is not { Count: > 0 })
+                return GetLegacyWeaponValue(weapon, (int)arc);
+
+            TacticalWeaponArc batteryArc = GetBatteryArc(arc);
+            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
+            int strength = 0;
+            foreach (HardpointGroup group in HardpointGroups)
+                if (group.Arc == batteryArc)
+                    strength += group.GetStrength(mountWeapon);
+            return strength;
+        }
+
+        /// <summary>
+        /// Reads the installed or legacy range for a primary weapon.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The stored range in campaign units.</returns>
+        internal int GetPrimaryWeaponRange(PrimaryWeaponType weapon)
+        {
+            if (HardpointGroups is not { Count: > 0 })
+                return GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex);
+
+            HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
+            int range = 0;
+            foreach (HardpointGroup group in HardpointGroups)
+                range = Math.Max(range, (int)group.GetRange(mountWeapon));
+            return range;
+        }
+
+        /// <summary>
+        /// Reads an arc strength or range from the older weapon array.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <param name="index">The legacy arc or range slot to read.</param>
+        /// <returns>The stored value, or zero when it is missing.</returns>
+        private int GetLegacyWeaponValue(PrimaryWeaponType weapon, int index) =>
+            _primaryWeapons != null
+            && _primaryWeapons.TryGetValue(weapon, out int[] values)
+            && values != null
+            && index >= 0
+            && index < values.Length
+                ? values[index]
+                : 0;
 
         /// <summary>
         /// Returns the ship's surviving installed hyperdrive rating.
@@ -820,6 +862,11 @@ namespace Rebellion.Game.Units
         public int GetPrimaryWeaponStrength() =>
             GetPrimaryWeaponTypes().Sum(weapon => GetPrimaryWeaponStrength(weapon));
 
+        /// <summary>
+        /// Reads a weapon strength using installed equipment or legacy ratings.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The weapon strength in one arc or across all arcs.</returns>
         internal int GetPrimaryWeaponStrength(PrimaryWeaponType weapon)
         {
             int strength = 0;

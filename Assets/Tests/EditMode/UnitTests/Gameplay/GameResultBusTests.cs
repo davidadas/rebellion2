@@ -423,7 +423,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Publish_CollectsCommandFactsBeforeSettlementAndObservesTheFullBatch()
+        public void Publish_WithPendingCommandFacts_SettlesBeforeNotifyingObservers()
         {
             GameResultBus bus = new();
             PlanetGarrisonChangedResult initial = new();
@@ -467,7 +467,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Publish_CollectsFactsFromObserversInANewBatch()
+        public void Publish_ObserverQueuesCommandFacts_CollectsThemInANewBatch()
         {
             GameResultBus bus = new();
             PlanetGarrisonChangedResult initial = new();

@@ -450,6 +450,16 @@ namespace Rebellion.Tests.Gameplay
             return adjustment;
         }
 
+        /// <summary>
+        /// Builds a complete authored support profile for one side.
+        /// </summary>
+        /// <param name="leadingFlat">The flat support weight used when this side leads.</param>
+        /// <param name="leadingGapScale">The support weight applied to the advantage over the opposing side.</param>
+        /// <param name="trailingFlat">The flat support weight used when this side trails.</param>
+        /// <param name="trailingGapScale">The support weight applied to the gap when this side trails.</param>
+        /// <param name="magnitudeCap">The maximum support adjustment for the side.</param>
+        /// <param name="supportThreshold">The upper planetary support threshold for selecting recipients.</param>
+        /// <returns>The requested force-order weights and bounds.</returns>
         private static SpaceCombatSupportSideConfig Weights(
             int leadingFlat,
             int leadingGapScale,

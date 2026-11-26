@@ -15,6 +15,9 @@ namespace Rebellion.Tests.Tactical
     {
         private TacticalCombatDamage _damage;
 
+        /// <summary>
+        /// Creates a fresh damage processor for each simulation case.
+        /// </summary>
         [SetUp]
         public void SetUp() => _damage = new TacticalCombatDamage();
 
@@ -1040,6 +1043,22 @@ namespace Rebellion.Tests.Tactical
             );
         }
 
+        /// <summary>
+        /// Builds a capital ship or fighter with explicit combat pools and ratings.
+        /// </summary>
+        /// <param name="isFighter">Whether the participant is a fighter squadron.</param>
+        /// <param name="maximumHull">The undamaged hull capacity.</param>
+        /// <param name="currentHull">The initial live hull strength.</param>
+        /// <param name="maximumShields">The maximum shield pool.</param>
+        /// <param name="weaponRechargeRate">The installed weapon recharge rating.</param>
+        /// <param name="shieldRechargeRate">The installed shield recharge rating.</param>
+        /// <param name="sublightSpeed">The ship's sublight speed rating.</param>
+        /// <param name="maneuverability">The ship's maneuverability rating.</param>
+        /// <param name="tractorPower">The installed tractor beam rating.</param>
+        /// <param name="hyperdrives">The number of installed drive systems.</param>
+        /// <param name="damageControlRating">The ship's repair probability rating.</param>
+        /// <param name="initialDamage">The component damage already present at battle entry.</param>
+        /// <returns>The tactical participant with the requested starting state.</returns>
         internal static CombatUnit CreateUnitWithPools(
             bool isFighter,
             float maximumHull,

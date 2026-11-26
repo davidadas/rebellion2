@@ -106,6 +106,11 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(0.0523598827f, unit.TurnRate);
         }
 
+        /// <summary>
+        /// Initializes a ship from an older tactical geometry definition.
+        /// </summary>
+        /// <param name="definition">The old tactical definition supplying physical defaults.</param>
+        /// <returns>The combatant with migrated ship dimensions.</returns>
         private static CombatUnit CreateWithLegacyGeometry(TacticalCombatUnitDefinition definition)
         {
             CombatUnit unit = CombatUnit.Create(CreateShip());

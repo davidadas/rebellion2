@@ -124,6 +124,8 @@ namespace Rebellion.Tests.Tactical
         /// <param name="leadership">The admiral's captured effective leadership.</param>
         /// <param name="combat">The commander's captured effective combat rating.</param>
         /// <returns>The supported side state.</returns>
+        /// <param name="faction">The authored faction index.</param>
+        /// <param name="route">The withdrawal route duration in milliseconds.</param>
         private static TacticalCombatSide CreateSide(
             CombatUnit host,
             float leadership,

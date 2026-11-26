@@ -41,6 +41,11 @@ namespace Rebellion.Game.Units
         public int Total =>
             Shields + Weapons + TractorBeam + Engines + PrimaryHyperdrive + BackupHyperdrive;
 
+        /// <summary>
+        /// Reads damage using the system categories shared by both battle modes.
+        /// </summary>
+        /// <param name="system">The affected ship system.</param>
+        /// <returns>The damage level for the selected system.</returns>
         internal int GetCombatDamage(TacticalShipSystem system) =>
             system switch
             {
@@ -52,9 +57,19 @@ namespace Rebellion.Game.Units
                 _ => throw new ArgumentOutOfRangeException(nameof(system)),
             };
 
+        /// <summary>
+        /// Increments a system's damage up to its installed capacity.
+        /// </summary>
+        /// <param name="system">The affected ship system.</param>
+        /// <param name="capacity">The maximum damage allowed for the installed system.</param>
         internal void AddCombatDamage(TacticalShipSystem system, int capacity) =>
             SetCombatDamage(system, Math.Min(GetCombatDamage(system) + 1, capacity));
 
+        /// <summary>
+        /// Stores the new damage level for a combat system.
+        /// </summary>
+        /// <param name="system">The affected ship system.</param>
+        /// <param name="damage">The new damage level.</param>
         internal void SetCombatDamage(TacticalShipSystem system, int damage)
         {
             switch (system)

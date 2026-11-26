@@ -6289,7 +6289,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("carrier")]
         [TestCase("withdrawal")]
         [TestCase("auto")]
-        public void RecordSeededCombatSimulation(string scenario)
+        public void ResolveCombat_SeededScenario_RecordsComparisonTrace(string scenario)
         {
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
@@ -6410,6 +6410,12 @@ namespace Rebellion.Tests.Gameplay
             }
         }
 
+        /// <summary>
+        /// Appends the original order and damage state of the reported participants to the comparison trace.
+        /// </summary>
+        /// <param name="trace">The comparison trace receiving the report rows.</param>
+        /// <param name="side">The side label written into the trace.</param>
+        /// <param name="units">The detached snapshots in report order.</param>
         private static void RecordReportRows(
             List<string> trace,
             string side,

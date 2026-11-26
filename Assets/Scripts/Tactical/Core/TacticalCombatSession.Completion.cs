@@ -98,6 +98,10 @@ namespace Rebellion.Tactical
             _outcomes[1] = GetEndingOutcome(CombatSide.Defender, defender);
         }
 
+        /// <summary>
+        /// Requests the terminal cue for the indicated faction.
+        /// </summary>
+        /// <param name="recipient">The faction side receiving the terminal notification.</param>
         private void AnnounceEnding(CombatSide recipient)
         {
             int? message = _ending.GetTerminalNotification(GetSide(recipient).FactionIndex);

@@ -21,6 +21,14 @@ namespace Rebellion.Tactical
         public bool CanReceiveAttackRun => IsOperational && !HasPlanetaryProtection;
         public event Action ChargeCompleted;
 
+        /// <summary>
+        /// Evaluates the shared station and squadron gates for a new attack run.
+        /// </summary>
+        /// <param name="canReceiveAttackRun">Whether the station is operational and unprotected.</param>
+        /// <param name="hasAttackRun">Whether an attack run is already requested or active.</param>
+        /// <param name="friendlySquadrons">The number of eligible squadrons on the attacking side.</param>
+        /// <param name="opposingSquadrons">The number of eligible squadrons on the opposing side.</param>
+        /// <returns>Whether the station can be attacked by the available squadrons.</returns>
         internal static bool CanStartAttackRun(
             bool canReceiveAttackRun,
             bool hasAttackRun,

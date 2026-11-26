@@ -101,6 +101,13 @@ namespace Rebellion.Gameplay
 
         // Pending command results and aftermath belong to this publication. They run after
         // ordinary reactions drain and before observers see the settled batch.
+        /// <summary>
+        /// Settles ordinary reactions and command results before publishing one completed batch.
+        /// </summary>
+        /// <param name="results">The result batch entering this operation.</param>
+        /// <param name="collectPending">Drains command-owned facts into the next ordinary reaction wave.</param>
+        /// <param name="settle">Applies the operation's follow-up effects before observers are notified.</param>
+        /// <returns>The results in the order they settled.</returns>
         internal List<GameResult> Publish(
             IEnumerable<GameResult> results,
             Func<IReadOnlyList<GameResult>> collectPending,
@@ -168,6 +175,11 @@ namespace Rebellion.Gameplay
             }
         }
 
+        /// <summary>
+        /// Moves command-owned results into the pending wave.
+        /// </summary>
+        /// <param name="collect">The callback that drains pending command results.</param>
+        /// <returns>Whether another result wave is ready.</returns>
         private bool CollectPending(Func<IReadOnlyList<GameResult>> collect)
         {
             IReadOnlyList<GameResult> results = collect?.Invoke();

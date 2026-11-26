@@ -136,6 +136,11 @@ namespace Rebellion.Tactical
             );
         }
 
+        /// <summary>
+        /// Checks the group's requested and applied orders for a station attack.
+        /// </summary>
+        /// <param name="group">The tactical group whose orders are checked.</param>
+        /// <returns>Whether the group already requests or performs a station attack.</returns>
         private static bool IsBattleStationAttackOrdered(TacticalCombatGroup group) =>
             group.Order == TacticalCombatOrder.AttackBattleStation
             || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;

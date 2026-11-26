@@ -310,6 +310,10 @@ namespace Rebellion.Tactical
             QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit));
         }
 
+        /// <summary>
+        /// Advances ship departures and fighter withdrawals for the departing force.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
         private void AdvanceWithdrawalMembers(TacticalCombatSide side)
         {
             if (side.WithdrawalPhase != TacticalCombatSide.DeparturePhase.Departing)

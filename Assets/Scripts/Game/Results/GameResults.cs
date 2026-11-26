@@ -727,6 +727,11 @@ namespace Rebellion.Game.Results
         public bool Destroyed { get; set; }
         public bool Captured { get; set; }
 
+        /// <summary>
+        /// Reads the military value of a ship, squadron, or regiment.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <returns>The unit's military value, or zero for other entities.</returns>
         internal static int GetMilitaryValue(ISceneNode unit) =>
             unit switch
             {
@@ -749,6 +754,11 @@ namespace Rebellion.Game.Results
             : this(unit, null) { }
 
         // A deployed participant already owns a detached copy of its campaign unit.
+        /// <summary>
+        /// Captures report fields and reuses the detached battle copy when available.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <param name="battleCopy">The already detached copy of the participant, when available.</param>
         internal CombatUnitSnapshot(ISceneNode unit, ISceneNode battleCopy)
         {
             if (unit == null)
@@ -898,9 +908,6 @@ namespace Rebellion.Game.Results
         public int IterationsCompleted { get; set; }
         public List<GameResult> Events { get; set; } = new List<GameResult>();
 
-        public SideOutcome GetOutcome(CombatSide? side) =>
-            SelectOutcome(side, AttackerOutcome, DefenderOutcome);
-
         public CombatSide? WinningSide => GetWinningSide(Winner);
 
         public CombatSide? RemainingSide =>
@@ -911,6 +918,19 @@ namespace Rebellion.Game.Results
                 _ => null,
             };
 
+        /// <summary>
+        /// Reads the recorded outcome of one participating side.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <returns>The side's recorded status.</returns>
+        public SideOutcome GetOutcome(CombatSide? side) =>
+            SelectOutcome(side, AttackerOutcome, DefenderOutcome);
+
+        /// <summary>
+        /// Translates a battle outcome into a participant identity.
+        /// </summary>
+        /// <param name="winner">The battle?s recorded winning outcome.</param>
+        /// <returns>The winning side, or null for a draw.</returns>
         public static CombatSide? GetWinningSide(BattleOutcome winner) =>
             winner switch
             {
@@ -919,6 +939,13 @@ namespace Rebellion.Game.Results
                 _ => null,
             };
 
+        /// <summary>
+        /// Selects the appropriate participation outcome by side.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <param name="attacker">The attacker's recorded participation outcome.</param>
+        /// <param name="defender">The defender's recorded participation outcome.</param>
+        /// <returns>The recorded outcome, or Unknown for an unrecognized side.</returns>
         public static SideOutcome SelectOutcome(
             CombatSide? side,
             SideOutcome attacker,
@@ -931,6 +958,11 @@ namespace Rebellion.Game.Results
                 _ => SideOutcome.Unknown,
             };
 
+        /// <summary>
+        /// Finds the other participant in a two-sided battle.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <returns>The opposite side, or null when no side is given.</returns>
         public static CombatSide? OpposingSide(CombatSide? side) =>
             side switch
             {
@@ -939,6 +971,11 @@ namespace Rebellion.Game.Results
                 _ => null,
             };
 
+        /// <summary>
+        /// Reads the campaign owner recorded for a side.
+        /// </summary>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <returns>The owner's instance ID, or null for an unrecognized side.</returns>
         internal string GetOwner(CombatSide side) =>
             side == CombatSide.Attacker ? AttackerOwnerInstanceID : DefenderOwnerInstanceID;
     }

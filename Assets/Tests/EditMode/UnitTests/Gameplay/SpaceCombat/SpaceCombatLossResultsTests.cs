@@ -10,9 +10,20 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class SpaceCombatLossResultsTests
     {
+        /// <summary>
+        /// Adds the fixture's accepted combat destruction to the result list.
+        /// </summary>
+        /// <param name="events">The campaign events carrying accepted destruction results.</param>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
         private static void RecordDestruction(List<GameResult> events, ISceneNode unit) =>
             events.Add(SpaceCombatCommands.CreateCombatDestructionResult(unit, null, 0));
 
+        /// <summary>
+        /// Reads one owner's losses from the settled destruction results.
+        /// </summary>
+        /// <param name="events">The campaign events carrying accepted destruction results.</param>
+        /// <param name="owner">The campaign owner whose destroyed units are counted.</param>
+        /// <returns>The military value counted as lost for that owner.</returns>
         private static int GetLostValue(List<GameResult> events, string owner) =>
             SpaceCombatAftermath.CaptureLostMilitaryValues(events, owner, null).FirstSide;
 
