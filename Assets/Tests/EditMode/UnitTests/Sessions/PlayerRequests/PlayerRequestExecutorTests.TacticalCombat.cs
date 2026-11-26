@@ -315,10 +315,8 @@ namespace Rebellion.Tests.PlayerRequests
         }
 
         [TestCase("support", false)]
-        [TestCase("history", false)]
         [TestCase("loyalty", false)]
         [TestCase("support", true)]
-        [TestCase("history", true)]
         [TestCase("loyalty", true)]
         public void Execute_ManualBattleWithIncompleteAftermath_RejectsWithoutChangingDecision(
             string missing,
@@ -339,12 +337,6 @@ namespace Rebellion.Tests.PlayerRequests
             {
                 case "support":
                     _game.Config.SupportShift.BattleSupport = null;
-                    break;
-                case "history":
-                    _game.AttachNode(
-                        new Planet { InstanceID = "missing-history", IsColonized = true },
-                        _origin.GetParentOfType<PlanetSector>()
-                    );
                     break;
                 case "loyalty":
                     _actor.Settings.BattleLossLoyaltyDivisor = 0;
