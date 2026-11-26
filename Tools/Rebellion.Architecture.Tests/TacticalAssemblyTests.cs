@@ -6,7 +6,9 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
+using Rebellion.UI;
 using Rebellion.UI.SceneUI.TacticalCombat;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Random;
@@ -87,7 +89,11 @@ namespace Rebellion.Architecture.Tests
             var core = typeof(TacticalCombatSession).Assembly;
             Assert.That(core, Is.Not.EqualTo(typeof(GameRoot).Assembly));
             Assert.That(core, Is.Not.EqualTo(typeof(TacticalCombatController).Assembly));
-            Assert.That(core.GetTypes().Contains(typeof(TacticalCombatUnit)), Is.True);
+            Assert.That(typeof(CombatUnit).Assembly, Is.EqualTo(typeof(GameRoot).Assembly));
+            Assert.That(
+                typeof(TacticalCombatArrival).Assembly,
+                Is.EqualTo(typeof(TacticalCombatController).Assembly)
+            );
         }
 
         [Test]
