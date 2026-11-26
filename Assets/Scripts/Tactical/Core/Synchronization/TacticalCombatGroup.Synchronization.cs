@@ -1,4 +1,5 @@
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
@@ -14,7 +15,7 @@ namespace Rebellion.Tactical
         /// <returns>A presentation-only group that does not replace live requested ownership.</returns>
         internal static TacticalCombatGroup CreateSynchronizedMovieGroup(
             int id,
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalCombatSession session
         )
         {

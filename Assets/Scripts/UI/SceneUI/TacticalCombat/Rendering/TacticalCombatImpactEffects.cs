@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
@@ -13,10 +14,10 @@ namespace Rebellion.Tactical.Rendering
     {
         private readonly Transform _parent;
         private readonly Camera _camera;
-        private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
+        private readonly Func<CombatUnit, Vector3> _getPosition;
         private readonly Func<int?> _getCloseUpPrimary;
         private readonly Dictionary<TacticalCombatEffectKind, Animation> _animations = new();
-        private readonly Dictionary<TacticalCombatUnit, Visual> _visuals = new();
+        private readonly Dictionary<CombatUnit, Visual> _visuals = new();
 
         /// <summary>
         /// Prepares shared animation resources before the encounter starts advancing.
@@ -34,7 +35,7 @@ namespace Rebellion.Tactical.Rendering
             Shader shader,
             IReadOnlyList<TacticalCombatEffectDefinition> definitions,
             ContentAssets assets,
-            Func<TacticalCombatUnit, Vector3> getPosition,
+            Func<CombatUnit, Vector3> getPosition,
             Func<int?> getCloseUpPrimary
         )
         {
@@ -69,7 +70,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="weapon">The impacting weapon.</param>
         /// <param name="impact">The surface reached by the simulation's damage calculation.</param>
         public void ShowImpact(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
         )
@@ -96,7 +97,7 @@ namespace Rebellion.Tactical.Rendering
         /// Requests a capital-ship destruction sequence for scuttling and direct destruction commands.
         /// </summary>
         /// <param name="unit">The destroyed encounter participant.</param>
-        public void ShowDestruction(TacticalCombatUnit unit)
+        public void ShowDestruction(CombatUnit unit)
         {
             if (!unit.IsFighter && !unit.IsBattleStation)
                 Show(unit, TacticalCombatEffectKind.Destruction, 128);
@@ -108,7 +109,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="unit">The capital ship receiving the visual transition.</param>
         /// <param name="kind">The tractor-restraint or gravity-lock animation.</param>
         /// <param name="enabled">Whether the addressed lock selector is enabled.</param>
-        public void SetLock(TacticalCombatUnit unit, TacticalCombatEffectKind kind, bool enabled)
+        public void SetLock(CombatUnit unit, TacticalCombatEffectKind kind, bool enabled)
         {
             if (
                 kind
@@ -128,7 +129,7 @@ namespace Rebellion.Tactical.Rendering
         /// Detaches both lock selectors when a capital ship's presentation is reset.
         /// </summary>
         /// <param name="unit">The capital ship whose lock visuals are released.</param>
-        public void ClearLocks(TacticalCombatUnit unit)
+        public void ClearLocks(CombatUnit unit)
         {
             if (_visuals.TryGetValue(unit, out Visual visual))
             {
@@ -141,7 +142,7 @@ namespace Rebellion.Tactical.Rendering
         /// Reattaches enabled lock selectors after a capital model changes detail level.
         /// </summary>
         /// <param name="unit">The capital ship whose model detail changed.</param>
-        public void RestartLocks(TacticalCombatUnit unit)
+        public void RestartLocks(CombatUnit unit)
         {
             if (_visuals.TryGetValue(unit, out Visual visual))
                 visual.RestartLocks(_animations);
@@ -152,7 +153,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The capital ship owning the lock billboard.</param>
         /// <param name="position">Its current position in the encounter's rendering frame.</param>
-        public void SetLockPosition(TacticalCombatUnit unit, Vector3 position)
+        public void SetLockPosition(CombatUnit unit, Vector3 position)
         {
             if (_visuals.TryGetValue(unit, out Visual visual))
                 visual.SetLockPosition(position, _parent, _camera);
@@ -163,7 +164,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The participant whose model visibility is being projected.</param>
         /// <returns>Whether the destruction sequence has not yet detached its model.</returns>
-        public bool KeepsModelVisible(TacticalCombatUnit unit) =>
+        public bool KeepsModelVisible(CombatUnit unit) =>
             _visuals.TryGetValue(unit, out Visual visual) && visual.KeepsModelVisible;
 
         /// <summary>
@@ -172,7 +173,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="seconds">The unscaled presentation interval.</param>
         public void Advance(float seconds)
         {
-            foreach (KeyValuePair<TacticalCombatUnit, Visual> pair in _visuals)
+            foreach (KeyValuePair<CombatUnit, Visual> pair in _visuals)
                 pair.Value.Advance(
                     seconds,
                     _getPosition(pair.Key),
@@ -189,7 +190,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="unit">The affected capital ship.</param>
         /// <param name="kind">The authored animation category.</param>
         /// <param name="priority">The effect's ordering and family bits.</param>
-        private void Show(TacticalCombatUnit unit, TacticalCombatEffectKind kind, int priority)
+        private void Show(CombatUnit unit, TacticalCombatEffectKind kind, int priority)
         {
             if (_animations.TryGetValue(kind, out Animation animation))
             {
@@ -204,7 +205,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The affected participant.</param>
         /// <returns>The unit's reusable effect owner.</returns>
-        private Visual GetVisual(TacticalCombatUnit unit)
+        private Visual GetVisual(CombatUnit unit)
         {
             if (!_visuals.TryGetValue(unit, out Visual visual))
             {

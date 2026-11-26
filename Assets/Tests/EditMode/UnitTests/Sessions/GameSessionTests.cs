@@ -1185,8 +1185,8 @@ namespace Rebellion.Tests.Gameplay
                 {
                     AttackerOwnerInstanceID = _faction.InstanceID,
                     DefenderOwnerInstanceID = opponent.InstanceID,
-                    AttackerOutcome = SpaceCombatSideOutcome.Active,
-                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                     DefendingUnits = new List<CombatUnitSnapshot> { destroyedShip },
                 }
             );

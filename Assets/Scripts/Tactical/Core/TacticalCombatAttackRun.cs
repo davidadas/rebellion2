@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -28,8 +29,8 @@ namespace Rebellion.Tactical
         private readonly Func<float> _commandBudget;
         private readonly int _playerFactionIndex;
         private Action<int, int> _networkNotifications;
-        private readonly List<TacticalCombatUnit> _candidates = new();
-        private readonly Dictionary<TacticalCombatUnit, Pools> _entryPools = new();
+        private readonly List<CombatUnit> _candidates = new();
+        private readonly Dictionary<CombatUnit, Pools> _entryPools = new();
         private bool _transitionPending;
         private bool _approachAnnounced;
         private bool _candidateDecayed;
@@ -48,8 +49,8 @@ namespace Rebellion.Tactical
             TacticalCombatAttackRun,
             TacticalCombatAttackRunState
         > StateChangeRequested;
-        public event Action<TacticalCombatUnit> UnitDestroyed;
-        public event Action<TacticalCombatUnit> UnitParticipationChanged;
+        public event Action<CombatUnit> UnitDestroyed;
+        public event Action<CombatUnit> UnitParticipationChanged;
         public event Action<TacticalCombatAttackRun, int> ProgressChanged;
         public event Action<int> NotificationRequested;
         public event Action<TacticalCombatAttackRun> MovieRequested;
@@ -187,10 +188,10 @@ namespace Rebellion.Tactical
             {
                 AnnounceApproach();
                 _entryPools.Clear();
-                foreach (TacticalCombatUnit unit in Group.Members)
+                foreach (CombatUnit unit in Group.Members)
                 {
-                    _entryPools.Add(unit, new Pools(unit.Systems.Hull, unit.Systems.Shields));
-                    unit.Status = TacticalCombatUnitStatus.AttackingBattleStation;
+                    _entryPools.Add(unit, new Pools(unit.Hull, unit.Shields));
+                    unit.Status = CombatUnitStatus.AttackingBattleStation;
                     UnitParticipationChanged?.Invoke(unit);
                 }
                 RemainingMilliseconds = 120000;
@@ -207,7 +208,7 @@ namespace Rebellion.Tactical
                             ? 1
                             : count >> 1
                         : 0;
-                TacticalCombatUnit[] members = new TacticalCombatUnit[count];
+                CombatUnit[] members = new CombatUnit[count];
                 for (int index = 0; index < count; index++)
                     members[index] = Group.Members[index];
                 for (int index = 0; index < members.Length; index++)
@@ -222,13 +223,13 @@ namespace Rebellion.Tactical
             {
                 NotifyFaction(0, GetCategoryMessage(315, 303, 307, 311));
                 MovieRequested?.Invoke(this);
-                foreach (TacticalCombatUnit member in new List<TacticalCombatUnit>(Group.Members))
+                foreach (CombatUnit member in new List<CombatUnit>(Group.Members))
                     UnitDestroyed?.Invoke(member);
             }
             else if (state == TacticalCombatAttackRunState.Cancelled)
             {
                 if (previous != TacticalCombatAttackRunState.Approaching)
-                    foreach (TacticalCombatUnit unit in Group.Members)
+                    foreach (CombatUnit unit in Group.Members)
                         Restore(unit);
                 OrderRequested?.Invoke(Group, TacticalCombatOrder.Withdraw);
             }
@@ -246,18 +247,18 @@ namespace Rebellion.Tactical
             int attempts = 0;
             while (_candidates.Count > 0)
             {
-                TacticalCombatUnit unit = _candidates[0];
+                CombatUnit unit = _candidates[0];
                 _candidates.RemoveAt(0);
                 int maneuver = (int)unit.GetManeuverability();
                 if (maneuver < _random.NextInt(1, 11))
                 {
                     _candidateDecayed = true;
-                    int fighters = (int)(unit.Systems.Hull / 8);
-                    unit.Systems.ApplyHullLoss(
+                    int fighters = (int)(unit.Hull / 8);
+                    unit.ApplyHullLoss(
                         fighters <= 1 ? 100000 : _random.NextInt(1, fighters + 1) * 8
                     );
                 }
-                if (unit.Systems.Hull > 0)
+                if (unit.Hull > 0)
                 {
                     float threshold = (float)(
                         (double)unit.GetTorpedoDamage() + Math.Min(_commandBudget(), 9)
@@ -267,7 +268,7 @@ namespace Rebellion.Tactical
                     {
                         State = TacticalCombatAttackRunState.Succeeding;
                         RemainingMilliseconds = 120000;
-                        foreach (TacticalCombatUnit member in Group.Members)
+                        foreach (CombatUnit member in Group.Members)
                             RestorePools(member);
                         _candidates.Clear();
                         return;
@@ -275,7 +276,7 @@ namespace Rebellion.Tactical
                 }
                 if (++attempts > 1000)
                     break;
-                if (unit.Systems.Hull > 0)
+                if (unit.Hull > 0)
                     _candidates.Insert(0, unit);
             }
             State = TacticalCombatAttackRunState.Failing;
@@ -349,10 +350,10 @@ namespace Rebellion.Tactical
         /// Restores a returning squadron's entry pools and spatial participation.
         /// </summary>
         /// <param name="unit">The returning squadron.</param>
-        private void Restore(TacticalCombatUnit unit)
+        private void Restore(CombatUnit unit)
         {
             RestorePools(unit);
-            unit.Status = TacticalCombatUnitStatus.Active;
+            unit.Status = CombatUnitStatus.Active;
             UnitParticipationChanged?.Invoke(unit);
         }
 
@@ -360,10 +361,10 @@ namespace Rebellion.Tactical
         /// Restores the hull and shields captured when the squadron entered its attack sequence.
         /// </summary>
         /// <param name="unit">The squadron whose pools are restored.</param>
-        private void RestorePools(TacticalCombatUnit unit)
+        private void RestorePools(CombatUnit unit)
         {
             if (_entryPools.TryGetValue(unit, out Pools pools))
-                unit.Systems.RestorePools(pools.Hull, pools.Shields);
+                unit.RestorePools(pools.Hull, pools.Shields);
         }
 
         /// <summary>
@@ -384,6 +385,40 @@ namespace Rebellion.Tactical
                 Hull = hull;
                 Shields = shields;
             }
+        }
+    }
+
+    /// <summary>
+    /// Owns one battle-station movie's completion acknowledgement and simulation pause.
+    /// </summary>
+    public sealed class TacticalCombatMovieRequest
+    {
+        private Action<TacticalCombatMovieRequest> _complete;
+        public TacticalCombatAttackRun AttackRun { get; }
+        public bool IsComplete => _complete == null;
+
+        /// <summary>
+        /// Captures the attack outcome and the pause released when its movie ends.
+        /// </summary>
+        /// <param name="attackRun">The attack whose terminal state selected the movie.</param>
+        /// <param name="complete">Releases this request's simulation pause.</param>
+        internal TacticalCombatMovieRequest(
+            TacticalCombatAttackRun attackRun,
+            Action<TacticalCombatMovieRequest> complete
+        )
+        {
+            AttackRun = attackRun ?? throw new ArgumentNullException(nameof(attackRun));
+            _complete = complete ?? throw new ArgumentNullException(nameof(complete));
+        }
+
+        /// <summary>
+        /// Acknowledges playback completion once, preserving every other pause owner.
+        /// </summary>
+        public void Complete()
+        {
+            Action<TacticalCombatMovieRequest> complete = _complete;
+            _complete = null;
+            complete?.Invoke(this);
         }
     }
 }

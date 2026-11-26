@@ -8,7 +8,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using BitConverter = global::System.BitConverter;
 
@@ -21,7 +20,7 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="fighter">The fighter retained in the initial hangar root.</param>
         /// <returns>The encounter with a legal captured carrier relationship.</returns>
-        internal static TacticalCombatSession CreateHangarSession(out TacticalCombatUnit fighter)
+        internal static TacticalCombatSession CreateHangarSession(out CombatUnit fighter)
         {
             CapitalShip carrier = new()
             {
@@ -42,25 +41,10 @@ namespace Rebellion.Tests.Tactical
             };
             carrier.AddStarfighter(sourceFighter);
             sourceFighter.SetParent(carrier);
-            fighter = new TacticalCombatUnit(
-                CombatUnit.Create(sourceFighter),
-                CombatSide.Attacker,
-                2
-            );
-            TacticalCombatUnit opposing = CreateUnit(
-                "opposing",
-                CombatSide.Defender,
-                1000001,
-                0,
-                false
-            );
+            fighter = new CombatUnit(sourceFighter, CombatSide.Attacker, 2);
+            CombatUnit opposing = CreateUnit("opposing", CombatSide.Defender, 1000001, 0, false);
             return CreateAssessmentSession(
-                new[]
-                {
-                    new TacticalCombatUnit(CombatUnit.Create(carrier), CombatSide.Attacker, 1),
-                    fighter,
-                    opposing,
-                }
+                new[] { new CombatUnit(carrier, CombatSide.Attacker, 1), fighter, opposing }
             );
         }
 
@@ -95,7 +79,7 @@ namespace Rebellion.Tests.Tactical
             int defenderCount
         )
         {
-            List<TacticalCombatUnit> units = new();
+            List<CombatUnit> units = new();
             units.Add(
                 CreateUnit("attacker", CombatSide.Attacker, 1, attackerStrength, gravityWell)
             );
@@ -159,11 +143,11 @@ namespace Rebellion.Tests.Tactical
         /// <param name="units">The captured units on both sides.</param>
         /// <returns>The isolated assessment encounter.</returns>
         internal static TacticalCombatSession CreateAssessmentSession(
-            IReadOnlyList<TacticalCombatUnit> units
+            IReadOnlyList<CombatUnit> units
         )
         {
             List<TacticalCombatGroup> groups = new();
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
                 groups.Add(
                     new TacticalCombatGroup(
                         unit.Index + 100,
@@ -217,23 +201,21 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The battle registration identifier.</param>
         /// <param name="loss">The hull loss applied after entry.</param>
         /// <returns>The active squadron with its initial recharge sample intact.</returns>
-        internal static TacticalCombatUnit CreateUnarmedFighter(string id, int index, float loss)
+        internal static CombatUnit CreateUnarmedFighter(string id, int index, float loss)
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = id,
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 3,
-                        Hyperdrive = 1,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit unit = new(
+                new Starfighter
+                {
+                    InstanceID = id,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 3,
+                    Hyperdrive = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 index
             );
-            unit.Systems.ApplyHullLoss(loss);
+            unit.ApplyHullLoss(loss);
             return unit;
         }
 
@@ -246,7 +228,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="strength">The battery and recharge strength.</param>
         /// <param name="gravityWell">Whether the ship projects a gravity well.</param>
         /// <returns>The deployed tactical unit.</returns>
-        internal static TacticalCombatUnit CreateUnit(
+        internal static CombatUnit CreateUnit(
             string id,
             CombatSide side,
             int index,
@@ -274,7 +256,7 @@ namespace Rebellion.Tests.Tactical
                 strength,
                 100,
             };
-            return new TacticalCombatUnit(CombatUnit.Create(ship), side, index)
+            return new CombatUnit(ship, side, index)
             {
                 Position = new Vector3(0, 0, side == CombatSide.Attacker ? -40 : 40),
                 Heading = side == CombatSide.Attacker ? Vector3.UnitZ : -Vector3.UnitZ,

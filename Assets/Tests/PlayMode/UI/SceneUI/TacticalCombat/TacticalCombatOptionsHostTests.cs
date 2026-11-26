@@ -2,12 +2,12 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -49,7 +49,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             desktopRect.sizeDelta = new Vector2(853.3333f, 480);
             _view = TacticalCombatViewFixture.Create();
             _session = new TacticalCombatSession(
-                Array.Empty<TacticalCombatUnit>(),
+                Array.Empty<CombatUnit>(),
                 Array.Empty<TacticalCombatGroup>(),
                 CreateSide(CombatSide.Attacker),
                 CreateSide(CombatSide.Defender),

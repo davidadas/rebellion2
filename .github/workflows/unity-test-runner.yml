@@ -357,6 +357,7 @@ jobs:
               Rebellion.Saves
               Rebellion.SceneGraph
               Rebellion.Sessions
+              Rebellion.Tactical.Core
               Rebellion.UserSettings
               Rebellion.Util
             )

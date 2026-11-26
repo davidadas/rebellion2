@@ -2,16 +2,15 @@ using System;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -57,8 +56,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
         {
             replica.ApplySnapshot(Snapshot(1, 0, Vector3.Zero, Vector3.UnitZ));
             replica.ApplySnapshot(Snapshot(2, 100, new Vector3(10, 20, 30), Vector3.UnitX));
-            TacticalCombatUnit unit = replica.GetUnit("empire");
-            float hull = unit.Systems.Hull;
+            CombatUnit unit = replica.GetUnit("empire");
+            float hull = unit.Hull;
             int systemTime = replica.SystemTime;
             long randomCalls = replicaRandom.CallCount;
 
@@ -69,7 +68,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             Assert.That(heading.Length(), Is.EqualTo(1).Within(.00001f));
             Assert.AreEqual(new Vector3(10, 20, 30), unit.Position);
             Assert.AreEqual(Vector3.UnitX, unit.Heading);
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
             Assert.AreEqual(systemTime, replica.SystemTime);
             Assert.AreEqual(randomCalls, replicaRandom.CallCount);
         }
@@ -105,7 +104,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             TacticalCombatSnapshot second = Snapshot(2, 100, Vector3.Zero, Vector3.UnitZ);
             TacticalCombatUnitSnapshot start = first.Units.Single(unit => unit.UnitID == "empire");
             TacticalCombatUnitSnapshot end = second.Units.Single(unit => unit.UnitID == "empire");
-            start.Status = end.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            start.Status = end.Status = CombatUnitStatus.EnteringHyperspace;
             start.HyperspaceMilliseconds = 100;
             end.HyperspaceMilliseconds = 200;
             replica.ApplySnapshot(first);
@@ -125,34 +124,26 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             TacticalCombatSnapshot death = Snapshot(2, 100, Vector3.UnitX * 10, Vector3.UnitZ);
             TacticalCombatUnitSnapshot state = death.Units.Single(unit => unit.UnitID == "empire");
             state.Hull = 0;
-            state.Status = TacticalCombatUnitStatus.Destroyed;
+            state.Status = CombatUnitStatus.Destroyed;
             replica.ApplySnapshot(death);
-            TacticalCombatUnit raw = replica.GetUnit("empire");
-            Assert.IsFalse(raw.Systems.IsAlive);
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, raw.Status);
+            CombatUnit raw = replica.GetUnit("empire");
+            Assert.IsFalse(raw.IsAlive);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, raw.Status);
             long randomCalls = replicaRandom.CallCount;
 
             playback.Advance(99);
 
             Assert.IsTrue(
-                playback.TryGetLifecycle(
-                    "empire",
-                    out TacticalCombatUnitStatus before,
-                    out bool alive
-                )
+                playback.TryGetLifecycle("empire", out CombatUnitStatus before, out bool alive)
             );
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, before);
+            Assert.AreEqual(CombatUnitStatus.Active, before);
             Assert.IsTrue(alive);
-            Assert.IsFalse(raw.Systems.IsAlive);
+            Assert.IsFalse(raw.IsAlive);
             playback.Advance(1);
             Assert.IsTrue(
-                playback.TryGetLifecycle(
-                    "empire",
-                    out TacticalCombatUnitStatus after,
-                    out bool dead
-                )
+                playback.TryGetLifecycle("empire", out CombatUnitStatus after, out bool dead)
             );
-            Assert.AreEqual(TacticalCombatUnitStatus.Destroyed, after);
+            Assert.AreEqual(CombatUnitStatus.Destroyed, after);
             Assert.IsFalse(dead);
             playback.Advance(100);
             Assert.IsTrue(playback.TryGetLifecycle("empire", out _, out bool remainsAlive));
@@ -168,7 +159,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             TacticalCombatUnitSnapshot state = departure.Units.Single(unit =>
                 unit.UnitID == "empire"
             );
-            state.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            state.Status = CombatUnitStatus.EnteringHyperspace;
             state.HyperspaceMilliseconds = 1200;
             replica.ApplySnapshot(departure);
 
@@ -180,11 +171,11 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                     out Vector3 position,
                     out _,
                     out float beforeTimer,
-                    out TacticalCombatUnitStatus before,
+                    out CombatUnitStatus before,
                     out _
                 )
             );
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, before);
+            Assert.AreEqual(CombatUnitStatus.Active, before);
             Assert.AreEqual(0, beforeTimer);
             Assert.AreEqual(Vector3.Zero, position);
             playback.Advance(1);
@@ -194,11 +185,11 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                     out _,
                     out _,
                     out float afterTimer,
-                    out TacticalCombatUnitStatus after,
+                    out CombatUnitStatus after,
                     out _
                 )
             );
-            Assert.AreEqual(TacticalCombatUnitStatus.EnteringHyperspace, after);
+            Assert.AreEqual(CombatUnitStatus.EnteringHyperspace, after);
             Assert.AreEqual(1200, afterTimer);
         }
 
@@ -271,7 +262,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             Vector3 heading
         )
         {
-            TacticalCombatUnit unit = authority.GetUnit("empire");
+            CombatUnit unit = authority.GetUnit("empire");
             unit.Position = position;
             unit.Heading = heading;
             TacticalCombatSnapshot snapshot = authority.CaptureSnapshot(sequence);
@@ -291,8 +282,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             IRandomNumberProvider random
         )
         {
-            TacticalCombatUnit empire = CreateUnit("empire", CombatSide.Attacker, 1000001);
-            TacticalCombatUnit alliance = CreateUnit("alliance", CombatSide.Defender, 1);
+            CombatUnit empire = CreateUnit("empire", CombatSide.Attacker, 1000001);
+            CombatUnit alliance = CreateUnit("alliance", CombatSide.Defender, 1);
             return new TacticalCombatSession(
                 new[] { alliance, empire },
                 new[]
@@ -341,25 +332,23 @@ namespace Rebellion.Tests.Multiplayer.Tactical
         /// <param name="side">The participant's faction.</param>
         /// <param name="index">The tactical registration index.</param>
         /// <returns>The captured capital ship.</returns>
-        private static TacticalCombatUnit CreateUnit(string id, CombatSide side, int index) =>
+        private static CombatUnit CreateUnit(string id, CombatSide side, int index) =>
             new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = id,
-                        OwnerInstanceID = side == CombatSide.Attacker ? "FNEMP1" : "FNALL1",
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        Hyperdrive = 1,
-                        SublightSpeed = 4,
-                    }
-                ),
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    OwnerInstanceID = side == CombatSide.Attacker ? "FNEMP1" : "FNALL1",
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Hyperdrive = 1,
+                    SublightSpeed = 4,
+                },
                 side,
-                index,
-                new TacticalCombatUnitDefinition { PresentationIndex = 1 }
+                index
             )
             {
+                PresentationIndex = 1,
                 Heading = Vector3.UnitZ,
                 DesiredHeading = Vector3.UnitZ,
             };

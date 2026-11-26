@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 
@@ -14,39 +16,27 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed partial class TacticalCombatSession
     {
-        private readonly List<TacticalCombatUnit> _units;
+        private readonly List<CombatUnit> _units;
         private readonly List<TacticalCombatGroup> _groups;
         private readonly Dictionary<int, TacticalCombatGroup> _groupsByID = new();
         private readonly TacticalCombatGroup[,] _objectGroups = new TacticalCombatGroup[2, 8];
         private readonly TacticalCombatGroup[,] _fighterGroups = new TacticalCombatGroup[2, 4];
-        private readonly Dictionary<string, TacticalCombatUnit> _unitsByID = new(
-            StringComparer.Ordinal
-        );
+        private readonly Dictionary<string, CombatUnit> _unitsByID = new(StringComparer.Ordinal);
         private readonly Dictionary<string, int> _personnelHostCounts = new(StringComparer.Ordinal);
         private readonly Dictionary<string, TacticalCombatCarrier> _carriers = new(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<TacticalCombatUnit, Recovery> _recoveries = new();
-        private readonly HashSet<TacticalCombatUnit> _tractorCommandsPending = new();
+
+        // Index the carriers' recovery assignments by fighter for queued commands and movement.
+        private readonly Dictionary<CombatUnit, TacticalCombatCarrier.Recovery> _recoveries = new();
+        private readonly HashSet<CombatUnit> _tractorCommandsPending = new();
         private readonly Dictionary<
-            TacticalCombatUnit,
-            SortedDictionary<uint, TacticalCombatUnit>
+            CombatUnit,
+            SortedDictionary<uint, CombatUnit>
         > _tractorSources = new();
-        private readonly List<WithdrawalMember> _orderedWithdrawalMembers = new();
-        private readonly Dictionary<int, TacticalCombatUnit> _withdrawalUnitsByIndex = new();
-        private readonly Action<int> _requestUnreadyScuttle;
-        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalCapitals =
-        {
-            new(),
-            new(),
-        };
-        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalFighters =
-        {
-            new(),
-            new(),
-        };
-        private readonly HashSet<TacticalCombatUnit> _departed = new();
-        private readonly List<TacticalCombatUnit> _initiallyDockedFighters = new();
+        private readonly List<CombatUnit> _registeredMobileUnits = new();
+        private readonly HashSet<CombatUnit> _departed = new();
+        private readonly List<CombatUnit> _initiallyDockedFighters = new();
         private readonly SortedDictionary<int, Queue<Command>> _commands = new();
         private readonly TacticalCombatSpatialIndex _spatial;
         private readonly TacticalCombatFireControl _fireControl = new();
@@ -57,28 +47,27 @@ namespace Rebellion.Tactical
         private readonly TacticalCombatMotion _motion = new();
         private readonly TacticalCombatSide[] _sides;
         private readonly TacticalCombatTargeting _targeting;
+        private readonly Action<TacticalCombatSound> _queueCombatSound;
+        internal TacticalCombatDamage Damage { get; } = new();
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
-        private int _progress;
-        private int _phase;
-        private float _elapsedInTick;
-        private int _systemTime = 3;
-        private bool _legacyTimeAdvanced;
         private TacticalCombatScheduler _scheduler;
+        private double _elapsedFrameClock;
+        private bool _usesFrameClock;
         private readonly TacticalCombatBriefingSequence _briefing;
-        private readonly TacticalCombatEnding _ending;
+        private readonly TacticalCombatEnding _ending = new();
         private bool _completionStarted;
-        private TacticalCombatArrival _arrival;
+        private ITacticalCombatEntry _arrival;
         private bool _arrivalStarting;
         private bool _userPaused;
         private bool _directCommandsSuspended;
         private int _moviePauses;
-        private readonly SpaceCombatSideOutcome[] _outcomes = new SpaceCombatSideOutcome[2];
+        private readonly SpaceCombatResult.SideOutcome[] _outcomes =
+            new SpaceCombatResult.SideOutcome[2];
 
-        public IReadOnlyList<TacticalCombatUnit> Units { get; }
+        public IReadOnlyList<CombatUnit> Units { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
-        internal IReadOnlyList<TacticalCombatUnit> InitiallyDockedFighters =>
-            _initiallyDockedFighters;
+        internal IReadOnlyList<CombatUnit> InitiallyDockedFighters => _initiallyDockedFighters;
         internal bool CanStartBattleStationAttack => CaptureBriefingState().CanAttackBattleStation;
         public CombatSide PlayerSide { get; }
         public float BattleDepth { get; }
@@ -87,13 +76,14 @@ namespace Rebellion.Tactical
         public TacticalCombatSelection Selection { get; }
         internal TacticalCombatTargeting Targeting => _targeting;
         public int SystemTime =>
-            _synchronizationReplica ? _synchronizedSystemTime
-            : _scheduler == null ? _systemTime
-            : unchecked((int)_scheduler.SystemTime);
+            _synchronizationReplica
+                ? _synchronizedSystemTime
+                : unchecked((int)(_scheduler?.SystemTime ?? 3));
         public bool IsComplete { get; private set; }
         public bool IsArriving => _arrival?.IsComplete == false;
         public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
-        public CombatSide Winner { get; private set; } = CombatSide.Draw;
+        public SpaceCombatResult.BattleOutcome Winner { get; private set; } =
+            SpaceCombatResult.BattleOutcome.Draw;
         public bool IsPaused
         {
             get => _userPaused || _moviePauses > 0;
@@ -118,20 +108,18 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Projects a stored weapon impact at its effect boundary within damage processing.
         /// </summary>
-        public event Action<
-            TacticalCombatUnit,
-            TacticalWeaponType,
-            TacticalCombatImpactKind
-        > ImpactApplied;
+        public event Action<CombatUnit, TacticalWeaponType, TacticalCombatImpactKind> ImpactApplied;
 
         /// <summary>
         /// Requests an admitted direct destruction effect before deactivating its participant.
         /// </summary>
-        public event Action<TacticalCombatUnit> DestructionEffectRequested;
-        public event Action<TacticalCombatUnit> UnitDestroyed;
-        public event Action<TacticalCombatUnit> UnitWithdrawn;
-        public event Action<TacticalCombatUnit, TacticalSystemEvent> SystemChanged;
-        public event Action<TacticalCombatUnit> FighterRecovered;
+        public event Action<CombatUnit> DestructionEffectRequested;
+        public event Action<CombatUnit> UnitDestroyed;
+        public event Action<CombatUnit> UnitWithdrawn;
+        public event Action<CombatUnit, bool> TractorSourcesChanged;
+        public event Action<CombatUnit> GravityWellPresentationRequested;
+        public event Action<CombatUnit, TacticalSystemEvent> SystemChanged;
+        public event Action<CombatUnit> FighterRecovered;
         public event Action<TacticalCombatGroup> RecoveryUnavailable;
         public event Action Completed;
         public event Action GroupCategoryChanged;
@@ -153,12 +141,67 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Gets whether completion requests automatic resolution of the surviving forces.
         /// </summary>
-        public bool ImmediateResultRequested => _ending.Flags[6];
+        public bool ImmediateResultRequested => _ending.ImmediateResultRequested;
 
-        public event Action<TacticalCombatUnit, TacticalCombatUnit> SuperlaserFired;
+        public event Action<CombatUnit, CombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
         public event Action<TacticalCombatMovieRequest> AttackRunMovieRequested;
         internal event Action<TacticalCombatSide> AutomationRequested;
+
+        /// <summary>
+        /// Creates the simulation over the battle's existing combatants.
+        /// </summary>
+        /// <param name="battle">The battle owning the units to simulate.</param>
+        /// <param name="groups">The initial capital and fighter groups.</param>
+        /// <param name="attacker">The attacker's command and withdrawal state.</param>
+        /// <param name="defender">The defender's command and withdrawal state.</param>
+        /// <param name="playerSide">The side controlled by the player.</param>
+        /// <param name="battleDepth">The deployment span used by movement and withdrawal.</param>
+        /// <param name="random">The encounter's random-number stream.</param>
+        /// <param name="createAudio">Creates notification scheduling with this encounter's stream and pause state.</param>
+        /// <param name="attachAutomation">Attaches the selected tactical AI after encounter initialization.</param>
+        /// <param name="definition">The shared tactical presentation definitions.</param>
+        /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
+        /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
+        /// <param name="battleClock">The host clock or controlled clock for the battle scheduler.</param>
+        /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
+        public TacticalCombatSession(
+            ActiveBattle battle,
+            IReadOnlyList<TacticalCombatGroup> groups,
+            TacticalCombatSide attacker,
+            TacticalCombatSide defender,
+            CombatSide playerSide,
+            float battleDepth,
+            IRandomNumberProvider random,
+            TacticalCombatAudioFactory createAudio,
+            Action<TacticalCombatSession> attachAutomation,
+            TacticalCombatDefinition definition = null,
+            TacticalCombatEnvironmentDefinition environment = null,
+            ITacticalCombatSceneryRandom sceneryRandom = null,
+            Func<uint> battleClock = null,
+            IReadOnlyList<string> personnelHostInstanceIDs = null
+        )
+            : this(
+                (battle ?? throw new ArgumentNullException(nameof(battle)))
+                    .Combatants.OrderBy(unit => unit.Index)
+                    .ToArray(),
+                groups,
+                attacker,
+                defender,
+                playerSide,
+                battleDepth,
+                random,
+                createAudio,
+                attachAutomation,
+                definition,
+                environment,
+                sceneryRandom,
+                personnelHostInstanceIDs: personnelHostInstanceIDs
+            )
+        {
+            if (battleClock != null)
+                ConfigureClockedAdvance(battleClock);
+        }
 
         /// <summary>
         /// Creates an encounter from its ordered units, groups, and captured side state.
@@ -177,8 +220,8 @@ namespace Rebellion.Tactical
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
         /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
-        public TacticalCombatSession(
-            IReadOnlyList<TacticalCombatUnit> units,
+        internal TacticalCombatSession(
+            IReadOnlyList<CombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
             TacticalCombatSide attacker,
             TacticalCombatSide defender,
@@ -197,7 +240,6 @@ namespace Rebellion.Tactical
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
             this._groups = new(groups ?? throw new ArgumentNullException(nameof(groups)));
             this._random = random ?? throw new ArgumentNullException(nameof(random));
-            _requestUnreadyScuttle = RequestUnreadyScuttle;
             _sides = new[]
             {
                 attacker ?? throw new ArgumentNullException(nameof(attacker)),
@@ -225,6 +267,11 @@ namespace Rebellion.Tactical
                 ?? throw new InvalidOperationException(
                     "The encounter requires a notification service."
                 );
+            _queueCombatSound = Audio.Enqueue;
+            Damage.SystemChangeRequested += QueueSystemChange;
+            Damage.LethalHit += ReportDestruction;
+            Damage.ImpactApplied += (unit, weapon, impact) =>
+                ImpactApplied?.Invoke(unit, weapon, impact);
             Units = this._units.AsReadOnly();
             Groups = this._groups.AsReadOnly();
             if (personnelHostInstanceIDs != null)
@@ -233,14 +280,11 @@ namespace Rebellion.Tactical
                     _personnelHostCounts.TryGetValue(hostID, out int count);
                     _personnelHostCounts[hostID] = count + 1;
                 }
-            foreach (TacticalCombatUnit unit in this._units)
+            foreach (CombatUnit unit in this._units)
             {
                 _unitsByID.Add(unit.InstanceID, unit);
                 if (!unit.IsBattleStation)
-                {
-                    _orderedWithdrawalMembers.Add(new WithdrawalMember(this, unit));
-                    _withdrawalUnitsByIndex.Add(unit.Index, unit);
-                }
+                    _registeredMobileUnits.Add(unit);
                 if (unit.IsBattleStation)
                 {
                     if (BattleStation != null)
@@ -262,11 +306,6 @@ namespace Rebellion.Tactical
                 }
                 unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
                 unit.TurnRate = unit.GetInitialTurnRate();
-                unit.Systems.SystemEventRequested += change => QueueSystemChange(unit, change);
-                unit.Systems.SoundRequested += Audio.Enqueue;
-                unit.Systems.LethalHit += attackerID => ReportDestruction(unit, attackerID);
-                unit.Systems.ImpactRequested += (weapon, impact) =>
-                    ImpactApplied?.Invoke(unit, weapon, impact);
                 if (!unit.IsFighter)
                 {
                     TacticalCombatCarrier carrier = new TacticalCombatCarrier(unit);
@@ -274,10 +313,16 @@ namespace Rebellion.Tactical
                     _carriers.Add(unit.InstanceID, carrier);
                 }
             }
-            _orderedWithdrawalMembers.Sort(CompareWithdrawalMembers);
-            foreach (TacticalCombatUnit unit in this._units)
+            _registeredMobileUnits.Sort(CompareUnits);
+            for (int index = 1; index < _registeredMobileUnits.Count; index++)
+                if (_registeredMobileUnits[index - 1].Index == _registeredMobileUnits[index].Index)
+                    throw new ArgumentException(
+                        "Tactical units share a registration index.",
+                        nameof(units)
+                    );
+            foreach (CombatUnit unit in this._units)
                 if (
-                    unit.Status == TacticalCombatUnitStatus.Docked
+                    unit.Status == CombatUnitStatus.Docked
                     && unit.CarrierID != null
                     && _carriers.TryGetValue(unit.CarrierID, out TacticalCombatCarrier carrier)
                 )
@@ -300,11 +345,11 @@ namespace Rebellion.Tactical
             }
             for (int side = 0; side < _sides.Length; side++)
                 _nextGroupID[side] = _sides[side].FactionIndex * 1000000;
-            foreach (TacticalCombatUnit unit in this._units)
+            foreach (CombatUnit unit in this._units)
                 _nextGroupID[(int)unit.Side] = Math.Max(_nextGroupID[(int)unit.Side], unit.Index);
             foreach (TacticalCombatGroup group in this._groups)
                 _nextGroupID[(int)group.Side] = Math.Max(_nextGroupID[(int)group.Side], group.ID);
-            foreach (TacticalCombatUnit unit in this._units)
+            foreach (CombatUnit unit in this._units)
                 if (unit.Index < 1000000)
                 {
                     _nextGroupID[(int)unit.Side] += 105;
@@ -316,12 +361,6 @@ namespace Rebellion.Tactical
             _briefing = new TacticalCombatBriefingSequence(
                 GetSide(PlayerSide).FactionIndex,
                 messageID => EnqueueFactionNotification(PlayerSide, messageID)
-            );
-            _ending = new TacticalCombatEnding(
-                GetSide(PlayerSide).FactionIndex,
-                messageID => EnqueueFactionNotification(PlayerSide, messageID),
-                AssignSurvivors,
-                Complete
             );
             _fireControl.ShotRequested += RequestShot;
             _fireControl.TractorTargetRequested += RequestTractorTarget;
@@ -342,7 +381,7 @@ namespace Rebellion.Tactical
         {
             private readonly TacticalCombatSession _session;
             public bool IsRunning => !_session._completionStarted;
-            public bool HasTerminalResult => _session._ending.Flags[6];
+            public bool HasTerminalResult => _session.ImmediateResultRequested;
 
             /// <summary>
             /// Borrows the encounter that owns every scheduled operation.
@@ -422,8 +461,8 @@ namespace Rebellion.Tactical
             public CommandKind Kind { get; }
             public int Value { get; }
             public Vector3 Position { get; }
-            public TacticalCombatUnit Source { get; }
-            public TacticalCombatUnit Target { get; }
+            public CombatUnit Source { get; }
+            public CombatUnit Target { get; }
             public TacticalCombatShot Shot { get; }
             public TacticalSystemEvent Change { get; }
             public TacticalCombatGroup Group { get; }
@@ -447,8 +486,8 @@ namespace Rebellion.Tactical
             /// <param name="position">The requested navigation point.</param>
             public Command(
                 CommandKind kind,
-                TacticalCombatUnit source,
-                TacticalCombatUnit target = null,
+                CombatUnit source,
+                CombatUnit target = null,
                 TacticalCombatShot shot = default,
                 TacticalSystemEvent change = default,
                 TacticalCombatGroup group = null,
@@ -471,53 +510,6 @@ namespace Rebellion.Tactical
                 Run = run;
                 RunState = runState;
             }
-        }
-
-        /// <summary>
-        /// Reads live unit facts for the ordered withdrawal lifecycle without copying mutable readiness state.
-        /// </summary>
-        private sealed class WithdrawalMember : ITacticalCombatWithdrawalMember
-        {
-            private readonly TacticalCombatSession _session;
-            public TacticalCombatUnit Unit { get; }
-            public int Index => Unit.Index;
-            public bool IsActiveMember => IsActiveDisplayObject(Unit);
-            public bool IsAwaitingDeparture =>
-                Unit.Status
-                    is TacticalCombatUnitStatus.EnteringHyperspace
-                        or TacticalCombatUnitStatus.AwaitingWithdrawal;
-
-            /// <summary>
-            /// Captures the session that owns the member's live support and retained tractor links.
-            /// </summary>
-            /// <param name="session">The owning local encounter.</param>
-            /// <param name="unit">The registered non-station participant.</param>
-            public WithdrawalMember(TacticalCombatSession session, TacticalCombatUnit unit)
-            {
-                _session = session;
-                Unit = unit;
-            }
-
-            /// <summary>
-            /// Reads the current budgets before the lifecycle observes participation state.
-            /// </summary>
-            /// <returns>Whether both live departure budgets are ordered and nonzero.</returns>
-            public bool CheckWithdrawalReadiness() => _session.CheckWithdrawalReadiness(Unit);
-        }
-
-        /// <summary>
-        /// Tracks the reservation, approach, queued recovery, and completed recovery states.
-        /// </summary>
-        private sealed class Recovery
-        {
-            public TacticalCombatCarrier Carrier { get; }
-            public int State { get; set; } = 1;
-
-            /// <summary>
-            /// Creates a pending carrier assignment.
-            /// </summary>
-            /// <param name="carrier">The carrier holding the reserved berth.</param>
-            public Recovery(TacticalCombatCarrier carrier) => Carrier = carrier;
         }
     }
 }

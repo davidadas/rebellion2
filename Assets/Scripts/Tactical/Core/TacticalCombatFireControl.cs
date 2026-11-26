@@ -1,36 +1,19 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
 {
     /// <summary>
-    /// Identifies the behavior assigned to a tactical group.
-    /// </summary>
-    public enum TacticalCombatOrder
-    {
-        None,
-        HoldFire,
-        Recover,
-        Withdraw,
-        AttackFighters,
-        AttackCapitalShips,
-        AttackBattleStation,
-        LeftHook,
-        RightHook,
-        Hammer,
-        Anvil,
-        Stop,
-    }
-
-    /// <summary>
     /// Captures a weapon discharge and its delayed impact.
     /// </summary>
     public readonly struct TacticalCombatShot
     {
-        public TacticalCombatUnit Source { get; }
-        public TacticalCombatUnit Target { get; }
+        public CombatUnit Source { get; }
+        public CombatUnit Target { get; }
         public TacticalWeaponType Weapon { get; }
         public float Strength { get; }
         public int ImpactDelay { get; }
@@ -44,8 +27,8 @@ namespace Rebellion.Tactical
         /// <param name="weapon">The weapon used.</param>
         /// <param name="strength">The attack strength before target damage handling.</param>
         public TacticalCombatShot(
-            TacticalCombatUnit source,
-            TacticalCombatUnit target,
+            CombatUnit source,
+            CombatUnit target,
             TacticalWeaponType weapon,
             float strength
         )
@@ -67,10 +50,10 @@ namespace Rebellion.Tactical
     public sealed class TacticalCombatFireControl
     {
         private readonly float[,] _scores = new float[4, 3];
-        private readonly TacticalCombatUnit[,] _targets = new TacticalCombatUnit[4, 3];
-        private readonly List<TacticalCombatUnit> _neighbors = new();
+        private readonly CombatUnit[,] _targets = new CombatUnit[4, 3];
+        private readonly List<CombatUnit> _neighbors = new();
         public event Action<TacticalCombatShot> ShotRequested;
-        public event Action<TacticalCombatUnit, TacticalCombatUnit> TractorTargetRequested;
+        public event Action<CombatUnit, CombatUnit> TractorTargetRequested;
 
         /// <summary>
         /// Attempts designated targets first, followed by opportunity shots at nearby fighters.
@@ -80,7 +63,7 @@ namespace Rebellion.Tactical
         /// <param name="spatialIndex">The active battle spatial index.</param>
         /// <param name="random">The battle's firing-opportunity stream.</param>
         public void AcquireTargets(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalCombatGroup group,
             TacticalCombatSpatialIndex spatialIndex,
             IRandomNumberProvider random
@@ -88,14 +71,14 @@ namespace Rebellion.Tactical
         {
             if (
                 !unit.IsTargetable
-                || unit.Status == TacticalCombatUnitStatus.PreparingHyperspace
+                || unit.Status == CombatUnitStatus.PreparingHyperspace
                 || !HasReadyBattery(unit)
             )
                 return;
             TacticalCombatOrder order = group.ActiveOrder;
             if (random.NextInt(0, 3) != 0 || order == TacticalCombatOrder.HoldFire)
                 return;
-            TacticalCombatUnit primary = group.PrimaryTarget;
+            CombatUnit primary = group.PrimaryTarget;
             int status = 2;
             if (primary != null)
             {
@@ -119,9 +102,9 @@ namespace Rebellion.Tactical
             ClearScores();
             for (int index = 0; index < _neighbors.Count; index++)
             {
-                TacticalCombatUnit candidate = _neighbors[index];
+                CombatUnit candidate = _neighbors[index];
                 TacticalWeaponArc arc = GetFiringArc(unit, candidate.Position - unit.Position);
-                if (!unit.Weapons.IsReady(arc))
+                if (!unit.IsBatteryReady(arc))
                     continue;
                 float distance = (float)
                     TacticalCombatGeometry.MeasureTargetDistance(
@@ -139,10 +122,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="targetIsFighter">Whether the target is a squadron.</param>
         /// <returns>The strongest clockwise battery, or null when no battery can damage the target.</returns>
-        public static TacticalWeaponArc? GetStrongestArc(
-            TacticalCombatUnit unit,
-            bool targetIsFighter
-        )
+        public static TacticalWeaponArc? GetStrongestArc(CombatUnit unit, bool targetIsFighter)
         {
             TacticalWeaponArc? selected = null;
             float best = 0;
@@ -151,17 +131,20 @@ namespace Rebellion.Tactical
                 TacticalWeaponArc arc = (TacticalWeaponArc)index;
                 double total =
                     (double)
-                        unit.Weapons.GetTargetDamage(
+                        TacticalCombatFireControl.GetTargetDamage(
+                            unit,
                             arc,
                             TacticalWeaponType.IonCannon,
                             targetIsFighter
                         )
-                    + unit.Weapons.GetTargetDamage(
+                    + TacticalCombatFireControl.GetTargetDamage(
+                        unit,
                         arc,
                         TacticalWeaponType.Turbolaser,
                         targetIsFighter
                     )
-                    + unit.Weapons.GetTargetDamage(
+                    + TacticalCombatFireControl.GetTargetDamage(
+                        unit,
                         arc,
                         TacticalWeaponType.LaserCannon,
                         targetIsFighter
@@ -180,16 +163,16 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The firing unit.</param>
         /// <returns>The maximum active weapon range.</returns>
-        public static float GetMaximumRange(TacticalCombatUnit unit)
+        public static float GetMaximumRange(CombatUnit unit)
         {
             float range = 0;
             for (int arc = 0; arc < 4; arc++)
             for (int weapon = 0; weapon < 3; weapon++)
-                if (
-                    unit.Weapons.GetStrength((TacticalWeaponArc)arc, (TacticalWeaponType)weapon)
-                    != 0
-                )
-                    range = Math.Max(range, unit.Weapons.GetRange((TacticalWeaponType)weapon));
+                if (unit.GetWeaponStrength((TacticalWeaponArc)arc, (TacticalWeaponType)weapon) != 0)
+                    range = Math.Max(
+                        range,
+                        unit.GetWeaponRange((TacticalWeaponArc)arc, (TacticalWeaponType)weapon)
+                    );
             return range;
         }
 
@@ -199,9 +182,9 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="target">The designated target.</param>
         /// <returns>One for unavailable charge, two for out of range, three for no damage, or four for a discharge.</returns>
-        private int TryDesignatedTarget(TacticalCombatUnit unit, TacticalCombatUnit target)
+        private int TryDesignatedTarget(CombatUnit unit, CombatUnit target)
         {
-            if (target.IsFighter && !unit.Weapons.IsReady(TacticalWeaponArc.Forward))
+            if (target.IsFighter && !unit.IsBatteryReady(TacticalWeaponArc.Forward))
                 return 1;
             Vector3 delta = target.Position - unit.Position;
             float squaredDistance = (float)(
@@ -213,20 +196,21 @@ namespace Rebellion.Tactical
                 return 2;
             ClearScores();
             TacticalWeaponArc arc = GetFiringArc(unit, delta);
-            if (!unit.Weapons.IsReady(arc))
+            if (!unit.IsBatteryReady(arc))
                 return 1;
             float distance = (float)Math.Sqrt(squaredDistance);
             for (int weapon = 0; weapon < 3; weapon++)
             {
                 TacticalWeaponType type = (TacticalWeaponType)weapon;
-                float weaponRange = unit.Weapons.GetRange(type);
+                float weaponRange = unit.GetWeaponRange(arc, type);
                 if (
-                    unit.Weapons.GetStrength(arc, type) == 0
+                    unit.GetWeaponStrength(arc, type) == 0
                     || float.IsNaN(weaponRange)
                     || weaponRange < distance
                 )
                     continue;
-                _scores[(int)arc, weapon] = unit.Weapons.GetTargetDamage(
+                _scores[(int)arc, weapon] = TacticalCombatFireControl.GetTargetDamage(
+                    unit,
                     arc,
                     type,
                     target.IsFighter
@@ -242,10 +226,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="targetDelta">The target position relative to the firing unit.</param>
         /// <returns>The battery used to score the target.</returns>
-        private static TacticalWeaponArc GetFiringArc(
-            TacticalCombatUnit unit,
-            Vector3 targetDelta
-        ) =>
+        private static TacticalWeaponArc GetFiringArc(CombatUnit unit, Vector3 targetDelta) =>
             unit.IsFighter
                 ? TacticalWeaponArc.Forward
                 : TacticalCombatGeometry.GetWeaponArc(unit.Heading, targetDelta);
@@ -259,22 +240,22 @@ namespace Rebellion.Tactical
         /// <param name="weapon">The candidate weapon lane.</param>
         /// <param name="distance">The candidate's distance.</param>
         private void ScoreOpportunity(
-            TacticalCombatUnit unit,
-            TacticalCombatUnit candidate,
+            CombatUnit unit,
+            CombatUnit candidate,
             TacticalWeaponArc arc,
             TacticalWeaponType weapon,
             float distance
         )
         {
             if (
-                unit.Weapons.GetStrength(arc, weapon) == 0
-                || !(unit.Weapons.GetRange(weapon) >= distance)
+                unit.GetWeaponStrength(arc, weapon) == 0
+                || !(unit.GetWeaponRange(arc, weapon) >= distance)
             )
                 return;
-            double unscaled = unit.Weapons.GetOpportunityDamage(arc, weapon);
+            double unscaled = TacticalCombatFireControl.GetOpportunityDamage(unit, arc, weapon);
             if (!(unscaled > _scores[(int)arc, (int)weapon]))
                 return;
-            _scores[(int)arc, (int)weapon] = unit.Systems.ScaleByHull((float)unscaled);
+            _scores[(int)arc, (int)weapon] = unit.ScaleByHull((float)unscaled);
             _targets[(int)arc, (int)weapon] = candidate;
         }
 
@@ -283,7 +264,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The firing unit.</param>
         /// <returns>Three when no damage is available, otherwise four.</returns>
-        private int FireSelectedBattery(TacticalCombatUnit unit)
+        private int FireSelectedBattery(CombatUnit unit)
         {
             int selected = -1;
             float best = 0;
@@ -310,15 +291,15 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing unit.</param>
         /// <param name="arc">The selected clockwise battery.</param>
         /// <param name="weapon">The selected weapon lane.</param>
-        private void FireLane(TacticalCombatUnit unit, int arc, TacticalWeaponType weapon)
+        private void FireLane(CombatUnit unit, int arc, TacticalWeaponType weapon)
         {
-            TacticalCombatUnit target = _targets[arc, (int)weapon];
+            CombatUnit target = _targets[arc, (int)weapon];
             float strength = _scores[arc, (int)weapon];
             if (
                 strength == 0
                 || float.IsNaN(strength)
                 || target?.IsTargetable != true
-                || unit.Status == TacticalCombatUnitStatus.PreparingHyperspace
+                || unit.Status == CombatUnitStatus.PreparingHyperspace
             )
                 return;
             ShotRequested?.Invoke(new TacticalCombatShot(unit, target, weapon, strength));
@@ -336,7 +317,7 @@ namespace Rebellion.Tactical
                         unit.GetTorpedoDamage()
                     )
                 );
-            unit.Weapons.Discharge((TacticalWeaponArc)arc, weapon);
+            unit.DischargeBattery((TacticalWeaponArc)arc, weapon);
         }
 
         /// <summary>
@@ -345,9 +326,9 @@ namespace Rebellion.Tactical
         /// <param name="unit">The firing squadron.</param>
         /// <param name="target">The capital ship receiving the laser discharge.</param>
         /// <returns>Whether the shield and range comparisons admit an accompanying torpedo.</returns>
-        private static bool CanFireTorpedo(TacticalCombatUnit unit, TacticalCombatUnit target)
+        private static bool CanFireTorpedo(CombatUnit unit, CombatUnit target)
         {
-            double shields = target.Systems.GetShieldFraction();
+            double shields = target.GetShieldFraction();
             if (shields != 0 && !double.IsNaN(shields))
                 return false;
             double distance = TacticalCombatGeometry.MeasureTargetDistance(
@@ -370,10 +351,10 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The firing unit.</param>
         /// <returns>Whether any battery is ready.</returns>
-        private static bool HasReadyBattery(TacticalCombatUnit unit)
+        private static bool HasReadyBattery(CombatUnit unit)
         {
             for (int arc = 0; arc < 4; arc++)
-                if (unit.Weapons.IsReady((TacticalWeaponArc)arc))
+                if (unit.IsBatteryReady((TacticalWeaponArc)arc))
                     return true;
             return false;
         }
@@ -383,15 +364,87 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The firing unit.</param>
         /// <returns>Whether the unit has any laser cannons.</returns>
-        private static bool HasLaserBattery(TacticalCombatUnit unit)
+        private static bool HasLaserBattery(CombatUnit unit)
         {
             for (int arc = 0; arc < 4; arc++)
                 if (
-                    unit.Weapons.GetStrength((TacticalWeaponArc)arc, TacticalWeaponType.LaserCannon)
+                    unit.GetWeaponStrength((TacticalWeaponArc)arc, TacticalWeaponType.LaserCannon)
                     != 0
                 )
                     return true;
             return false;
+        }
+
+        private const float _shotScale = 0.26666668f;
+        private const float _laserCapitalScale = 0.167f;
+
+        /// <summary>
+        /// Calculates a weapon's attack strength against a designated target.
+        /// </summary>
+        /// <param name="unit">The unit firing the weapon.</param>
+        /// <param name="arc">The firing battery.</param>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <param name="targetIsFighter">Whether the designated target is a fighter squadron.</param>
+        /// <returns>The queued weapon attack strength.</returns>
+        internal static float GetTargetDamage(
+            CombatUnit unit,
+            TacticalWeaponArc arc,
+            TacticalWeaponType weapon,
+            bool targetIsFighter
+        )
+        {
+            if (weapon == TacticalWeaponType.IonCannon && targetIsFighter)
+                return 0;
+            float targetScale = GetTargetScale(weapon, targetIsFighter);
+            return (float)((double)_shotScale * targetScale * unit.GetWeaponStrength(arc, weapon));
+        }
+
+        /// <summary>
+        /// Gets the rounded per-mount scalar used before recharge and mount count are applied.
+        /// </summary>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <param name="targetIsFighter">Whether the designated target is a fighter squadron.</param>
+        /// <returns>The single-precision lane scalar.</returns>
+        internal static float GetRangeScalar(TacticalWeaponType weapon, bool targetIsFighter)
+        {
+            if (weapon == TacticalWeaponType.IonCannon && targetIsFighter)
+                return 0;
+            float targetScale = GetTargetScale(weapon, targetIsFighter);
+            return (float)((double)_shotScale * targetScale);
+        }
+
+        /// <summary>
+        /// Selects the configured lane multiplier for the target category.
+        /// </summary>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <param name="targetIsFighter">Whether the target is a fighter squadron.</param>
+        /// <returns>The target-category multiplier.</returns>
+        private static float GetTargetScale(TacticalWeaponType weapon, bool targetIsFighter) =>
+            weapon == TacticalWeaponType.LaserCannon
+                ? targetIsFighter
+                    ? 1
+                    : _laserCapitalScale
+                : targetIsFighter
+                    ? 0.5f
+                    : 1;
+
+        /// <summary>
+        /// Calculates an opportunity shot's complete attack strength while scanning nearby targets.
+        /// </summary>
+        /// <param name="unit">The unit firing the weapon.</param>
+        /// <param name="arc">The firing battery.</param>
+        /// <param name="weapon">The battery weapon.</param>
+        /// <returns>The opportunity-shot attack strength before hull scaling.</returns>
+        internal static double GetOpportunityDamage(
+            CombatUnit unit,
+            TacticalWeaponArc arc,
+            TacticalWeaponType weapon
+        )
+        {
+            if (weapon == TacticalWeaponType.IonCannon)
+                return 0;
+            float targetScale = weapon == TacticalWeaponType.Turbolaser ? 0.5f : 1;
+            return (double)_shotScale * targetScale * unit.GetWeaponStrength(arc, weapon);
         }
     }
 }

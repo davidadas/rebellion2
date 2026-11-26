@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Gameplay
 
             TacticalCombatSession battle = commands.ActiveTacticalCombat;
             Assert.IsNotNull(battle);
-            foreach (TacticalCombatUnit unit in battle.Units)
+            foreach (CombatUnit unit in battle.Units)
             {
                 CapitalShip ship = game.GetSceneNodeByInstanceID<CapitalShip>(unit.InstanceID);
                 Assert.AreEqual(
@@ -146,7 +146,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateNetworkEncounter();
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
-            battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
+            battle.GetUnit(attacker.InstanceID).ApplyHullLoss(100);
             TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
 
@@ -183,8 +183,6 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("unknown")]
         [TestCase("hull")]
         [TestCase("components")]
-        [TestCase("flags")]
-        [TestCase("instant")]
         [TestCase("squadron")]
         [TestCase("carrier")]
         [TestCase("battle")]
@@ -220,12 +218,6 @@ namespace Rebellion.Tests.Gameplay
                     break;
                 case "components":
                     outcome.Ships[0].SystemDamage.Engines = 5;
-                    break;
-                case "flags":
-                    outcome.TerminalFlags = new bool[6];
-                    break;
-                case "instant":
-                    outcome.TerminalFlags[6] = true;
                     break;
                 case "squadron":
                     outcome.Fighters[0].SquadronSize = int.MaxValue;
@@ -309,11 +301,11 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession battle
         )
         {
-            TacticalCombatUnit target = battle.Units.Single(unit =>
+            CombatUnit target = battle.Units.Single(unit =>
                 game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
                 && ship.OwnerInstanceID == "FNALL1"
             );
-            TacticalCombatUnit attacker = battle.Units.Single(unit =>
+            CombatUnit attacker = battle.Units.Single(unit =>
                 game.NodesByInstanceID[unit.InstanceID] is CapitalShip ship
                 && ship.OwnerInstanceID == "FNEMP1"
             );

@@ -1,5 +1,6 @@
 using System;
 using System.Globalization;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 
 namespace Rebellion.UI.SceneUI.TacticalCombat
@@ -25,7 +26,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="unit">The inspected participant.</param>
         /// <returns>The current participant details and system images.</returns>
-        public TacticalCombatInspectionData ReadUnit(TacticalCombatUnit unit)
+        public TacticalCombatInspectionData ReadUnit(CombatUnit unit)
         {
             TacticalCombatGroup requested = _session.GetRequestedGroup(unit);
             int tracked = 0;
@@ -67,19 +68,18 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 }
                 tactics = DescribeTactics(requested?.RequestedFormation);
             }
-            TacticalCombatSystems systems = unit.Systems;
-            int hyperdrive = Level(systems.GetHyperdriveRatio());
+            int hyperdrive = Level(unit.GetHyperdriveRatio());
             int movement = Level(_session.GetMovementRatio(unit));
-            int tractor = Level(systems.GetTractorRatio());
-            int weapons = Level(systems.GetWeaponRechargeRatio());
-            int shields = Level(systems.GetShieldRechargeRatio());
+            int tractor = Level(unit.GetTractorRatio());
+            int weapons = Level(unit.GetWeaponRechargeRatio());
+            int shields = Level(unit.GetShieldRechargeRatio());
             return new TacticalCombatInspectionData(
                 unit.DisplayName,
                 assignment,
                 orders,
                 tactics,
                 null,
-                unit.Definition.PresentationIndex,
+                unit.PresentationIndex,
                 shields,
                 weapons,
                 tractor,
@@ -120,31 +120,27 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             }
             int first = 29 + factionIndex * 4;
             int selected = first + 4;
-            foreach (TacticalCombatUnit member in group.RequestedMembers)
-                if (
-                    member.Definition.PresentationIndex >= first
-                    && member.Definition.PresentationIndex < selected
-                )
-                    selected = member.Definition.PresentationIndex;
+            foreach (CombatUnit member in group.RequestedMembers)
+                if (member.PresentationIndex >= first && member.PresentationIndex < selected)
+                    selected = member.PresentationIndex;
             string counts = null;
             if (selected < first + 4)
             {
                 uint matching = 0;
                 uint current = 0;
                 uint maximum = 0;
-                foreach (TacticalCombatUnit member in group.RequestedMembers)
-                    if (member.Definition.PresentationIndex == selected)
+                foreach (CombatUnit member in group.RequestedMembers)
+                    if (member.PresentationIndex == selected)
                         matching++;
-                foreach (TacticalCombatUnit member in group.Members)
+                foreach (CombatUnit member in group.Members)
                 {
-                    TacticalCombatSystems systems = member.Systems;
-                    float scale = systems.MaximumHull / 8f;
+                    float scale = member.MaximumHull / 8f;
                     maximum = unchecked(
-                        maximum + Math.Max(1u, Truncate((double)systems.MaximumHull / 8f))
+                        maximum + Math.Max(1u, Truncate((double)member.MaximumHull / 8f))
                     );
                     current = unchecked(
                         current
-                        + Math.Max(1u, Truncate((double)systems.Hull * scale / systems.MaximumHull))
+                        + Math.Max(1u, Truncate((double)member.Hull * scale / member.MaximumHull))
                     );
                 }
                 counts = string.Concat(
@@ -192,7 +188,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="unit">The inspected participant.</param>
         /// <returns>Whether the live movement is zero or unordered after its consumer's store.</returns>
-        private bool IsDisabled(TacticalCombatUnit unit)
+        private bool IsDisabled(CombatUnit unit)
         {
             float movement = (float)_session.GetMovementBudget(unit);
             return movement == 0 || float.IsNaN(movement);

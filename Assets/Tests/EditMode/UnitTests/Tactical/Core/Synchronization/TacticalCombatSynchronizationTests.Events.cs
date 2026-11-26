@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -29,10 +30,7 @@ namespace Rebellion.Tests.Tactical
                 authority.GetUnit("empire").Position,
                 replica.GetUnit("empire").Position
             );
-            Assert.AreEqual(
-                authority.GetUnit("alliance").Systems.Hull,
-                replica.GetUnit("alliance").Systems.Hull
-            );
+            Assert.AreEqual(authority.GetUnit("alliance").Hull, replica.GetUnit("alliance").Hull);
         }
 
         [Test]

@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical.Synchronization
@@ -20,5 +21,23 @@ namespace Rebellion.Tactical.Synchronization
         public int MovieID;
         public bool HasRecipient;
         public CombatSide Recipient;
+    }
+
+    /// <summary>
+    /// Identifies a one-shot presentation edge emitted by the authoritative simulation.
+    /// </summary>
+    public enum TacticalCombatEventKind
+    {
+        Shot,
+        Impact,
+        Destruction,
+        Destroyed,
+        Withdrawn,
+        Recovered,
+        Superlaser,
+        TractorSources,
+        GravityWell,
+        Movie,
+        Notification,
     }
 }

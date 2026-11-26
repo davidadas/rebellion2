@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 
 namespace Rebellion.Multiplayer.Tactical
@@ -134,9 +135,9 @@ namespace Rebellion.Multiplayer.Tactical
                 !before.IsAlive
                 || before.Status
                     is not (
-                        TacticalCombatUnitStatus.Active
-                        or TacticalCombatUnitStatus.PreparingHyperspace
-                        or TacticalCombatUnitStatus.EnteringHyperspace
+                        CombatUnitStatus.Active
+                        or CombatUnitStatus.PreparingHyperspace
+                        or CombatUnitStatus.EnteringHyperspace
                     )
             )
                 return true;
@@ -200,7 +201,7 @@ namespace Rebellion.Multiplayer.Tactical
         {
             public readonly Vector3 Position;
             public readonly Vector3 Heading;
-            public readonly TacticalCombatUnitStatus Status;
+            public readonly CombatUnitStatus Status;
             public readonly string CarrierID;
             public readonly int? GroupID;
             public readonly float HyperspaceMilliseconds;
@@ -219,7 +220,7 @@ namespace Rebellion.Multiplayer.Tactical
             public Pose(
                 Vector3 position,
                 Vector3 heading,
-                TacticalCombatUnitStatus status = TacticalCombatUnitStatus.Active,
+                CombatUnitStatus status = CombatUnitStatus.Active,
                 string carrierID = null,
                 int? groupID = null,
                 float hyperspaceMilliseconds = 0,
@@ -246,7 +247,7 @@ namespace Rebellion.Multiplayer.Tactical
                 && string.Equals(CarrierID, previous.CarrierID, StringComparison.Ordinal)
                 && GroupID == previous.GroupID
                 && (
-                    Status != TacticalCombatUnitStatus.EnteringHyperspace
+                    Status != CombatUnitStatus.EnteringHyperspace
                     || HyperspaceMilliseconds >= previous.HyperspaceMilliseconds
                 );
 

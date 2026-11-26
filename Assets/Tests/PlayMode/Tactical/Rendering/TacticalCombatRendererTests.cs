@@ -5,9 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
@@ -15,8 +15,8 @@ using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.Tactical.Synchronization;
+using Rebellion.UI;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using UnityEditor;
 using UnityEngine;
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                     .Any(material => ReferenceEquals(material.mainTexture, expectedPaletteTexture))
             );
             foreach (
-                TacticalCombatUnit unit in encounter.Units.Where(item =>
+                CombatUnit unit in encounter.Units.Where(item =>
                     !item.IsFighter && !item.IsBattleStation
                 )
             )
@@ -165,7 +165,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 Vector3 heading = new(unit.Heading.X, unit.Heading.Y, unit.Heading.Z);
                 Assert.That(Vector3.Dot(model.forward, heading), Is.EqualTo(-1).Within(0.0001f));
             }
-            TacticalCombatUnit pickable = encounter.Units.First(unit =>
+            CombatUnit pickable = encounter.Units.First(unit =>
                 !unit.IsFighter && !unit.IsBattleStation && unit.Side == encounter.PlayerSide
             );
             Transform pickRoot = view
@@ -183,7 +183,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             Vector3 facePoint = view.Renderer.Camera.WorldToViewportPoint(
                 pickMesh.transform.TransformPoint(localFaceCenter)
             );
-            Assert.IsTrue(view.Renderer.TryPick(facePoint, out TacticalCombatUnit picked, out _));
+            Assert.IsTrue(view.Renderer.TryPick(facePoint, out CombatUnit picked, out _));
             Assert.AreSame(pickable, picked);
             Assert.IsNull(view.Renderer.Target);
             Assert.IsNull(view.Renderer.Camera.targetTexture);
@@ -203,7 +203,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             yield return PrepareController(encounter, driver);
 
             Assert.AreEqual(1, driver.PreparationCount);
-            Assert.AreSame(view.Renderer, driver.Presentation);
+            Assert.IsInstanceOf<TacticalCombatArrival>(driver.Entry);
             Assert.IsFalse(encounter.IsArriving);
             Assert.DoesNotThrow(() => encounter.ConfigureClockedAdvance(() => 0));
             int before = encounter.SystemTime;
@@ -311,7 +311,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             guest.ConfigureSynchronizedReplica();
             try
             {
-                TacticalCombatUnit target = host.GetUnit("ALCS008");
+                CombatUnit target = host.GetUnit("ALCS008");
                 Vector3N start = target.Position;
                 TacticalCombatSnapshot first = host.CaptureSnapshot(1);
                 first.TimestampMilliseconds = 0;
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Tactical.Rendering
 
                 view.Renderer.RenderUnits();
 
-                TacticalCombatUnit rendered = guest.GetUnit(target.InstanceID);
+                CombatUnit rendered = guest.GetUnit(target.InstanceID);
                 Transform root = view
                     .Renderer.GetComponentsInChildren<Transform>(true)
                     .Single(item => item.name == target.InstanceID);
@@ -357,10 +357,10 @@ namespace Rebellion.Tests.Tactical.Rendering
                 Vector3 point = view.Renderer.Camera.WorldToViewportPoint(
                     mesh.transform.TransformPoint(face)
                 );
-                Assert.IsTrue(view.Renderer.TryPick(point, out TacticalCombatUnit picked, out _));
+                Assert.IsTrue(view.Renderer.TryPick(point, out CombatUnit picked, out _));
                 Assert.AreSame(rendered, picked);
 
-                TacticalCombatUnit source = guest.GetUnit("CSEM006");
+                CombatUnit source = guest.GetUnit("CSEM006");
                 view.Renderer.ShowShot(
                     new TacticalCombatShot(source, rendered, TacticalWeaponType.LaserCannon, 50),
                     1
@@ -393,8 +393,8 @@ namespace Rebellion.Tests.Tactical.Rendering
             guest.ConfigureSynchronizedReplica();
             try
             {
-                TacticalCombatUnit departing = host.GetUnit("ALCS008");
-                departing.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+                CombatUnit departing = host.GetUnit("ALCS008");
+                departing.Status = CombatUnitStatus.EnteringHyperspace;
                 departing.HyperspaceMilliseconds = 1000;
                 TacticalCombatSnapshot first = host.CaptureSnapshot(1);
                 first.TimestampMilliseconds = 0;
@@ -408,10 +408,10 @@ namespace Rebellion.Tests.Tactical.Rendering
 
                 view.Renderer.RenderUnits();
 
-                TacticalCombatUnit unit = guest.GetUnit(departing.InstanceID);
+                CombatUnit unit = guest.GetUnit(departing.InstanceID);
                 TacticalCombatDeparturePose expected = TacticalCombatDeparturePose.Evaluate(
                     unit.Index,
-                    unit.Definition.PresentationIndex,
+                    unit.PresentationIndex,
                     unit.Position,
                     guest.GetSide(unit.Side).Forward,
                     1100
@@ -440,7 +440,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             TacticalCombatSession guest = CreateEncounter(_pack.GameData);
             host.ConfigureSynchronizedAuthority();
             guest.ConfigureSynchronizedReplica();
-            Action<TacticalCombatUnit> destruction = null;
+            Action<CombatUnit> destruction = null;
             try
             {
                 TacticalCombatSnapshot first = host.CaptureSnapshot(1);
@@ -453,13 +453,13 @@ namespace Rebellion.Tests.Tactical.Rendering
                     )
                 )
                 {
-                    state.Status = TacticalCombatUnitStatus.Destroyed;
+                    state.Status = CombatUnitStatus.Destroyed;
                     state.Hull = 0;
                 }
                 TacticalCombatUnitSnapshot departure = death.Units.Single(unit =>
                     unit.UnitID == "CSEM006"
                 );
-                departure.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+                departure.Status = CombatUnitStatus.EnteringHyperspace;
                 departure.HyperspaceMilliseconds = 1200;
                 GetReplicaPlayback(guest);
                 guest.ApplySnapshot(first);
@@ -471,8 +471,8 @@ namespace Rebellion.Tests.Tactical.Rendering
                 Transform capital = objects.Single(item => item.name == "ALCS008");
                 Transform fighter = objects.Single(item => item.name == "fighter");
                 Transform departing = objects.Single(item => item.name == "CSEM006");
-                Assert.IsFalse(guest.GetUnit("ALCS008").Systems.IsAlive);
-                Assert.IsFalse(guest.GetUnit("fighter").Systems.IsAlive);
+                Assert.IsFalse(guest.GetUnit("ALCS008").IsAlive);
+                Assert.IsFalse(guest.GetUnit("fighter").IsAlive);
 
                 GetReplicaPlayback(guest).Advance(99);
                 view.Renderer.RenderUnits();
@@ -507,11 +507,11 @@ namespace Rebellion.Tests.Tactical.Rendering
                     "The destruction sequence retains its capital model after the death edge."
                 );
                 Assert.IsFalse(fighter.gameObject.activeSelf);
-                TacticalCombatUnit leaving = guest.GetUnit("CSEM006");
+                CombatUnit leaving = guest.GetUnit("CSEM006");
                 TacticalCombatDeparturePose expectedDeparture =
                     TacticalCombatDeparturePose.Evaluate(
                         leaving.Index,
-                        leaving.Definition.PresentationIndex,
+                        leaving.PresentationIndex,
                         leaving.Position,
                         guest.GetSide(leaving.Side).Forward,
                         1200
@@ -555,7 +555,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             Vector3N position = unit.Position;
@@ -586,7 +586,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             Transform root = view
@@ -624,7 +624,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             Transform root = view
@@ -663,7 +663,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter, new UserVideoSettings { ShowPyro = false });
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             int childCount = view.Renderer.GetComponentsInChildren<Transform>(true).Length;
@@ -674,7 +674,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 TacticalCombatImpactKind.Shield
             );
             view.Renderer.ShowDestruction(unit);
-            unit.Status = TacticalCombatUnitStatus.Destroyed;
+            unit.Status = CombatUnitStatus.Destroyed;
             view.Renderer.RenderUnits();
 
             Transform[] objects = view.Renderer.GetComponentsInChildren<Transform>(true);
@@ -689,7 +689,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter, new UserVideoSettings { HighDetail = false });
-            TacticalCombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
+            CombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == fighter.InstanceID);
@@ -703,7 +703,9 @@ namespace Rebellion.Tests.Tactical.Rendering
 
             Assert.AreSame(
                 assets.GetTexture(
-                    fighter.Definition.FighterSprites.MiddleImages[
+                    encounter
+                        .Definition.Units.Single(item => item.UnitTypeID == fighter.TypeID)
+                        .FighterSprites.MiddleImages[
                         encounter.GetRequestedGroup(fighter).FighterCategory
                     ]
                 ),
@@ -731,7 +733,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             while (!preparation.IsCompleted)
                 yield return null;
             preparation.GetAwaiter().GetResult();
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighter
             );
             Vector3N originalPosition = unit.Position;
@@ -794,7 +796,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
+            CombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == station.InstanceID);
@@ -817,8 +819,8 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
-            TacticalCombatUnit source = encounter.Units.First(item =>
+            CombatUnit station = encounter.Units.Single(item => item.IsBattleStation);
+            CombatUnit source = encounter.Units.First(item =>
                 !item.IsBattleStation && !item.IsFighter
             );
             Transform stationRoot = view
@@ -851,7 +853,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             Vector3N before = unit.Position;
@@ -883,9 +885,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter
-                .GetObjectGroup(encounter.PlayerSide, 0)
-                .PrimaryMember;
+            CombatUnit unit = encounter.GetObjectGroup(encounter.PlayerSide, 0).PrimaryMember;
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == unit.InstanceID);
@@ -928,9 +928,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter
-                .GetObjectGroup(encounter.PlayerSide, 0)
-                .PrimaryMember;
+            CombatUnit unit = encounter.GetObjectGroup(encounter.PlayerSide, 0).PrimaryMember;
             view.Renderer.Focus(unit);
             view.Renderer.ShowImpact(
                 unit,
@@ -971,12 +969,8 @@ namespace Rebellion.Tests.Tactical.Rendering
                 allCapitalsPlayer: true
             );
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit previous = encounter
-                .GetObjectGroup(encounter.PlayerSide, 0)
-                .PrimaryMember;
-            TacticalCombatUnit current = encounter
-                .GetObjectGroup(encounter.PlayerSide, 1)
-                .PrimaryMember;
+            CombatUnit previous = encounter.GetObjectGroup(encounter.PlayerSide, 0).PrimaryMember;
+            CombatUnit current = encounter.GetObjectGroup(encounter.PlayerSide, 1).PrimaryMember;
             Assert.IsTrue(view.Renderer.ShowCategory(0));
             Vector3 cameraPosition = view.Renderer.Camera.transform.position;
             view.Renderer.ShowImpact(
@@ -1047,10 +1041,8 @@ namespace Rebellion.Tests.Tactical.Rendering
             );
             yield return PrepareRenderer(encounter);
             TacticalCombatGroup group = encounter.GetObjectGroup(encounter.PlayerSide, 0);
-            TacticalCombatUnit applied = group.PrimaryMember;
-            TacticalCombatUnit requested = encounter
-                .GetObjectGroup(encounter.PlayerSide, 1)
-                .PrimaryMember;
+            CombatUnit applied = group.PrimaryMember;
+            CombatUnit requested = encounter.GetObjectGroup(encounter.PlayerSide, 1).PrimaryMember;
             encounter.AddGroupMember(group, requested);
             encounter.RemoveGroupMember(group, applied);
 
@@ -1071,7 +1063,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             yield return PrepareRenderer(encounter);
             encounter.Selection.QueueObjectCategory(0);
             encounter.Selection.ProcessPendingCommands();
-            TacticalCombatUnit inspected = encounter.Selection.PrimaryUnit;
+            CombatUnit inspected = encounter.Selection.PrimaryUnit;
 
             Assert.IsTrue(view.Renderer.ShowCategory(1));
 
@@ -1116,7 +1108,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData, fighterCategory: 0);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
+            CombatUnit fighter = encounter.Units.Single(item => item.IsFighter);
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
                 .Single(item => item.name == fighter.InstanceID);
@@ -1136,7 +1128,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareController(encounter);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 !item.IsFighter && !item.IsBattleStation
             );
             view.SetPanel(TacticalCombatHudPanel.SingleObject);
@@ -1322,21 +1314,21 @@ namespace Rebellion.Tests.Tactical.Rendering
         public IEnumerator RenderUnits_DepartingParticipant_UsesTemporaryPoseWithoutMovingSimulation()
         {
             TacticalCombatSession encounter = CreateWithdrawalEncounter(_pack.GameData);
-            TacticalCombatUnit unit = encounter.GetUnit("departing");
+            CombatUnit unit = encounter.GetUnit("departing");
             yield return PrepareRenderer(encounter);
             Assert.IsTrue(encounter.BeginWithdrawal(encounter.PlayerSide));
             for (
                 int frame = 0;
-                frame < 1000 && unit.Status != TacticalCombatUnitStatus.EnteringHyperspace;
+                frame < 1000 && unit.Status != CombatUnitStatus.EnteringHyperspace;
                 frame++
             )
                 encounter.Advance(100);
-            Assert.AreEqual(TacticalCombatUnitStatus.EnteringHyperspace, unit.Status);
+            Assert.AreEqual(CombatUnitStatus.EnteringHyperspace, unit.Status);
             Assert.Less(unit.HyperspaceMilliseconds, 4000);
             Vector3N position = unit.Position;
             TacticalCombatDeparturePose expected = TacticalCombatDeparturePose.Evaluate(
                 unit.Index,
-                unit.Definition.PresentationIndex,
+                unit.PresentationIndex,
                 position,
                 encounter.GetSide(unit.Side).Forward,
                 unit.HyperspaceMilliseconds
@@ -1360,10 +1352,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit source = encounter.GetUnit("CSEM006");
-            TacticalCombatUnit target = encounter.GetUnit("ALCS008");
+            CombatUnit source = encounter.GetUnit("CSEM006");
+            CombatUnit target = encounter.GetUnit("ALCS008");
             Vector3N canonical = target.Position;
-            target.Status = TacticalCombatUnitStatus.EnteringHyperspace;
+            target.Status = CombatUnitStatus.EnteringHyperspace;
             target.HyperspaceMilliseconds = 1500;
 
             view.Renderer.ShowShot(
@@ -1488,7 +1480,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             yield return PrepareController(encounter);
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighter
             );
             encounter.Selection.QueueObject(unit, false);
@@ -1713,7 +1705,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 playerSide: CombatSide.Defender
             );
             yield return PrepareEmpireGroupSelection(encounter);
-            TacticalCombatUnit unit = encounter.GetUnit("CSEM006");
+            CombatUnit unit = encounter.GetUnit("CSEM006");
             encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
             encounter.Selection.QueueObject(unit);
             controller.Advance(0);
@@ -1750,8 +1742,8 @@ namespace Rebellion.Tests.Tactical.Rendering
                 playerSide: CombatSide.Defender
             );
             yield return PrepareEmpireGroupSelection(encounter);
-            TacticalCombatUnit first = encounter.GetUnit("CSEM006");
-            TacticalCombatUnit second = encounter.GetUnit("CSAL009");
+            CombatUnit first = encounter.GetUnit("CSEM006");
+            CombatUnit second = encounter.GetUnit("CSAL009");
             encounter.SetObjectGroup(encounter.PlayerSide, 7, null);
             encounter.Selection.QueueObject(first);
             encounter.Selection.QueueObject(second, true);
@@ -1789,10 +1781,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: false);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            CombatUnit unit = encounter.GetUnit("ALCS008");
             Assert.AreEqual(0, unit.TractorRestraint);
 
-            unit.SetTractorSources(true);
+            encounter.SetTractorSources(unit, true);
 
             MeshRenderer loop = view
                 .Renderer.GetComponentsInChildren<MeshRenderer>(true)
@@ -1806,7 +1798,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 assets.GetTexture(definition.FramePaths[0]),
                 loop.sharedMaterial.mainTexture
             );
-            unit.SetTractorSources(false);
+            encounter.SetTractorSources(unit, false);
             Assert.IsFalse(loop.enabled);
         }
 
@@ -1815,11 +1807,15 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: true);
             yield return PrepareRenderer(encounter);
-            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            CombatUnit unit = encounter.GetUnit("ALCS008");
             int gravityRequests = 0;
-            unit.GravityWellPresentationRequested += () => gravityRequests++;
+            encounter.GravityWellPresentationRequested += source =>
+            {
+                if (ReferenceEquals(source, unit))
+                    gravityRequests++;
+            };
 
-            unit.SetTractorSources(true);
+            encounter.SetTractorSources(unit, true);
             Assert.IsFalse(
                 view.Renderer.GetComponentsInChildren<Transform>(true)
                     .Any(item => item.name == "Lock")
@@ -1853,10 +1849,14 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData, gravityWell: true);
             yield return PrepareRenderer(encounter, new UserVideoSettings { ShowPyro = false });
-            TacticalCombatUnit unit = encounter.GetUnit("ALCS008");
+            CombatUnit unit = encounter.GetUnit("ALCS008");
             int gravityRequests = 0;
-            unit.GravityWellPresentationRequested += () => gravityRequests++;
-            unit.SetTractorSources(true);
+            encounter.GravityWellPresentationRequested += source =>
+            {
+                if (ReferenceEquals(source, unit))
+                    gravityRequests++;
+            };
+            encounter.SetTractorSources(unit, true);
 
             for (int frame = 0; frame < 120; frame++)
                 encounter.Advance(50);
@@ -1876,7 +1876,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             TacticalCombatGroup group = encounter.Groups.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighterGroup
             );
-            TacticalCombatUnit target = encounter.Units.First(item =>
+            CombatUnit target = encounter.Units.First(item =>
                 item.Side != encounter.PlayerSide && !item.IsFighter && !item.IsBattleStation
             );
             encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
@@ -1912,7 +1912,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             TacticalCombatGroup group = encounter.Groups.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighterGroup
             );
-            TacticalCombatUnit target = encounter.Units.First(item =>
+            CombatUnit target = encounter.Units.First(item =>
                 item.Side != encounter.PlayerSide && !item.IsFighter && !item.IsBattleStation
             );
             encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
@@ -1975,7 +1975,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             for (int frame = 0; frame < 9; frame++)
                 controller.Advance(0.5f);
-            TacticalCombatUnit unit = encounter.Units.First(item =>
+            CombatUnit unit = encounter.Units.First(item =>
                 item.Side == encounter.PlayerSide && !item.IsFighter
             );
             encounter.Selection.QueueObject(unit, false);
@@ -2091,7 +2091,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// Checks the camera against a presented unit's independently observable middle-model boundary.
         /// </summary>
         /// <param name="unit">The expected camera primary.</param>
-        private void AssertCategoryOffset(TacticalCombatUnit unit)
+        private void AssertCategoryOffset(CombatUnit unit)
         {
             Transform root = view
                 .Renderer.GetComponentsInChildren<Transform>(true)
@@ -2155,7 +2155,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             public SpaceCombatResult CommittedResult => null;
             public int PreparationCount { get; private set; }
             public int DisposeCount { get; private set; }
-            public ITacticalCombatArrivalPresentation Presentation { get; private set; }
+            public ITacticalCombatEntry Entry { get; private set; }
             public List<float> Intervals { get; } = new();
 
             /// <summary>
@@ -2172,10 +2172,10 @@ namespace Rebellion.Tests.Tactical.Rendering
             /// <summary>
             /// Records the loaded arrival presentation supplied by the controller.
             /// </summary>
-            /// <param name="presentation">The local owner of arrival transforms.</param>
-            public void Prepare(ITacticalCombatArrivalPresentation presentation)
+            /// <param name="entry">The local sequence controlling the arrival gate.</param>
+            public void Prepare(ITacticalCombatEntry entry)
             {
-                Presentation = presentation;
+                Entry = entry;
                 PreparationCount++;
             }
 
@@ -2272,7 +2272,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>The encounter with a mobile departing participant and a surviving opponent.</returns>
         private static TacticalCombatSession CreateWithdrawalEncounter(GameDataCatalog catalog)
         {
-            List<TacticalCombatUnit> units = new();
+            List<CombatUnit> units = new();
             foreach (CombatSide side in new[] { CombatSide.Attacker, CombatSide.Defender })
             {
                 CapitalShip ship = (CapitalShip)
@@ -2286,19 +2286,14 @@ namespace Rebellion.Tests.Tactical.Rendering
                     pair => pair.Key,
                     pair => new int[pair.Value.Length]
                 );
-                units.Add(
-                    new TacticalCombatUnit(
-                        CombatUnit.Create(ship),
-                        side,
-                        units.Count + 1,
-                        catalog.TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
-                    )
-                    {
-                        Position = CreateSide(side).Forward * -50,
-                        Heading = CreateSide(side).Forward,
-                        DesiredHeading = CreateSide(side).Forward,
-                    }
-                );
+                CombatUnit unit = CombatUnit.Create(ship);
+                catalog
+                    .TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
+                    .InitializeCombatant(unit, side, units.Count + 1);
+                unit.Position = CreateSide(side).Forward * -50;
+                unit.Heading = CreateSide(side).Forward;
+                unit.DesiredHeading = CreateSide(side).Forward;
+                units.Add(unit);
             }
             LinearCongruentialRandomProvider random = new(42);
             return new TacticalCombatSession(
@@ -2340,7 +2335,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             Dictionary<string, TacticalCombatUnitDefinition> definitions =
                 catalog.TacticalCombat.Units.ToDictionary(item => item.UnitTypeID);
-            List<TacticalCombatUnit> units = new();
+            List<CombatUnit> units = new();
             foreach (string type in new[] { "ALCS008", "CSEM006", "CSEM015", "CSAL009" })
             {
                 CapitalShip ship = (CapitalShip)
@@ -2354,38 +2349,25 @@ namespace Rebellion.Tests.Tactical.Rendering
                     type == "ALCS008" || allCapitalsPlayer
                         ? CombatSide.Attacker
                         : CombatSide.Defender;
-                units.Add(
-                    new TacticalCombatUnit(
-                        CombatUnit.Create(ship),
-                        side,
-                        units.Count + 1,
-                        definitions[type]
-                    )
-                    {
-                        Position = new Vector3N(
-                            type == "ALCS008" ? -12 : 12,
-                            0,
-                            type == "ALCS008" ? -20 : 20
-                        ),
-                        Heading = side == CombatSide.Attacker ? Vector3N.UnitZ : -Vector3N.UnitZ,
-                    }
+                CombatUnit unit = CombatUnit.Create(ship);
+                definitions[type].InitializeCombatant(unit, side, units.Count + 1);
+                unit.Position = new Vector3N(
+                    type == "ALCS008" ? -12 : 12,
+                    0,
+                    type == "ALCS008" ? -20 : 20
                 );
+                unit.Heading = side == CombatSide.Attacker ? Vector3N.UnitZ : -Vector3N.UnitZ;
+                units.Add(unit);
             }
             Starfighter fighter = (Starfighter)
                 catalog.Starfighters.Single(item => item.TypeID == "SFAL01").CreateCopy();
             fighter.InstanceID = "fighter";
             fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
-            units.Add(
-                new TacticalCombatUnit(
-                    CombatUnit.Create(fighter),
-                    CombatSide.Attacker,
-                    units.Count + 1,
-                    definitions[fighter.TypeID]
-                )
-                {
-                    Position = new Vector3N(0, 0, -15),
-                }
-            );
+            CombatUnit fighterUnit = CombatUnit.Create(fighter);
+            definitions[fighter.TypeID]
+                .InitializeCombatant(fighterUnit, CombatSide.Attacker, units.Count + 1);
+            fighterUnit.Position = new Vector3N(0, 0, -15);
+            units.Add(fighterUnit);
             List<TacticalCombatGroup> groups = units
                 .Where(unit => !unit.IsBattleStation)
                 .Select(unit => new TacticalCombatGroup(

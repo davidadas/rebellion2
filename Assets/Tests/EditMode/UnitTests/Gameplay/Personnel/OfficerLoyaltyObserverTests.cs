@@ -22,8 +22,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 AttackerOwnerInstanceID = scene.Alliance.InstanceID,
                 DefenderOwnerInstanceID = scene.Empire.InstanceID,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 AttackingUnits = new List<CombatUnitSnapshot>
                 {
                     DestroyedSnapshot(
@@ -86,8 +86,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 AttackerOwnerInstanceID = scene.Alliance.InstanceID,
                 DefenderOwnerInstanceID = scene.Empire.InstanceID,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                 AttackingUnits = new List<CombatUnitSnapshot>
                 {
                     DestroyedSnapshot(new CapitalShip { InstanceID = "a", UprisingDefense = 1000 }),
@@ -189,8 +189,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 AttackerOwnerInstanceID = scene.Alliance.InstanceID,
                 DefenderOwnerInstanceID = scene.Empire.InstanceID,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 AttackingUnits = new List<CombatUnitSnapshot>
                 {
                     DestroyedSnapshot(new CapitalShip { UprisingDefense = 40 }),

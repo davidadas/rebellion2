@@ -2218,19 +2218,7 @@ namespace Rebellion.AI.Planners
             CapitalShip capitalShip,
             PrimaryWeaponType weaponType,
             PrimaryWeaponArc weaponArc
-        )
-        {
-            int weaponArcIndex = (int)weaponArc;
-            if (
-                capitalShip?.PrimaryWeapons == null
-                || !capitalShip.PrimaryWeapons.TryGetValue(weaponType, out int[] values)
-                || values == null
-                || weaponArcIndex >= values.Length
-            )
-                return 0;
-
-            return values[weaponArcIndex];
-        }
+        ) => capitalShip?.GetPrimaryWeaponStrength(weaponType, weaponArc) ?? 0;
 
         /// <summary>
         /// Returns the unlocked starfighter technology for a fleet demand.

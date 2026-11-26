@@ -144,7 +144,7 @@ namespace Rebellion.Gameplay
                 return false;
             try
             {
-                _combatObserver?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
+                _aftermath?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
             }
             catch (InvalidOperationException)
             {
@@ -207,7 +207,7 @@ namespace Rebellion.Gameplay
             );
             if (attackerPlan == null || defenderPlan == null)
                 return null;
-            result.Winner = CombatSide.Draw;
+            result.Winner = SpaceCombatResult.BattleOutcome.Draw;
             result.AttackerRetreatPlanetInstanceID = attackerPlan.GetRetreatPlanetInstanceID();
             result.DefenderRetreatPlanetInstanceID = defenderPlan.GetRetreatPlanetInstanceID();
             result.Events = ApplyCombatResult(

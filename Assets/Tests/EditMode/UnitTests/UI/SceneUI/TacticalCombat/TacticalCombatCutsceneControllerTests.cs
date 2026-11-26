@@ -2,15 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -480,50 +479,44 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <returns>The battle after its attack run has entered the two-minute sequence.</returns>
         private static TacticalCombatSession CreateSession(bool reserveFighter = false)
         {
-            TacticalCombatUnit fighter = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        Agility = 20,
-                        Torpedoes = 100,
-                    }
-                ),
+            CombatUnit fighter = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    Agility = 20,
+                    Torpedoes = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit station = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "station",
-                        CanDestroyPlanets = true,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                        MaxHullStrength = 1000,
-                        CurrentHullStrength = 1000,
-                    }
-                ),
+            CombatUnit station = new(
+                new CapitalShip
+                {
+                    InstanceID = "station",
+                    CanDestroyPlanets = true,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    MaxHullStrength = 1000,
+                    CurrentHullStrength = 1000,
+                },
                 CombatSide.Defender,
                 1000001
             );
             TacticalCombatGroup group = new(2, new[] { fighter }, Vector3.UnitZ);
-            List<TacticalCombatUnit> units = new() { fighter, station };
+            List<CombatUnit> units = new() { fighter, station };
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                TacticalCombatUnit reserve = new(
-                    CombatUnit.Create(
-                        new Starfighter
-                        {
-                            InstanceID = "reserve",
-                            MaxSquadronSize = 12,
-                            CurrentSquadronSize = 12,
-                            Agility = 20,
-                            Torpedoes = 100,
-                        }
-                    ),
+                CombatUnit reserve = new(
+                    new Starfighter
+                    {
+                        InstanceID = "reserve",
+                        MaxSquadronSize = 12,
+                        CurrentSquadronSize = 12,
+                        Agility = 20,
+                        Torpedoes = 100,
+                    },
                     CombatSide.Attacker,
                     2
                 );

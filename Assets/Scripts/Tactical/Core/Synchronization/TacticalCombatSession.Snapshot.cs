@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -81,7 +82,20 @@ namespace Rebellion.Tactical
                     group.AttackRun = null;
             }
             foreach (TacticalCombatUnitSnapshot state in snapshot.Units)
-                ApplySnapshotUnit(GetUnit(state.UnitID), state);
+            {
+                CombatUnit unit = GetUnit(state.UnitID);
+                unit.GroupID = null;
+                unit.RequestedGroupID = null;
+                ApplySnapshotUnit(unit, state);
+            }
+            foreach (TacticalCombatGroupSnapshot state in snapshot.Groups)
+            {
+                TacticalCombatGroup group = _groupsByID[state.GroupID];
+                foreach (CombatUnit unit in group.Members)
+                    unit.GroupID = group.ID;
+                foreach (CombatUnit unit in group.RequestedMembers)
+                    unit.RequestedGroupID = group.ID;
+            }
             _synchronizedSystemTime = snapshot.SystemTime;
             _userPaused = snapshot.Paused;
             IsComplete = snapshot.Complete;
@@ -183,10 +197,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The local registered participant.</param>
         /// <param name="state">The authoritative participant state.</param>
-        private static void ApplySnapshotUnit(
-            TacticalCombatUnit unit,
-            TacticalCombatUnitSnapshot state
-        )
+        private static void ApplySnapshotUnit(CombatUnit unit, TacticalCombatUnitSnapshot state)
         {
             unit.Position = state.Position.ToVector();
             unit.Heading = state.Heading.ToVector();
@@ -195,17 +206,23 @@ namespace Rebellion.Tactical
             unit.DesiredMovement = state.DesiredMovement.ToVector();
             unit.Status = state.Status;
             unit.CarrierID = string.IsNullOrEmpty(state.CarrierID) ? null : state.CarrierID;
-            unit.TargetID = string.IsNullOrEmpty(state.TargetID) ? null : state.TargetID;
-            unit.Systems.ApplySnapshot(state);
-            unit.Weapons.ApplySnapshot(state);
+            unit.ApplySystemProjection(
+                state.Hull,
+                state.Shields,
+                state.ShieldLimit,
+                state.AttackDelay,
+                state.MovementDelay,
+                state.WeaponRechargeSample,
+                state.ShieldRechargeSample,
+                state.ComponentDamage
+            );
+            unit.ApplyBatteryProjection(state.Charge, state.Ready);
             unit.HyperspaceMilliseconds = state.HyperspaceMilliseconds;
             unit.TractorRestraint = state.TractorRestraint;
-            unit.ApplySnapshotTractorMembership(state.HasTractorSources);
+            unit.HasTractorSources = state.HasTractorSources;
             unit.CommandBudget = state.CommandBudget;
             unit.TurnRate = state.TurnRate;
             unit.HasCollision = state.HasCollision;
-            unit.GroupID = state.HasGroup ? state.GroupID : null;
-            unit.RequestedGroupID = state.HasRequestedGroup ? state.RequestedGroupID : null;
         }
 
         /// <summary>
@@ -214,8 +231,8 @@ namespace Rebellion.Tactical
         /// <param name="effect">The validated ordered edge.</param>
         private void ApplySynchronizedEvent(TacticalCombatEvent effect)
         {
-            TacticalCombatUnit source = GetUnit(effect.SourceID);
-            TacticalCombatUnit target = GetUnit(effect.TargetID);
+            CombatUnit source = GetUnit(effect.SourceID);
+            CombatUnit target = GetUnit(effect.TargetID);
             switch (effect.Kind)
             {
                 case TacticalCombatEventKind.Shot:
@@ -242,10 +259,10 @@ namespace Rebellion.Tactical
                     SuperlaserFired?.Invoke(source, target);
                     break;
                 case TacticalCombatEventKind.TractorSources:
-                    target.SetTractorSources(effect.Enabled);
+                    SetTractorSources(target, effect.Enabled);
                     break;
                 case TacticalCombatEventKind.GravityWell:
-                    target.RequestGravityWellPresentation();
+                    GravityWellPresentationRequested?.Invoke(target);
                     break;
                 case TacticalCombatEventKind.Notification:
                     if (!effect.HasRecipient || effect.Recipient == PlayerSide)
@@ -271,9 +288,9 @@ namespace Rebellion.Tactical
                 || snapshot.Selections?.Length != 2
                 || snapshot.TerminalFlags?.Length != 7
                 || snapshot.Effects == null
-                || !Enum.IsDefined(typeof(CombatSide), snapshot.Winner)
-                || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), snapshot.AttackerOutcome)
-                || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), snapshot.DefenderOutcome)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.BattleOutcome), snapshot.Winner)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.SideOutcome), snapshot.AttackerOutcome)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.SideOutcome), snapshot.DefenderOutcome)
             )
                 throw new ArgumentException(
                     "The combat projection is stale or incomplete.",
@@ -281,6 +298,8 @@ namespace Rebellion.Tactical
                 );
             HashSet<string> participants = new(StringComparer.Ordinal);
             HashSet<int> groups = new();
+            HashSet<string> activeMembers = new(StringComparer.Ordinal);
+            HashSet<string> requestedMembers = new(StringComparer.Ordinal);
             foreach (TacticalCombatGroupSnapshot state in snapshot.Groups)
             {
                 if (
@@ -329,6 +348,14 @@ namespace Rebellion.Tactical
                     );
                 RequireSnapshotUnits(state.Members, state.Side);
                 RequireSnapshotUnits(state.RequestedMembers, state.Side);
+                if (
+                    state.Members.Any(member => !activeMembers.Add(member))
+                    || state.RequestedMembers.Any(member => !requestedMembers.Add(member))
+                )
+                    throw new ArgumentException(
+                        "The combat projection assigns a participant to multiple groups.",
+                        nameof(snapshot)
+                    );
                 RequireSnapshotUnits(state.Targets);
                 RequireSnapshotUnits(state.RequestedTargets);
                 RequireSnapshotUnits(state.ComputedTargets);
@@ -344,16 +371,13 @@ namespace Rebellion.Tactical
                     || state.ComponentDamage?.Length != 5
                     || state.Charge?.Length != 4
                     || state.Ready?.Length != 4
-                    || !Enum.IsDefined(typeof(TacticalCombatUnitStatus), state.Status)
-                    || state.HasGroup && !groups.Contains(state.GroupID)
-                    || state.HasRequestedGroup && !groups.Contains(state.RequestedGroupID)
+                    || !Enum.IsDefined(typeof(CombatUnitStatus), state.Status)
                 )
                     throw new ArgumentException(
                         "The combat participant projection is invalid.",
                         nameof(snapshot)
                     );
                 RequireSnapshotUnit(state.CarrierID);
-                RequireSnapshotUnit(state.TargetID);
             }
             HashSet<CombatSide> sides = new();
             foreach (TacticalCombatSideSnapshot state in snapshot.Sides)
@@ -363,7 +387,7 @@ namespace Rebellion.Tactical
                     || !sides.Add(state.Side)
                     || state.HasWithdrawalPhase
                         && !Enum.IsDefined(
-                            typeof(TacticalCombatWithdrawalPhase),
+                            typeof(TacticalCombatSide.DeparturePhase),
                             state.WithdrawalPhase
                         )
                 )
@@ -400,7 +424,7 @@ namespace Rebellion.Tactical
                 snapshot.MovieID < 0
                 || snapshot.MovieID != 0
                     && (
-                        GetUnit(snapshot.MovieUnitID) is not TacticalCombatUnit movieUnit
+                        GetUnit(snapshot.MovieUnitID) is not CombatUnit movieUnit
                         || !movieUnit.IsFighter
                         || movieUnit.Side != snapshot.MovieSide
                         || snapshot.MovieState
@@ -479,10 +503,7 @@ namespace Rebellion.Tactical
         private void RequireSnapshotUnits(string[] unitIDs, CombatSide? side = null)
         {
             foreach (string id in unitIDs)
-                if (
-                    GetUnit(id) is not TacticalCombatUnit unit
-                    || side.HasValue && unit.Side != side.Value
-                )
+                if (GetUnit(id) is not CombatUnit unit || side.HasValue && unit.Side != side.Value)
                     throw new ArgumentException(
                         "The combat projection references an invalid roster."
                     );

@@ -1,9 +1,11 @@
 using System;
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
-using TacticalCombatEnvironmentDefinition = global::Rebellion.Game.SpaceCombat.TacticalCombatEnvironmentDefinition;
-using TacticalCombatFighterSprites = global::Rebellion.Game.SpaceCombat.TacticalCombatFighterSprites;
-using TacticalCombatTextureOverride = global::Rebellion.Game.SpaceCombat.TacticalCombatTextureOverride;
+using TacticalCombatEnvironmentDefinition = global::Rebellion.Content.TacticalCombatEnvironmentDefinition;
+using TacticalCombatFighterSprites = global::Rebellion.Content.TacticalCombatFighterSprites;
+using TacticalCombatTextureOverride = global::Rebellion.Content.TacticalCombatTextureOverride;
 
 namespace Rebellion.Tactical.Rendering
 {
@@ -122,7 +124,7 @@ namespace Rebellion.Tactical.Rendering
         )
         {
             TacticalCombatFighterSprites sprites =
-                visual.Unit.Definition?.FighterSprites
+                GetUnitDefinition(visual.Unit)?.FighterSprites
                 ?? throw new InvalidOperationException(
                     $"Fighter sprites are missing for '{visual.Unit.TypeID}'."
                 );
@@ -160,9 +162,9 @@ namespace Rebellion.Tactical.Rendering
         private void CreateStation(Visual visual, ContentAssets assets, float battleDepth)
         {
             string path =
-                visual.Unit.Status == TacticalCombatUnitStatus.UnderConstruction
-                    ? visual.Unit.Definition.ConstructionBillboardImagePath
-                    : visual.Unit.Definition.BillboardImagePath;
+                visual.Unit.Status == CombatUnitStatus.UnderConstruction
+                    ? GetUnitDefinition(visual.Unit).ConstructionBillboardImagePath
+                    : GetUnitDefinition(visual.Unit).BillboardImagePath;
             Texture2D texture =
                 assets.GetTexture(path)
                 ?? throw new InvalidOperationException(

@@ -6,7 +6,7 @@ namespace Rebellion.Tactical
     /// <summary>
     /// Captures one faction's active-root count, withdrawal state, and roster departure facts.
     /// </summary>
-    public readonly struct TacticalCombatForceAssessment
+    internal readonly struct TacticalCombatForceAssessment
     {
         public int ActiveCount { get; }
         public int WithdrawalState { get; }
@@ -35,20 +35,17 @@ namespace Rebellion.Tactical
     }
 
     /// <summary>
-    /// Captures terminal battle flags, queues the terminal cue, and counts completed ending ticks.
+    /// Captures the final force assessment and tracks the delay before combat ends.
     /// </summary>
-    public sealed class TacticalCombatEnding
+    internal sealed class TacticalCombatEnding
     {
-        private readonly int _playerFactionIndex;
-        private readonly Action<int> _requestNotification;
-        private readonly Action _assignSurvivors;
-        private readonly Action _finishWithoutAssessment;
         private readonly bool[] _flags = new bool[7];
         private bool _assessmentCaptured;
 
         public IReadOnlyList<bool> Flags { get; }
         public float RemainingMilliseconds { get; private set; }
         public bool IsComplete { get; private set; }
+        public bool ImmediateResultRequested => _flags[6];
 
         /// <summary>
         /// Restores the authoritative terminal flags without running local ending callbacks.
@@ -56,32 +53,7 @@ namespace Rebellion.Tactical
         /// <param name="flags">The seven validated terminal flags.</param>
         internal void ApplySnapshotFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
 
-        /// <summary>
-        /// Captures notification and command ownership for one encounter's ending.
-        /// </summary>
-        /// <param name="playerFactionIndex">The authored faction index: Alliance 0 or Empire 1.</param>
-        /// <param name="requestNotification">Requests a one-shot terminal notification.</param>
-        /// <param name="assignSurvivors">Assigns survivor helpers after terminal notification selection.</param>
-        /// <param name="finishWithoutAssessment">Emits both factions' explicit finish commands.</param>
-        public TacticalCombatEnding(
-            int playerFactionIndex,
-            Action<int> requestNotification,
-            Action assignSurvivors,
-            Action finishWithoutAssessment
-        )
-        {
-            if (playerFactionIndex is not 0 and not 1)
-                throw new ArgumentOutOfRangeException(nameof(playerFactionIndex));
-            _playerFactionIndex = playerFactionIndex;
-            _requestNotification =
-                requestNotification ?? throw new ArgumentNullException(nameof(requestNotification));
-            _assignSurvivors =
-                assignSurvivors ?? throw new ArgumentNullException(nameof(assignSurvivors));
-            _finishWithoutAssessment =
-                finishWithoutAssessment
-                ?? throw new ArgumentNullException(nameof(finishWithoutAssessment));
-            Flags = Array.AsReadOnly(_flags);
-        }
+        internal TacticalCombatEnding() => Flags = Array.AsReadOnly(_flags);
 
         /// <summary>
         /// Captures a terminal assessment once after active-object movement and counting complete.
@@ -121,10 +93,6 @@ namespace Rebellion.Tactical
                 _flags[3] = false;
             }
 
-            int? messageID = GetTerminalNotification();
-            if (messageID.HasValue)
-                _requestNotification(messageID.Value);
-            _assignSurvivors();
             return true;
         }
 
@@ -144,13 +112,11 @@ namespace Rebellion.Tactical
 
         /// <summary>
         /// Records an admitted explicit finish without adding a terminal cue or waiting interval.
-        /// The caller owns command-specific admission and emits both finish commands through its callback.
         /// </summary>
         public void FinishWithoutAssessment()
         {
             _flags[6] = true;
             IsComplete = true;
-            _finishWithoutAssessment();
         }
 
         /// <summary>
@@ -164,10 +130,11 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Selects the player's terminal cue in withdrawal-before-victory priority order.
         /// </summary>
+        /// <param name="factionIndex">The authored faction index receiving the notification.</param>
         /// <returns>The authored notification, or null when no terminal cue applies.</returns>
-        private int? GetTerminalNotification()
+        public int? GetTerminalNotification(int factionIndex)
         {
-            if (_playerFactionIndex == 0)
+            if (factionIndex == 0)
             {
                 if (_flags[1] && _flags[2])
                     return 151;

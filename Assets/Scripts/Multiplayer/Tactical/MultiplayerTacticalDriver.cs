@@ -117,7 +117,7 @@ namespace Rebellion.Multiplayer.Tactical
         /// Starts only this player's loaded entry presentation before announcing readiness.
         /// </summary>
         /// <param name="presentation">The local renderer's arrival owner.</param>
-        public void Prepare(ITacticalCombatArrivalPresentation presentation)
+        public void Prepare(ITacticalCombatEntry presentation)
         {
             if (_disposed || _prepared)
                 throw new InvalidOperationException(

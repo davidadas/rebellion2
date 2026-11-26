@@ -19,7 +19,7 @@ namespace Rebellion.Gameplay
         /// Begins local entry presentation after the required combat assets are ready.
         /// </summary>
         /// <param name="presentation">The local owner of entry transforms.</param>
-        void Prepare(ITacticalCombatArrivalPresentation presentation);
+        void Prepare(ITacticalCombatEntry presentation);
 
         /// <summary>
         /// Advances the owning playback boundary for one unscaled presentation frame.

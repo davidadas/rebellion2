@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -7,21 +8,25 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatBattleStation
     {
-        public TacticalCombatUnit Unit { get; }
+        public CombatUnit Unit { get; }
         public bool HasPlanetaryProtection { get; }
         public bool IsConstructionComplete { get; }
         public float MaximumHull { get; }
         public bool HasDeparted { get; private set; }
         public float Charge { get; private set; } = 100;
         public bool IsOperational =>
-            IsConstructionComplete
-            && Unit.Systems.Hull != 0
-            && !float.IsNaN(Unit.Systems.Hull)
-            && !HasDeparted;
+            IsConstructionComplete && Unit.Hull != 0 && !float.IsNaN(Unit.Hull) && !HasDeparted;
         public bool CanBeginTargetSelection =>
             MaximumHull > 0 && (Charge == 100 || float.IsNaN(Charge));
         public bool CanReceiveAttackRun => IsOperational && !HasPlanetaryProtection;
         public event Action ChargeCompleted;
+
+        internal static bool CanStartAttackRun(
+            bool canReceiveAttackRun,
+            bool hasAttackRun,
+            int friendlySquadrons,
+            int opposingSquadrons
+        ) => canReceiveAttackRun && !hasAttackRun && friendlySquadrons > opposingSquadrons;
 
         /// <summary>
         /// Restores the authoritative charge and departure facts without firing or withdrawing locally.
@@ -39,14 +44,14 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The station's captured tactical unit.</param>
         /// <param name="hasPlanetaryProtection">Whether an operational planetary facility protects it.</param>
-        public TacticalCombatBattleStation(TacticalCombatUnit unit, bool hasPlanetaryProtection)
+        public TacticalCombatBattleStation(CombatUnit unit, bool hasPlanetaryProtection)
         {
             Unit = unit ?? throw new ArgumentNullException(nameof(unit));
             if (!unit.IsBattleStation)
                 throw new ArgumentException("A battle station unit is required.", nameof(unit));
             HasPlanetaryProtection = hasPlanetaryProtection;
-            IsConstructionComplete = unit.Status != TacticalCombatUnitStatus.UnderConstruction;
-            MaximumHull = unit.Systems.MaximumHull;
+            IsConstructionComplete = unit.Status != CombatUnitStatus.UnderConstruction;
+            MaximumHull = unit.MaximumHull;
         }
 
         /// <summary>
@@ -55,7 +60,7 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The elapsed system interval.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            if (!IsConstructionComplete || !(Unit.Systems.Hull > 0))
+            if (!IsConstructionComplete || !(Unit.Hull > 0))
                 return;
             float increment = (float)((double)elapsedMilliseconds * 0.33333334f * 0.001f);
             if (Charge < 100 && (double)Charge + increment >= 100)
@@ -93,7 +98,7 @@ namespace Rebellion.Tactical
         internal void Destroy()
         {
             Charge = 0;
-            Unit.Systems.Destroy();
+            Unit.Destroy();
         }
 
         /// <summary>

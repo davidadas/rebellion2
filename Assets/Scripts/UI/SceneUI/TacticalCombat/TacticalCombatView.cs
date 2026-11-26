@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using TMPro;
@@ -531,7 +532,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="unit">The inspected participant.</param>
         /// <param name="data">The formatted update from the encounter's inspection owner.</param>
-        public void SetInspection(TacticalCombatUnit unit, TacticalCombatInspectionData data)
+        public void SetInspection(CombatUnit unit, TacticalCombatInspectionData data)
         {
             _selection.text = data.Name;
             _assignment.text = data.Assignment;
@@ -558,11 +559,8 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 SetSystemIcon(3, "engine", data.Movement);
                 SetSystemIcon(4, "hyperdrive", data.Hyperdrive);
             }
-            _hullBar.rectTransform.anchorMax = new Vector2((float)unit.Systems.HullFraction, 1);
-            _shieldBar.rectTransform.anchorMax = new Vector2(
-                (float)unit.Systems.GetShieldFraction(),
-                1
-            );
+            _hullBar.rectTransform.anchorMax = new Vector2((float)unit.HullFraction, 1);
+            _shieldBar.rectTransform.anchorMax = new Vector2((float)unit.GetShieldFraction(), 1);
         }
 
         /// <summary>

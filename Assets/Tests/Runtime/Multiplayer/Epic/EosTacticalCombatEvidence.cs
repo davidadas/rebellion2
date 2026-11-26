@@ -6,7 +6,9 @@ using System.Linq;
 using System.Numerics;
 using System.Security.Cryptography;
 using System.Text;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
@@ -53,7 +55,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="weapon">The applied weapon type.</param>
         /// <param name="impact">The observed impact kind.</param>
         internal void RecordImpact(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
         )
@@ -70,7 +72,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// </summary>
         /// <param name="kind">The transported unit-event discriminator.</param>
         /// <param name="unit">The affected participant.</param>
-        internal void RecordUnit(TacticalCombatEventKind kind, TacticalCombatUnit unit)
+        internal void RecordUnit(TacticalCombatEventKind kind, CombatUnit unit)
         {
             BeginEvent(kind);
             _writer.Write(unit.InstanceID);
@@ -134,7 +136,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             writer.Prefix = string.Empty;
             writer.WriteField("Units.Count", session.Units.Count);
             foreach (
-                TacticalCombatUnit unit in session.Units.OrderBy(
+                CombatUnit unit in session.Units.OrderBy(
                     unit => unit.InstanceID,
                     StringComparer.Ordinal
                 )
@@ -195,38 +197,37 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// </summary>
         /// <param name="writer">The canonical binary destination.</param>
         /// <param name="unit">The participant to compare.</param>
-        private static void WriteUnit(StateWriter writer, TacticalCombatUnit unit)
+        private static void WriteUnit(StateWriter writer, CombatUnit unit)
         {
             writer.Prefix = "Units." + unit.InstanceID;
             writer.WriteField("InstanceID", unit.InstanceID);
             writer.WriteField("Side", (int)unit.Side);
             writer.WriteField("Status", (int)unit.Status);
             writer.WriteField("CarrierID", unit.CarrierID ?? string.Empty);
-            writer.WriteField("TargetID", unit.TargetID ?? string.Empty);
             WriteVector(writer, "Position", unit.Position);
             WriteVector(writer, "Heading", unit.Heading);
             WriteVector(writer, "Velocity", unit.Velocity);
             WriteVector(writer, "DesiredHeading", unit.DesiredHeading);
             WriteVector(writer, "DesiredMovement", unit.DesiredMovement);
-            writer.WriteField("Systems.Hull", unit.Systems.Hull);
-            writer.WriteField("Systems.Shields", unit.Systems.Shields);
-            writer.WriteField("Systems.MaximumShields", unit.Systems.MaximumShields);
-            writer.WriteField("Systems.AttackDelay", unit.Systems.AttackDelay);
-            writer.WriteField("Systems.MovementDelay", unit.Systems.MovementDelay);
+            writer.WriteField("Systems.Hull", unit.Hull);
+            writer.WriteField("Systems.Shields", unit.Shields);
+            writer.WriteField("Systems.MaximumShields", unit.MaximumShields);
+            writer.WriteField("Systems.AttackDelay", unit.AttackDelay);
+            writer.WriteField("Systems.MovementDelay", unit.MovementDelay);
             for (int index = 0; index < 5; index++)
                 writer.WriteField(
                     "Systems.ComponentDamage." + index,
-                    unit.Systems.GetDamage((TacticalShipSystem)index)
+                    unit.GetDamage((TacticalShipSystem)index)
                 );
             for (int index = 0; index < 4; index++)
             {
                 writer.WriteField(
                     "Weapons.Charge." + index,
-                    unit.Weapons.GetCharge((TacticalWeaponArc)index)
+                    unit.GetBatteryCharge((TacticalWeaponArc)index)
                 );
                 writer.WriteField(
                     "Weapons.Ready." + index,
-                    unit.Weapons.IsReady((TacticalWeaponArc)index)
+                    unit.IsBatteryReady((TacticalWeaponArc)index)
                 );
             }
             writer.WriteField("HyperspaceMilliseconds", unit.HyperspaceMilliseconds);
@@ -296,7 +297,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         private static void WriteMembers(
             StateWriter writer,
             string name,
-            IReadOnlyList<TacticalCombatUnit> units
+            IReadOnlyList<CombatUnit> units
         )
         {
             writer.WriteField(name + ".Count", units.Count);

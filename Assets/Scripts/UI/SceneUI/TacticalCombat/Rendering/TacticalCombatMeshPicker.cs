@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using UnityEngine;
 
 namespace Rebellion.Tactical.Rendering
@@ -16,7 +17,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="root">The unit's owned model hierarchy.</param>
         /// <param name="unit">The associated encounter unit.</param>
-        public void Register(GameObject root, TacticalCombatUnit unit)
+        public void Register(GameObject root, CombatUnit unit)
         {
             foreach (MeshFilter filter in root.GetComponentsInChildren<MeshFilter>(true))
             {
@@ -39,9 +40,9 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="ray">The battle camera's world-space ray.</param>
         /// <param name="distance">The maximum distance, replaced with the closest hit distance.</param>
         /// <returns>The intersected unit, or null.</returns>
-        public TacticalCombatUnit Pick(Ray ray, ref float distance)
+        public CombatUnit Pick(Ray ray, ref float distance)
         {
-            TacticalCombatUnit selected = null;
+            CombatUnit selected = null;
             foreach (Entry entry in _entries)
             {
                 MeshRenderer renderer = entry.Renderer;
@@ -139,7 +140,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         private readonly struct Entry
         {
-            public TacticalCombatUnit Unit { get; }
+            public CombatUnit Unit { get; }
             public MeshRenderer Renderer { get; }
             public Geometry Geometry { get; }
 
@@ -149,7 +150,7 @@ namespace Rebellion.Tactical.Rendering
             /// <param name="unit">The selected encounter participant.</param>
             /// <param name="renderer">The visible mesh instance.</param>
             /// <param name="geometry">The shared face data.</param>
-            public Entry(TacticalCombatUnit unit, MeshRenderer renderer, Geometry geometry)
+            public Entry(CombatUnit unit, MeshRenderer renderer, Geometry geometry)
             {
                 Unit = unit;
                 Renderer = renderer;

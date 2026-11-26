@@ -94,6 +94,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(HyperdriveCount))]
         private int? _hyperdriveCount;
 
+        [PersistableMember(Name = nameof(BackupHyperdrive))]
+        private int? _backupHyperdrive;
+
         [PersistableMember(Name = nameof(SublightSpeed))]
         private int _sublightSpeed;
 
@@ -175,6 +178,15 @@ namespace Rebellion.Game.Units
             get => _hyperdrive;
             set => _hyperdrive = value;
         }
+
+        [PersistableIgnore]
+        public int BackupHyperdrive
+        {
+            get => _backupHyperdrive ?? 0;
+            set => _backupHyperdrive = value;
+        }
+
+        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
 
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
@@ -298,6 +310,7 @@ namespace Rebellion.Game.Units
             copy.ShieldStrength = ShieldStrength;
             copy.Hyperdrive = Hyperdrive;
             copy._hyperdriveCount = _hyperdriveCount;
+            copy._backupHyperdrive = _backupHyperdrive;
             copy.SublightSpeed = SublightSpeed;
             copy.Agility = Agility;
             copy.LaserCannon = LaserCannon;

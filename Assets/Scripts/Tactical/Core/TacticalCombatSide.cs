@@ -1,5 +1,6 @@
 using System;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -10,48 +11,71 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatSide
     {
+        public enum DeparturePhase
+        {
+            Waiting = 2,
+            Departing = 3,
+            Scuttling = 4,
+        }
+
         public CombatSide Side { get; }
         public int FactionIndex { get; }
         public Vector3 Forward { get; }
         public bool HasWithdrawalDestination { get; }
         public float InitialWithdrawalMilliseconds { get; }
         public float RetreatStrengthRatio { get; }
-        public TacticalCombatUnit CapitalCommandCarrier { get; }
-        public TacticalCombatUnit FighterCommandCarrier { get; }
+        public CombatUnit CapitalCommandCarrier { get; }
+        public CombatUnit FighterCommandCarrier { get; }
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
-        private TacticalCombatSideSnapshot _networkState;
-        public bool IsWithdrawing => _networkState?.Withdrawing ?? Withdrawal != null;
+        public bool IsWithdrawing { get; private set; }
         public float AttackBudget { get; internal set; }
-        public float WithdrawalMilliseconds =>
-            _networkState?.WithdrawalMilliseconds ?? Withdrawal?.RemainingMilliseconds ?? 0;
-        public TacticalCombatWithdrawalPhase? WithdrawalPhase =>
-            _networkState != null
-                ? (_networkState.HasWithdrawalPhase ? _networkState.WithdrawalPhase : null)
-                : Withdrawal?.Phase;
-        internal TacticalCombatWithdrawal Withdrawal { get; set; }
+        public float WithdrawalMilliseconds { get; private set; }
+        public DeparturePhase? WithdrawalPhase { get; private set; }
 
-        /// <summary>
-        /// Restores faction presentation facts without starting a local withdrawal lifecycle.
-        /// </summary>
-        /// <param name="state">The validated faction projection.</param>
         internal void ApplySnapshot(TacticalCombatSideSnapshot state)
         {
-            _networkState = new TacticalCombatSideSnapshot
-            {
-                Side = state.Side,
-                Automated = state.Automated,
-                CommandsSuspended = state.CommandsSuspended,
-                Withdrawing = state.Withdrawing,
-                WithdrawalMilliseconds = state.WithdrawalMilliseconds,
-                HasWithdrawalPhase = state.HasWithdrawalPhase,
-                WithdrawalPhase = state.WithdrawalPhase,
-                AttackBudget = state.AttackBudget,
-            };
+            IsWithdrawing = state.Withdrawing;
+            WithdrawalMilliseconds = state.WithdrawalMilliseconds;
+            WithdrawalPhase = state.HasWithdrawalPhase ? state.WithdrawalPhase : null;
             IsAutomated = state.Automated;
             AttackBudget = state.AttackBudget;
         }
+
+        internal void BeginWithdrawal()
+        {
+            if (FactionIndex is not 0 and not 1)
+                throw new ArgumentOutOfRangeException(nameof(FactionIndex));
+
+            IsWithdrawing = true;
+            WithdrawalPhase = DeparturePhase.Waiting;
+            WithdrawalMilliseconds = InitialWithdrawalMilliseconds;
+        }
+
+        internal void SelectWithdrawalDelay(bool stationOperational)
+        {
+            float minimum = FactionIndex == 1 && stationOperational ? 150000 : 30000;
+            if (!(WithdrawalMilliseconds > minimum))
+                WithdrawalMilliseconds = minimum;
+        }
+
+        // Returns true once, on the tick that admits the side's departures.
+        internal bool AdvanceWithdrawal(float elapsedMilliseconds)
+        {
+            if (WithdrawalPhase != DeparturePhase.Waiting)
+                return false;
+
+            double remaining = (double)WithdrawalMilliseconds - elapsedMilliseconds;
+            WithdrawalMilliseconds = (float)remaining;
+            if (remaining > 0)
+                return false;
+
+            WithdrawalPhase = DeparturePhase.Departing;
+            return true;
+        }
+
+        internal void StartScuttling() => WithdrawalPhase = DeparturePhase.Scuttling;
 
         /// <summary>
         /// Captures the command officers and campaign withdrawal route at battle entry.
@@ -74,14 +98,14 @@ namespace Rebellion.Tactical
             bool hasWithdrawalDestination,
             float withdrawalMilliseconds,
             float retreatStrengthRatio,
-            TacticalCombatUnit capitalCommandCarrier,
-            TacticalCombatUnit fighterCommandCarrier,
+            CombatUnit capitalCommandCarrier,
+            CombatUnit fighterCommandCarrier,
             float admiralLeadership,
             float commanderCombat,
             bool isAutomated
         )
         {
-            if (side == CombatSide.Draw)
+            if (side is not CombatSide.Attacker and not CombatSide.Defender)
                 throw new ArgumentOutOfRangeException(nameof(side));
             Side = side;
             FactionIndex = factionIndex;
@@ -110,7 +134,7 @@ namespace Rebellion.Tactical
         /// <returns>The ordered supported movement budget between one and nine.</returns>
         internal double GetMovementSupport(bool isFighter)
         {
-            TacticalCombatUnit host = isFighter ? FighterCommandCarrier : CapitalCommandCarrier;
+            CombatUnit host = isFighter ? FighterCommandCarrier : CapitalCommandCarrier;
             if (host?.IsActiveDisplayObject != true)
                 return 1;
             float scalar = isFighter ? CommanderCombat / 20 : AdmiralLeadership / 10;

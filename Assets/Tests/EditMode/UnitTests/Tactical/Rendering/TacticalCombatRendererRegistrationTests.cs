@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
+using Rebellion.UI;
 using UnityEngine;
 using Vector4N = global::System.Numerics.Vector4;
 

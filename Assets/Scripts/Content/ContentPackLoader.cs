@@ -4,13 +4,13 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
@@ -645,13 +645,11 @@ public static class ContentPackLoader
                 pack.OfficerTraitsPath,
                 "OfficerTraits"
             );
-        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(
-            pack.TacticalCombatDefinitionsPath
-        )
+        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(pack.TacticalCombatPath)
             ? null
             : DeserializeGameData<TacticalCombatDefinition>(
                 fileResolver,
-                pack.TacticalCombatDefinitionsPath,
+                pack.TacticalCombatPath,
                 "TacticalCombatDefinition"
             );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(

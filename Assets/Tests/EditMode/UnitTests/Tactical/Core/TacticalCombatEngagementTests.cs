@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_CapitalAssessment_RetainsFinalDivisionUntilConsumerStore()
         {
-            TacticalCombatUnit unit = CreateCapital(631, 1000, 11, 7, 13, 7);
+            CombatUnit unit = CreateCapital(631, 1000, 11, 7, 13, 7);
 
             double attack = TacticalCombatEngagement.GetAttackRate(unit, null);
 
@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_PartialFighterHull_AddsLiveLaneContributionsBeforeStore()
         {
-            TacticalCombatUnit unit = CreateFighter();
+            CombatUnit unit = CreateFighter();
 
             double attack = TacticalCombatEngagement.GetAttackRate(unit, null);
 
@@ -34,8 +34,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_UnshieldedCapital_RoundsTorpedoBudgetBeforeSecondHullScaling()
         {
-            TacticalCombatUnit unit = CreateFighter();
-            TacticalCombatUnit target = CreateCapital(100, 100, 0, 0, 0, 0);
+            CombatUnit unit = CreateFighter();
+            CombatUnit target = CreateCapital(100, 100, 0, 0, 0, 0);
 
             double attack = TacticalCombatEngagement.GetAttackRate(unit, target);
 
@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_CombinedMountCountAboveSignedRange_UsesUnsignedNormalization()
         {
-            TacticalCombatUnit unit = CreateCapital(100, 100, int.MaxValue, int.MaxValue, 0, 1);
+            CombatUnit unit = CreateCapital(100, 100, int.MaxValue, int.MaxValue, 0, 1);
 
             double attack = TacticalCombatEngagement.GetAttackRate(unit, null);
 
@@ -55,8 +55,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetAttackRate_UnorderedFighterHull_ReturnsZero()
         {
-            TacticalCombatUnit unit = CreateFighter();
-            unit.Systems.RestorePools(float.NaN, 0);
+            CombatUnit unit = CreateFighter();
+            unit.RestorePools(float.NaN, 0);
 
             Assert.AreEqual(0, TacticalCombatEngagement.GetAttackRate(unit, null));
         }
@@ -71,7 +71,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="turbolasers">The forward heavy mounts.</param>
         /// <param name="recharge">The authored recharge rate.</param>
         /// <returns>The captured capital ship.</returns>
-        private static TacticalCombatUnit CreateCapital(
+        private static CombatUnit CreateCapital(
             int hull,
             int maximumHull,
             int lasers,
@@ -91,33 +91,31 @@ namespace Rebellion.Tests.Tactical
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { lasers, 0, 0, 0, 10 };
             ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { ions, 0, 0, 0, 10 };
             ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { turbolasers, 0, 0, 0, 10 };
-            return new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Defender, 1000001);
+            return new CombatUnit(ship, CombatSide.Defender, 1000001);
         }
 
         /// <summary>
         /// Captures a twelve-craft squadron and applies a partial hull loss after entry.
         /// </summary>
         /// <returns>The squadron with active laser, ion, and torpedo payloads.</returns>
-        private static TacticalCombatUnit CreateFighter()
+        private static CombatUnit CreateFighter()
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "fighter",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        LaserCannon = 5,
-                        IonCannon = 2,
-                        Torpedoes = 3,
-                        Hyperdrive = 1,
-                        ManufacturingStatus = ManufacturingStatus.Complete,
-                    }
-                ),
+            CombatUnit unit = new(
+                new Starfighter
+                {
+                    InstanceID = "fighter",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 5,
+                    IonCannon = 2,
+                    Torpedoes = 3,
+                    Hyperdrive = 1,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
                 CombatSide.Attacker,
                 1
             );
-            unit.Systems.ApplyHullLoss(23);
+            unit.ApplyHullLoss(23);
             return unit;
         }
     }

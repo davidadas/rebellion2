@@ -491,17 +491,9 @@ internal static class StrategyUnitCardStatsOverlayBuilder
     /// <returns>The four directional strengths expressed in hundred-point source units.</returns>
     private static int GetWeaponRating(CapitalShip capitalShip, PrimaryWeaponType weaponType)
     {
-        if (
-            capitalShip.PrimaryWeapons == null
-            || !capitalShip.PrimaryWeapons.TryGetValue(weaponType, out int[] values)
-            || values == null
-            || values.Length == 0
-        )
-        {
-            return 0;
-        }
-
-        int directionalTotal = values.Take(Math.Min(4, values.Length)).Sum();
+        int directionalTotal = CapitalShip.PrimaryWeaponArcs.Sum(arc =>
+            capitalShip.GetPrimaryWeaponStrength(weaponType, arc)
+        );
         return ScaleCeiling(directionalTotal, 100);
     }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
@@ -319,7 +320,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether an automatic withdrawal can be attempted.</returns>
         private static bool CanWithdraw(CombatForce force, CombatForce opponent)
         {
-            if (!force.CanWithdraw || force.Outcome != SpaceCombatSideOutcome.Active)
+            if (!force.CanWithdraw || force.Outcome != SpaceCombatResult.SideOutcome.Active)
                 return false;
             foreach (CapitalShipState ship in opponent.Ships)
                 if (ship.IsTargetable && ship.Ship.HasGravityWell)
@@ -621,8 +622,8 @@ namespace Rebellion.Gameplay
         private static void CompleteForce(CombatForce force)
         {
             force.Outcome = force.HasWithdrawnUnits
-                ? SpaceCombatSideOutcome.Withdrawn
-                : SpaceCombatSideOutcome.Destroyed;
+                ? SpaceCombatResult.SideOutcome.Withdrawn
+                : SpaceCombatResult.SideOutcome.Destroyed;
         }
 
         /// <summary>
@@ -867,12 +868,17 @@ namespace Rebellion.Gameplay
         /// <param name="attacker">The resolved attacking force.</param>
         /// <param name="defender">The resolved defending force.</param>
         /// <returns>The winning side, or a draw.</returns>
-        private static CombatSide DetermineWinner(CombatForce attacker, CombatForce defender)
+        private static SpaceCombatResult.BattleOutcome DetermineWinner(
+            CombatForce attacker,
+            CombatForce defender
+        )
         {
-            bool attackerActive = attacker.Outcome == SpaceCombatSideOutcome.Active;
-            bool defenderActive = defender.Outcome == SpaceCombatSideOutcome.Active;
+            bool attackerActive = attacker.Outcome == SpaceCombatResult.SideOutcome.Active;
+            bool defenderActive = defender.Outcome == SpaceCombatResult.SideOutcome.Active;
             if (attackerActive != defenderActive)
-                return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
+                return attackerActive
+                    ? SpaceCombatResult.BattleOutcome.Attacker
+                    : SpaceCombatResult.BattleOutcome.Defender;
 
             bool attackerSurvived =
                 attacker.Units.Any(unit => unit.IsAlive)
@@ -881,9 +887,11 @@ namespace Rebellion.Gameplay
                 defender.Units.Any(unit => unit.IsAlive)
                 || defender.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAlive);
             if (attackerSurvived == defenderSurvived)
-                return CombatSide.Draw;
+                return SpaceCombatResult.BattleOutcome.Draw;
 
-            return attackerSurvived ? CombatSide.Attacker : CombatSide.Defender;
+            return attackerSurvived
+                ? SpaceCombatResult.BattleOutcome.Attacker
+                : SpaceCombatResult.BattleOutcome.Defender;
         }
 
         /// <summary>
@@ -964,7 +972,7 @@ namespace Rebellion.Gameplay
             internal bool HasAttackRunUnderWay =>
                 Fighters.Any(fighter => fighter.IsAlive && fighter.AttackRunTarget != null);
             internal bool CanWithdraw { get; }
-            internal SpaceCombatSideOutcome Outcome { get; set; }
+            internal SpaceCombatResult.SideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; private set; }
 
             /// <summary>
@@ -1048,7 +1056,7 @@ namespace Rebellion.Gameplay
                 Units.AddRange(Ships);
                 Units.AddRange(Fighters);
                 CanWithdraw = canWithdraw;
-                Outcome = SpaceCombatSideOutcome.Active;
+                Outcome = SpaceCombatResult.SideOutcome.Active;
             }
 
             /// <summary>
@@ -1607,13 +1615,14 @@ namespace Rebellion.Gameplay
         private abstract class TacticalUnit
         {
             private readonly double _minimumManeuverRatio;
-            private readonly int[] _systemDamage = new int[5];
+            private readonly CapitalShipSystemDamage _systemDamage = new();
             protected readonly int InstalledHyperdriveSystems;
 
-            protected int ShieldDamage => _systemDamage[0];
-            protected int WeaponDamage => _systemDamage[1];
-            protected int EngineDamage => _systemDamage[3];
-            protected int HyperdriveDamage => _systemDamage[4];
+            protected int ShieldDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Shields);
+            protected int WeaponDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Weapons);
+            protected int EngineDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Engines);
+            protected int HyperdriveDamage =>
+                _systemDamage.GetCombatDamage(TacticalShipSystem.Hyperdrive);
             internal int StableOrder { get; set; }
             internal abstract double HullStrength { get; }
             internal abstract double HullFraction { get; }
@@ -1759,7 +1768,7 @@ namespace Rebellion.Gameplay
                 {
                     float threshold = (float)Math.Max(100 / originalShields * damage, 1);
                     if (random.NextInt(0, 100) <= threshold)
-                        DamageSystem(0);
+                        DamageSystem(TacticalShipSystem.Shields);
                 }
                 if (shields >= 0)
                     return;
@@ -1770,25 +1779,26 @@ namespace Rebellion.Gameplay
                     (hull - originalHull) * 100 / originalHull + random.NextInt(0, 100);
                 float score = (float)liveScore;
                 if (liveScore > 50 && score <= 65)
-                    DamageSystem(0);
+                    DamageSystem(TacticalShipSystem.Shields);
                 else if (score > 65 && score <= 80)
-                    DamageSystem(1);
+                    DamageSystem(TacticalShipSystem.Weapons);
                 else if (score > 80 && score <= 90)
-                    DamageSystem(2);
+                    DamageSystem(TacticalShipSystem.TractorBeam);
                 else if (score > 90 && score <= 95)
-                    DamageSystem(3);
+                    DamageSystem(TacticalShipSystem.Engines);
                 else if (score > 95 && score <= 100)
-                    DamageSystem(4);
+                    DamageSystem(TacticalShipSystem.Hyperdrive);
             }
 
             /// <summary>
             /// Records damage to one of the combatant's systems.
             /// </summary>
             /// <param name="system">The damaged system category.</param>
-            private void DamageSystem(int system)
+            private void DamageSystem(TacticalShipSystem system)
             {
-                int capacity = system == 4 ? InstalledHyperdriveSystems : 4;
-                _systemDamage[system] = Math.Min(_systemDamage[system] + 1, capacity);
+                int capacity =
+                    system == TacticalShipSystem.Hyperdrive ? InstalledHyperdriveSystems : 4;
+                _systemDamage.AddCombatDamage(system, capacity);
             }
 
             /// <summary>

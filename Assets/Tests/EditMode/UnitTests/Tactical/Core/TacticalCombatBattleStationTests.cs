@@ -110,7 +110,7 @@ namespace Rebellion.Tests.Tactical
 
             Assert.IsTrue(station.HasDeparted);
             Assert.IsFalse(station.IsOperational);
-            Assert.AreEqual(1000, station.Unit.Systems.Hull);
+            Assert.AreEqual(1000, station.Unit.Hull);
         }
 
         [Test]
@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Tactical
                     : ManufacturingStatus.Complete,
             };
             return new TacticalCombatBattleStation(
-                new TacticalCombatUnit(CombatUnit.Create(ship), CombatSide.Defender, 1000001),
+                new CombatUnit(ship, CombatSide.Defender, 1000001),
                 protectedByPlanet
             );
         }

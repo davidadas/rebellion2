@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
 using System.Text;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
@@ -21,7 +22,7 @@ namespace Rebellion.Multiplayer.Tactical
         private const int _maximumExpandedBytes = 4 * 1024 * 1024;
         private const int _headerBytes = 18;
         private const uint _magic = 0x43543252;
-        private const byte _version = 1;
+        private const byte _version = 2;
         private static readonly Encoding _utf8 = new UTF8Encoding(false, true);
         private static readonly uint[] _checksums = CreateChecksumTable();
 
@@ -317,7 +318,6 @@ namespace Rebellion.Multiplayer.Tactical
                 Vector(value.DesiredMovement);
                 _writer.Write((int)value.Status);
                 ID(value.CarrierID);
-                ID(value.TargetID);
                 _writer.Write(value.Hull);
                 _writer.Write(value.Shields);
                 _writer.Write(value.ShieldLimit);
@@ -334,10 +334,6 @@ namespace Rebellion.Multiplayer.Tactical
                 _writer.Write(value.CommandBudget);
                 _writer.Write(value.TurnRate);
                 _writer.Write(value.HasCollision);
-                _writer.Write(value.HasGroup);
-                _writer.Write(value.GroupID);
-                _writer.Write(value.HasRequestedGroup);
-                _writer.Write(value.RequestedGroupID);
             }
 
             /// <summary>
@@ -540,9 +536,9 @@ namespace Rebellion.Multiplayer.Tactical
                     SystemTime = _reader.ReadInt32(),
                     Paused = Boolean(),
                     Complete = Boolean(),
-                    Winner = (CombatSide)_reader.ReadInt32(),
-                    AttackerOutcome = (SpaceCombatSideOutcome)_reader.ReadInt32(),
-                    DefenderOutcome = (SpaceCombatSideOutcome)_reader.ReadInt32(),
+                    Winner = (SpaceCombatResult.BattleOutcome)_reader.ReadInt32(),
+                    AttackerOutcome = (SpaceCombatResult.SideOutcome)_reader.ReadInt32(),
+                    DefenderOutcome = (SpaceCombatResult.SideOutcome)_reader.ReadInt32(),
                     TerminalFlags = Array(() => Boolean(), 7),
                     StationCharge = _reader.ReadSingle(),
                     StationDeparted = Boolean(),
@@ -572,9 +568,8 @@ namespace Rebellion.Multiplayer.Tactical
                     Velocity = Vector(),
                     DesiredHeading = Vector(),
                     DesiredMovement = Vector(),
-                    Status = (TacticalCombatUnitStatus)_reader.ReadInt32(),
+                    Status = (CombatUnitStatus)_reader.ReadInt32(),
                     CarrierID = ID(),
-                    TargetID = ID(),
                     Hull = _reader.ReadSingle(),
                     Shields = _reader.ReadSingle(),
                     ShieldLimit = _reader.ReadSingle(),
@@ -591,10 +586,6 @@ namespace Rebellion.Multiplayer.Tactical
                     CommandBudget = _reader.ReadSingle(),
                     TurnRate = _reader.ReadSingle(),
                     HasCollision = Boolean(),
-                    HasGroup = Boolean(),
-                    GroupID = _reader.ReadInt32(),
-                    HasRequestedGroup = Boolean(),
-                    RequestedGroupID = _reader.ReadInt32(),
                 };
 
             /// <summary>
@@ -650,7 +641,7 @@ namespace Rebellion.Multiplayer.Tactical
                     Withdrawing = Boolean(),
                     WithdrawalMilliseconds = _reader.ReadSingle(),
                     HasWithdrawalPhase = Boolean(),
-                    WithdrawalPhase = (TacticalCombatWithdrawalPhase)_reader.ReadInt32(),
+                    WithdrawalPhase = (TacticalCombatSide.DeparturePhase)_reader.ReadInt32(),
                     AttackBudget = _reader.ReadSingle(),
                 };
 

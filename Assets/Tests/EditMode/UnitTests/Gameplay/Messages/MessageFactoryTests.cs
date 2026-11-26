@@ -5518,7 +5518,7 @@ namespace Rebellion.Tests.Gameplay
                     AttackerFleet = new Fleet { OwnerInstanceID = alliance.InstanceID },
                     DefenderFleet = new Fleet { OwnerInstanceID = empire.InstanceID },
                     Planet = target,
-                    Winner = CombatSide.Attacker,
+                    Winner = SpaceCombatResult.BattleOutcome.Attacker,
                 }
             );
 
@@ -5556,9 +5556,9 @@ namespace Rebellion.Tests.Gameplay
                     AttackerOwnerInstanceID = alliance.InstanceID,
                     DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
-                    Winner = CombatSide.Attacker,
-                    AttackerOutcome = SpaceCombatSideOutcome.Active,
-                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 }
             );
 
@@ -5589,9 +5589,9 @@ namespace Rebellion.Tests.Gameplay
                     AttackerOwnerInstanceID = alliance.InstanceID,
                     DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
-                    Winner = CombatSide.Attacker,
-                    AttackerOutcome = SpaceCombatSideOutcome.Active,
-                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                     AttackingUnits = { snapshot },
                 }
             );
@@ -5601,8 +5601,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(report);
             Assert.AreEqual(CombatReportType.SpaceBattle, report.CombatType);
             Assert.AreEqual(target.InstanceID, report.PlanetInstanceID);
-            Assert.AreEqual(CombatSide.Attacker, report.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, report.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, report.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, report.DefenderOutcome);
             Assert.AreEqual("Test Cruiser", report.AttackingUnits.Single().DisplayName);
             Assert.AreEqual(
                 "battle-result-cruiser",
@@ -5631,9 +5631,9 @@ namespace Rebellion.Tests.Gameplay
                     AttackerOwnerInstanceID = alliance.InstanceID,
                     DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
-                    Winner = CombatSide.Defender,
-                    AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
-                    DefenderOutcome = SpaceCombatSideOutcome.Active,
+                    Winner = SpaceCombatResult.BattleOutcome.Defender,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                     AttackerRetreatPlanetInstanceID = retreat.InstanceID,
                 }
             );
@@ -5673,7 +5673,7 @@ namespace Rebellion.Tests.Gameplay
                     AttackerOwnerInstanceID = alliance.InstanceID,
                     DefenderOwnerInstanceID = empire.InstanceID,
                     Planet = target,
-                    Winner = CombatSide.Attacker,
+                    Winner = SpaceCombatResult.BattleOutcome.Attacker,
                 }
             );
 

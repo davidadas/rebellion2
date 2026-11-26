@@ -19,7 +19,7 @@ namespace Rebellion.Tests.Tactical.Rendering
     {
         private GameObject _root;
         private TacticalCombatEffects _effects;
-        private readonly Dictionary<TacticalCombatUnit, Vector3> _positions = new();
+        private readonly Dictionary<CombatUnit, Vector3> _positions = new();
 
         /// <summary>
         /// Creates an isolated effects owner using the authored tactical shader.
@@ -53,7 +53,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         public void Advance_Torpedo_RemainsVisibleUntilTwoSecondLifetimeExpires()
         {
             TacticalCombatShot shot = CreateShot(TacticalWeaponType.Torpedo);
-            _effects.ShowShot(shot, 0);
+            _effects.ShowShot(shot, 0, false);
             _effects.Advance(1.5f);
             Assert.AreEqual(1, _root.GetComponentsInChildren<MeshRenderer>().Length);
             _effects.Advance(0.51f);
@@ -64,10 +64,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         public void ShowShot_ExpiredEffect_ReusesItsRendererAndGeometry()
         {
             TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
-            _effects.ShowShot(shot, 0);
+            _effects.ShowShot(shot, 0, false);
             MeshRenderer first = _root.GetComponentInChildren<MeshRenderer>();
             _effects.Advance(1.01f);
-            _effects.ShowShot(shot, 0);
+            _effects.ShowShot(shot, 0, false);
             Assert.AreSame(first, _root.GetComponentInChildren<MeshRenderer>());
             Assert.AreEqual(1, _root.transform.childCount);
         }
@@ -84,7 +84,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             float blue
         )
         {
-            _effects.ShowShot(CreateShot(weapon), faction);
+            _effects.ShowShot(CreateShot(weapon), faction, false);
             Assert.AreEqual(
                 new Color(red, green, blue),
                 _root.GetComponentInChildren<MeshRenderer>().sharedMaterial.color
@@ -114,7 +114,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             _positions[shot.Source] = origin;
             _positions[shot.Target] = new Vector3(10, 6, 20);
 
-            _effects.ShowShot(shot, 0);
+            _effects.ShowShot(shot, 0, false);
             Transform beam = _root.transform.GetChild(0);
             Assert.AreEqual(origin, beam.localPosition);
             _effects.Advance(.5f);
@@ -187,7 +187,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Dispose_ActiveEffect_ReleasesOwnedMeshMaterialAndObjects()
         {
-            _effects.ShowShot(CreateShot(TacticalWeaponType.Turbolaser), 1);
+            _effects.ShowShot(CreateShot(TacticalWeaponType.Turbolaser), 1, false);
             MeshRenderer renderer = _root.GetComponentInChildren<MeshRenderer>();
             Material material = renderer.sharedMaterial;
             Mesh mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
@@ -205,27 +205,23 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>A captured shot with a fixed ten-unit span.</returns>
         private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
         {
-            TacticalCombatUnit source = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "source",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit source = new(
+                new CapitalShip
+                {
+                    InstanceID = "source",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "target",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Defender,
                 1000001
             )
@@ -240,7 +236,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The test participant.</param>
         /// <returns>The encounter-local rendering position.</returns>
-        private Vector3 GetPresentationPosition(TacticalCombatUnit unit) =>
+        private Vector3 GetPresentationPosition(CombatUnit unit) =>
             _positions.TryGetValue(unit, out Vector3 position)
                 ? position
                 : new Vector3(unit.Position.X, unit.Position.Y, unit.Position.Z);

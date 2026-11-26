@@ -1,8 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
@@ -21,7 +22,6 @@ namespace Rebellion.Tactical
         private int _synchronizedSystemTime = 3;
         private int _synchronizedMovieID;
         private TacticalCombatBriefingSequence _remoteNotificationBriefing;
-        private TacticalCombatEnding _remoteNotificationEnding;
         private CombatSide? _synchronizedNotificationRecipient;
         private bool _synchronizedEntryPresentation;
         internal bool IsRefreshingSynchronizedPresentation { get; private set; }
@@ -90,32 +90,19 @@ namespace Rebellion.Tactical
                 GetSide(remote).FactionIndex,
                 message => EnqueueFactionNotification(remote, message)
             );
-            _remoteNotificationEnding = new TacticalCombatEnding(
-                GetSide(remote).FactionIndex,
-                message => EnqueueFactionNotification(remote, message),
-                () => { },
-                () => { }
-            );
-            foreach (TacticalCombatUnit unit in _units)
-            {
-                unit.TractorSourcesChanged += populated =>
-                    RecordSynchronizedEvent(
-                        new()
-                        {
-                            Kind = TacticalCombatEventKind.TractorSources,
-                            TargetID = unit.InstanceID,
-                            Enabled = populated,
-                        }
-                    );
-                unit.GravityWellPresentationRequested += () =>
-                    RecordSynchronizedEvent(
-                        new()
-                        {
-                            Kind = TacticalCombatEventKind.GravityWell,
-                            TargetID = unit.InstanceID,
-                        }
-                    );
-            }
+            TractorSourcesChanged += (unit, populated) =>
+                RecordSynchronizedEvent(
+                    new()
+                    {
+                        Kind = TacticalCombatEventKind.TractorSources,
+                        TargetID = unit.InstanceID,
+                        Enabled = populated,
+                    }
+                );
+            GravityWellPresentationRequested += unit =>
+                RecordSynchronizedEvent(
+                    new() { Kind = TacticalCombatEventKind.GravityWell, TargetID = unit.InstanceID }
+                );
         }
 
         /// <summary>
@@ -129,7 +116,7 @@ namespace Rebellion.Tactical
         /// <param name="replica">Whether this encounter is a passive view.</param>
         private void ConfigureSynchronization(bool replica)
         {
-            if (IsSynchronized || _legacyTimeAdvanced || _scheduler != null || SystemTime != 3)
+            if (IsSynchronized || _scheduler != null || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Synchronized combat ownership must be configured before playback starts."
                 );
@@ -448,7 +435,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The registered participant.</param>
         /// <returns>The participant projection.</returns>
-        private static TacticalCombatUnitSnapshot CaptureUnitSnapshot(TacticalCombatUnit unit)
+        private static TacticalCombatUnitSnapshot CaptureUnitSnapshot(CombatUnit unit)
         {
             TacticalCombatUnitSnapshot state = new()
             {
@@ -460,23 +447,22 @@ namespace Rebellion.Tactical
                 DesiredMovement = new(unit.DesiredMovement),
                 Status = unit.Status,
                 CarrierID = unit.CarrierID,
-                TargetID = unit.TargetID,
-                Hull = unit.Systems.Hull,
-                Shields = unit.Systems.Shields,
-                ShieldLimit = unit.Systems.MaximumShields,
-                AttackDelay = unit.Systems.AttackDelay,
-                MovementDelay = unit.Systems.MovementDelay,
+                Hull = unit.Hull,
+                Shields = unit.Shields,
+                ShieldLimit = unit.MaximumShields,
+                AttackDelay = unit.AttackDelay,
+                MovementDelay = unit.MovementDelay,
                 ComponentDamage = Enumerable
                     .Range(0, 5)
-                    .Select(index => unit.Systems.GetDamage((TacticalShipSystem)index))
+                    .Select(index => unit.GetDamage((TacticalShipSystem)index))
                     .ToArray(),
                 Charge = Enumerable
                     .Range(0, 4)
-                    .Select(index => unit.Weapons.GetCharge((TacticalWeaponArc)index))
+                    .Select(index => unit.GetBatteryCharge((TacticalWeaponArc)index))
                     .ToArray(),
                 Ready = Enumerable
                     .Range(0, 4)
-                    .Select(index => unit.Weapons.IsReady((TacticalWeaponArc)index))
+                    .Select(index => unit.IsBatteryReady((TacticalWeaponArc)index))
                     .ToArray(),
                 HyperspaceMilliseconds = unit.HyperspaceMilliseconds,
                 TractorRestraint = unit.TractorRestraint,
@@ -484,12 +470,9 @@ namespace Rebellion.Tactical
                 CommandBudget = unit.CommandBudget,
                 TurnRate = unit.TurnRate,
                 HasCollision = unit.HasCollision,
-                HasGroup = unit.GroupID.HasValue,
-                GroupID = unit.GroupID ?? 0,
-                HasRequestedGroup = unit.RequestedGroupID.HasValue,
-                RequestedGroupID = unit.RequestedGroupID ?? 0,
             };
-            unit.Systems.CaptureSnapshotSamples(state);
+            state.WeaponRechargeSample = unit.WeaponRechargeSample;
+            state.ShieldRechargeSample = unit.ShieldRechargeSample;
             return state;
         }
 

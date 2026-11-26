@@ -1,4 +1,6 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Units
@@ -15,12 +17,66 @@ namespace Rebellion.Game.Units
         public int Engines { get; set; }
         public int PrimaryHyperdrive { get; set; }
         public int BackupHyperdrive { get; set; }
-        public int RepairDueTick { get; set; }
-        public int RepairInterval { get; set; }
+
+        // Older saves and battle outcomes carried a separate component timer.
+        [PersistableMember(Name = "RepairDueTick")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private int LegacyRepairDueTick
+        {
+            get => 0;
+            set { }
+        }
+
+        [PersistableMember(Name = "RepairInterval")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private int LegacyRepairInterval
+        {
+            get => 0;
+            set { }
+        }
 
         [PersistableIgnore]
         public int Total =>
             Shields + Weapons + TractorBeam + Engines + PrimaryHyperdrive + BackupHyperdrive;
+
+        internal int GetCombatDamage(TacticalShipSystem system) =>
+            system switch
+            {
+                TacticalShipSystem.Shields => Shields,
+                TacticalShipSystem.Weapons => Weapons,
+                TacticalShipSystem.TractorBeam => TractorBeam,
+                TacticalShipSystem.Engines => Engines,
+                TacticalShipSystem.Hyperdrive => PrimaryHyperdrive + BackupHyperdrive,
+                _ => throw new ArgumentOutOfRangeException(nameof(system)),
+            };
+
+        internal void AddCombatDamage(TacticalShipSystem system, int capacity) =>
+            SetCombatDamage(system, Math.Min(GetCombatDamage(system) + 1, capacity));
+
+        internal void SetCombatDamage(TacticalShipSystem system, int damage)
+        {
+            switch (system)
+            {
+                case TacticalShipSystem.Shields:
+                    Shields = damage;
+                    break;
+                case TacticalShipSystem.Weapons:
+                    Weapons = damage;
+                    break;
+                case TacticalShipSystem.TractorBeam:
+                    TractorBeam = damage;
+                    break;
+                case TacticalShipSystem.Engines:
+                    Engines = damage;
+                    break;
+                case TacticalShipSystem.Hyperdrive:
+                    PrimaryHyperdrive = Math.Min(damage, 1);
+                    BackupHyperdrive = damage - PrimaryHyperdrive;
+                    break;
+            }
+        }
 
         /// <summary>
         /// Copies the component levels without sharing mutable campaign state.
@@ -36,8 +92,6 @@ namespace Rebellion.Game.Units
                 Engines = Engines,
                 PrimaryHyperdrive = PrimaryHyperdrive,
                 BackupHyperdrive = BackupHyperdrive,
-                RepairDueTick = RepairDueTick,
-                RepairInterval = RepairInterval,
             };
         }
 

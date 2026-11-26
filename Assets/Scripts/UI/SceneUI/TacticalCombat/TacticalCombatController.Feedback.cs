@@ -1,6 +1,7 @@
 using System;
 using System.Threading.Tasks;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 using UnityEngine;
 
@@ -42,7 +43,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// <param name="weapon">The impacting weapon.</param>
         /// <param name="impact">The affected surface or destruction.</param>
         private void HandleImpact(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
         ) => _view.Renderer.ShowImpact(unit, weapon, impact);
@@ -52,21 +53,21 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// </summary>
         /// <param name="station">The firing station.</param>
         /// <param name="target">The enemy capital ship.</param>
-        private void HandleSuperlaser(TacticalCombatUnit station, TacticalCombatUnit target) =>
+        private void HandleSuperlaser(CombatUnit station, CombatUnit target) =>
             _view.Renderer.ShowSuperlaser(station, target, _session.BattleDepth);
 
         /// <summary>
         /// Begins the effect for a direct destruction command before its participant is deactivated.
         /// </summary>
         /// <param name="unit">The unit admitted for destruction.</param>
-        private void HandleDestructionEffect(TacticalCombatUnit unit) =>
+        private void HandleDestructionEffect(CombatUnit unit) =>
             _view.Renderer.ShowDestruction(unit);
 
         /// <summary>
         /// Closes station controls after their station is destroyed.
         /// </summary>
         /// <param name="unit">The destroyed encounter participant.</param>
-        private void HandleDestroyed(TacticalCombatUnit unit)
+        private void HandleDestroyed(CombatUnit unit)
         {
             if (unit.IsBattleStation)
                 HandleStationControlsClosed();
@@ -76,7 +77,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// Closes station controls when their owned station has departed.
         /// </summary>
         /// <param name="unit">The departed participant.</param>
-        private void HandleStationDeparture(TacticalCombatUnit unit)
+        private void HandleStationDeparture(CombatUnit unit)
         {
             if (unit.IsBattleStation)
                 HandleStationControlsClosed();

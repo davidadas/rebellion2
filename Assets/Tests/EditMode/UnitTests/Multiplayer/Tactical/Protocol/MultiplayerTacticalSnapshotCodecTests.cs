@@ -3,6 +3,7 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
@@ -237,9 +238,9 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 SystemTime = 3,
                 Paused = true,
                 Complete = false,
-                Winner = (CombatSide)6,
-                AttackerOutcome = (SpaceCombatSideOutcome)7,
-                DefenderOutcome = (SpaceCombatSideOutcome)8,
+                Winner = (SpaceCombatResult.BattleOutcome)6,
+                AttackerOutcome = (SpaceCombatResult.SideOutcome)7,
+                DefenderOutcome = (SpaceCombatResult.SideOutcome)8,
                 TerminalFlags = new[] { true, false, true, false, true, false, true },
                 StationCharge = 10.125f,
                 StationDeparted = false,
@@ -269,9 +270,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Velocity = CreateVector(),
                 DesiredHeading = CreateVector(),
                 DesiredMovement = CreateVector(),
-                Status = (TacticalCombatUnitStatus)7,
+                Status = (CombatUnitStatus)7,
                 CarrierID = "\u96ea-unit",
-                TargetID = "\u96ea-unit",
                 Hull = 10.125f,
                 Shields = 11.125f,
                 ShieldLimit = 12.125f,
@@ -288,10 +288,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 CommandBudget = 23.125f,
                 TurnRate = 24.125f,
                 HasCollision = false,
-                HasGroup = true,
-                GroupID = 27,
-                HasRequestedGroup = true,
-                RequestedGroupID = 29,
             };
 
         /// <summary>
@@ -368,7 +364,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Withdrawing = true,
                 WithdrawalMilliseconds = 5.125f,
                 HasWithdrawalPhase = true,
-                WithdrawalPhase = (TacticalCombatWithdrawalPhase)7,
+                WithdrawalPhase = (TacticalCombatSide.DeparturePhase)7,
                 AttackBudget = 8.125f,
             };
 

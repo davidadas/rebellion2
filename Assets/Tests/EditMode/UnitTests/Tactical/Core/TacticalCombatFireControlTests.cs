@@ -5,6 +5,7 @@ using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -18,8 +19,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_FighterWithRearDesignatedTarget_UsesSharedBattery()
         {
-            TacticalCombatUnit source = CreateFiringFighter();
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, -10));
+            CombatUnit source = CreateFiringFighter();
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, -10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -35,8 +36,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_FighterWithRearOpportunityTarget_UsesSharedBattery()
         {
-            TacticalCombatUnit source = CreateFiringFighter();
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, -10));
+            CombatUnit source = CreateFiringFighter();
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, -10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
             TacticalCombatFireControl fireControl = new();
@@ -51,7 +52,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetStrongestArc_EqualStoredTotals_SelectsLaterLiveTotal()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(1, 1, 1);
+            CombatUnit source = CreateCapitalUnit(1, 1, 1);
 
             TacticalWeaponArc? arc = TacticalCombatFireControl.GetStrongestArc(source, false);
 
@@ -61,9 +62,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_EqualStoredBatteryTotals_SelectsLaterLiveTotal()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(2, 0, 1);
-            TacticalCombatUnit forward = CreateFighter(1000001, new Vector3(0, 0, 10));
-            TacticalCombatUnit starboard = CreateFighter(1000002, new Vector3(10, 0, 0));
+            CombatUnit source = CreateCapitalUnit(2, 0, 1);
+            CombatUnit forward = CreateFighter(1000001, new Vector3(0, 0, 10));
+            CombatUnit starboard = CreateFighter(1000002, new Vector3(10, 0, 0));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             TacticalCombatSpatialIndex index = new(new[] { source, forward, starboard });
             TacticalCombatFireControl fireControl = new();
@@ -79,9 +80,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_PreparingSource_DoesNotFire()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(2, 0, 0);
-            source.Status = TacticalCombatUnitStatus.PreparingHyperspace;
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            CombatUnit source = CreateCapitalUnit(2, 0, 0);
+            source.Status = CombatUnitStatus.PreparingHyperspace;
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -97,9 +98,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_PreparingDesignatedTarget_StillFires()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(2, 0, 0);
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
-            target.Status = TacticalCombatUnitStatus.PreparingHyperspace;
+            CombatUnit source = CreateCapitalUnit(2, 0, 0);
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            target.Status = CombatUnitStatus.PreparingHyperspace;
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -115,9 +116,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_PreparingOpportunityTarget_DoesNotFire()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(2, 0, 0);
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
-            target.Status = TacticalCombatUnitStatus.PreparingHyperspace;
+            CombatUnit source = CreateCapitalUnit(2, 0, 0);
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            target.Status = CombatUnitStatus.PreparingHyperspace;
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
             TacticalCombatFireControl fireControl = new();
@@ -139,16 +140,14 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 631,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 137, 0, 0, 0, 100 };
-            TacticalCombatUnit source = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "target",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+            CombatUnit source = new(ship, CombatSide.Attacker, 1);
+            CombatUnit target = new(
+                new Starfighter
+                {
+                    InstanceID = "target",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 CombatSide.Defender,
                 1000001
             )
@@ -169,8 +168,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_TorpedoDistanceJustAboveRange_DoesNotRoundIntoRange()
         {
-            TacticalCombatUnit source = CreateTorpedoFighter(10);
-            TacticalCombatUnit target = CreateCapitalUnit(0, 0, 0);
+            CombatUnit source = CreateTorpedoFighter(10);
+            CombatUnit target = CreateCapitalUnit(0, 0, 0);
             target.Position = new Vector3(10, 0.001f, 0);
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -192,10 +191,10 @@ namespace Rebellion.Tests.Tactical
             int shieldLimit
         )
         {
-            TacticalCombatUnit source = CreateTorpedoFighter(10);
-            TacticalCombatUnit target = CreateCapitalUnit(0, 0, 0, shieldLimit);
+            CombatUnit source = CreateTorpedoFighter(10);
+            CombatUnit target = CreateCapitalUnit(0, 0, 0, shieldLimit);
             target.Position = new Vector3(0, 0, 10);
-            target.Systems.RestorePools(1000, shields);
+            target.RestorePools(1000, shields);
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -221,8 +220,8 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 1000,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 3, 3, 3, 3, 100 };
-            TacticalCombatUnit source = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            CombatUnit source = new(ship, CombatSide.Attacker, 1);
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -235,18 +234,16 @@ namespace Rebellion.Tests.Tactical
 
             Assert.AreSame(target, shots.Single().Target);
             Assert.AreEqual(TacticalWeaponType.LaserCannon, shots[0].Weapon);
-            Assert.AreEqual(0, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
-            Assert.IsFalse(source.Weapons.IsReady(TacticalWeaponArc.Forward));
+            Assert.AreEqual(0, source.GetBatteryCharge(TacticalWeaponArc.Forward));
+            Assert.IsFalse(source.IsBatteryReady(TacticalWeaponArc.Forward));
         }
 
         [TestCase(false)]
         [TestCase(true)]
         public void AcquireTargets_DischargedBattery_FiresAgainOnlyAfterFullRecharge(bool isFighter)
         {
-            TacticalCombatUnit source = isFighter
-                ? CreateFiringFighter()
-                : CreateCapitalUnit(3, 0, 0);
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            CombatUnit source = isFighter ? CreateFiringFighter() : CreateCapitalUnit(3, 0, 0);
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -254,32 +251,32 @@ namespace Rebellion.Tests.Tactical
             List<TacticalCombatShot> shots = new();
             fireControl.ShotRequested += shots.Add;
             FixedRandomProvider random = new(new[] { 0d });
-            float capacity = source.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward);
+            float capacity = source.GetBatteryCapacity(TacticalWeaponArc.Forward);
             float rechargeNeeded = isFighter ? capacity * 2 : capacity;
             fireControl.AcquireTargets(source, group, index, random);
             Assert.AreEqual(1, shots.Count);
 
-            source.Weapons.Advance(1, rechargeNeeded / 2);
+            source.RechargeBatteries(1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(1, shots.Count);
             Assert.AreEqual(
                 isFighter ? 0 : capacity / 2,
-                source.Weapons.GetCharge(TacticalWeaponArc.Forward)
+                source.GetBatteryCharge(TacticalWeaponArc.Forward)
             );
 
-            source.Weapons.Advance(1, rechargeNeeded / 2);
+            source.RechargeBatteries(1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(2, shots.Count);
-            Assert.AreEqual(0, source.Weapons.GetCharge(TacticalWeaponArc.Forward));
+            Assert.AreEqual(0, source.GetBatteryCharge(TacticalWeaponArc.Forward));
         }
 
         [Test]
         public void AcquireTargets_DisabledCapitalBatteries_DoesNotConsumeFiringOpportunity()
         {
-            TacticalCombatUnit source = CreateCapitalUnit(3, 0, 0, weaponDamage: 4);
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
+            CombatUnit source = CreateCapitalUnit(3, 0, 0, weaponDamage: 4);
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -297,8 +294,8 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AcquireTargets_UnorderedDesignatedDistance_RetainsTargetForWeaponLanes()
         {
-            TacticalCombatUnit source = CreateFiringFighter();
-            TacticalCombatUnit target = CreateFighter(1000001, new Vector3(0, float.NaN, 10));
+            CombatUnit source = CreateFiringFighter();
+            CombatUnit target = CreateFighter(1000001, new Vector3(0, float.NaN, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
@@ -317,20 +314,18 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="range">The torpedo range in tactical distance units.</param>
         /// <returns>The armed tactical squadron.</returns>
-        private static TacticalCombatUnit CreateTorpedoFighter(int range) =>
+        private static CombatUnit CreateTorpedoFighter(int range) =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "source",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        LaserCannon = 3,
-                        LaserRange = 100,
-                        Torpedoes = 1,
-                        TorpedoRange = range,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = "source",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 3,
+                    LaserRange = 100,
+                    Torpedoes = 1,
+                    TorpedoRange = range,
+                },
                 CombatSide.Attacker,
                 2
             );
@@ -339,18 +334,16 @@ namespace Rebellion.Tests.Tactical
         /// Captures an active armed squadron without directional secondary batteries.
         /// </summary>
         /// <returns>The firing squadron.</returns>
-        private static TacticalCombatUnit CreateFiringFighter() =>
+        private static CombatUnit CreateFiringFighter() =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "source",
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                        LaserCannon = 3,
-                        LaserRange = 100,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = "source",
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                    LaserCannon = 3,
+                    LaserRange = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
@@ -364,7 +357,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="shieldLimit">The complete shield pool.</param>
         /// <param name="weaponDamage">The weapon-system damage carried into the encounter.</param>
         /// <returns>The campaign-backed tactical capital ship.</returns>
-        private static TacticalCombatUnit CreateCapitalUnit(
+        private static CombatUnit CreateCapitalUnit(
             int lasers,
             int ions,
             int turbolasers,
@@ -404,7 +397,7 @@ namespace Rebellion.Tests.Tactical
                 turbolasers,
                 100,
             };
-            return new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
+            return new(ship, CombatSide.Attacker, 1);
         }
 
         /// <summary>
@@ -413,16 +406,14 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The unique battle identifier.</param>
         /// <param name="position">The squadron's tactical position.</param>
         /// <returns>The campaign-backed tactical squadron.</returns>
-        private static TacticalCombatUnit CreateFighter(int index, Vector3 position) =>
+        private static CombatUnit CreateFighter(int index, Vector3 position) =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = "target-" + index,
-                        MaxSquadronSize = 12,
-                        CurrentSquadronSize = 12,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = "target-" + index,
+                    MaxSquadronSize = 12,
+                    CurrentSquadronSize = 12,
+                },
                 CombatSide.Defender,
                 index
             )

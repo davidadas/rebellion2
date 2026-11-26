@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
 
@@ -82,7 +83,7 @@ namespace Rebellion.Multiplayer.Tactical
             out Vector3 position,
             out Vector3 heading,
             out float hyperspaceMilliseconds,
-            out TacticalCombatUnitStatus status,
+            out CombatUnitStatus status,
             out bool isAlive
         )
         {
@@ -111,11 +112,8 @@ namespace Rebellion.Multiplayer.Tactical
         /// <param name="status">The lifecycle at the sampled timestamp.</param>
         /// <param name="isAlive">Whether the hull was alive at the sampled timestamp.</param>
         /// <returns>Whether this passive view has a captured lifecycle for the participant.</returns>
-        public bool TryGetLifecycle(
-            string unitID,
-            out TacticalCombatUnitStatus status,
-            out bool isAlive
-        ) => TryGetPose(unitID, out _, out _, out _, out status, out isAlive);
+        public bool TryGetLifecycle(string unitID, out CombatUnitStatus status, out bool isAlive) =>
+            TryGetPose(unitID, out _, out _, out _, out status, out isAlive);
 
         /// <summary>
         /// Stops observing projections while retaining the last displayed pose for departing readers.
@@ -138,6 +136,11 @@ namespace Rebellion.Multiplayer.Tactical
                 snapshot.Units.Length,
                 StringComparer.Ordinal
             );
+            Dictionary<string, int> groupsByUnit = new(StringComparer.Ordinal);
+            foreach (TacticalCombatGroupSnapshot group in snapshot.Groups)
+            foreach (string unitID in group.Members)
+                groupsByUnit.Add(unitID, group.GroupID);
+
             foreach (TacticalCombatUnitSnapshot state in snapshot.Units)
                 poses.Add(
                     state.UnitID,
@@ -146,7 +149,7 @@ namespace Rebellion.Multiplayer.Tactical
                         state.Heading.ToVector(),
                         state.Status,
                         state.CarrierID,
-                        state.HasGroup ? state.GroupID : null,
+                        groupsByUnit.TryGetValue(state.UnitID, out int groupID) ? groupID : null,
                         state.HyperspaceMilliseconds,
                         state.Hull > 0
                     )

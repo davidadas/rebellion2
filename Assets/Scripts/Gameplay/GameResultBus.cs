@@ -11,10 +11,8 @@ namespace Rebellion.Gameplay
     public sealed class GameResultBus
     {
         private readonly List<Subscription> _subscribers = new();
-        private readonly List<Subscription> _afterReactions = new();
         private readonly List<Subscription> _observers = new();
         private readonly List<GameResult> _pendingResults = new();
-        private PendingResultSource[] _pendingSources = Array.Empty<PendingResultSource>();
         private bool _isPublishing;
 
         /// <summary>
@@ -50,62 +48,6 @@ namespace Rebellion.Gameplay
             {
                 Publish(subscriber(results));
             });
-        }
-
-        /// <summary>
-        /// Subscribes a reaction after ordinary reaction waves settle and before observers run.
-        /// Each callback receives only newly delivered facts. All callbacks for that batch finish
-        /// before their queued follow-ups are delivered.
-        /// </summary>
-        /// <typeparam name="T">The result type delivered to the subscriber.</typeparam>
-        /// <param name="subscriber">The callback receiving each matching settled reaction batch.</param>
-        /// <returns>A handle that detaches the subscriber when disposed.</returns>
-        public IDisposable SubscribeAfterReactions<T>(Action<IReadOnlyList<T>> subscriber)
-            where T : GameResult
-        {
-            return Register(subscriber, _afterReactions);
-        }
-
-        /// <summary>
-        /// Subscribes an operation after ordinary reactions settle, queuing its returned facts
-        /// before terminal observation without delivering the completed facts again.
-        /// </summary>
-        /// <typeparam name="T">The result type delivered to the subscriber.</typeparam>
-        /// <param name="subscriber">The callback returning follow-up results.</param>
-        /// <returns>A handle that detaches the subscriber when disposed.</returns>
-        public IDisposable SubscribeAfterReactions<T>(
-            Func<IReadOnlyList<T>, List<GameResult>> subscriber
-        )
-            where T : GameResult
-        {
-            if (subscriber == null)
-                throw new ArgumentNullException(nameof(subscriber));
-
-            return SubscribeAfterReactions<T>(results =>
-            {
-                Publish(subscriber(results));
-            });
-        }
-
-        /// <summary>
-        /// Includes an operation's command-owned facts in ordinary reaction delivery until disposed.
-        /// Sources run when ordinary waves settle, before after-reaction callbacks and observers.
-        /// Each source must return and clear its pending facts, returning null or an empty list
-        /// when no work remains. Registration snapshots change only when scopes open or close.
-        /// </summary>
-        /// <param name="source">The operation-owned provider of completed pending facts.</param>
-        /// <returns>A scope that stops collecting from this provider when disposed.</returns>
-        public IDisposable UsePendingResultSource(Func<IReadOnlyList<GameResult>> source)
-        {
-            if (source == null)
-                throw new ArgumentNullException(nameof(source));
-
-            PendingResultSource registration = new(this, source);
-            PendingResultSource[] updated = new PendingResultSource[_pendingSources.Length + 1];
-            Array.Copy(_pendingSources, updated, _pendingSources.Length);
-            updated[updated.Length - 1] = registration;
-            _pendingSources = updated;
-            return registration;
         }
 
         /// <summary>
@@ -148,13 +90,28 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Publishes a batch and drains breadth-first reaction waves without recursive delivery.
-        /// Reactions registered after ordinary delivery settle before terminal observers run.
         /// Exceptions propagate, abandoning the unfinished delivery as in the existing processor.
         /// </summary>
         /// <param name="results">The completed changes; null collections and entries are ignored.</param>
         /// <returns>The settled results, or an empty list when queued by an active delivery.</returns>
         public List<GameResult> Publish(IEnumerable<GameResult> results)
         {
+            return Publish(results, null, null);
+        }
+
+        // Pending command results and aftermath belong to this publication. They run after
+        // ordinary reactions drain and before observers see the settled batch.
+        internal List<GameResult> Publish(
+            IEnumerable<GameResult> results,
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> settle
+        )
+        {
+            if (_isPublishing && collectPending != null)
+                throw new InvalidOperationException(
+                    "A result operation cannot collect pending commands during another publication."
+                );
+
             List<GameResult> incomingResults =
                 results?.Where(result => result != null).ToList() ?? new List<GameResult>();
             _pendingResults.AddRange(incomingResults);
@@ -180,13 +137,10 @@ namespace Rebellion.Gameplay
                                 subscriber.Deliver(currentResults);
                         }
 
-                        if (CollectPendingResultSources())
+                        if (CollectPending(collectPending))
                             continue;
 
-                        if (
-                            _afterReactions.Count == 0
-                            || completedReactionCount == settledResults.Count
-                        )
+                        if (settle == null || completedReactionCount == settledResults.Count)
                             break;
 
                         IReadOnlyList<GameResult> completedResults =
@@ -197,14 +151,13 @@ namespace Rebellion.Gameplay
                                     settledResults.Count - completedReactionCount
                                 );
                         completedReactionCount = settledResults.Count;
-                        foreach (Subscription subscriber in _afterReactions.ToArray())
-                            subscriber.Deliver(completedResults);
+                        Publish(settle(completedResults));
                     }
 
                     resolvedResults.AddRange(settledResults);
                     foreach (Subscription observer in _observers.ToArray())
                         observer.Deliver(settledResults);
-                } while (_pendingResults.Count > 0 || CollectPendingResultSources());
+                } while (_pendingResults.Count > 0 || CollectPending(collectPending));
 
                 return resolvedResults;
             }
@@ -215,36 +168,14 @@ namespace Rebellion.Gameplay
             }
         }
 
-        /// <summary>
-        /// Collects operation-owned facts without recursively delivering another result wave.
-        /// </summary>
-        /// <returns>Whether facts or registration changes require another ordinary settlement pass.</returns>
-        private bool CollectPendingResultSources()
+        private bool CollectPending(Func<IReadOnlyList<GameResult>> collect)
         {
-            PendingResultSource[] sources = _pendingSources;
-            foreach (PendingResultSource source in sources)
-                source.Collect(_pendingResults);
-            return _pendingResults.Count > 0 || !ReferenceEquals(sources, _pendingSources);
-        }
-
-        /// <summary>
-        /// Removes a disposed source while retaining the other operation scopes in order.
-        /// </summary>
-        /// <param name="source">The registration being detached.</param>
-        private void RemovePendingResultSource(PendingResultSource source)
-        {
-            int index = Array.IndexOf(_pendingSources, source);
-            if (index < 0)
-                return;
-            if (_pendingSources.Length == 1)
-            {
-                _pendingSources = Array.Empty<PendingResultSource>();
-                return;
-            }
-            PendingResultSource[] updated = new PendingResultSource[_pendingSources.Length - 1];
-            Array.Copy(_pendingSources, 0, updated, 0, index);
-            Array.Copy(_pendingSources, index + 1, updated, index, updated.Length - index);
-            _pendingSources = updated;
+            IReadOnlyList<GameResult> results = collect?.Invoke();
+            if (results != null)
+                foreach (GameResult result in results)
+                    if (result != null)
+                        _pendingResults.Add(result);
+            return _pendingResults.Count > 0;
         }
 
         /// <summary>
@@ -319,57 +250,6 @@ namespace Rebellion.Gameplay
 
                 _isDisposed = true;
                 _subscriptions.Remove(this);
-            }
-        }
-
-        /// <summary>
-        /// Owns a pending-fact provider for one explicitly scoped operation.
-        /// </summary>
-        private sealed class PendingResultSource : IDisposable
-        {
-            private readonly GameResultBus _owner;
-            private readonly Func<IReadOnlyList<GameResult>> _source;
-            private bool _isDisposed;
-
-            /// <summary>
-            /// Creates one operation-owned registration.
-            /// </summary>
-            /// <param name="owner">The bus that owns this registration.</param>
-            /// <param name="source">The provider returning completed pending facts.</param>
-            internal PendingResultSource(
-                GameResultBus owner,
-                Func<IReadOnlyList<GameResult>> source
-            )
-            {
-                _owner = owner;
-                _source = source;
-            }
-
-            /// <summary>
-            /// Appends completed facts unless the operation has detached its source.
-            /// </summary>
-            /// <param name="pending">The next ordinary reaction wave.</param>
-            internal void Collect(List<GameResult> pending)
-            {
-                if (_isDisposed)
-                    return;
-                IReadOnlyList<GameResult> results = _source();
-                if (results == null)
-                    return;
-                for (int index = 0; index < results.Count; index++)
-                    if (results[index] != null)
-                        pending.Add(results[index]);
-            }
-
-            /// <summary>
-            /// Detaches this source; repeated disposal leaves the remaining scopes unchanged.
-            /// </summary>
-            public void Dispose()
-            {
-                if (_isDisposed)
-                    return;
-                _isDisposed = true;
-                _owner.RemovePendingResultSource(this);
             }
         }
     }

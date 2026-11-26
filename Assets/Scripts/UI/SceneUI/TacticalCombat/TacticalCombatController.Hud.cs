@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 
 namespace Rebellion.UI.SceneUI.TacticalCombat
@@ -21,7 +22,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 _hud.Panel
                     is TacticalCombatHudPanel.SingleObject
                         or TacticalCombatHudPanel.ObjectGroup
-                && _session.Selection.PrimaryUnit is TacticalCombatUnit inspected
+                && _session.Selection.PrimaryUnit is CombatUnit inspected
             )
                 _view.SetInspection(inspected, _inspection.ReadUnit(inspected));
             if (

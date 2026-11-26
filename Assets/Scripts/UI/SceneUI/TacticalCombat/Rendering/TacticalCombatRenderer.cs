@@ -1,9 +1,13 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
-using TacticalCombatEffectDefinition = global::Rebellion.Game.SpaceCombat.TacticalCombatEffectDefinition;
+using TacticalCombatEffectDefinition = global::Rebellion.Content.TacticalCombatEffectDefinition;
 using Vector3N = System.Numerics.Vector3;
 
 namespace Rebellion.Tactical.Rendering
@@ -25,11 +29,12 @@ namespace Rebellion.Tactical.Rendering
         private Shader _fighterShader;
         private readonly List<Visual> _visuals = new();
         private readonly Dictionary<int, Visual> _visualsByIndex = new();
-        private readonly HashSet<TacticalCombatUnit> _yellowBoxes = new();
-        private readonly HashSet<TacticalCombatUnit> _factionBoxes = new();
-        private readonly HashSet<TacticalCombatUnit> _whiteBoxes = new();
+        private readonly HashSet<CombatUnit> _yellowBoxes = new();
+        private readonly HashSet<CombatUnit> _factionBoxes = new();
+        private readonly HashSet<CombatUnit> _whiteBoxes = new();
         private readonly bool[] _factionHighlight = new bool[2];
         private TacticalCombatSession _session;
+        private Dictionary<string, TacticalCombatUnitDefinition> _unitDefinitions;
         private ITacticalCombatPresentationTimeline _replicaPlayback;
         private readonly TacticalCombatMeshPicker _picker = new();
         private readonly List<ContentModelInstance> _instances = new();
@@ -116,6 +121,10 @@ namespace Rebellion.Tactical.Rendering
                     nameof(replicaPlayback)
                 );
             _session = session;
+            _unitDefinitions = session.Definition.Units.ToDictionary(
+                unit => unit.UnitTypeID,
+                StringComparer.Ordinal
+            );
             _replicaPlayback = replicaPlayback;
             _showPyro = videoSettings.ShowPyro;
             _highDetail = videoSettings.HighDetail;
@@ -146,6 +155,8 @@ namespace Rebellion.Tactical.Rendering
                 GetPresentationPosition,
                 GetCloseUpPrimary
             );
+            _session.TractorSourcesChanged += HandleTractorSourcesChanged;
+            _session.GravityWellPresentationRequested += HandleGravityWell;
             _navigation = new TacticalCombatNavigationRenderer(
                 _modelRoot,
                 _fighterShader,
@@ -161,7 +172,7 @@ namespace Rebellion.Tactical.Rendering
             PrepareEnvironment(session, assets, videoSettings.ShowPlanet);
             _battleCamera.farClipPlane = _distance * 2.5f;
             _battleCamera.nearClipPlane = 1;
-            foreach (TacticalCombatUnit unit in session.Units)
+            foreach (CombatUnit unit in session.Units)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 GameObject root = new GameObject(unit.InstanceID);
@@ -175,14 +186,15 @@ namespace Rebellion.Tactical.Rendering
                     CreateStation(visual, assets, session.BattleDepth);
                 else
                 {
-                    if (string.IsNullOrWhiteSpace(unit.Definition?.ModelPath))
+                    TacticalCombatUnitDefinition definition = GetUnitDefinition(unit);
+                    if (string.IsNullOrWhiteSpace(definition?.ModelPath))
                         throw new InvalidOperationException(
                             $"The tactical model is missing for '{unit.TypeID}'."
                         );
                     IReadOnlyList<string> paths =
-                        unit.Definition.ModelDetailPaths.Count > 0
-                            ? unit.Definition.ModelDetailPaths
-                            : new[] { unit.Definition.ModelPath };
+                        definition.ModelDetailPaths.Count > 0
+                            ? definition.ModelDetailPaths
+                            : new[] { definition.ModelPath };
                     visual.ModelDetails = new Transform[paths.Count];
                     for (int index = 0; index < paths.Count; index++)
                     {
@@ -195,7 +207,7 @@ namespace Rebellion.Tactical.Rendering
                         );
                         _instances.Add(instance);
                         ApplyEnvironmentTextures(instance.ModelRoot);
-                        instance.ModelRoot.localScale = Vector3.one * unit.Definition.ModelScale;
+                        instance.ModelRoot.localScale = Vector3.one * definition.ModelScale;
                         visual.ModelDetails[index] = detail.transform;
                     }
                 }
@@ -209,29 +221,33 @@ namespace Rebellion.Tactical.Rendering
                         _fighterShader,
                         session.GetSide(unit.Side).FactionIndex
                     );
-                    BindLockEffects(visual);
+                    if (unit.HasTractorSources)
+                        HandleTractorSourcesChanged(unit, true);
                 }
             }
             UpdateCamera();
             RenderUnits();
         }
 
+        private TacticalCombatUnitDefinition GetUnitDefinition(CombatUnit unit) =>
+            _unitDefinitions.GetValueOrDefault(unit.TypeID);
+
         /// <summary>
         /// Releases screen-owned models, materials, and GPU memory.
         /// </summary>
         private void OnDestroy()
         {
+            if (_session != null)
+            {
+                _session.TractorSourcesChanged -= HandleTractorSourcesChanged;
+                _session.GravityWellPresentationRequested -= HandleGravityWell;
+            }
             _effects?.Dispose();
             _impacts?.Dispose();
             _navigation?.Dispose();
             _holocube?.Dispose();
             foreach (Visual visual in _visuals)
-            {
-                visual.Unit.TractorSourcesChanged -= visual.TractorSourcesChanged;
-                visual.Unit.GravityWellPresentationRequested -=
-                    visual.GravityWellPresentationRequested;
                 visual.SelectionBox?.Dispose();
-            }
             foreach (ContentModelInstance instance in _instances)
                 instance.Dispose();
             _instances.Clear();
@@ -282,7 +298,7 @@ namespace Rebellion.Tactical.Rendering
 
         private sealed class Visual
         {
-            public TacticalCombatUnit Unit { get; }
+            public CombatUnit Unit { get; }
             public GameObject Root { get; }
             public Transform Billboard { get; set; }
             public MeshRenderer FighterRenderer { get; set; }
@@ -294,15 +310,13 @@ namespace Rebellion.Tactical.Rendering
             public Vector3? ArrivalPosition { get; set; }
             public Vector3? ArrivalDirection { get; set; }
             public bool ArrivalVisible { get; set; }
-            public Action<bool> TractorSourcesChanged { get; set; }
-            public Action GravityWellPresentationRequested { get; set; }
 
             /// <summary>
             /// Owns one unit's instantiated presentation.
             /// </summary>
             /// <param name="unit">The simulation unit.</param>
             /// <param name="root">The owned visual root.</param>
-            public Visual(TacticalCombatUnit unit, GameObject root)
+            public Visual(CombatUnit unit, GameObject root)
             {
                 Unit = unit;
                 Root = root;

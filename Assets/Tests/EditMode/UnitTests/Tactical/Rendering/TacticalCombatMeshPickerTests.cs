@@ -52,13 +52,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         public void Pick_OverlappingUnits_SelectsNearestVisibleFace()
         {
             AddUnit("far", 10);
-            TacticalCombatUnit expected = AddUnit("near", 5);
+            CombatUnit expected = AddUnit("near", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.AreSame(expected, actual);
             Assert.That(distance, Is.EqualTo(5).Within(0.001f));
@@ -70,7 +67,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             AddUnit("unit", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
+            CombatUnit actual = picker.Pick(
                 new Ray(new Vector3(.9f, .9f, 0), Vector3.forward),
                 ref distance
             );
@@ -83,33 +80,27 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             AddUnit("hidden", 3);
             root.transform.GetChild(0).gameObject.SetActive(false);
-            TacticalCombatUnit expected = AddUnit("visible", 5);
+            CombatUnit expected = AddUnit("visible", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.AreSame(expected, actual);
         }
 
-        [TestCase(TacticalCombatUnitStatus.PreparingHyperspace)]
-        [TestCase(TacticalCombatUnitStatus.EnteringHyperspace)]
-        [TestCase(TacticalCombatUnitStatus.AwaitingWithdrawal)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn)]
-        [TestCase(TacticalCombatUnitStatus.Destroyed)]
-        public void Pick_VisibleMesh_DisregardsParticipantStatus(TacticalCombatUnitStatus status)
+        [TestCase(CombatUnitStatus.PreparingHyperspace)]
+        [TestCase(CombatUnitStatus.EnteringHyperspace)]
+        [TestCase(CombatUnitStatus.AwaitingWithdrawal)]
+        [TestCase(CombatUnitStatus.Withdrawn)]
+        [TestCase(CombatUnitStatus.Destroyed)]
+        public void Pick_VisibleMesh_DisregardsParticipantStatus(CombatUnitStatus status)
         {
-            TacticalCombatUnit expected = AddUnit("near", 3);
+            CombatUnit expected = AddUnit("near", 3);
             expected.Status = status;
             AddUnit("far", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.AreSame(expected, actual);
         }
@@ -117,14 +108,11 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Pick_VisibleMeshWithZeroHull_LeavesEligibilityToSelectionOwner()
         {
-            TacticalCombatUnit expected = AddUnit("zero hull", 3, 0);
+            CombatUnit expected = AddUnit("zero hull", 3, 0);
             AddUnit("far", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.AreSame(expected, actual);
         }
@@ -134,13 +122,10 @@ namespace Rebellion.Tests.Tactical.Rendering
         {
             AddUnit("disabled", 3);
             root.transform.GetChild(0).GetComponent<MeshRenderer>().enabled = false;
-            TacticalCombatUnit expected = AddUnit("visible", 5);
+            CombatUnit expected = AddUnit("visible", 5);
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.AreSame(expected, actual);
         }
@@ -152,10 +137,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             root.transform.localScale = Vector3.one * 2;
             float distance = 100;
 
-            TacticalCombatUnit actual = picker.Pick(
-                new Ray(Vector3.zero, Vector3.forward),
-                ref distance
-            );
+            CombatUnit actual = picker.Pick(new Ray(Vector3.zero, Vector3.forward), ref distance);
 
             Assert.IsNotNull(actual);
             Assert.That(distance, Is.EqualTo(10).Within(0.001f));
@@ -168,17 +150,15 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <param name="depth">The triangle's local forward distance.</param>
         /// <param name="currentHull">The unit's current hull pool.</param>
         /// <returns>The associated participant.</returns>
-        private TacticalCombatUnit AddUnit(string id, float depth, int currentHull = 100)
+        private CombatUnit AddUnit(string id, float depth, int currentHull = 100)
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = id,
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = currentHull,
-                    }
-                ),
+            CombatUnit unit = new(
+                new CapitalShip
+                {
+                    InstanceID = id,
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = currentHull,
+                },
                 CombatSide.Attacker,
                 root.transform.childCount
             );

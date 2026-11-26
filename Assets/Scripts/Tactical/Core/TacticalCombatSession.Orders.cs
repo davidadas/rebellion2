@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
 
@@ -19,21 +20,21 @@ namespace Rebellion.Tactical
             TacticalCombatSide state = GetSide(side);
             if (!state.HasWithdrawalDestination || state.IsWithdrawing)
                 return false;
-            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+            foreach (CombatUnit unit in _registeredMobileUnits)
                 if (
-                    member.Unit.Side != side
-                    && !member.Unit.IsFighter
-                    && IsDisplayedMember(member.Unit)
-                    && member.Unit.HasGravityWell
+                    unit.Side != side
+                    && !unit.IsFighter
+                    && IsDisplayedMember(unit)
+                    && unit.HasGravityWell
                 )
                     return false;
             for (int pass = 0; pass < 2; pass++)
-                foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+                foreach (CombatUnit unit in _registeredMobileUnits)
                     if (
-                        member.Unit.Side == side
-                        && member.Unit.IsFighter == (pass == 0)
-                        && IsDisplayedMember(member.Unit)
-                        && member.CheckWithdrawalReadiness()
+                        unit.Side == side
+                        && unit.IsFighter == (pass == 0)
+                        && IsDisplayedMember(unit)
+                        && CheckWithdrawalReadiness(unit)
                     )
                         return true;
             return state.FactionIndex == 1
@@ -49,12 +50,12 @@ namespace Rebellion.Tactical
         {
             if (!CanWithdraw(PlayerSide))
                 return false;
-            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+            foreach (CombatUnit unit in _registeredMobileUnits)
                 if (
-                    member.Unit.Side == PlayerSide
-                    && !member.Unit.IsFighter
-                    && IsDisplayedMember(member.Unit)
-                    && !member.CheckWithdrawalReadiness()
+                    unit.Side == PlayerSide
+                    && !unit.IsFighter
+                    && IsDisplayedMember(unit)
+                    && !CheckWithdrawalReadiness(unit)
                 )
                 {
                     Audio.EnqueueNotification(GetSide(PlayerSide).FactionIndex == 0 ? 149 : 270);
@@ -97,6 +98,7 @@ namespace Rebellion.Tactical
                 return;
             SuspendDirectCommands();
             _ending.FinishWithoutAssessment();
+            Complete();
         }
 
         /// <summary>
@@ -113,15 +115,12 @@ namespace Rebellion.Tactical
                 || GetSide(side).IsWithdrawing
             )
                 return false;
+            bool hasAttackRun = false;
             foreach (TacticalCombatGroup group in _groups)
-                if (
-                    group.Order == TacticalCombatOrder.AttackBattleStation
-                    || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
-                )
-                    return false;
+                hasAttackRun |= IsBattleStationAttackOrdered(group);
             int own = 0;
             int opposing = 0;
-            foreach (TacticalCombatUnit unit in _units)
+            foreach (CombatUnit unit in _units)
                 if (unit.IsFighter && unit.IsEngaged)
                 {
                     if (unit.Side == side)
@@ -129,22 +128,31 @@ namespace Rebellion.Tactical
                     else
                         opposing++;
                 }
-            return own > opposing;
+            return TacticalCombatBattleStation.CanStartAttackRun(
+                BattleStation.CanReceiveAttackRun,
+                hasAttackRun,
+                own,
+                opposing
+            );
         }
+
+        private static bool IsBattleStationAttackOrdered(TacticalCombatGroup group) =>
+            group.Order == TacticalCombatOrder.AttackBattleStation
+            || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
 
         /// <summary>
         /// Queues the superlaser visual and delayed destruction for an admitted opposing target.
         /// </summary>
         /// <param name="target">The opposing tactical unit.</param>
         /// <returns>Whether the target resolves within this encounter.</returns>
-        public bool FireSuperlaser(TacticalCombatUnit target)
+        public bool FireSuperlaser(CombatUnit target)
         {
             RequireSimulationAuthority();
             if (
                 BattleStation == null
                 || target == null
                 || target.Side == BattleStation.Unit.Side
-                || !_unitsByID.TryGetValue(target.InstanceID, out TacticalCombatUnit registered)
+                || !_unitsByID.TryGetValue(target.InstanceID, out CombatUnit registered)
                 || !ReferenceEquals(target, registered)
             )
                 return false;
@@ -180,19 +188,11 @@ namespace Rebellion.Tactical
         internal void ApplyWithdrawal(CombatSide side)
         {
             TacticalCombatSide state = GetSide(side);
-            state.Withdrawal = new TacticalCombatWithdrawal(
-                state.FactionIndex,
-                state.InitialWithdrawalMilliseconds,
-                () =>
-                    (
-                        _synchronizationAuthority ? GetSynchronizedSelection(side) : Selection
-                    ).ProcessStationDeparture(),
-                () => QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit))
-            );
+            state.BeginWithdrawal();
             if (side == PlayerSide || _synchronizationAuthority)
                 EnqueueFactionNotification(side, state.FactionIndex == 0 ? 143 : 269);
             PrepareWithdrawalGroups(side);
-            state.Withdrawal.SelectInitialDelay(BattleStation?.IsOperational == true);
+            state.SelectWithdrawalDelay(BattleStation?.IsOperational == true);
         }
 
         /// <summary>
@@ -224,14 +224,13 @@ namespace Rebellion.Tactical
                     RequestAttackRunState(group.AttackRun, TacticalCombatAttackRunState.Cancelled);
                 SetOrder(
                     group,
-                    group.Members[0].Systems.HasHyperdrive
+                    group.Members[0].HasHyperdrive
                         ? TacticalCombatOrder.Withdraw
                         : TacticalCombatOrder.Recover
                 );
             }
-            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
+            foreach (CombatUnit unit in _registeredMobileUnits)
             {
-                TacticalCombatUnit unit = member.Unit;
                 if (unit.Side != side || unit.IsFighter || !IsDisplayedMember(unit))
                     continue;
                 TacticalCombatGroup applied = GetGroup(unit);
@@ -254,7 +253,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="unit">The deployed capital whose secondary ownership is inspected.</param>
         /// <returns>Whether a nonempty requested owner is not retained in an object category.</returns>
-        private bool HasUntrackedRequestedOwner(TacticalCombatUnit unit)
+        private bool HasUntrackedRequestedOwner(CombatUnit unit)
         {
             TacticalCombatGroup requested = GetRequestedGroup(unit);
             if (requested == null)
@@ -334,7 +333,7 @@ namespace Rebellion.Tactical
             )
                 group.AttackRun.ApplyState(TacticalCombatAttackRunState.Cancelled);
             if (group.ActiveOrder == TacticalCombatOrder.Recover)
-                foreach (TacticalCombatUnit unit in group.Members)
+                foreach (CombatUnit unit in group.Members)
                     ReleaseRecovery(unit);
             group.ApplyOrder(order);
             if (

@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 using UnityEngine;
 using Vector3N = System.Numerics.Vector3;
 
@@ -13,7 +14,7 @@ namespace Rebellion.Tactical.Rendering
     /// <returns>Whether the ray intersects an addressed object.</returns>
     public delegate bool TacticalCombatPick(
         Vector2 point,
-        out TacticalCombatUnit unit,
+        out CombatUnit unit,
         out Vector3N waypoint
     );
 
@@ -54,7 +55,7 @@ namespace Rebellion.Tactical.Rendering
             Vector2Int pixels,
             bool secondary,
             TacticalCombatPick pick,
-            out TacticalCombatUnit unit,
+            out CombatUnit unit,
             out Vector3N waypoint
         )
         {

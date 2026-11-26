@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Rebellion.Multiplayer;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
+using Rebellion.Tactical;
 using UnityEngine;
 
 /// <summary>

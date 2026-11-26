@@ -1,47 +1,30 @@
 using System;
-using System.Collections.Generic;
-using System.Numerics;
 
 namespace Rebellion.Tactical
 {
+    /// <summary>
+    /// Supplies the local view's entry timing to the encounter admission gate.
+    /// </summary>
+    public interface ITacticalCombatEntry
+    {
+        bool IsComplete { get; }
+        bool Advance(float elapsedMilliseconds);
+    }
+
     public sealed partial class TacticalCombatSession
     {
         /// <summary>
-        /// Starts the local player's arrival presentation before admitting battle commands or clocks.
+        /// Holds battle admission until the local arrival reports completion.
         /// </summary>
-        /// <param name="presentation">The renderer that owns arrival poses and the pause-control strobe.</param>
-        public void BeginArrival(ITacticalCombatArrivalPresentation presentation)
+        /// <param name="entry">The view sequence that releases battle admission.</param>
+        public void BeginArrival(ITacticalCombatEntry entry)
         {
             if (_arrival != null || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Arrival can only begin once before combat starts."
                 );
 
-            List<TacticalCombatArrivalMember> members = new();
-            foreach (TacticalCombatGroup group in _groups)
-            {
-                if (group.Side != PlayerSide)
-                    continue;
-                foreach (TacticalCombatUnit unit in group.Members)
-                    members.Add(
-                        new TacticalCombatArrivalMember(
-                            unit.Index,
-                            unit.Definition.PresentationIndex,
-                            unit.Side,
-                            unit.IsFighter,
-                            unit.Status == TacticalCombatUnitStatus.Docked,
-                            new Vector4(unit.Position, -1),
-                            new Vector4(unit.Heading, -1)
-                        )
-                    );
-            }
-            _arrival = new TacticalCombatArrival(
-                PlayerSide,
-                members,
-                GetSide(PlayerSide).Forward,
-                presentation,
-                messageID => Audio.EnqueueNotification(messageID)
-            );
+            _arrival = entry ?? throw new ArgumentNullException(nameof(entry));
             _arrivalStarting = true;
         }
 
@@ -55,9 +38,9 @@ namespace Rebellion.Tactical
             RequireSimulationAuthority();
             if (clock == null)
                 throw new ArgumentNullException(nameof(clock));
-            if (_scheduler != null || _legacyTimeAdvanced)
+            if (_scheduler != null)
                 throw new InvalidOperationException(
-                    "The battle clock must be bound once before delta-driven time advances."
+                    "The battle clock must be bound before advancement."
                 );
             _scheduler = new TacticalCombatScheduler(clock, new SchedulerSteps(this));
         }
@@ -105,57 +88,33 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
-        /// Advances a delta-driven encounter used without a bound production clock.
-        /// A zero interval can still drain pending commands after entry has completed.
+        /// Advances using the frame intervals as a controllable millisecond clock.
+        /// A zero interval flushes queued orders without advancing battle time.
         /// </summary>
-        /// <param name="elapsedMilliseconds">The elapsed unpaused frame duration.</param>
+        /// <param name="elapsedMilliseconds">The elapsed frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
             RequireSimulationAuthority();
-            if (_scheduler != null && elapsedMilliseconds != 0)
+            if (!(elapsedMilliseconds > 0) || float.IsInfinity(elapsedMilliseconds))
+            {
+                if (AdvanceArrival(elapsedMilliseconds))
+                    Selection.ProcessPendingCommands();
+                return;
+            }
+            if (_scheduler != null && !_usesFrameClock)
                 throw new InvalidOperationException(
                     "Clock-bound encounters require clocked advancement."
                 );
-            if (elapsedMilliseconds != 0)
-                _legacyTimeAdvanced = true;
-            if (!AdvanceArrival(elapsedMilliseconds))
-                return;
-            Selection.ProcessPendingCommands();
-            if (IsComplete || elapsedMilliseconds <= 0)
-                return;
-            _briefing.Advance(elapsedMilliseconds, CaptureBriefingState());
-            AdvanceSynchronizedNotifications(elapsedMilliseconds);
-            _elapsedInTick += elapsedMilliseconds;
-            if (IsPaused)
-                return;
-            if (_elapsedInTick >= 1000)
+            if (_scheduler == null)
             {
-                _elapsedInTick %= 1000;
-                if (_phase != 5)
-                    elapsedMilliseconds = 0;
-                else if (_completionStarted && _ending.AdvanceTerminalTick())
-                {
-                    Complete();
-                    return;
-                }
-                _progress++;
-                _phase = 0;
+                _usesFrameClock = true;
+                _scheduler = new TacticalCombatScheduler(
+                    () => unchecked((uint)(ulong)_elapsedFrameClock),
+                    new SchedulerSteps(this)
+                );
             }
-            if (_phase == 0)
-            {
-                if (_progress >= 3)
-                    DispatchCommands(_progress - 1);
-                _phase = 1;
-            }
-            else if (_phase == 1)
-            {
-                if (!_completionStarted)
-                    AdvanceSystems();
-                _systemTime++;
-                _phase = 5;
-            }
-            if (_progress >= 3 && !_completionStarted && elapsedMilliseconds > 0)
-                AdvanceMovement(elapsedMilliseconds);
+            _elapsedFrameClock += elapsedMilliseconds;
+            AdvanceClocked(elapsedMilliseconds);
         }
     }
 }

@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
@@ -161,13 +161,17 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 _view.SetBackgroundTexture(
                     assets.GetTexture(_session.Definition.BackgroundImagePath)
                 );
+            TacticalCombatArrival arrival = TacticalCombatArrival.CreateFor(
+                _session,
+                _view.Renderer
+            );
             if (_driver != null)
-                _driver.Prepare(_view.Renderer);
+                _driver.Prepare(arrival);
             else
             {
                 Stopwatch clock = Stopwatch.StartNew();
                 _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
-                _session.BeginArrival(_view.Renderer);
+                _session.BeginArrival(arrival);
             }
             CaptureHeldKeys();
             _ready = true;

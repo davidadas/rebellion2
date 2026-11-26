@@ -1,6 +1,8 @@
 using System;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Tactical

@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
 using Vector3N = System.Numerics.Vector3;
 
@@ -28,7 +30,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="unit">Receives the selected participant, or null for a navigation marker.</param>
         /// <param name="waypoint">Receives the selected navigation position.</param>
         /// <returns>Whether a visible selectable object was intersected.</returns>
-        public bool TryPick(Vector2 point, out TacticalCombatUnit unit, out Vector3N waypoint)
+        public bool TryPick(Vector2 point, out CombatUnit unit, out Vector3N waypoint)
         {
             unit = null;
             waypoint = default;
@@ -56,7 +58,7 @@ namespace Rebellion.Tactical.Rendering
         public bool TryPickNeighborhood(
             Vector2 point,
             bool secondary,
-            out TacticalCombatUnit unit,
+            out CombatUnit unit,
             out Vector3N waypoint
         ) =>
             TacticalCombatPointerPicker.TryPick(

@@ -1,4 +1,6 @@
 using System;
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
 using Vector3N = System.Numerics.Vector3;
 
@@ -51,7 +53,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="category">The current object or fighter category.</param>
         /// <param name="group">The category's current owner, or null for an empty slot.</param>
         /// <returns>The inspected object or applied group leader.</returns>
-        private TacticalCombatUnit GetCameraPrimary(int category, TacticalCombatGroup group) =>
+        private CombatUnit GetCameraPrimary(int category, TacticalCombatGroup group) =>
             group == null ? null
             : category < 8 && _session.Selection.Kind == TacticalCombatSelectionKind.ObjectGroup
                 ? _session.Selection.PrimaryUnit ?? group.PrimaryMember
@@ -66,7 +68,7 @@ namespace Rebellion.Tactical.Rendering
             if (!_cameraState.IsCategoryView || !_cameraState.Category.HasValue)
                 return null;
             int category = _cameraState.Category.Value;
-            TacticalCombatUnit primary = GetCameraPrimary(category, GetCameraGroup(category));
+            CombatUnit primary = GetCameraPrimary(category, GetCameraGroup(category));
             return primary != null && _visualsByIndex.ContainsKey(primary.Index)
                 ? primary.Index
                 : null;
@@ -82,11 +84,11 @@ namespace Rebellion.Tactical.Rendering
             TacticalCombatGroup group = GetCameraGroup(category);
             if (group == null)
                 return null;
-            TacticalCombatUnit primary = GetCameraPrimary(category, group);
+            CombatUnit primary = GetCameraPrimary(category, group);
             if (primary == null || !_visualsByIndex.TryGetValue(primary.Index, out Visual visual))
                 return null;
             Vector3? secondaryPosition = null;
-            TacticalCombatUnit secondary = null;
+            CombatUnit secondary = null;
             if (group.PrimaryWaypoint is Vector3N waypoint)
             {
                 if (_navigation.TryGetWorldPosition(waypoint, out Vector3 markerPosition))
@@ -128,7 +130,7 @@ namespace Rebellion.Tactical.Rendering
         /// Tracks the selected participant's live render position without translating the camera orbit.
         /// </summary>
         /// <param name="unit">The selected participant, or null to clear tracking.</param>
-        public void Focus(TacticalCombatUnit unit)
+        public void Focus(CombatUnit unit)
         {
             if (unit == null || !_visualsByIndex.TryGetValue(unit.Index, out Visual visual))
                 _cameraState.Track(null);

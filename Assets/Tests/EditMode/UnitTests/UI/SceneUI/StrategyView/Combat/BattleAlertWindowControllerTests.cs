@@ -94,9 +94,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = opponentFleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                Winner = CombatSide.Defender,
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                Winner = SpaceCombatResult.BattleOutcome.Defender,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                 AttackerRetreatPlanetInstanceID = _retreatPlanet.InstanceID,
             };
             _rootObject = UIComponentTestHelper.InstantiatePrefab(_strategyViewPrefabPath);
@@ -665,7 +665,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = opponentFleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                Winner = CombatSide.Defender,
+                Winner = SpaceCombatResult.BattleOutcome.Defender,
             };
 
             _pipeline.ProcessResults(new[] { result }, processMessages: false);
@@ -791,7 +791,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 PerspectiveOwnerInstanceID = _playerFactionId,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                Winner = CombatSide.Defender,
+                Winner = SpaceCombatResult.BattleOutcome.Defender,
                 Title = "Battle at Corellia",
                 Body = "The defending fleet was victorious.",
             };

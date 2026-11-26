@@ -1,4 +1,6 @@
 using System;
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
 using Vector3N = System.Numerics.Vector3;
 
@@ -114,14 +116,14 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="visual">The participant's presentation.</param>
         private void RefreshVisual(Visual visual)
         {
-            TacticalCombatUnit unit = visual.Unit;
-            TacticalCombatUnitStatus status = unit.Status;
-            bool isAlive = unit.Systems.IsAlive;
+            CombatUnit unit = visual.Unit;
+            CombatUnitStatus status = unit.Status;
+            bool isAlive = unit.IsAlive;
             if (
                 _replicaPlayback != null
                 && _replicaPlayback.TryGetLifecycle(
                     unit.InstanceID,
-                    out TacticalCombatUnitStatus presentationStatus,
+                    out CombatUnitStatus presentationStatus,
                     out bool presentationAlive
                 )
             )
@@ -134,21 +136,21 @@ namespace Rebellion.Tactical.Rendering
                 || _cameraState.IsCategoryView && _cameraState.TrackedObjectIndex == unit.Index
                 || isAlive
                     && status
-                        is TacticalCombatUnitStatus.Active
-                            or TacticalCombatUnitStatus.PreparingHyperspace
-                            or TacticalCombatUnitStatus.EnteringHyperspace
-                            or TacticalCombatUnitStatus.UnderConstruction
+                        is CombatUnitStatus.Active
+                            or CombatUnitStatus.PreparingHyperspace
+                            or CombatUnitStatus.EnteringHyperspace
+                            or CombatUnitStatus.UnderConstruction
                 || _impacts.KeepsModelVisible(unit);
             visual.Root.SetActive(visible);
             if (visual.SelectionBox != null)
             {
                 bool engaged =
                     status
-                    is TacticalCombatUnitStatus.Active
-                        or TacticalCombatUnitStatus.PreparingHyperspace
-                        or TacticalCombatUnitStatus.EnteringHyperspace
-                        or TacticalCombatUnitStatus.AwaitingWithdrawal
-                        or TacticalCombatUnitStatus.AttackingBattleStation;
+                    is CombatUnitStatus.Active
+                        or CombatUnitStatus.PreparingHyperspace
+                        or CombatUnitStatus.EnteringHyperspace
+                        or CombatUnitStatus.AwaitingWithdrawal
+                        or CombatUnitStatus.AttackingBattleStation;
                 int state =
                     !engaged ? 1
                     : _yellowBoxes.Contains(unit) ? 2
@@ -185,7 +187,7 @@ namespace Rebellion.Tactical.Rendering
             Vector3N position = visual.Unit.Position;
             Vector3N direction = visual.Unit.Heading;
             float hyperspaceMilliseconds = visual.Unit.HyperspaceMilliseconds;
-            TacticalCombatUnitStatus status = visual.Unit.Status;
+            CombatUnitStatus status = visual.Unit.Status;
             if (
                 _replicaPlayback != null
                 && _replicaPlayback.TryGetPose(
@@ -193,7 +195,7 @@ namespace Rebellion.Tactical.Rendering
                     out Vector3N presentationPosition,
                     out Vector3N presentationHeading,
                     out float presentationHyperspaceMilliseconds,
-                    out TacticalCombatUnitStatus presentationStatus,
+                    out CombatUnitStatus presentationStatus,
                     out _
                 )
             )
@@ -203,11 +205,11 @@ namespace Rebellion.Tactical.Rendering
                 hyperspaceMilliseconds = presentationHyperspaceMilliseconds;
                 status = presentationStatus;
             }
-            if (status == TacticalCombatUnitStatus.EnteringHyperspace)
+            if (status == CombatUnitStatus.EnteringHyperspace)
             {
                 TacticalCombatDeparturePose departure = TacticalCombatDeparturePose.Evaluate(
                     visual.Unit.Index,
-                    visual.Unit.Definition.PresentationIndex,
+                    visual.Unit.PresentationIndex,
                     position,
                     _session.GetSide(visual.Unit.Side).Forward,
                     hyperspaceMilliseconds
@@ -227,7 +229,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The registered encounter participant.</param>
         /// <returns>Its current position in the encounter's rendering frame.</returns>
-        private Vector3 GetPresentationPosition(TacticalCombatUnit unit)
+        private Vector3 GetPresentationPosition(CombatUnit unit)
         {
             Visual visual = _visualsByIndex[unit.Index];
             ApplyTransform(visual);
@@ -255,7 +257,7 @@ namespace Rebellion.Tactical.Rendering
             _factionBoxes.Clear();
             _whiteBoxes.Clear();
             TacticalCombatSelection selection = _session.Selection;
-            foreach (TacticalCombatUnit unit in selection.Highlights)
+            foreach (CombatUnit unit in selection.Highlights)
             {
                 bool yellow =
                     selection.Kind == TacticalCombatSelectionKind.MultipleObjects
@@ -266,7 +268,7 @@ namespace Rebellion.Tactical.Rendering
                 (yellow ? _yellowBoxes : _factionBoxes).Add(unit);
             }
             bool first = true;
-            foreach (TacticalCombatUnit target in selection.Targets)
+            foreach (CombatUnit target in selection.Targets)
             {
                 if (!selection.IsDisplayObject(target))
                     continue;

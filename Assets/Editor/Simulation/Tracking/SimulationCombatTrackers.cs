@@ -62,7 +62,7 @@ public static partial class HeadlessSimulationRunner
                                 : double.PositiveInfinity,
                         AttackerLossPercent = GetLossPercent(attacker),
                         DefenderLossPercent = GetLossPercent(defender),
-                        AttackerWon = result.Winner == CombatSide.Attacker,
+                        AttackerWon = result.Winner == SpaceCombatResult.BattleOutcome.Attacker,
                         AttackerOutcome = result.AttackerOutcome.ToString(),
                         DefenderOutcome = result.DefenderOutcome.ToString(),
                     }

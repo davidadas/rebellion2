@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
@@ -73,62 +73,86 @@ namespace Rebellion.Gameplay
             );
         }
 
-        /// <summary>
-        /// Checks that both factions and every active combat unit have authored tactical definitions.
-        /// </summary>
-        /// <param name="decision">The pending campaign encounter.</param>
-        /// <returns>Whether the encounter can be deployed.</returns>
-        internal bool Supports(SpaceCombatDecision decision)
+        internal sealed class EncounterRoster
         {
-            if (
-                decision == null
-                || !_factions.ContainsKey(decision.AttackerOwnerInstanceID)
-                || !_factions.ContainsKey(decision.DefenderOwnerInstanceID)
-            )
-                return false;
-            Planet planet = _queries.ResolveCombatPlanet(decision);
-            if (planet == null)
-                return false;
-            foreach (
-                string owner in new[]
-                {
-                    decision.AttackerOwnerInstanceID,
-                    decision.DefenderOwnerInstanceID,
-                }
+            internal Planet Planet { get; }
+            internal EncounterSide Attacker { get; }
+            internal EncounterSide Defender { get; }
+            internal IReadOnlyList<(
+                BaseSceneNode Source,
+                CombatSide Side,
+                int Index,
+                TacticalCombatUnitDefinition Definition
+            )> Units { get; }
+            internal IReadOnlyList<string> PersonnelHostIDs { get; }
+
+            internal EncounterRoster(
+                Planet planet,
+                EncounterSide attacker,
+                EncounterSide defender,
+                IReadOnlyList<(
+                    BaseSceneNode Source,
+                    CombatSide Side,
+                    int Index,
+                    TacticalCombatUnitDefinition Definition
+                )> units,
+                IReadOnlyList<string> personnelHostIDs
             )
             {
-                IReadOnlyList<Fleet> fleets = _queries.GetFleets(
-                    owner == decision.AttackerOwnerInstanceID
-                        ? decision.AttackerFleetInstanceIDs
-                        : decision.DefenderFleetInstanceIDs
-                );
-                foreach (
-                    CapitalShip ship in fleets.SelectMany(SpaceCombatQueries.GetActiveCapitalShips)
-                )
-                {
-                    if (!_definitions.ContainsKey(ship.TypeID))
-                        return false;
-                    foreach (
-                        Starfighter fighter in ship.GetChildren<Starfighter>()
-                            .Where(SpaceCombatQueries.IsActiveStarfighter)
-                    )
-                        if (!_definitions.ContainsKey(fighter.TypeID))
-                            return false;
-                }
-                foreach (
-                    Starfighter fighter in SpaceCombatQueries.GetActivePlanetStarfighters(
-                        planet,
-                        owner
-                    )
-                )
-                    if (!_definitions.ContainsKey(fighter.TypeID))
-                        return false;
+                Planet = planet;
+                Attacker = attacker;
+                Defender = defender;
+                Units = units;
+                PersonnelHostIDs = personnelHostIDs;
             }
-            CapitalShip construction = GetConstructionStation(planet);
-            return construction == null
-                || construction.OwnerInstanceID != decision.AttackerOwnerInstanceID
-                    && construction.OwnerInstanceID != decision.DefenderOwnerInstanceID
-                || _definitions.ContainsKey(construction.TypeID);
+        }
+
+        internal sealed class EncounterSide
+        {
+            internal CombatSide Side { get; }
+            internal TacticalCombatFactionDefinition Faction { get; }
+            internal IReadOnlyList<Fleet> Fleets { get; }
+            internal string OwnerID => Faction.FactionInstanceID;
+            internal int LastRegistrationIndex { get; private set; }
+
+            internal EncounterSide(
+                CombatSide side,
+                TacticalCombatFactionDefinition faction,
+                IReadOnlyList<Fleet> fleets
+            )
+            {
+                Side = side;
+                Faction = faction;
+                Fleets = fleets;
+                LastRegistrationIndex = faction.FactionIndex * 1000000;
+            }
+
+            internal int ReserveRegistrationIndex() => ++LastRegistrationIndex;
+        }
+
+        /// <summary>
+        /// Checks admission against the same roster used by deployment.
+        /// </summary>
+        internal bool Supports(SpaceCombatDecision decision) => TryPrepare(decision, out _);
+
+        internal bool TryPrepare(SpaceCombatDecision decision, out EncounterRoster roster)
+        {
+            roster = null;
+            if (decision == null)
+                return false;
+            try
+            {
+                roster = Prepare(decision);
+                return true;
+            }
+            catch (InvalidDataException)
+            {
+                return false;
+            }
+            catch (InvalidOperationException)
+            {
+                return false;
+            }
         }
 
         /// <summary>
@@ -137,7 +161,10 @@ namespace Rebellion.Gameplay
         /// <param name="decision">The pending campaign encounter.</param>
         /// <returns>The isolated deployed tactical session.</returns>
         internal TacticalCombatSession Create(SpaceCombatDecision decision) =>
-            CreateCore(decision, null, null, null);
+            Create(Prepare(decision));
+
+        internal TacticalCombatSession Create(EncounterRoster roster) =>
+            CreateCore(roster, null, null, null);
 
         /// <summary>
         /// Captures a shared battle with explicit random inputs and the peer's independent local faction view.
@@ -152,6 +179,13 @@ namespace Rebellion.Gameplay
             uint seed,
             uint scenerySeed,
             bool isReplica
+        ) => Create(Prepare(decision), seed, scenerySeed, isReplica);
+
+        internal TacticalCombatSession Create(
+            EncounterRoster roster,
+            uint seed,
+            uint scenerySeed,
+            bool isReplica
         )
         {
             if (string.IsNullOrWhiteSpace(_game.LocalPlayerFactionID))
@@ -159,7 +193,7 @@ namespace Rebellion.Gameplay
                     "Network combat requires an admitted local faction."
                 );
             TacticalCombatSession session = CreateCore(
-                decision,
+                roster,
                 seed,
                 scenerySeed,
                 _game.LocalPlayerFactionID
@@ -171,78 +205,47 @@ namespace Rebellion.Gameplay
             return session;
         }
 
-        /// <summary>
-        /// Builds the isolated roster while retaining the caller's explicit playback ownership.
-        /// </summary>
-        /// <param name="decision">The pending campaign encounter.</param>
-        /// <param name="seed">The optional captured battle seed.</param>
-        /// <param name="scenerySeed">The optional captured scenery seed.</param>
-        /// <param name="localFactionID">The local faction view, or the campaign's selected faction.</param>
-        /// <returns>The unadvanced encounter.</returns>
-        private TacticalCombatSession CreateCore(
-            SpaceCombatDecision decision,
-            uint? seed,
-            uint? scenerySeed,
-            string localFactionID
-        )
+        private EncounterRoster Prepare(SpaceCombatDecision decision)
         {
             Planet planet =
                 _queries.ResolveCombatPlanet(decision)
                 ?? throw new InvalidOperationException("The combat system is unavailable.");
-            ActiveBattle battle = new ActiveBattle
-            {
-                Kind = BattleKind.Space,
-                PlanetInstanceID = planet.InstanceID,
-            };
-            IReadOnlyList<Fleet>[] fleets =
-            {
-                _queries.GetFleets(decision.AttackerFleetInstanceIDs),
-                _queries.GetFleets(decision.DefenderFleetInstanceIDs),
-            };
-            string[] owners =
-            {
+            EncounterSide attacker = CaptureSide(
+                CombatSide.Attacker,
                 decision.AttackerOwnerInstanceID,
+                decision.AttackerFleetInstanceIDs
+            );
+            EncounterSide defender = CaptureSide(
+                CombatSide.Defender,
                 decision.DefenderOwnerInstanceID,
-            };
-            List<TacticalCombatUnit> units = new();
-            List<string> personnelHostInstanceIDs = new();
-            Dictionary<string, TacticalCombatUnit> byID = new(StringComparer.Ordinal);
-            TacticalCombatFactionDefinition[] factionDefinitions =
-                new TacticalCombatFactionDefinition[2];
-            int[] counters = new int[2];
-            Dictionary<string, int> sidesByOwner = new(StringComparer.Ordinal);
-            for (int side = 0; side < 2; side++)
+                decision.DefenderFleetInstanceIDs
+            );
+            Dictionary<string, EncounterSide> sidesByOwner = new(StringComparer.Ordinal)
             {
-                if (
-                    !_factions.TryGetValue(
-                        owners[side],
-                        out TacticalCombatFactionDefinition faction
-                    )
-                )
-                    throw new InvalidDataException(
-                        $"Tactical deployment is missing for faction '{owners[side]}'."
-                    );
-                if (faction.FactionIndex is < 0 or > 1 || Math.Abs(faction.ForwardZ) != 1)
-                    throw new InvalidDataException(
-                        $"Tactical deployment is invalid for faction '{owners[side]}'."
-                    );
-                factionDefinitions[side] = faction;
-                counters[side] = faction.FactionIndex * 1000000;
-                sidesByOwner.Add(owners[side], side);
-            }
-            if (factionDefinitions[0].FactionIndex == factionDefinitions[1].FactionIndex)
+                { attacker.OwnerID, attacker },
+                { defender.OwnerID, defender },
+            };
+            if (attacker.Faction.FactionIndex == defender.Faction.FactionIndex)
                 throw new InvalidDataException(
                     "Opposing factions require distinct tactical registration indexes."
                 );
+            List<string> personnelHostInstanceIDs = new();
+            List<(
+                BaseSceneNode Source,
+                CombatSide Side,
+                int Index,
+                TacticalCombatUnitDefinition Definition
+            )> units = new();
             CapitalShip construction = GetConstructionStation(planet);
-            int constructionSide =
-                construction == null ? -1 : Array.IndexOf(owners, construction.OwnerInstanceID);
+            EncounterSide constructionSide = null;
+            if (construction?.OwnerInstanceID != null)
+                sidesByOwner.TryGetValue(construction.OwnerInstanceID, out constructionSide);
             int constructionIndex = 0;
             foreach (Fleet fleet in planet.GetChildren<Fleet>())
             {
                 if (
                     fleet.Movement != null
-                    || !sidesByOwner.TryGetValue(fleet.OwnerInstanceID, out int side)
+                    || !sidesByOwner.TryGetValue(fleet.OwnerInstanceID, out EncounterSide fleetSide)
                 )
                     continue;
                 CapitalShip[] ships = SpaceCombatQueries
@@ -250,20 +253,9 @@ namespace Rebellion.Gameplay
                     .OrderBy(ship => ship.CanDestroyPlanets)
                     .ToArray();
                 foreach (CapitalShip ship in ships)
-                {
-                    CombatUnit combatant = battle.AddCombatant(ship);
-                    combatant.HasPlanetaryProtection = HasPlanetaryProtection(ship, planet);
-                    TacticalCombatUnit unit = new(
-                        combatant,
-                        (CombatSide)side,
-                        ++counters[side],
-                        RequireDefinition(ship.TypeID)
-                    );
-                    units.Add(unit);
-                    byID.Add(unit.InstanceID, unit);
-                }
-                if (constructionSide >= 0)
-                    constructionIndex = ++counters[constructionSide];
+                    RegisterUnit(ship, fleetSide, fleetSide.ReserveRegistrationIndex());
+                if (constructionSide != null)
+                    constructionIndex = constructionSide.ReserveRegistrationIndex();
                 foreach (CapitalShip ship in ships)
                 {
                     foreach (
@@ -271,25 +263,14 @@ namespace Rebellion.Gameplay
                             .Where(SpaceCombatQueries.IsActiveStarfighter)
                     )
                     {
-                        int fighterSide = GetRegistrationSide(
-                            fighter.OwnerInstanceID,
-                            sidesByOwner
-                        );
-                        CombatUnit combatant = battle.AddCombatant(fighter);
-                        TacticalCombatUnit unit = new(
-                            combatant,
-                            (CombatSide)fighterSide,
-                            ++counters[fighterSide],
-                            RequireDefinition(fighter.TypeID)
-                        );
-                        units.Add(unit);
-                        byID.Add(unit.InstanceID, unit);
+                        EncounterSide fighterSide = GetFactionSide(fighter.OwnerInstanceID);
+                        RegisterUnit(fighter, fighterSide, fighterSide.ReserveRegistrationIndex());
                     }
                     foreach (Officer officer in ship.GetChildren<Officer>())
                     {
                         if (((IMovable)officer).GetTransitMovement() != null)
                             continue;
-                        counters[GetRegistrationSide(officer.OwnerInstanceID, sidesByOwner)]++;
+                        GetFactionSide(officer.OwnerInstanceID).ReserveRegistrationIndex();
                         personnelHostInstanceIDs.Add(ship.InstanceID);
                     }
                     foreach (
@@ -297,62 +278,117 @@ namespace Rebellion.Gameplay
                             .Cast<ISceneNode>()
                             .Concat(ship.GetChildren<Regiment>())
                     )
-                        counters[GetRegistrationSide(payload.OwnerInstanceID, sidesByOwner)]++;
+                        GetFactionSide(payload.OwnerInstanceID).ReserveRegistrationIndex();
                 }
             }
             foreach (
                 Starfighter fighter in SpaceCombatQueries.GetActivePlanetStarfighters(planet, null)
             )
             {
-                int side = GetRegistrationSide(fighter.OwnerInstanceID, sidesByOwner);
-                CombatUnit combatant = battle.AddCombatant(fighter);
-                TacticalCombatUnit unit = new(
-                    combatant,
-                    (CombatSide)side,
-                    ++counters[side],
-                    RequireDefinition(fighter.TypeID)
-                );
-                units.Add(unit);
-                byID.Add(unit.InstanceID, unit);
+                EncounterSide fighterSide = GetFactionSide(fighter.OwnerInstanceID);
+                RegisterUnit(fighter, fighterSide, fighterSide.ReserveRegistrationIndex());
             }
             if (constructionIndex != 0)
+                RegisterUnit(construction, constructionSide, constructionIndex);
+
+            return new EncounterRoster(planet, attacker, defender, units, personnelHostInstanceIDs);
+
+            EncounterSide GetFactionSide(string ownerID)
             {
-                CombatUnit combatant = battle.AddCombatant(construction);
-                combatant.HasPlanetaryProtection = HasPlanetaryProtection(construction, planet);
-                TacticalCombatUnit station = new(
-                    combatant,
-                    (CombatSide)constructionSide,
-                    constructionIndex,
-                    RequireDefinition(construction.TypeID)
+                if (ownerID != null && sidesByOwner.TryGetValue(ownerID, out EncounterSide side))
+                    return side;
+                throw new InvalidDataException(
+                    $"A tactical participant belongs to an unregistered faction '{ownerID}'."
                 );
-                units.Add(station);
-                byID.Add(station.InstanceID, station);
             }
-            units.Sort(CompareUnitRegistration);
-            int[] deployedCounts = new int[2];
-            foreach (TacticalCombatUnit unit in units)
-                if (!unit.IsBattleStation && unit.Status == TacticalCombatUnitStatus.Active)
-                    deployedCounts[(int)unit.Side]++;
-            float depth = 100 + 3 * Math.Max(deployedCounts[0], deployedCounts[1]);
+
+            void RegisterUnit(BaseSceneNode unit, EncounterSide side, int index) =>
+                units.Add((unit, side.Side, index, RequireDefinition(unit.TypeID)));
+        }
+
+        private EncounterSide CaptureSide(
+            CombatSide side,
+            string ownerID,
+            IReadOnlyList<string> fleetIDs
+        )
+        {
+            if (string.IsNullOrEmpty(ownerID) || !_factions.TryGetValue(ownerID, out var faction))
+                throw new InvalidDataException(
+                    $"Tactical deployment is missing for faction '{ownerID}'."
+                );
+            if (faction.FactionIndex is < 0 or > 1 || Math.Abs(faction.ForwardZ) != 1)
+                throw new InvalidDataException(
+                    $"Tactical deployment is invalid for faction '{ownerID}'."
+                );
+            return new EncounterSide(side, faction, _queries.GetFleets(fleetIDs));
+        }
+
+        /// <summary>
+        /// Deploys the validated roster and initializes the isolated battle clock.
+        /// </summary>
+        private TacticalCombatSession CreateCore(
+            EncounterRoster roster,
+            uint? seed,
+            uint? scenerySeed,
+            string localFactionID
+        )
+        {
+            Planet planet = roster.Planet;
+            ActiveBattle battle = new()
+            {
+                Kind = BattleKind.Space,
+                PlanetInstanceID = planet.InstanceID,
+                AttackerOwnerInstanceID = roster.Attacker.OwnerID,
+                DefenderOwnerInstanceID = roster.Defender.OwnerID,
+            };
+            Dictionary<string, CombatUnit> byID = new(StringComparer.Ordinal);
+            List<CombatUnit>[] rosters = { new(), new() };
+            foreach (var participant in roster.Units)
+            {
+                CombatUnit unit = battle.AddCombatant(participant.Source);
+                if (participant.Source is CapitalShip ship)
+                    unit.HasPlanetaryProtection = HasPlanetaryProtection(ship, planet);
+                participant.Definition.InitializeCombatant(
+                    unit,
+                    participant.Side,
+                    participant.Index
+                );
+                rosters[(int)participant.Side].Add(unit);
+                byID.Add(unit.InstanceID, unit);
+            }
+
+            int maxDeployedCount = 0;
+            foreach (List<CombatUnit> sideUnits in rosters)
+            {
+                sideUnits.Sort(CompareUnitRegistration);
+                int deployedCount = sideUnits.Count(unit =>
+                    !unit.IsBattleStation && unit.Status == CombatUnitStatus.Active
+                );
+                maxDeployedCount = Math.Max(maxDeployedCount, deployedCount);
+            }
+            float depth = 100 + 3 * maxDeployedCount;
             List<TacticalCombatGroup> groups = new();
             TacticalCombatSide[] sides = new TacticalCombatSide[2];
             CombatSide playerSide =
-                owners[0] == (localFactionID ?? _game.Summary.PlayerFactionID)
+                roster.Attacker.OwnerID == (localFactionID ?? _game.Summary.PlayerFactionID)
                     ? CombatSide.Attacker
                     : CombatSide.Defender;
             for (int side = 0; side < 2; side++)
             {
-                Vector3 forward = new(0, 0, factionDefinitions[side].ForwardZ);
-                Deploy(units, (CombatSide)side, forward, depth);
+                EncounterSide entry = side == 0 ? roster.Attacker : roster.Defender;
+                EncounterSide opposingEntry = side == 0 ? roster.Defender : roster.Attacker;
+                List<CombatUnit> sideUnits = rosters[side];
+                Vector3 forward = new(0, 0, entry.Faction.ForwardZ);
+                Deploy(sideUnits, forward, depth);
                 (Officer admiral, Officer commander) = SpaceCombatCommands.GetCommandOfficers(
-                    fleets[side],
+                    entry.Fleets,
                     planet,
-                    owners[side]
+                    entry.OwnerID
                 );
                 SpaceCombatWithdrawalPlan withdrawal = _queries.GetWithdrawalPlan(
-                    fleets[side],
+                    entry.Fleets,
                     planet,
-                    owners[side]
+                    entry.OwnerID
                 );
                 string destinationID = withdrawal.GetRetreatPlanetInstanceID();
                 Planet destination =
@@ -372,29 +408,29 @@ namespace Rebellion.Gameplay
                             1
                         );
                 sides[side] = new TacticalCombatSide(
-                    (CombatSide)side,
-                    factionDefinitions[side].FactionIndex,
+                    entry.Side,
+                    entry.Faction.FactionIndex,
                     forward,
                     withdrawal.CanWithdraw,
                     departureSeconds * 1000,
-                    GetRetreatRatio(fleets, side, planet, owners[side]),
+                    GetRetreatRatio(entry, opposingEntry, planet),
                     FindOfficerHost(admiral, byID),
                     FindOfficerHost(commander, byID),
                     admiral?.GetEffectiveRating(SkillRating.Leadership) ?? 0,
                     commander?.GetEffectiveRating(SkillRating.Combat) ?? 0,
-                    (CombatSide)side != playerSide
+                    entry.Side != playerSide
                 );
-                foreach (TacticalCombatUnit unit in units)
-                    if ((int)unit.Side == side)
-                        unit.CommandBudget = sides[side].GetCommandBudget(unit.IsFighter);
-                CreateGroups(units, groups, (CombatSide)side, forward, ref counters[side]);
+                foreach (CombatUnit unit in sideUnits)
+                    unit.CommandBudget = sides[side].GetCommandBudget(unit.IsFighter);
+                int groupIndex = entry.LastRegistrationIndex;
+                CreateGroups(sideUnits, groups, forward, ref groupIndex);
             }
             groups.Sort(CompareGroupRegistration);
             LinearCongruentialRandomProvider random = seed.HasValue
                 ? new LinearCongruentialRandomProvider(seed.Value)
                 : _createRandom();
             TacticalCombatSession session = new TacticalCombatSession(
-                units,
+                battle,
                 groups,
                 sides[0],
                 sides[1],
@@ -414,28 +450,10 @@ namespace Rebellion.Gameplay
                             ? unchecked((int)scenerySeed.Value)
                             : TacticalCombatSeed.FromClock(_localClock())
                 ),
-                personnelHostInstanceIDs: personnelHostInstanceIDs
+                personnelHostInstanceIDs: roster.PersonnelHostIDs
             );
             _game.ActiveBattle = battle;
             return session;
-        }
-
-        /// <summary>
-        /// Resolves a participant's faction independently of the carrier that currently hosts it.
-        /// </summary>
-        /// <param name="ownerID">The unit's owning faction.</param>
-        /// <param name="sidesByOwner">The two factions captured for this encounter.</param>
-        /// <returns>The owning side's encounter index.</returns>
-        private static int GetRegistrationSide(
-            string ownerID,
-            IReadOnlyDictionary<string, int> sidesByOwner
-        )
-        {
-            if (ownerID != null && sidesByOwner.TryGetValue(ownerID, out int side))
-                return side;
-            throw new InvalidDataException(
-                $"A tactical participant belongs to an unregistered faction '{ownerID}'."
-            );
         }
 
         /// <summary>
@@ -496,13 +514,13 @@ namespace Rebellion.Gameplay
         /// <param name="officer">The selected command officer.</param>
         /// <param name="units">The captured unit index.</param>
         /// <returns>The hosting unit, or null for a ground-based or absent officer.</returns>
-        private static TacticalCombatUnit FindOfficerHost(
+        private static CombatUnit FindOfficerHost(
             Officer officer,
-            IReadOnlyDictionary<string, TacticalCombatUnit> units
+            IReadOnlyDictionary<string, CombatUnit> units
         )
         {
             string carrierID = officer?.GetParentOfType<CapitalShip>()?.InstanceID;
-            return carrierID != null && units.TryGetValue(carrierID, out TacticalCombatUnit carrier)
+            return carrierID != null && units.TryGetValue(carrierID, out CombatUnit carrier)
                 ? carrier
                 : null;
         }
@@ -510,26 +528,20 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Assigns alternating entry positions to capital ships and active fighter squadrons.
         /// </summary>
-        /// <param name="units">The ordered battle roster.</param>
-        /// <param name="side">The side being deployed.</param>
+        /// <param name="units">The side's units in registration order.</param>
         /// <param name="forward">The authored initial heading.</param>
         /// <param name="depth">The battle's deployment span.</param>
-        private static void Deploy(
-            IReadOnlyList<TacticalCombatUnit> units,
-            CombatSide side,
-            Vector3 forward,
-            float depth
-        )
+        private static void Deploy(IEnumerable<CombatUnit> units, Vector3 forward, float depth)
         {
             int capitalIndex = 0;
             int fighterIndex = 0;
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
             {
-                if (unit.Side != side || unit.IsBattleStation)
+                if (unit.IsBattleStation)
                     continue;
                 unit.Heading = forward;
                 unit.DesiredHeading = forward;
-                if (unit.Status == TacticalCombatUnitStatus.Docked)
+                if (unit.Status == CombatUnitStatus.Docked)
                     continue;
                 int index = unit.IsFighter ? fighterIndex++ : capitalIndex++;
                 float x = index == 0 ? 0 : ((index + 1) / 2) * 5 * (index % 2 == 1 ? 1 : -1);
@@ -544,28 +556,26 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Creates deployed fighter categories before partitioning the side's command groups.
         /// </summary>
-        /// <param name="units">The captured battle roster in registration order.</param>
+        /// <param name="units">The side's units in registration order.</param>
         /// <param name="groups">The groups receiving the new deployment.</param>
-        /// <param name="side">The deploying side.</param>
         /// <param name="forward">The side's heading.</param>
         /// <param name="counter">The side's shared registration counter.</param>
-        private static void CreateGroups(
-            IReadOnlyList<TacticalCombatUnit> units,
+        private void CreateGroups(
+            IEnumerable<CombatUnit> units,
             List<TacticalCombatGroup> groups,
-            CombatSide side,
             Vector3 forward,
             ref int counter
         )
         {
-            List<TacticalCombatUnit>[] fighters = { new(), new(), new(), new() };
+            List<CombatUnit>[] fighters = { new(), new(), new(), new() };
             List<TacticalCombatDeployment>[] capitals = { new(), new(), new() };
-            foreach (TacticalCombatUnit unit in units)
+            foreach (CombatUnit unit in units)
             {
-                if (unit.Side != side || unit.IsBattleStation)
+                if (unit.IsBattleStation)
                     continue;
                 if (unit.IsFighter)
                 {
-                    int category = unit.Definition.FighterGroup;
+                    int category = _definitions[unit.TypeID].FighterGroup;
                     if (category is < 0 or > 3)
                         throw new InvalidDataException(
                             $"Fighter group category is invalid for '{unit.TypeID}'."
@@ -609,7 +619,7 @@ namespace Rebellion.Gameplay
         /// <param name="forward">The side's heading.</param>
         /// <param name="counter">The side's shared registration counter.</param>
         private static void CreateFighterGroups(
-            IReadOnlyList<List<TacticalCombatUnit>> fighters,
+            IReadOnlyList<List<CombatUnit>> fighters,
             List<TacticalCombatGroup> groups,
             Vector3 forward,
             ref int counter
@@ -644,10 +654,10 @@ namespace Rebellion.Gameplay
                 int count = source?.Members.Count ?? 0;
                 if (count < 8)
                     continue;
-                List<TacticalCombatUnit> moved = new(count / 2);
+                List<CombatUnit> moved = new(count / 2);
                 for (int index = 0; index < count / 2; index++)
                     moved.Add(source.Members[index]);
-                foreach (TacticalCombatUnit unit in moved)
+                foreach (CombatUnit unit in moved)
                 {
                     source.RemoveRequestedMember(unit);
                     source.RemoveMember(unit);
@@ -692,7 +702,7 @@ namespace Rebellion.Gameplay
             TacticalCombatGroup group = null;
             for (int index = 0; index < ships.Count; index++)
             {
-                TacticalCombatUnit unit = ships[index].Unit;
+                CombatUnit unit = ships[index].Unit;
                 if (index % spacing == 0 && created < selected)
                 {
                     int slot = lower + created++;
@@ -727,7 +737,7 @@ namespace Rebellion.Gameplay
         /// <param name="group">The active capital group being aligned.</param>
         private static void AlignCapitalGroup(TacticalCombatGroup group)
         {
-            foreach (TacticalCombatUnit unit in group.Members)
+            foreach (CombatUnit unit in group.Members)
             {
                 Vector3 position = unit.Position;
                 Vector3 offset = group.Formation.GetMemberMovement(unit);
@@ -742,32 +752,27 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Calculates the strategic retreat threshold for a defended friendly system.
         /// </summary>
-        /// <param name="fleets">Both sides' participating fleets.</param>
         /// <param name="side">The side being assessed.</param>
+        /// <param name="opposingSide">The opposing side whose fleets supply the comparison.</param>
         /// <param name="planet">The battle system.</param>
-        /// <param name="ownerID">The assessed faction identifier.</param>
         /// <returns>The strategic controller's threshold, bounded above by nine tenths.</returns>
-        private float GetRetreatRatio(
-            IReadOnlyList<Fleet>[] fleets,
-            int side,
-            Planet planet,
-            string ownerID
-        )
+        private float GetRetreatRatio(EncounterSide side, EncounterSide opposingSide, Planet planet)
         {
             if (
-                planet.OwnerInstanceID != ownerID
-                || !SpaceCombatQueries.GetActivePlanetStarfighters(planet, ownerID).Any()
+                planet.OwnerInstanceID != side.OwnerID
+                || !SpaceCombatQueries.GetActivePlanetStarfighters(planet, side.OwnerID).Any()
             )
                 return 0.9f;
             if (
                 planet.IsHeadquarters
-                    && _game.GetFactionByOwnerInstanceID(ownerID)?.Settings.Headquarters.IsMobile
-                        == true
+                    && _game
+                        .GetFactionByOwnerInstanceID(side.OwnerID)
+                        ?.Settings.Headquarters.IsMobile == true
                 || _definition.CriticalPlanetInstanceIDs.Contains(planet.InstanceID)
             )
                 return 0;
-            int own = GetStrategicFleetAttack(fleets[side]);
-            int opposing = GetStrategicFleetAttack(fleets[side == 0 ? 1 : 0]);
+            int own = GetStrategicFleetAttack(side.Fleets);
+            int opposing = GetStrategicFleetAttack(opposingSide.Fleets);
             return Math.Min(opposing > 0 ? (float)own / opposing : own, 0.9f);
         }
 
@@ -788,9 +793,18 @@ namespace Rebellion.Gameplay
                     int bestStrength = 0;
                     for (int arc = 0; arc < 4; arc++)
                     {
-                        int turbo = ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][arc];
-                        int ion = ship.PrimaryWeapons[PrimaryWeaponType.IonCannon][arc];
-                        int laser = ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][arc];
+                        int turbo = ship.GetPrimaryWeaponStrength(
+                            PrimaryWeaponType.Turbolaser,
+                            (PrimaryWeaponArc)arc
+                        );
+                        int ion = ship.GetPrimaryWeaponStrength(
+                            PrimaryWeaponType.IonCannon,
+                            (PrimaryWeaponArc)arc
+                        );
+                        int laser = ship.GetPrimaryWeaponStrength(
+                            PrimaryWeaponType.LaserCannon,
+                            (PrimaryWeaponArc)arc
+                        );
                         int score = (turbo + ion) * 100 + laser * 100 / 6;
                         if (score > bestScore)
                         {
@@ -831,10 +845,8 @@ namespace Rebellion.Gameplay
         /// <param name="first">The first unit.</param>
         /// <param name="second">The second unit.</param>
         /// <returns>The registration comparison.</returns>
-        private static int CompareUnitRegistration(
-            TacticalCombatUnit first,
-            TacticalCombatUnit second
-        ) => first.Index.CompareTo(second.Index);
+        private static int CompareUnitRegistration(CombatUnit first, CombatUnit second) =>
+            first.Index.CompareTo(second.Index);
 
         /// <summary>
         /// Orders groups by their shared battle registration identifier.

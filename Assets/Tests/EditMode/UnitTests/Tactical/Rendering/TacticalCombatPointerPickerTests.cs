@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
@@ -16,11 +17,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         public void TryPick_FirstDiagonalHit_StopsBeforeOtherNeighboringRays()
         {
             List<Vector2> visited = new();
-            TacticalCombatPick pick = (
-                Vector2 point,
-                out TacticalCombatUnit unit,
-                out Vector3N waypoint
-            ) =>
+            TacticalCombatPick pick = (Vector2 point, out CombatUnit unit, out Vector3N waypoint) =>
             {
                 visited.Add(point);
                 unit = null;
@@ -33,7 +30,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 new Vector2Int(100, 50),
                 false,
                 pick,
-                out TacticalCombatUnit selected,
+                out CombatUnit selected,
                 out Vector3N position
             );
 
@@ -55,11 +52,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         )
         {
             List<Vector2> visited = new();
-            TacticalCombatPick pick = (
-                Vector2 point,
-                out TacticalCombatUnit unit,
-                out Vector3N waypoint
-            ) =>
+            TacticalCombatPick pick = (Vector2 point, out CombatUnit unit, out Vector3N waypoint) =>
             {
                 visited.Add(point);
                 unit = null;

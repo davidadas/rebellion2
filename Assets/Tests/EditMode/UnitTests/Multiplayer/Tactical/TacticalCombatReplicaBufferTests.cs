@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
@@ -216,12 +217,12 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             AssertPoseX(buffer, 10);
         }
 
-        [TestCase(TacticalCombatUnitStatus.Destroyed)]
-        [TestCase(TacticalCombatUnitStatus.Withdrawn)]
-        [TestCase(TacticalCombatUnitStatus.Recovered)]
-        [TestCase(TacticalCombatUnitStatus.Docked)]
+        [TestCase(CombatUnitStatus.Destroyed)]
+        [TestCase(CombatUnitStatus.Withdrawn)]
+        [TestCase(CombatUnitStatus.Recovered)]
+        [TestCase(CombatUnitStatus.Docked)]
         public void TryGetPose_RemovedVisibility_SnapsOnlyAtSampledTransitionTimestamp(
-            TacticalCombatUnitStatus status
+            CombatUnitStatus status
         )
         {
             TacticalCombatReplicaBuffer buffer = new();
@@ -230,7 +231,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
 
             buffer.Advance(99);
             Assert.IsTrue(buffer.TryGetPose("unit", out Pose before));
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, before.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, before.Status);
             Assert.AreEqual(Vector3.Zero, before.Position);
 
             buffer.Advance(1);
@@ -244,15 +245,11 @@ namespace Rebellion.Tests.Multiplayer.Tactical
         public void TryGetPose_NewlyActiveParticipant_RemainsDockedUntilSampledActivation()
         {
             TacticalCombatReplicaBuffer buffer = new();
-            buffer.Add(
-                1,
-                0,
-                Poses(new Pose(Vector3.Zero, Vector3.UnitZ, TacticalCombatUnitStatus.Docked))
-            );
+            buffer.Add(1, 0, Poses(new Pose(Vector3.Zero, Vector3.UnitZ, CombatUnitStatus.Docked)));
             buffer.Add(2, 100, Poses(At(100)));
             AssertPoseX(buffer, 0);
             Assert.IsTrue(buffer.TryGetPose("unit", out Pose docked));
-            Assert.AreEqual(TacticalCombatUnitStatus.Docked, docked.Status);
+            Assert.AreEqual(CombatUnitStatus.Docked, docked.Status);
 
             buffer.Add(3, 150, Poses(At(150)));
             buffer.Advance(25);
@@ -260,7 +257,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             buffer.Advance(25);
             AssertPoseX(buffer, 100);
             Assert.IsTrue(buffer.TryGetPose("unit", out Pose active));
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, active.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, active.Status);
             buffer.Advance(25);
 
             AssertPoseX(buffer, 125);
@@ -386,7 +383,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             new(
                 Vector3.Zero,
                 Vector3.UnitZ,
-                TacticalCombatUnitStatus.EnteringHyperspace,
+                CombatUnitStatus.EnteringHyperspace,
                 hyperspaceMilliseconds: milliseconds
             );
 

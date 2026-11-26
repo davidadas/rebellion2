@@ -1,5 +1,7 @@
+using Rebellion.Game.Combat;
+using Rebellion.UI;
 using UnityEngine;
-using TacticalCombatEffectKind = global::Rebellion.Game.SpaceCombat.TacticalCombatEffectKind;
+using TacticalCombatEffectKind = global::Rebellion.Content.TacticalCombatEffectKind;
 
 namespace Rebellion.Tactical.Rendering
 {
@@ -7,29 +9,16 @@ namespace Rebellion.Tactical.Rendering
         : MonoBehaviour,
             ITacticalCombatArrivalPresentation
     {
-        /// <summary>
-        /// Connects admitted tractor-source and gravity-generator transitions to their looping visuals.
-        /// </summary>
-        /// <param name="visual">The capital ship's owned presentation.</param>
-        private void BindLockEffects(Visual visual)
+        private void HandleTractorSourcesChanged(CombatUnit unit, bool enabled)
         {
-            if (!_showPyro)
-                return;
-            TacticalCombatUnit unit = visual.Unit;
-            if (unit.HasGravityWell)
-            {
-                visual.GravityWellPresentationRequested = () =>
-                    _impacts.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
-                unit.GravityWellPresentationRequested += visual.GravityWellPresentationRequested;
-            }
-            else
-            {
-                visual.TractorSourcesChanged = enabled =>
-                    _impacts.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, enabled);
-                unit.TractorSourcesChanged += visual.TractorSourcesChanged;
-                if (unit.HasTractorSources)
-                    visual.TractorSourcesChanged(true);
-            }
+            if (_showPyro && !unit.IsBattleStation && !unit.IsFighter && !unit.HasGravityWell)
+                _impacts.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, enabled);
+        }
+
+        private void HandleGravityWell(CombatUnit unit)
+        {
+            if (_showPyro && !unit.IsBattleStation && !unit.IsFighter && unit.HasGravityWell)
+                _impacts.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
         }
 
         /// <summary>
@@ -38,7 +27,11 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="shot">The applied discharge.</param>
         /// <param name="factionIndex">The firing faction's color index.</param>
         public void ShowShot(TacticalCombatShot shot, int factionIndex) =>
-            _effects.ShowShot(shot, factionIndex);
+            _effects.ShowShot(
+                shot,
+                factionIndex,
+                GetUnitDefinition(shot.Target)?.SplitTurbolaserBeams == true
+            );
 
         /// <summary>
         /// Advances visual effect timers independently of campaign and tactical simulation ticks.
@@ -57,7 +50,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="weapon">The impacting weapon.</param>
         /// <param name="impact">The affected surface or destruction transition.</param>
         public void ShowImpact(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
         )
@@ -70,7 +63,7 @@ namespace Rebellion.Tactical.Rendering
         /// Begins the capital model's authored destruction sequence.
         /// </summary>
         /// <param name="unit">The destroyed encounter participant.</param>
-        public void ShowDestruction(TacticalCombatUnit unit)
+        public void ShowDestruction(CombatUnit unit)
         {
             if (_showPyro)
                 _impacts.ShowDestruction(unit);
@@ -82,11 +75,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="station">The firing station.</param>
         /// <param name="target">The selected capital ship.</param>
         /// <param name="battleDepth">The battle's deployment span.</param>
-        public void ShowSuperlaser(
-            TacticalCombatUnit station,
-            TacticalCombatUnit target,
-            float battleDepth
-        )
+        public void ShowSuperlaser(CombatUnit station, CombatUnit target, float battleDepth)
         {
             foreach (Visual visual in _visuals)
                 if (ReferenceEquals(visual.Unit, station))

@@ -7,12 +7,14 @@ using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
+using Rebellion.UI;
 using UnityEngine;
 using EOSManager = PlayEveryWare.EpicOnlineServices.EOSManager;
 using NetworkConnectionType = Epic.OnlineServices.P2P.NetworkConnectionType;
@@ -379,13 +381,13 @@ namespace Rebellion.Tests.MultiplayerIntegration
             _report.defenderAliveFighterCraft = 0;
             _report.attackerHullTotal = 0;
             _report.defenderHullTotal = 0;
-            foreach (TacticalCombatUnit unit in _driver.Session.Units)
+            foreach (CombatUnit unit in _driver.Session.Units)
             {
-                if (!unit.Systems.IsAlive)
+                if (!unit.IsAlive)
                     continue;
                 if (unit.Side == CombatSide.Attacker)
                 {
-                    _report.attackerHullTotal += unit.Systems.Hull;
+                    _report.attackerHullTotal += unit.Hull;
                     if (unit.IsFighter)
                     {
                         _report.attackerAliveFighterSquadrons++;
@@ -396,7 +398,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 }
                 else
                 {
-                    _report.defenderHullTotal += unit.Systems.Hull;
+                    _report.defenderHullTotal += unit.Hull;
                     if (unit.IsFighter)
                     {
                         _report.defenderAliveFighterSquadrons++;
@@ -597,7 +599,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 session.UnitDestroyed += HandleDestroyed;
                 session.UnitWithdrawn += HandleWithdrawn;
                 session.FighterRecovered += HandleRecovered;
-                driver.Prepare(new Arrival());
+                driver.Prepare(TacticalCombatArrival.CreateFor(driver.Session, new Arrival()));
                 _state = _recoveryInterrupted ? "recovery-entry" : "combat";
                 SetPhase(_state);
             }
@@ -622,9 +624,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 _lastSystemTime = session.SystemTime;
                 _report.stateUpdatesObserved++;
             }
-            _report.hullDamageObserved |= session.Units.Any(unit =>
-                unit.Systems.Hull < unit.InitialHull
-            );
+            _report.hullDamageObserved |= session.Units.Any(unit => unit.Hull < unit.InitialHull);
             bool authoritativeState =
                 !session.IsReplica
                 || _driver.ReplicaPlayback.TryGetPose(session.Units[0].InstanceID, out _, out _);
@@ -758,7 +758,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
             _report.sharedPauseObserved = true;
             if (!_inspectionRequested)
             {
-                TacticalCombatUnit enemy = session.Units.First(unit =>
+                CombatUnit enemy = session.Units.First(unit =>
                     unit.Side != session.PlayerSide && unit.IsTargetable
                 );
                 session.Selection.QueueClear();
@@ -991,7 +991,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                     || group.RequestedTargets.Any(unit => unit.IsTargetable)
                 )
                     continue;
-                TacticalCombatUnit target =
+                CombatUnit target =
                     session.Units.FirstOrDefault(unit =>
                         unit.Side != session.PlayerSide
                         && unit.IsTargetable
@@ -1162,7 +1162,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="weapon">The discharged weapon type.</param>
         /// <param name="impact">The observed impact kind.</param>
         private void HandleImpact(
-            TacticalCombatUnit unit,
+            CombatUnit unit,
             TacticalWeaponType weapon,
             TacticalCombatImpactKind impact
         )
@@ -1175,7 +1175,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Counts actual destruction callbacks without changing unit state.
         /// </summary>
         /// <param name="unit">The naturally destroyed unit.</param>
-        private void HandleDestroyed(TacticalCombatUnit unit)
+        private void HandleDestroyed(CombatUnit unit)
         {
             _evidence.RecordUnit(TacticalCombatEventKind.Destroyed, unit);
             _report.destructions++;
@@ -1185,7 +1185,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Records the reliable withdrawal identity and its position in the common event stream.
         /// </summary>
         /// <param name="unit">The naturally departing participant.</param>
-        private void HandleWithdrawn(TacticalCombatUnit unit)
+        private void HandleWithdrawn(CombatUnit unit)
         {
             _evidence.RecordUnit(TacticalCombatEventKind.Withdrawn, unit);
             _report.withdrawals++;
@@ -1195,7 +1195,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// Records the reliable fighter recovery identity and its position in the common event stream.
         /// </summary>
         /// <param name="unit">The recovered fighter squadron.</param>
-        private void HandleRecovered(TacticalCombatUnit unit)
+        private void HandleRecovered(CombatUnit unit)
         {
             _evidence.RecordUnit(TacticalCombatEventKind.Recovered, unit);
             _report.recoveries++;

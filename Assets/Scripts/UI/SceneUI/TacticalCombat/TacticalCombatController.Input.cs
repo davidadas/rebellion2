@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using UnityEngine;
@@ -165,7 +166,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             bool hit = _view.Renderer.TryPickNeighborhood(
                 GetViewportPoint(eventData),
                 right,
-                out TacticalCombatUnit unit,
+                out CombatUnit unit,
                 out Vector3N waypoint
             );
             if (!right && !extend)
@@ -308,7 +309,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 ? null
                 : _session.Selection.Group
                     ?? (
-                        _session.Selection.PrimaryUnit is TacticalCombatUnit unit
+                        _session.Selection.PrimaryUnit is CombatUnit unit
                             ? _session.GetRequestedGroup(unit)
                             : null
                     );

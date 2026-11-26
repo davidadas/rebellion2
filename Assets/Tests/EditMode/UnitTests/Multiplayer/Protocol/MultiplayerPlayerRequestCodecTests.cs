@@ -1,9 +1,10 @@
 using System.IO;
 using System.Text;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.PlayerRequests;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Multiplayer;
 
@@ -98,7 +99,7 @@ namespace Rebellion.Tests.Multiplayer
         }
 
         [Test]
-        public void Deserialize_TacticalCompletion_PreservesTypedLossesAndTerminalFlags()
+        public void Deserialize_TacticalCompletion_PreservesTypedLossesAndSideOutcomes()
         {
             CompleteTacticalCombatRequest request = new()
             {
@@ -107,10 +108,12 @@ namespace Rebellion.Tests.Multiplayer
                 BattleID = "0123456789abcdef0123456789abcdef",
                 Outcome = new TacticalCombatOutcome
                 {
-                    TerminalFlags = new[] { false, true, false, false, false, false, false },
+                    Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
                     Ships = new[]
                     {
-                        new TacticalCombatShipOutcome
+                        new TacticalCombatOutcome.ShipOutcome
                         {
                             UnitID = "ship",
                             Hull = 37,
@@ -120,7 +123,7 @@ namespace Rebellion.Tests.Multiplayer
                     },
                     Fighters = new[]
                     {
-                        new TacticalCombatFighterOutcome
+                        new TacticalCombatOutcome.FighterOutcome
                         {
                             UnitID = "fighter",
                             SquadronSize = 5,
@@ -143,10 +146,9 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(restored.Outcome.Ships[0].Withdrawn);
             Assert.AreEqual(5, restored.Outcome.Fighters[0].SquadronSize);
             Assert.AreEqual("ship", restored.Outcome.Fighters[0].CarrierID);
-            CollectionAssert.AreEqual(
-                request.Outcome.TerminalFlags,
-                restored.Outcome.TerminalFlags
-            );
+            Assert.AreEqual(request.Outcome.Winner, restored.Outcome.Winner);
+            Assert.AreEqual(request.Outcome.AttackerOutcome, restored.Outcome.AttackerOutcome);
+            Assert.AreEqual(request.Outcome.DefenderOutcome, restored.Outcome.DefenderOutcome);
         }
 
         [Test]

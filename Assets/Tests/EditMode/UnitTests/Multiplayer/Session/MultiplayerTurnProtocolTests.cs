@@ -1976,13 +1976,16 @@ namespace Rebellion.Tests.Multiplayer
             Assert.IsTrue(peers.GuestSimulation.Tick.IsSettled);
             if (hostRetreat && guestRetreat)
             {
-                Assert.AreEqual(CombatSide.Draw, second.Result.SpaceCombatResult.Winner);
                 Assert.AreEqual(
-                    SpaceCombatSideOutcome.Withdrawn,
+                    SpaceCombatResult.BattleOutcome.Draw,
+                    second.Result.SpaceCombatResult.Winner
+                );
+                Assert.AreEqual(
+                    SpaceCombatResult.SideOutcome.Withdrawn,
                     second.Result.SpaceCombatResult.AttackerOutcome
                 );
                 Assert.AreEqual(
-                    SpaceCombatSideOutcome.Withdrawn,
+                    SpaceCombatResult.SideOutcome.Withdrawn,
                     second.Result.SpaceCombatResult.DefenderOutcome
                 );
                 Assert.IsNotEmpty(second.Result.SpaceCombatResult.AttackerRetreatPlanetInstanceID);
@@ -2312,11 +2315,11 @@ namespace Rebellion.Tests.Multiplayer
             if (hostRetreat && guestRetreat)
             {
                 Assert.AreEqual(
-                    SpaceCombatSideOutcome.Withdrawn,
+                    SpaceCombatResult.SideOutcome.Withdrawn,
                     completed.SpaceCombatResult.AttackerOutcome
                 );
                 Assert.AreEqual(
-                    SpaceCombatSideOutcome.Withdrawn,
+                    SpaceCombatResult.SideOutcome.Withdrawn,
                     completed.SpaceCombatResult.DefenderOutcome
                 );
             }

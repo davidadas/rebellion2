@@ -10,7 +10,6 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.SceneGraph;
-using Rebellion.Sessions.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
@@ -88,20 +87,37 @@ namespace Rebellion.Gameplay
         /// <param name="game">The active game graph.</param>
         /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
         /// <param name="canExecuteCommands">Optional application admission policy for external mutations.</param>
-        /// <param name="createTacticalAudio">Creates tactical presentation audio, or a silent boundary for headless sessions.</param>
         public GameSession(
             GameRoot game,
             GameDataCatalog gameData,
-            Func<bool> canExecuteCommands = null,
-            TacticalCombatAudioFactory createTacticalAudio = null
+            Func<bool> canExecuteCommands = null
+        )
+            : this(game, gameData, canExecuteCommands, null) { }
+
+        /// <summary>
+        /// Creates a campaign session using the host's tactical audio factory.
+        /// </summary>
+        /// <param name="game">The active game graph.</param>
+        /// <param name="gameData">The composed content catalog used to construct runtime dependencies.</param>
+        /// <param name="canExecuteCommands">Optional application admission policy for external mutations.</param>
+        /// <param name="createTacticalAudio">The audio factory, or null for silent audio.</param>
+        internal GameSession(
+            GameRoot game,
+            GameDataCatalog gameData,
+            Func<bool> canExecuteCommands,
+            TacticalCombatAudioFactory createTacticalAudio
         )
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
-            _createTacticalAudio = createTacticalAudio ?? HeadlessTacticalCombatAudio.Create;
+            _createTacticalAudio = createTacticalAudio ?? TacticalCombatAudio.Create;
             _canExecuteCommands = canExecuteCommands;
-            Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
+            Pipeline = new GameResultPipeline(
+                () => Results,
+                () => MessageObserver,
+                results => GetService<SpaceCombatAftermath>().HandleResults(results)
+            );
             Tick = new GameTickProcessor(
-                (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
+                Pipeline.ProcessResults,
                 results => Pipeline.ProcessMessageReactions(results)
             );
             _commands = new SimulationCommandQueue(() =>
@@ -417,7 +433,8 @@ namespace Rebellion.Gameplay
         private void RebuildContentBindings()
         {
             _gameData.BindOfficerDefinitions(GetPersistedOfficers());
-            _gameData.BindCapitalShipDefinitions(Game.GetSceneNodesByType<CapitalShip>());
+            if (Game.Metadata.SaveVersion < GameMetadata.ShipEquipmentSaveVersion)
+                _gameData.MigrateCapitalShipEquipment(Game.GetSceneNodesByType<CapitalShip>());
 
             IManufacturable[] templates = CopyTemplates(_gameData.Buildings)
                 .Cast<IManufacturable>()
@@ -427,7 +444,6 @@ namespace Rebellion.Gameplay
                 .Concat(CopyTemplates(_gameData.SpecialForces))
                 .ToArray();
 
-            _gameData.BindCapitalShipDefinitions(templates.OfType<CapitalShip>());
             foreach (Faction faction in Game.GetFactions())
                 faction.RebuildResearchCatalog(templates);
         }

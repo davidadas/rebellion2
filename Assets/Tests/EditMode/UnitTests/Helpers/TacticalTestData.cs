@@ -1,6 +1,6 @@
 using System;
+using Rebellion.Content;
 using Rebellion.Game;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
@@ -82,8 +82,7 @@ internal static class TacticalTestData
             data.CapitalShips,
             data.Starfighters,
             data.Regiments,
-            data.SpecialForces,
-            data.TacticalCombat
+            data.SpecialForces
         );
     }
 

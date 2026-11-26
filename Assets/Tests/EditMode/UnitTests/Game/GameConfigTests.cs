@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Game

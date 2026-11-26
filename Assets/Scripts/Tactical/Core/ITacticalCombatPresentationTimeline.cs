@@ -1,4 +1,5 @@
 using System.Numerics;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -34,7 +35,7 @@ namespace Rebellion.Tactical
             out Vector3 position,
             out Vector3 heading,
             out float hyperspaceMilliseconds,
-            out TacticalCombatUnitStatus status,
+            out CombatUnitStatus status,
             out bool isAlive
         );
 
@@ -45,6 +46,6 @@ namespace Rebellion.Tactical
         /// <param name="status">The sampled lifecycle.</param>
         /// <param name="isAlive">Whether the sampled hull was alive.</param>
         /// <returns>Whether a lifecycle exists for this participant.</returns>
-        bool TryGetLifecycle(string unitID, out TacticalCombatUnitStatus status, out bool isAlive);
+        bool TryGetLifecycle(string unitID, out CombatUnitStatus status, out bool isAlive);
     }
 }

@@ -149,9 +149,9 @@ namespace Rebellion.Game.Messages
         public string PlanetOwnerInstanceID { get; set; }
         public string AttackerOwnerInstanceID { get; set; }
         public string DefenderOwnerInstanceID { get; set; }
-        public CombatSide Winner { get; set; }
-        public SpaceCombatSideOutcome AttackerOutcome { get; set; }
-        public SpaceCombatSideOutcome DefenderOutcome { get; set; }
+        public SpaceCombatResult.BattleOutcome Winner { get; set; }
+        public SpaceCombatResult.SideOutcome AttackerOutcome { get; set; }
+        public SpaceCombatResult.SideOutcome DefenderOutcome { get; set; }
         public string AttackerRetreatPlanetInstanceID { get; set; }
         public string DefenderRetreatPlanetInstanceID { get; set; }
         public bool Success { get; set; }

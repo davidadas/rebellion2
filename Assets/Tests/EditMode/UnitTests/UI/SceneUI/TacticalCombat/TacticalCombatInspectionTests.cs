@@ -1,14 +1,13 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -40,8 +39,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_PendingRegroup_UsesRequestedAssignmentAndAppliedRouting()
         {
-            TacticalCombatUnit unit = Capital("first", CombatSide.Attacker, 1);
-            TacticalCombatUnit target = Capital("target", CombatSide.Defender, 1000001);
+            CombatUnit unit = Capital("first", CombatSide.Attacker, 1);
+            CombatUnit target = Capital("target", CombatSide.Defender, 1000001);
             TacticalCombatSession session = Encounter(unit, target);
             TacticalCombatGroup applied = session.GetGroup(unit);
             applied.SetTarget(target);
@@ -62,7 +61,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_EnemyCategory_DoesNotExposeOpponentAssignmentOrOverwriteTactics()
         {
-            TacticalCombatUnit unit = Capital("enemy", CombatSide.Defender, 1000001);
+            CombatUnit unit = Capital("enemy", CombatSide.Defender, 1000001);
             TacticalCombatSession session = Encounter(unit);
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadUnit(
@@ -77,8 +76,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_RequestedWaypointAndTarget_PrioritizesNavigationBeforeDispatch()
         {
-            TacticalCombatUnit unit = Capital("first", CombatSide.Attacker, 1);
-            TacticalCombatUnit target = Capital("target", CombatSide.Defender, 1000001);
+            CombatUnit unit = Capital("first", CombatSide.Attacker, 1);
+            CombatUnit target = Capital("target", CombatSide.Defender, 1000001);
             TacticalCombatSession session = Encounter(unit, target);
             TacticalCombatGroup group = session.GetGroup(unit);
             session.SetTarget(group, target);
@@ -95,10 +94,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_DisruptedNavigation_DisplaysDisabled()
         {
-            TacticalCombatUnit unit = Capital("first", CombatSide.Attacker, 1);
+            CombatUnit unit = Capital("first", CombatSide.Attacker, 1);
             TacticalCombatSession session = Encounter(unit);
             session.SetWaypoint(session.GetGroup(unit), new Vector3(30, 0, 20));
-            unit.Systems.ApplyDisruption(0, 1);
+            unit.ApplyDisruption(0, 1);
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadUnit(
                 unit
@@ -111,8 +110,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_EscortTarget_RetainsEscortLabel()
         {
-            TacticalCombatUnit unit = Capital("first", CombatSide.Attacker, 1);
-            TacticalCombatUnit target = Capital("target", CombatSide.Attacker, 2);
+            CombatUnit unit = Capital("first", CombatSide.Attacker, 1);
+            CombatUnit target = Capital("target", CombatSide.Attacker, 2);
             TacticalCombatSession session = Encounter(unit, target);
             TacticalCombatGroup group = session.GetGroup(unit);
             group.SetOrder(TacticalCombatOrder.HoldFire);
@@ -128,10 +127,10 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadUnit_FighterLosesHalfHull_UsesUpdatedWeaponRechargeSample()
         {
-            TacticalCombatUnit unit = Fighter("fighter", 1, 29, 12, 12);
+            CombatUnit unit = Fighter("fighter", 1, 29, 12, 12);
             TacticalCombatSession session = Encounter(unit);
-            unit.Systems.GetWeaponRecharge();
-            unit.Systems.ApplyHullLoss(48);
+            unit.GetWeaponRecharge();
+            unit.ApplyHullLoss(48);
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadUnit(
                 unit
@@ -143,9 +142,9 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadFighters_MixedTypesAndZeroHull_CountsRequestedTypeAndEveryAppliedMember()
         {
-            TacticalCombatUnit laterType = Fighter("later", 1, 31, 12, 8);
-            TacticalCombatUnit firstType = Fighter("first", 2, 29, 12, 6);
-            TacticalCombatUnit lost = Fighter("lost", 3, 29, 12, 12);
+            CombatUnit laterType = Fighter("later", 1, 31, 12, 8);
+            CombatUnit firstType = Fighter("first", 2, 29, 12, 6);
+            CombatUnit lost = Fighter("lost", 3, 29, 12, 12);
             TacticalCombatGroup group = new(
                 10,
                 new[] { laterType, firstType, lost },
@@ -155,7 +154,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 new[] { laterType, firstType, lost },
                 new[] { group }
             );
-            lost.Systems.Destroy();
+            lost.Destroy();
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadFighters(
                 group,
@@ -171,8 +170,8 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadFighters_PendingMemberTransfer_SeparatesRequestedTypeFromAppliedTotals()
         {
-            TacticalCombatUnit first = Fighter("first", 1, 29, 12, 6);
-            TacticalCombatUnit second = Fighter("second", 2, 29, 12, 8);
+            CombatUnit first = Fighter("first", 1, 29, 12, 6);
+            CombatUnit second = Fighter("second", 2, 29, 12, 8);
             TacticalCombatGroup group = new(10, new[] { first, second }, Vector3.UnitZ);
             TacticalCombatSession session = EncounterWithGroups(
                 new[] { first, second },
@@ -194,7 +193,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadFighters_NoAddressedFactionType_LeavesPreviewAndCountsUnchanged()
         {
-            TacticalCombatUnit unit = Fighter("first", 1, 29, 12, 12);
+            CombatUnit unit = Fighter("first", 1, 29, 12, 12);
             TacticalCombatGroup group = new(10, new[] { unit }, Vector3.UnitZ);
             TacticalCombatSession session = EncounterWithGroups(new[] { unit }, new[] { group });
 
@@ -211,11 +210,11 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         [Test]
         public void ReadFighters_RecoverOrder_DisplaysRecoverWithoutMovementDisabledOverride()
         {
-            TacticalCombatUnit unit = Fighter("first", 1, 29, 12, 12);
+            CombatUnit unit = Fighter("first", 1, 29, 12, 12);
             TacticalCombatGroup group = new(10, new[] { unit }, Vector3.UnitZ);
             TacticalCombatSession session = EncounterWithGroups(new[] { unit }, new[] { group });
             group.SetOrder(TacticalCombatOrder.Recover);
-            unit.Systems.ApplyDisruption(0, 1);
+            unit.ApplyDisruption(0, 1);
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadFighters(
                 group,
@@ -233,7 +232,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <param name="side">The participating side.</param>
         /// <param name="index">The tactical registration key.</param>
         /// <returns>The captured participant.</returns>
-        private static TacticalCombatUnit Capital(string name, CombatSide side, int index)
+        private static CombatUnit Capital(string name, CombatSide side, int index)
         {
             CapitalShip ship = new()
             {
@@ -244,12 +243,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 Hyperdrive = 1,
             };
             ship.AssignName(name);
-            return new(
-                CombatUnit.Create(ship),
-                side,
-                index,
-                new TacticalCombatUnitDefinition { PresentationIndex = 1 }
-            );
+            return new(ship, side, index) { PresentationIndex = 1 };
         }
 
         /// <summary>
@@ -261,7 +255,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <param name="maximum">The complete fighter count.</param>
         /// <param name="current">The remaining fighter count.</param>
         /// <returns>The captured squadron.</returns>
-        private static TacticalCombatUnit Fighter(
+        private static CombatUnit Fighter(
             string id,
             int index,
             int type,
@@ -269,25 +263,25 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             int current
         ) =>
             new(
-                CombatUnit.Create(
-                    new Starfighter
-                    {
-                        InstanceID = id,
-                        MaxSquadronSize = maximum,
-                        CurrentSquadronSize = current,
-                    }
-                ),
+                new Starfighter
+                {
+                    InstanceID = id,
+                    MaxSquadronSize = maximum,
+                    CurrentSquadronSize = current,
+                },
                 CombatSide.Attacker,
-                index,
-                new TacticalCombatUnitDefinition { PresentationIndex = type }
-            );
+                index
+            )
+            {
+                PresentationIndex = type,
+            };
 
         /// <summary>
         /// Builds one separate applied command group for each capital.
         /// </summary>
         /// <param name="units">The ordered participants.</param>
         /// <returns>The encounter retaining their applied ownership.</returns>
-        private static TacticalCombatSession Encounter(params TacticalCombatUnit[] units)
+        private static TacticalCombatSession Encounter(params CombatUnit[] units)
         {
             TacticalCombatGroup[] groups = new TacticalCombatGroup[units.Length];
             for (int index = 0; index < units.Length; index++)
@@ -302,7 +296,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <param name="groups">Their deployed applied groups.</param>
         /// <returns>The manually controlled encounter.</returns>
         private static TacticalCombatSession EncounterWithGroups(
-            TacticalCombatUnit[] units,
+            CombatUnit[] units,
             TacticalCombatGroup[] groups
         ) =>
             new(

@@ -1,8 +1,8 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Tactical;
 
@@ -12,26 +12,24 @@ namespace Rebellion.Tests.Tactical
     public sealed class TacticalCombatUnitTests
     {
         [Test]
-        public void Constructor_ReusedCombatant_CreatesIndependentSimulationState()
+        public void Constructor_ReusedCampaignShip_CreatesIndependentCombatants()
         {
-            CombatUnit combatant = CombatUnit.Create(
-                new CapitalShip
-                {
-                    InstanceID = "ship",
-                    MaxHullStrength = 100,
-                    CurrentHullStrength = 100,
-                }
-            );
-            TacticalCombatUnit first = new(combatant, CombatSide.Attacker, 1);
-            TacticalCombatUnit second = new(combatant, CombatSide.Attacker, 1);
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            CombatUnit first = new(ship, CombatSide.Attacker, 1);
+            CombatUnit second = new(ship, CombatSide.Attacker, 1);
 
-            first.Systems.ApplyHullLoss(20);
-            first.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            first.ApplyHullLoss(20);
+            first.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            Assert.AreEqual(100, second.Systems.Hull);
-            Assert.AreEqual(0, second.Systems.GetDamage(TacticalShipSystem.Engines));
-            Assert.AreEqual(0, ((CapitalShip)combatant.Unit).SystemDamage.Engines);
-            Assert.AreNotSame(first.Weapons, second.Weapons);
+            Assert.AreEqual(100, second.Hull);
+            Assert.AreEqual(0, second.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(0, ship.SystemDamage.Engines);
+            Assert.AreNotSame(first.Batteries[0], second.Batteries[0]);
         }
 
         [TestCase(0, 1, 0, true)]
@@ -51,16 +49,12 @@ namespace Rebellion.Tests.Tactical
                 CurrentSquadronSize = 12,
                 Hyperdrive = primary,
             };
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(fighter),
-                CombatSide.Attacker,
-                1,
-                new TacticalCombatUnitDefinition { BackupHyperdrive = backup }
-            );
+            fighter.BackupHyperdrive = backup;
+            CombatUnit unit = new(fighter, CombatSide.Attacker, 1);
             for (int index = 0; index < damaged; index++)
-                unit.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+                unit.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
 
-            Assert.AreEqual(expected, unit.Systems.HasHyperdrive);
+            Assert.AreEqual(expected, unit.HasHyperdrive);
         }
 
         [TestCase(0, 3.6f)]
@@ -79,12 +73,7 @@ namespace Rebellion.Tests.Tactical
                 HullDepth = 60,
             };
 
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(CreateShip()),
-                CombatSide.Attacker,
-                1,
-                definition
-            );
+            CombatUnit unit = CreateWithLegacyGeometry(definition);
 
             Assert.AreEqual(3, unit.HalfHeight);
             Assert.AreEqual(expectedRadius, unit.CollisionRadius);
@@ -94,10 +83,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(CreateShip()),
-                CombatSide.Attacker,
-                1,
+            CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition
                 {
                     PresentationIndex = 20,
@@ -112,15 +98,19 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
         {
-            TacticalCombatUnit unit = new(
-                CombatUnit.Create(CreateShip()),
-                CombatSide.Attacker,
-                1,
+            CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition { PresentationIndex = 21 }
             );
 
             Assert.AreEqual(0.0523598827f, unit.MaximumTurnRate);
             Assert.AreEqual(0.0523598827f, unit.TurnRate);
+        }
+
+        private static CombatUnit CreateWithLegacyGeometry(TacticalCombatUnitDefinition definition)
+        {
+            CombatUnit unit = CombatUnit.Create(CreateShip());
+            definition.InitializeCombatant(unit, CombatSide.Attacker, 1);
+            return unit;
         }
 
         [Test]
@@ -129,21 +119,21 @@ namespace Rebellion.Tests.Tactical
             CapitalShip ship = CreateShip();
             ship.ManufacturingStatus = ManufacturingStatus.Building;
 
-            TacticalCombatUnit unit = new(CombatUnit.Create(ship), CombatSide.Attacker, 1);
+            CombatUnit unit = new(ship, CombatSide.Attacker, 1);
 
-            Assert.AreEqual(TacticalCombatUnitStatus.Active, unit.Status);
+            Assert.AreEqual(CombatUnitStatus.Active, unit.Status);
         }
 
         [Test]
         public void Proximity_MovementMagnitudeNearFloatMidpoint_RetainsMovementArithmeticPrecision()
         {
-            TacticalCombatUnit unit = new(CombatUnit.Create(CreateShip()), CombatSide.Attacker, 1)
+            CombatUnit unit = new(CreateShip(), CombatSide.Attacker, 1)
             {
                 CollisionRadius = 0,
                 Velocity = new Vector3(0.9999999403953552f, 0.00048828125f, 9.313225746154785e-10f),
             };
 
-            Assert.AreEqual(0.5f, unit.Proximity);
+            Assert.AreEqual(0.5f, TacticalCombatSpatialIndex.GetProximity(unit));
         }
 
         /// <summary>

@@ -4,9 +4,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         private ContentAssets _assets;
         private TacticalCombatDefinition _definition;
         private string _folder;
-        private readonly Dictionary<TacticalCombatUnit, Vector3> _positions = new();
+        private readonly Dictionary<CombatUnit, Vector3> _positions = new();
         private int? _closeUpPrimary;
 
         /// <summary>
@@ -213,7 +213,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowDestruction_CloseUpPrimary_ClearsLocksAndRetainsHiddenSequence()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _closeUpPrimary = unit.Index;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
 
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_TractorLock_WaitsForStrictIntervalAndWrapsAllFrames()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             MeshRenderer renderer = GetLockRenderer();
             Assert.IsTrue(renderer.enabled);
@@ -321,7 +321,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_RepeatedActivation_PreservesFrameAndElapsedInterval()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.Advance(.101f);
             _effects.Advance(.06f);
@@ -337,7 +337,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_GravityReplacesTractor_DoesNotRestoreClearedOwnership()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
             Assert.AreSame(
@@ -353,7 +353,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_OverlappingSelectors_PreservesDetachBeforeRepeatedGravity()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             Assert.AreSame(
@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void RestartLocks_ChangedModelDetail_ReattachesFirstFrame()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.Advance(.101f);
             _effects.Advance(.101f);
@@ -412,7 +412,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_Destruction_ReleasesLockOnTwelfthPresentationFrame()
         {
-            TacticalCombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.ShowDestruction(unit);
             for (int frame = 0; frame < 11; frame++)
@@ -500,7 +500,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// </summary>
         /// <param name="unit">The test participant.</param>
         /// <returns>The encounter-local rendering position.</returns>
-        private Vector3 GetPresentationPosition(TacticalCombatUnit unit) =>
+        private Vector3 GetPresentationPosition(CombatUnit unit) =>
             _positions.TryGetValue(unit, out Vector3 position)
                 ? position
                 : new Vector3(unit.Position.X, unit.Position.Y, unit.Position.Z);
@@ -512,27 +512,23 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>The captured discharge.</returns>
         private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
         {
-            TacticalCombatUnit source = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "source",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit source = new(
+                new CapitalShip
+                {
+                    InstanceID = "source",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Attacker,
                 1
             );
-            TacticalCombatUnit target = new(
-                CombatUnit.Create(
-                    new CapitalShip
-                    {
-                        InstanceID = "target",
-                        MaxHullStrength = 100,
-                        CurrentHullStrength = 100,
-                    }
-                ),
+            CombatUnit target = new(
+                new CapitalShip
+                {
+                    InstanceID = "target",
+                    MaxHullStrength = 100,
+                    CurrentHullStrength = 100,
+                },
                 CombatSide.Defender,
                 1000001
             );

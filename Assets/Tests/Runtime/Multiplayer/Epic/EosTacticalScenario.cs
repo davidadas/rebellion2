@@ -46,8 +46,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
                 data.CapitalShips,
                 data.Starfighters,
                 data.Regiments,
-                data.SpecialForces,
-                data.TacticalCombat
+                data.SpecialForces
             );
             foreach (string faction in new[] { "FNEMP1", "FNALL1" })
             {

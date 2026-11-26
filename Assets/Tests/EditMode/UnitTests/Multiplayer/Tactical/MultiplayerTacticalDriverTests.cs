@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.PlayerRequests;
@@ -13,6 +14,7 @@ using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
 using Rebellion.SceneGraph;
 using Rebellion.Tactical;
+using Rebellion.UI;
 using Rebellion.Util.Random;
 using Encoding = global::System.Text.Encoding;
 using JsonUtility = global::UnityEngine.JsonUtility;
@@ -283,7 +285,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             + string.Join(
                 "; ",
                 session.Units.Select(unit =>
-                    $"{unit.InstanceID}: {unit.Status}, hull={unit.Systems.Hull}, position={unit.Position}, "
+                    $"{unit.InstanceID}: {unit.Status}, hull={unit.Hull}, position={unit.Position}, "
                     + $"order={session.GetGroup(unit)?.ActiveOrder}, target={session.GetGroup(unit)?.PrimaryTarget?.InstanceID}, shots={shots?.GetValueOrDefault(unit.InstanceID)}"
                 )
             );
@@ -456,7 +458,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Assert.IsNotNull(HostDriver);
                 Assert.IsNotNull(GuestDriver);
                 _entry.Clear();
-                foreach (TacticalCombatUnit unit in HostDriver.Session.Units)
+                foreach (CombatUnit unit in HostDriver.Session.Units)
                     _entry.Add(
                         unit.InstanceID,
                         (
@@ -597,7 +599,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                             || group.RequestedTargets.Any(unit => unit.IsTargetable)
                         )
                             continue;
-                        TacticalCombatUnit target =
+                        CombatUnit target =
                             session.Units.FirstOrDefault(unit =>
                                 unit.Side != session.PlayerSide
                                 && unit.IsTargetable
@@ -753,8 +755,18 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                                 ),
                             }
                         );
-                    Assert.AreEqual(expected, host.AcceptedLosses.GetLostValue(faction));
-                    Assert.AreEqual(expected, guest.AcceptedLosses.GetLostValue(faction));
+                    Assert.AreEqual(
+                        expected,
+                        SpaceCombatAftermath
+                            .CaptureLostMilitaryValues(host.Events, faction, null)
+                            .FirstSide
+                    );
+                    Assert.AreEqual(
+                        expected,
+                        SpaceCombatAftermath
+                            .CaptureLostMilitaryValues(guest.Events, faction, null)
+                            .FirstSide
+                    );
                 }
             }
 
@@ -840,7 +852,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                     HostDriver = driver;
                 else
                     GuestDriver = driver;
-                driver.Prepare(new Arrival());
+                driver.Prepare(TacticalCombatArrival.CreateFor(driver.Session, new Arrival()));
             }
 
             /// <summary>

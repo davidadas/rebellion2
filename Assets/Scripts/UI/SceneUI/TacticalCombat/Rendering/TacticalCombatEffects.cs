@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
@@ -11,7 +12,7 @@ namespace Rebellion.Tactical.Rendering
     internal sealed class TacticalCombatEffects : IDisposable
     {
         private readonly Transform _parent;
-        private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
+        private readonly Func<CombatUnit, Vector3> _getPosition;
         private readonly Mesh[] _meshes;
         private readonly Material[] _materials;
         private readonly List<Beam> _active = new();
@@ -28,7 +29,7 @@ namespace Rebellion.Tactical.Rendering
             Transform parent,
             Shader shader,
             float battleDepth,
-            Func<TacticalCombatUnit, Vector3> getPosition
+            Func<CombatUnit, Vector3> getPosition
         )
         {
             _parent = parent;
@@ -56,7 +57,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="shot">The applied discharge.</param>
         /// <param name="factionIndex">The firing faction's authored color index.</param>
-        public void ShowShot(TacticalCombatShot shot, int factionIndex)
+        public void ShowShot(TacticalCombatShot shot, int factionIndex, bool split)
         {
             int variant = 0;
             float length;
@@ -73,7 +74,6 @@ namespace Rebellion.Tactical.Rendering
                 case TacticalWeaponType.Turbolaser:
                     if (shot.Strength >= 34.666668f)
                     {
-                        bool split = shot.Target.Definition?.SplitTurbolaserBeams == true;
                         length = split ? 0.75f : 1;
                         variant = split ? 1 : 2;
                     }
@@ -109,7 +109,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="origin">The emitter in encounter-local coordinates.</param>
         /// <param name="target">The selected enemy capital ship.</param>
-        public void ShowSuperlaser(Vector3 origin, TacticalCombatUnit target)
+        public void ShowSuperlaser(Vector3 origin, CombatUnit target)
         {
             Beam beam = Acquire();
             beam.Configure(origin, target, _meshes[3], _materials[1], 1, 1, true, _meshes[4]);
@@ -364,10 +364,10 @@ namespace Rebellion.Tactical.Rendering
         {
             private readonly MeshFilter _mesh;
             private readonly MeshRenderer _renderer;
-            private readonly Func<TacticalCombatUnit, Vector3> _getPosition;
+            private readonly Func<CombatUnit, Vector3> _getPosition;
             private GameObject _emitter;
             private Vector3 _origin;
-            private TacticalCombatUnit _target;
+            private CombatUnit _target;
             private float _duration;
             private float _elapsed;
             private float _superlaserExtent;
@@ -379,7 +379,7 @@ namespace Rebellion.Tactical.Rendering
             /// </summary>
             /// <param name="parent">The encounter's rendering root.</param>
             /// <param name="getPosition">Resolves a participant's live encounter-local rendering position.</param>
-            public Beam(Transform parent, Func<TacticalCombatUnit, Vector3> getPosition)
+            public Beam(Transform parent, Func<CombatUnit, Vector3> getPosition)
             {
                 _getPosition = getPosition;
                 Root = new GameObject("Weapon beam");
@@ -411,7 +411,7 @@ namespace Rebellion.Tactical.Rendering
             /// <param name="emitter">The optional fixed focusing emitter.</param>
             public void Configure(
                 Vector3 origin,
-                TacticalCombatUnit target,
+                CombatUnit target,
                 Mesh mesh,
                 Material material,
                 float length,

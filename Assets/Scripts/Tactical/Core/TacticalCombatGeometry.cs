@@ -1,19 +1,9 @@
 using System;
 using System.Numerics;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {
-    /// <summary>
-    /// Identifies a ship's directional weapon battery in clockwise order.
-    /// </summary>
-    public enum TacticalWeaponArc
-    {
-        Forward,
-        Starboard,
-        Aft,
-        Port,
-    }
-
     /// <summary>
     /// Provides the geometry shared by tactical movement, targeting, and presentation.
     /// Tactical positions and headings use a forward positive Z axis.

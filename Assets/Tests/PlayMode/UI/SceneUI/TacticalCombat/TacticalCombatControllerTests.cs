@@ -2,13 +2,13 @@ using System;
 using System.Collections;
 using System.Threading;
 using NUnit.Framework;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using Rebellion.UI.SceneUI.TacticalCombat;
-using Rebellion.UI.SceneUI.TacticalCombat.Audio;
 using Rebellion.Util.Random;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <returns>The isolated encounter.</returns>
         private static TacticalCombatSession CreateSession() =>
             new(
-                Array.Empty<TacticalCombatUnit>(),
+                Array.Empty<CombatUnit>(),
                 Array.Empty<TacticalCombatGroup>(),
                 CreateSide(CombatSide.Attacker),
                 CreateSide(CombatSide.Defender),

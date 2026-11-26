@@ -4,12 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
 using Rebellion.Game.Scripting;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -23,7 +25,12 @@ namespace Rebellion.Tests.Gameplay
         private GameRoot _game;
         private GameSession _session;
         private GameTickProcessor _tick;
-        private Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
+        private Func<
+            IEnumerable<GameResult>,
+            bool,
+            Func<IReadOnlyList<GameResult>>,
+            List<GameResult>
+        > _processResults;
 
         /// <summary>
         /// Creates a prepared game and the runtime dependencies used by tick scheduling.
@@ -34,7 +41,8 @@ namespace Rebellion.Tests.Gameplay
             _game = TestGame.Create(TestConfig.Create());
             _game.SetGameSpeed(TickSpeed.Fast);
             _session = new GameSession(_game, TestGameData.Create(_game.Config));
-            _processResults = (results, _) => _session.Results.Publish(results);
+            _processResults = (results, _, collectPending) =>
+                _session.Pipeline.ProcessResults(results, false, collectPending);
             _tick = CreateTickProcessor();
         }
 
@@ -214,7 +222,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_ResultDeliveryThrows_ReleasesBusyGuard()
         {
             InvalidOperationException expected = new("delivery failure");
-            _processResults = (_, _) => throw expected;
+            _processResults = (_, _, _) => throw expected;
             _tick = CreateTickProcessor();
 
             InvalidOperationException actual = Assert.Throws<InvalidOperationException>(
@@ -477,13 +485,12 @@ namespace Rebellion.Tests.Gameplay
                 results =>
                     created |= results.Any(result => ReferenceEquals(result.GameObject, order))
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(created);
-                    Assert.IsFalse(manufacturing.HasPendingResults);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(created);
+                Assert.IsFalse(manufacturing.HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -536,16 +543,14 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
                 results => commandObserved |= results.Any(result => result.Officer == officer)
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(commandObserved);
-                    Assert.AreSame(destination, officer.GetParent());
-                    Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
-                    Assert.IsFalse(_session.GetService<MovementCommands>().HasPendingResults);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(commandObserved);
+                Assert.AreSame(destination, officer.GetParent());
+                Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+                Assert.IsFalse(_session.GetService<MovementCommands>().HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -587,15 +592,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
                 results => blockades.AddRange(results.Where(result => result.Planet == origin))
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(departureObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                    Assert.IsEmpty(blockades);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(departureObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+                Assert.IsEmpty(blockades);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -655,15 +658,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
                 results => commandObserved |= results.Any(result => result.Officer == officer)
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(blockadeEnded);
-                    Assert.IsTrue(commandObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(blockadeEnded);
+                Assert.IsTrue(commandObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -680,13 +681,12 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable departure = _session.Results.Subscribe<GameObjectEnrouteActiveResult>(
                 _ => departureObserved = true
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(departureObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(departureObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+            });
 
             SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
 
@@ -703,14 +703,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
                 results => blockades.AddRange(results)
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(results =>
-                {
-                    combatObserved = true;
-                    Assert.AreEqual(1, blockades.Count);
-                    Assert.AreSame(results.Single().Planet, blockades[0].Planet);
-                    Assert.IsTrue(blockades[0].Blockaded);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(results =>
+            {
+                combatObserved = true;
+                Assert.AreEqual(1, blockades.Count);
+                Assert.AreSame(results.Single().Planet, blockades[0].Planet);
+                Assert.IsTrue(blockades[0].Blockaded);
+            });
 
             SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
 
@@ -789,7 +788,7 @@ namespace Rebellion.Tests.Gameplay
 
                 SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
 
-                Assert.AreEqual(battle.PlayerSide, result.Winner);
+                Assert.AreEqual(battle.PlayerSide, result.WinningSide);
                 Assert.AreEqual(40, _game.CurrentTick);
                 if (encounter + 1 < encounterCount)
                 {
@@ -818,8 +817,7 @@ namespace Rebellion.Tests.Gameplay
                 TestContent.Data.CapitalShips,
                 TestContent.Data.Starfighters,
                 TestContent.Data.Regiments,
-                TestContent.Data.SpecialForces,
-                TestContent.Data.TacticalCombat
+                TestContent.Data.SpecialForces
             );
             SpaceCombatCommands commands = CreateTacticalCombatScenario(
                 playerFactionId,
@@ -848,17 +846,11 @@ namespace Rebellion.Tests.Gameplay
                 unit => _game.NodesByInstanceID[unit.InstanceID],
                 unit => _game.NodesByInstanceID[unit.InstanceID].GetParent()
             );
-            Dictionary<TacticalCombatUnit, int> shots = battle.Units.ToDictionary(
-                unit => unit,
-                _ => 0
-            );
+            Dictionary<CombatUnit, int> shots = battle.Units.ToDictionary(unit => unit, _ => 0);
             battle.ShotFired += shot => shots[shot.Source]++;
             Assert.AreEqual(2, ships.Length);
             Assert.AreEqual(4, fighters.Length);
-            Assert.AreEqual(
-                2,
-                battle.Units.Count(unit => unit.Status == TacticalCombatUnitStatus.Docked)
-            );
+            Assert.AreEqual(2, battle.Units.Count(unit => unit.Status == CombatUnitStatus.Docked));
 
             for (int frame = 0; frame < 120000 && !battle.IsComplete; frame++)
             {
@@ -912,7 +904,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
 
             Assert.AreEqual(battle.Winner, result.Winner);
-            Assert.AreNotEqual(CombatSide.Draw, result.Winner);
+            Assert.AreNotEqual(SpaceCombatResult.BattleOutcome.Draw, result.Winner);
             Assert.AreEqual(40, result.Tick);
             Assert.AreEqual(40, _game.CurrentTick);
             Assert.IsFalse(commands.HasPendingDecision);
@@ -1160,7 +1152,7 @@ namespace Rebellion.Tests.Gameplay
                     || group.RequestedTargets.Any(target => target.IsTargetable)
                 )
                     continue;
-                TacticalCombatUnit target =
+                CombatUnit target =
                     battle.Units.FirstOrDefault(unit =>
                         unit.Side != group.Side
                         && unit.IsTargetable
@@ -1182,18 +1174,18 @@ namespace Rebellion.Tests.Gameplay
         /// <returns>The state needed to investigate a stalled encounter.</returns>
         private static string DescribeCarrierBattle(
             TacticalCombatSession battle,
-            IReadOnlyDictionary<TacticalCombatUnit, int> shots
+            IReadOnlyDictionary<CombatUnit, int> shots
         ) =>
             $"System time: {battle.SystemTime}; "
             + string.Join(
                 "; ",
                 battle.Units.Select(unit =>
-                    $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Systems.Hull}, "
-                    + $"shields={unit.Systems.Shields}, position={unit.Position}, heading={unit.Heading}, "
+                    $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Hull}, "
+                    + $"shields={unit.Shields}, position={unit.Position}, heading={unit.Heading}, "
                     + $"order={battle.GetGroup(unit)?.ActiveOrder}, target={battle.GetGroup(unit)?.PrimaryTarget?.InstanceID}, "
-                    + $"shots={shots[unit]}, forwardCharge={unit.Weapons.GetCharge(TacticalWeaponArc.Forward)}/"
-                    + $"{unit.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward)}, "
-                    + $"weaponsDamage={unit.Systems.GetDamage(TacticalShipSystem.Weapons)}"
+                    + $"shots={shots[unit]}, forwardCharge={unit.GetBatteryCharge(TacticalWeaponArc.Forward)}/"
+                    + $"{unit.GetBatteryCapacity(TacticalWeaponArc.Forward)}, "
+                    + $"weaponsDamage={unit.GetDamage(TacticalShipSystem.Weapons)}"
                 )
             );
 
@@ -1203,18 +1195,16 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="battle">The manually commanded encounter.</param>
         private static void CompleteTacticalEncounter(TacticalCombatSession battle)
         {
-            TacticalCombatUnit player = battle.Units.Single(unit => unit.Side == battle.PlayerSide);
-            TacticalCombatUnit opponent = battle.Units.Single(unit =>
-                unit.Side != battle.PlayerSide
-            );
+            CombatUnit player = battle.Units.Single(unit => unit.Side == battle.PlayerSide);
+            CombatUnit opponent = battle.Units.Single(unit => unit.Side != battle.PlayerSide);
             int playerShots = 0;
             battle.ShotFired += shot =>
             {
                 if (shot.Source == player)
                     playerShots++;
             };
-            Assert.IsTrue(player.Weapons.IsReady(TacticalWeaponArc.Forward));
-            Assert.Greater(player.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward), 0);
+            Assert.IsTrue(player.IsBatteryReady(TacticalWeaponArc.Forward));
+            Assert.Greater(player.GetBatteryCapacity(TacticalWeaponArc.Forward), 0);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
                 opponent
@@ -1223,8 +1213,8 @@ namespace Rebellion.Tests.Gameplay
                 battle.Advance(50);
             Assert.IsTrue(
                 battle.IsComplete,
-                $"Player: {player.Status}, hull={player.Systems.Hull}, position={player.Position}; "
-                    + $"opponent: {opponent.Status}, hull={opponent.Systems.Hull}, position={opponent.Position}"
+                $"Player: {player.Status}, hull={player.Hull}, position={player.Position}; "
+                    + $"opponent: {opponent.Status}, hull={opponent.Hull}, position={opponent.Position}"
             );
             Assert.Greater(playerShots, 0);
         }

@@ -1,6 +1,4 @@
-using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Gameplay;
 using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Tactical
@@ -9,43 +7,39 @@ namespace Rebellion.Tests.Tactical
     public sealed class TacticalCombatEndingTests
     {
         [Test]
-        public void TryBegin_BothFactionsActive_DoesNotAssignOrQueueEnding()
+        public void TryBegin_BothFactionsActive_LeavesEndingPending()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             Assert.IsFalse(ending.TryBegin(Force(1), Force(1), false, false));
-            Assert.IsEmpty(events);
+            Assert.AreEqual(0, ending.RemainingMilliseconds);
         }
 
         [Test]
         public void TryBegin_OperationalStationAndAllianceActive_KeepsBattleActive()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             Assert.IsFalse(ending.TryBegin(Force(1), Force(0), true, false));
-            Assert.IsEmpty(events);
+            Assert.AreEqual(0, ending.RemainingMilliseconds);
         }
 
         [Test]
         public void TryBegin_AllianceInactive_EndsEvenWithOperationalStation()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             Assert.IsTrue(ending.TryBegin(Force(0), Force(1), true, false));
-            CollectionAssert.AreEqual(new[] { "sound:153", "assign" }, events);
+            Assert.AreEqual(153, ending.GetTerminalNotification(0));
         }
 
         [TestCase(0, 152)]
         [TestCase(1, 283)]
-        public void TryBegin_EmpireDestroyed_QueuesPlayerFactionTerminalCue(
+        public void TryBegin_EmpireDestroyed_SelectsPlayerFactionTerminalCue(
             int faction,
             int message
         )
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(faction, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0), false, false);
-            CollectionAssert.AreEqual(new[] { $"sound:{message}", "assign" }, events);
+            Assert.AreEqual(message, ending.GetTerminalNotification(faction));
             CollectionAssert.AreEqual(
                 new[] { false, true, false, false, false, false, false },
                 ending.Flags
@@ -54,25 +48,23 @@ namespace Rebellion.Tests.Tactical
 
         [TestCase(0, 153)]
         [TestCase(1, 282)]
-        public void TryBegin_AllianceDestroyed_QueuesPlayerFactionTerminalCue(
+        public void TryBegin_AllianceDestroyed_SelectsPlayerFactionTerminalCue(
             int faction,
             int message
         )
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(faction, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0), Force(1), false, false);
-            CollectionAssert.AreEqual(new[] { $"sound:{message}", "assign" }, events);
+            Assert.AreEqual(message, ending.GetTerminalNotification(faction));
         }
 
         [TestCase(0, 150)]
         [TestCase(1, 281)]
         public void TryBegin_AllianceDeparted_PrioritizesWithdrawalCue(int faction, int message)
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(faction, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3, departed: true), Force(1), false, false);
-            CollectionAssert.AreEqual(new[] { $"sound:{message}", "assign" }, events);
+            Assert.AreEqual(message, ending.GetTerminalNotification(faction));
             Assert.IsTrue(ending.Flags[0]);
             Assert.IsTrue(ending.Flags[3]);
         }
@@ -84,20 +76,18 @@ namespace Rebellion.Tests.Tactical
             int message
         )
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(faction, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0, 4, departed: true), false, false);
-            CollectionAssert.AreEqual(new[] { $"sound:{message}", "assign" }, events);
+            Assert.AreEqual(message, ending.GetTerminalNotification(faction));
             Assert.IsTrue(ending.Flags[2]);
         }
 
         [Test]
         public void TryBegin_StationDeparted_ContributesToEmpireDepartureFlag()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0, 5), false, true);
-            CollectionAssert.AreEqual(new[] { "sound:151", "assign" }, events);
+            Assert.AreEqual(151, ending.GetTerminalNotification(0));
             Assert.IsTrue(ending.Flags[2]);
         }
 
@@ -113,7 +103,7 @@ namespace Rebellion.Tests.Tactical
             bool expected
         )
         {
-            TacticalCombatEnding ending = Create(0, new());
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, state, departed: true), Force(1), false, false);
             Assert.AreEqual(expected, ending.Flags[0]);
         }
@@ -121,7 +111,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void TryBegin_DepartedMemberWithStillActiveRoster_DoesNotMarkFactionWithdrawn()
         {
-            TacticalCombatEnding ending = Create(0, new());
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3, stillActive: true, departed: true), Force(1), false, false);
             Assert.IsFalse(ending.Flags[0]);
         }
@@ -129,7 +119,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void TryBegin_WithdrawRequestedWithoutDeparture_DoesNotMarkFactionWithdrawn()
         {
-            TacticalCombatEnding ending = Create(0, new());
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3), Force(1), false, false);
             Assert.IsFalse(ending.Flags[0]);
         }
@@ -137,38 +127,36 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void TryBegin_MutualDestruction_ClearsWinnerFlagsAndOmitsCue()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0), Force(0), false, false);
             CollectionAssert.AreEqual(
                 new[] { false, false, false, false, false, false, false },
                 ending.Flags
             );
-            CollectionAssert.AreEqual(new[] { "assign" }, events);
+            Assert.IsNull(ending.GetTerminalNotification(0));
         }
 
         [Test]
-        public void TryBegin_RepeatedAssessment_DoesNotRecaptureOrAssignSurvivorsAgain()
+        public void TryBegin_RepeatedAssessment_PreservesTheFirstAssessment()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             Assert.IsTrue(ending.TryBegin(Force(1), Force(0), false, false));
             Assert.IsFalse(ending.TryBegin(Force(0), Force(1), false, false));
-            CollectionAssert.AreEqual(new[] { "sound:152", "assign" }, events);
+            Assert.AreEqual(152, ending.GetTerminalNotification(0));
             Assert.IsTrue(ending.Flags[1]);
         }
 
         [Test]
         public void AdvanceTerminalTick_BeforeAssessment_DoesNotComplete()
         {
-            TacticalCombatEnding ending = Create(0, new());
+            TacticalCombatEnding ending = new();
             Assert.IsFalse(ending.AdvanceTerminalTick());
         }
 
         [Test]
         public void AdvanceTerminalTick_FourAdmittedTickBoundaries_CompletesOnFourth()
         {
-            TacticalCombatEnding ending = Create(0, new());
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0), false, false);
             Assert.AreEqual(4000, ending.RemainingMilliseconds);
             for (int tick = 0; tick < 3; tick++)
@@ -179,42 +167,24 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void FinishWithoutAssessment_AdmittedCommand_CompletesWithoutCueOrAssignment()
+        public void FinishWithoutAssessment_AdmittedCommand_CompletesWithoutDelay()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             ending.FinishWithoutAssessment();
             Assert.IsTrue(ending.IsComplete);
-            Assert.IsTrue(ending.Flags[6]);
+            Assert.IsTrue(ending.ImmediateResultRequested);
             Assert.AreEqual(0, ending.RemainingMilliseconds);
-            CollectionAssert.AreEqual(new[] { "finish" }, events);
         }
 
         [Test]
         public void FinishWithoutAssessment_AfterCapturedResult_PreservesOtherSnapshotFlags()
         {
-            List<string> events = new();
-            TacticalCombatEnding ending = Create(0, events);
+            TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0), false, false);
             ending.FinishWithoutAssessment();
             Assert.IsTrue(ending.Flags[1]);
-            Assert.IsTrue(ending.Flags[6]);
-            CollectionAssert.AreEqual(new[] { "sound:152", "assign", "finish" }, events);
+            Assert.IsTrue(ending.ImmediateResultRequested);
         }
-
-        /// <summary>
-        /// Creates ending with observed notification and command callbacks.
-        /// </summary>
-        /// <param name="faction">The player's authored faction index.</param>
-        /// <param name="events">The callback observations.</param>
-        /// <returns>The ending subject.</returns>
-        private static TacticalCombatEnding Create(int faction, List<string> events) =>
-            new(
-                faction,
-                message => events.Add($"sound:{message}"),
-                () => events.Add("assign"),
-                () => events.Add("finish")
-            );
 
         /// <summary>
         /// Captures explicit active-root and roster facts for one faction.
