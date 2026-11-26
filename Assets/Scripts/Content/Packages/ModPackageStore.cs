@@ -158,10 +158,14 @@ public sealed class ModPackageStore
     /// Returns missing or incompatible base-pack requirements without hiding installed content.
     /// </summary>
     /// <param name="package">The installed package.</param>
+    /// <param name="packs">The inventory already discovered for this refresh, when available.</param>
     /// <returns>The requirement preventing activation, or an empty string.</returns>
-    public string GetCompatibilityIssue(InstalledModPackage package)
+    public string GetCompatibilityIssue(
+        InstalledModPackage package,
+        IReadOnlyList<ContentPackDefinition> packs = null
+    )
     {
-        IReadOnlyList<ContentPackDefinition> packs = ContentPackLoader.DiscoverPacks(_contentRoot);
+        packs ??= ContentPackLoader.DiscoverPacks(_contentRoot);
         foreach (InstalledModContent content in package.Content)
         {
             ContentPackDefinition basis = string.IsNullOrEmpty(content.BasePackID)

@@ -27,8 +27,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentAssets assets;
     private ContentAssets applicationAssets;
     private bool quitApproved;
-    private CancellationTokenSource operationCancellation;
-    private bool quitAfterOperation;
+    private readonly ContentEditorOperation operation = new(Application.Quit);
     private bool audioPreviewLoading;
     private int audioPreviewRequest;
     private string previewAudioAddress;
@@ -147,7 +146,25 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 );
             }
             if (packPathIndex < 0)
-                ShowModManager(true);
+            {
+                ContentEditorPage page = ContentEditorPage.Library;
+                int pageIndex = Array.IndexOf(arguments, "-startPage");
+                if (
+                    pageIndex >= 0
+                    && (
+                        pageIndex + 1 >= arguments.Length
+                        || !Enum.TryParse(arguments[pageIndex + 1], true, out page)
+                        || !Enum.IsDefined(typeof(ContentEditorPage), page)
+                    )
+                )
+                    throw new ArgumentException(
+                        "Choose Library, Browse, or Projects after -startPage."
+                    );
+                if (page == ContentEditorPage.Projects)
+                    view.ShowProjects();
+                else
+                    ShowModManager(page);
+            }
             if (!settings.AlphaNoticeAcknowledged)
                 view.ShowAlphaNotice(AcknowledgeAlphaNotice);
         });
@@ -167,11 +184,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OnGUI()
     {
         Event key = Event.current;
-        if (operationCancellation != null)
+        if (this.operation.IsRunning)
         {
             if (key.type == EventType.KeyDown && key.keyCode == KeyCode.Escape)
             {
-                operationCancellation.Cancel();
+                operation.Cancel();
                 key.Use();
             }
             return;
@@ -201,7 +218,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OnDestroy()
     {
         fileDrops?.Dispose();
-        operationCancellation?.Cancel();
+        operation.Dispose();
         if (projects != null)
         {
             view.ProjectsRequested -= projects.Show;
@@ -2142,11 +2159,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <summary>
     /// Opens community browsing without requiring an editable project.
     /// </summary>
-    /// <param name="installed">Whether to show the installed library or the community catalog.</param>
-    private void ShowModManager(bool installed)
+    /// <param name="page">The installed library or community browsing page.</param>
+    private void ShowModManager(ContentEditorPage page)
     {
-        view.SetWorkspaceNavigation(installed);
-        modManager.Show(installed);
+        view.SetWorkspaceNavigation(page);
+        modManager.Show(page == ContentEditorPage.Library);
     }
 
     /// <summary>
@@ -2173,7 +2190,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// </summary>
     private async void ShowThunderstoreConnection()
     {
-        if (operationCancellation != null)
+        if (this.operation.IsRunning)
             return;
         await RunOperationAsync(
             async cancellationToken =>
@@ -2471,7 +2488,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <summary>
     /// Requests cancellation through the owner of the active publishing operation.
     /// </summary>
-    private void CancelPublishingOperation() => operationCancellation?.Cancel();
+    private void CancelPublishingOperation() => operation.Cancel();
 
     /// <summary>
     /// Validates the current snapshot and publishes its archive to the selected team.
@@ -2724,12 +2741,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             return true;
         if (modManager?.CanQuit() == false)
             return false;
-        if (operationCancellation != null)
-        {
-            quitAfterOperation = true;
-            operationCancellation.Cancel();
+        if (!operation.CanQuit())
             return false;
-        }
         if (view.Publishing.IsOpen)
         {
             try
@@ -2783,7 +2796,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="operation">The requested operation.</param>
     private void RunOperation(Action operation)
     {
-        if (operationCancellation != null)
+        if (this.operation.IsRunning)
             return;
         try
         {
@@ -2808,48 +2821,22 @@ public sealed class ContentPackEditorController : MonoBehaviour
         bool connecting = false
     )
     {
-        if (operationCancellation != null)
-            return;
-        using CancellationTokenSource cancellation = new CancellationTokenSource();
-        operationCancellation = cancellation;
-        if (connecting)
-            view.Connection.SetBusy(true);
-        else if (publishing)
-            view.Publishing.SetBusy(true);
-        else
-            view.SetBusy(true);
-        try
-        {
-            await operation(cancellation.Token);
-        }
-        catch (OperationCanceledException) when (cancellation.IsCancellationRequested)
-        {
-            if (this != null)
-                view.RenderStatus("Operation cancelled.", false);
-        }
-        catch (Exception exception)
-        {
-            if (this != null)
-                ReportError(exception);
-        }
-        finally
-        {
-            operationCancellation = null;
-            if (this != null)
+        await this.operation.RunAsync(
+            operation,
+            value =>
             {
+                if (this == null)
+                    return;
                 if (connecting)
-                    view.Connection.SetBusy(false);
+                    view.Connection.SetBusy(value);
                 else if (publishing)
-                    view.Publishing.SetBusy(false);
+                    view.Publishing.SetBusy(value);
                 else
-                    view.SetBusy(false);
-                if (quitAfterOperation)
-                {
-                    quitAfterOperation = false;
-                    Application.Quit();
-                }
-            }
-        }
+                    view.SetBusy(value);
+            },
+            exception => ReportError(exception),
+            () => view.RenderStatus("Operation cancelled.", false)
+        );
     }
 
     /// <summary>

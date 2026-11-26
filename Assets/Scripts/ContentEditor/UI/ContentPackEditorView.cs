@@ -11,6 +11,16 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
+/// Identifies the toolkit workspace selected by navigation or a launcher shortcut.
+/// </summary>
+internal enum ContentEditorPage
+{
+    Library,
+    Browse,
+    Projects,
+}
+
+/// <summary>
 /// Presents category editors, named records, artwork previews, and map authoring.
 /// </summary>
 public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
@@ -294,7 +304,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal bool CanUseProjects => !packageOperationActive;
     internal event Action ThunderstoreConnectionRequested;
     internal ContentEditorThunderstoreConnectionView Connection => connection;
-    internal event Action<bool> ModManagerRequested;
+    internal event Action<ContentEditorPage> ModManagerRequested;
     internal event Action CancelPackageOperationRequested;
     internal ContentEditorModManagerView ModManager => modManager;
     internal ContentEditorPublishingView Publishing => publishing;
@@ -525,7 +535,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         fileButton.onClick.AddListener(ShowFileMenu);
         browseButton.onClick.AddListener(RequestBrowse);
         libraryButton.onClick.AddListener(RequestLibrary);
-        projectsButton.onClick.AddListener(ShowProjectHub);
+        projectsButton.onClick.AddListener(ShowProjects);
         cancelPackageButton.onClick.AddListener(CancelPackageOperation);
         publishButton.onClick.AddListener(RequestPublishing);
         thunderstoreConnectionButton.onClick.AddListener(RequestThunderstoreConnection);
@@ -678,7 +688,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.CommandSelected -= HandleMenuSelection;
             browseButton.onClick.RemoveListener(RequestBrowse);
             libraryButton.onClick.RemoveListener(RequestLibrary);
-            projectsButton.onClick.RemoveListener(ShowProjectHub);
+            projectsButton.onClick.RemoveListener(ShowProjects);
             cancelPackageButton.onClick.RemoveListener(CancelPackageOperation);
             publishButton.onClick.RemoveListener(RequestPublishing);
             thunderstoreConnectionButton.onClick.RemoveListener(RequestThunderstoreConnection);
@@ -818,7 +828,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             );
         modManager.Hide();
         editingProject = true;
-        SetWorkspaceNavigation(null);
+        SetWorkspaceNavigation(ContentEditorPage.Projects);
         projectWorkspace.SetActive(true);
         welcomePane.SetActive(false);
         editButton.interactable = true;
@@ -1489,21 +1499,21 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <summary>
     /// Opens the installed library through the application controller.
     /// </summary>
-    private void RequestLibrary() => ModManagerRequested?.Invoke(true);
+    private void RequestLibrary() => ModManagerRequested?.Invoke(ContentEditorPage.Library);
 
     /// <summary>
     /// Opens community browsing through the application controller.
     /// </summary>
-    private void RequestBrowse() => ModManagerRequested?.Invoke(false);
+    private void RequestBrowse() => ModManagerRequested?.Invoke(ContentEditorPage.Browse);
 
     /// <summary>
     /// Selects the active shared navigation item without changing any project data.
     /// </summary>
-    /// <param name="installed">True for Library, false for Browse, or null for Projects.</param>
-    internal void SetWorkspaceNavigation(bool? installed)
+    /// <param name="page">The selected toolkit workspace.</param>
+    internal void SetWorkspaceNavigation(ContentEditorPage page)
     {
         menu.TryCancel();
-        bool authoring = installed == null && editingProject;
+        bool authoring = page == ContentEditorPage.Projects && editingProject;
         projectLabel.gameObject.SetActive(authoring);
         publishButton.gameObject.SetActive(authoring);
         editButton.interactable = authoring;
@@ -1511,9 +1521,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         foreach (
             (Button button, bool selected) in new[]
             {
-                (libraryButton, installed == true),
-                (browseButton, installed == false),
-                (projectsButton, installed == null),
+                (libraryButton, page == ContentEditorPage.Library),
+                (browseButton, page == ContentEditorPage.Browse),
+                (projectsButton, page == ContentEditorPage.Projects),
             }
         )
         {
@@ -1527,7 +1537,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             if (selected)
                 navigationIndicator.SetParent(button.transform, false);
         }
-        if (installed != null)
+        if (page != ContentEditorPage.Projects)
         {
             projectWorkspace.SetActive(false);
             welcomePane.SetActive(false);
@@ -1537,12 +1547,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <summary>
     /// Shows the open project alongside the existing New and Open actions.
     /// </summary>
-    private void ShowProjectHub()
+    internal void ShowProjects()
     {
         menu.TryCancel();
         modManager.Hide();
         editingProject = false;
-        SetWorkspaceNavigation(null);
+        SetWorkspaceNavigation(ContentEditorPage.Projects);
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(true);
         projects.SetCurrentProject(project);
@@ -1557,13 +1567,13 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (project == null)
         {
-            ShowProjectHub();
+            ShowProjects();
             return;
         }
         menu.TryCancel();
         modManager.Hide();
         editingProject = true;
-        SetWorkspaceNavigation(null);
+        SetWorkspaceNavigation(ContentEditorPage.Projects);
         welcomePane.SetActive(false);
         projectWorkspace.SetActive(true);
     }

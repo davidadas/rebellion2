@@ -20,7 +20,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private readonly Action contentChanged;
     private readonly CancellationTokenSource lifetime = new();
     private readonly Dictionary<string, string> compatibilityIssues = new(StringComparer.Ordinal);
-    private CancellationTokenSource operation;
+    private readonly ContentEditorOperation operation = new(Application.Quit);
     private CancellationTokenSource iconRequest;
     private CancellationTokenSource searchRequest;
     private ThunderstorePackage[] catalog = Array.Empty<ThunderstorePackage>();
@@ -30,9 +30,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private string selection;
     private bool installedTab;
     private int versionIndex;
-    private bool quitAfterOperation;
     private bool disposed;
-    internal bool IsBusy => operation != null;
+    internal bool IsBusy => operation.IsRunning;
     internal event Action<string, float, bool> OperationChanged;
     private ThunderstorePackage SelectedListing =>
         catalog.FirstOrDefault(package => package.full_name == selection);
@@ -161,7 +160,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             .ActivePackID;
         compatibilityIssues.Clear();
         foreach (InstalledModPackage package in installed)
-            compatibilityIssues.Add(package.PackageID, store.GetCompatibilityIssue(package));
+            compatibilityIssues.Add(package.PackageID, store.GetCompatibilityIssue(package, packs));
     }
 
     /// <summary>
@@ -726,34 +725,27 @@ internal sealed class ContentEditorModManagerController : IDisposable
     {
         if (IsBusy || disposed)
             return;
-        operation = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-        view.SetBusy(true, changesFiles);
         string operationResult = "No active downloads";
-        if (changesFiles)
-            OperationChanged?.Invoke("Preparing content", 0, true);
-        try
-        {
-            await action(operation.Token);
-        }
-        catch (OperationCanceledException)
-        {
-            operationResult = "Content operation canceled";
-            if (!disposed)
-                view.SetStatus("Operation canceled. Previously installed content was retained.");
-        }
-        catch (Exception exception)
-        {
-            operationResult = "Content operation failed. Open Library for details.";
-            if (!disposed)
-                view.SetStatus(exception.Message);
-        }
-        finally
-        {
-            operation.Dispose();
-            operation = null;
-            if (!disposed)
+        await operation.RunAsync(
+            action,
+            value =>
             {
-                view.SetBusy(false);
+                view.SetBusy(value, changesFiles);
+                if (value && changesFiles)
+                    OperationChanged?.Invoke("Preparing content", 0, true);
+            },
+            exception =>
+            {
+                operationResult = "Content operation failed. Open Library for details.";
+                view.SetStatus(exception.Message);
+            },
+            () =>
+            {
+                operationResult = "Content operation canceled";
+                view.SetStatus("Operation canceled. Previously installed content was retained.");
+            },
+            () =>
+            {
                 if (changesFiles)
                     OperationChanged?.Invoke(operationResult, 1, false);
                 try
@@ -766,10 +758,9 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 {
                     view.SetStatus(exception.Message);
                 }
-                if (quitAfterOperation)
-                    Application.Quit();
-            }
-        }
+            },
+            lifetime.Token
+        );
     }
 
     /// <summary>
@@ -785,20 +776,13 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// <summary>
     /// Cancels an installation while retaining its visible progress and rollback feedback.
     /// </summary>
-    internal void Cancel() => operation?.Cancel();
+    internal void Cancel() => operation.Cancel();
 
     /// <summary>
     /// Defers quitting until a running transaction has canceled or committed.
     /// </summary>
     /// <returns>Whether the host may quit immediately.</returns>
-    internal bool CanQuit()
-    {
-        if (!IsBusy)
-            return true;
-        quitAfterOperation = true;
-        operation.Cancel();
-        return false;
-    }
+    internal bool CanQuit() => operation.CanQuit();
 
     /// <summary>
     /// Disconnects the view and cancels all work owned by this manager.
@@ -806,6 +790,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     public void Dispose()
     {
         disposed = true;
+        operation.Dispose();
         searchRequest?.Cancel();
         searchRequest?.Dispose();
         lifetime.Cancel();

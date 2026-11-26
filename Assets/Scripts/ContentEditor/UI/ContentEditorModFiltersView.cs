@@ -17,10 +17,10 @@ public sealed class ContentEditorModFiltersView : MonoBehaviour
     private TMP_Dropdown installation;
 
     [SerializeField]
-    private ContentEditorMultiSelectDropdown includeCategories;
+    private MultiSelectDropdown includeCategories;
 
     [SerializeField]
-    private ContentEditorMultiSelectDropdown excludeCategories;
+    private MultiSelectDropdown excludeCategories;
 
     [SerializeField]
     private UICheckboxView showDeprecated;

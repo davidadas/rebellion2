@@ -95,9 +95,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI requirement;
 
     [SerializeField]
-    private Image installInset;
-
-    [SerializeField]
     private GameObject detailContent;
 
     [SerializeField]
@@ -149,7 +146,10 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private int inlineFilterHeight;
     private string[] activePackIDs = Array.Empty<string>();
     private bool library;
-    private readonly List<ContentEditorModCardView> rows = new();
+    private SelectableListView<ContentEditorModCardView, ContentEditorModEntry> packageList;
+    private IReadOnlyList<ContentEditorModCardView> Rows =>
+        packageList?.Rows ?? Array.Empty<ContentEditorModCardView>();
+    private string selectedPackageID;
     private readonly Dictionary<string, Texture2D> icons = new(StringComparer.Ordinal);
     private ScrollRect packageScroll;
     private string selectedIconUrl;
@@ -226,7 +226,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || detailCloseButton == null
             || detailStatus == null
             || requirement == null
-            || installInset == null
             || filters == null
             || sorting == null
             || clearSearchButton == null
@@ -258,6 +257,20 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         sorting.onValueChanged.AddListener(ChangeCriteria);
         clearSearchButton.onClick.AddListener(ClearSearch);
         resetButton.onClick.AddListener(ResetFilters);
+        packageList = new SelectableListView<ContentEditorModCardView, ContentEditorModEntry>(
+            packages.ScrollArea,
+            rowTemplate,
+            "Package",
+            (row, pointer) =>
+            {
+                selectedPackageID = row.Entry.ID;
+                if (pointer != null)
+                    SelectPackage(row.Entry.ID);
+            },
+            (row, _) => SelectPackage(row.Entry.ID),
+            canNavigate: () => !browseLocked && !detailOverlay.activeSelf,
+            navigationScope: packages.transform
+        );
         packageScroll = packages.ScrollArea.ScrollRoot.GetComponent<ScrollRect>();
         packageScroll.onValueChanged.AddListener(HandleScroll);
         bound = true;
@@ -335,6 +348,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         );
         UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, 176);
         filters.SetWidth(width);
+        UILayout.SetTopRightRect((RectTransform)resetButton.transform, 16, 118, 176, 44);
         int packWidth = Mathf.Min(440, Mathf.FloorToInt(width * 0.45f));
         UILayout.SetSourceRect((RectTransform)defaultPackControls.transform, 0, 112, width, 72);
         UILayout.SetSourceRect(defaultPackDescription, 0, 0, width - packWidth - 24, 72);
@@ -354,7 +368,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                 Mathf.Max(1, available.width - 40) / detailPanel.rect.width,
                 Mathf.Max(1, available.height - 40) / detailPanel.rect.height
             );
-        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
+        LayoutResults(Rows.Count(row => row.gameObject.activeSelf));
     }
 
     /// <summary>
@@ -392,22 +406,24 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     )
     {
         LayoutResults(items.Count, resetScroll);
-        for (int i = 0; i < items.Count; i++)
-        {
-            if (i == rows.Count)
-                rows.Add(Instantiate(rowTemplate, packages.ScrollArea.ContentRoot));
-            ContentEditorModCardView row = rows[i];
-            row.Render(
-                items[i],
-                !browseLocked,
-                !busy,
-                SelectPackage,
-                InstallPackage,
-                FindIcon(items[i].IconUrl)
-            );
-        }
-        for (int i = items.Count; i < rows.Count; i++)
-            rows[i].gameObject.SetActive(false);
+        packageList.Render(
+            items,
+            Mathf.CeilToInt(packages.ScrollArea.ContentRoot.rect.height),
+            38,
+            resetScroll,
+            _cardHeight,
+            (row, entry, index) =>
+                row.Render(
+                    index,
+                    entry,
+                    !browseLocked,
+                    !busy,
+                    SelectPackage,
+                    InstallPackage,
+                    FindIcon(entry.IconUrl)
+                ),
+            (entry, _) => entry.ID == selectedPackageID
+        );
         library = installed;
         pageTitle.text = installed ? "Library" : "Browse";
         defaultPackControls.SetActive(installed);
@@ -494,9 +510,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                 ),
             resetScroll
         );
-        for (int index = 0; index < rows.Count; index++)
+        for (int index = 0; index < Rows.Count; index++)
         {
-            RectTransform rect = (RectTransform)rows[index].transform;
+            RectTransform rect = (RectTransform)Rows[index].transform;
             float width = (packages.ScrollArea.ViewportWidth - 16 * (_columns - 1)) / _columns;
             rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.up;
             rect.sizeDelta = new Vector2(width, _cardHeight - 16);
@@ -720,14 +736,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             RectTransform.Axis.Horizontal,
             installed ? 200 : 496
         );
-        installInset.gameObject.SetActive(installed);
-        installButton
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(installed ? ContentEditorColorRole.Divider : ContentEditorColorRole.Accent);
-        installButton
-            .GetComponentInChildren<TMP_Text>()
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(installed ? ContentEditorColorRole.Text : ContentEditorColorRole.Background);
+        ContentEditorAppearance.SetActionStyle(installButton, !installed);
         float bottom = canInstall || installed ? releaseTop + 44 : contentBottom;
         float linksTop = bottom + 24;
         ((RectTransform)listingButton.transform).anchoredPosition = new Vector2(32, -linksTop);
@@ -801,7 +810,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             }
         )
             button.interactable = !value;
-        foreach (ContentEditorModCardView row in rows)
+        foreach (ContentEditorModCardView row in Rows)
             row.SetInteractable(!browseLocked, !value);
         foreach (Button button in new[] { clearSearchButton, resetButton, filterButton })
             button.interactable = !browseLocked;
@@ -844,7 +853,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         }
         icons.Add(url, texture);
         foreach (
-            ContentEditorModCardView row in rows.Where(row =>
+            ContentEditorModCardView row in Rows.Where(row =>
                 row.gameObject.activeSelf && row.Entry?.IconUrl == url
             )
         )
@@ -860,7 +869,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             HashSet<string> visible = new HashSet<string>(VisibleIcons(), StringComparer.Ordinal);
             string oldest = icons.Keys.First(key => !visible.Contains(key));
             foreach (
-                ContentEditorModCardView row in rows.Where(row => row.Entry?.IconUrl == oldest)
+                ContentEditorModCardView row in Rows.Where(row => row.Entry?.IconUrl == oldest)
             )
                 row.SetArtwork(null);
             ReleaseObject(icons[oldest]);
@@ -884,7 +893,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         float top = packages.ScrollArea.ContentRoot.anchoredPosition.y;
         float bottom = top + packages.ScrollArea.ViewportHeight;
-        return rows.Where(
+        return Rows.Where(
                 (row, index) =>
                     row.gameObject.activeSelf
                     && inlineFilterHeight + index / _columns * _cardHeight < bottom
@@ -924,6 +933,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <param name="id">The selected package identity.</param>
     private void SelectPackage(string id)
     {
+        selectedPackageID = id;
         HideFilters();
         detailOverlay.SetActive(true);
         detailOverlay.transform.SetAsLastSibling();
@@ -964,7 +974,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void ToggleFilters()
     {
         filterPanel.SetActive(!filterPanel.activeSelf);
-        LayoutResults(rows.Count(row => row.gameObject.activeSelf), true);
+        LayoutResults(Rows.Count(row => row.gameObject.activeSelf), true);
     }
 
     /// <summary>
@@ -973,7 +983,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void HideFilters()
     {
         filterPanel.SetActive(false);
-        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
+        LayoutResults(Rows.Count(row => row.gameObject.activeSelf));
     }
 
     /// <summary>
@@ -1123,6 +1133,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             resetButton.onClick.RemoveListener(ResetFilters);
             packageScroll.onValueChanged.RemoveListener(HandleScroll);
         }
+        packageList?.Clear();
         foreach (Texture2D texture in icons.Values)
             ReleaseObject(texture);
         icons.Clear();

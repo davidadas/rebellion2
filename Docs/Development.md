@@ -54,6 +54,13 @@ and `BUILD_PLAYER_PATH` are set:
 BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.sh build
 ```
 
+## Toolkit launch pages
+
+The patcher offers **Open mod manager** for the installed Library and **Open mod editor** for
+Projects. Both open the same toolkit. Direct launches default to Library; pass
+`-startPage Projects` or `-startPage Browse` to choose another page. An explicit `-packPath`
+opens that working project instead. Switching pages preserves the open project's draft.
+
 ## Local macOS signing
 
 To retain Keychain access across toolkit rebuilds, sign each build with the same certificate and

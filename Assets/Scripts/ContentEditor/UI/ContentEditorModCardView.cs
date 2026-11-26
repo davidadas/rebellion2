@@ -6,16 +6,13 @@ using UnityEngine.UI;
 /// <summary>
 /// Presents one reusable mod card with artwork and a short description.
 /// </summary>
-public sealed class ContentEditorModCardView : MonoBehaviour
+public sealed class ContentEditorModCardView : SelectableListRowView
 {
     [SerializeField]
-    private Button button;
+    private RawImage hitArea;
 
     [SerializeField]
     private Button primaryAction;
-
-    [SerializeField]
-    private Image actionInset;
 
     [SerializeField]
     private RawImage artwork;
@@ -44,6 +41,7 @@ public sealed class ContentEditorModCardView : MonoBehaviour
     /// <summary>
     /// Binds a card without retaining a callback or image belonging to its previous package.
     /// </summary>
+    /// <param name="index">The row position in the shared selectable list.</param>
     /// <param name="entry">The combined public listing and installation state.</param>
     /// <param name="interactive">Whether another operation permits selection.</param>
     /// <param name="canInstall">Whether the controller can start a file operation.</param>
@@ -51,6 +49,7 @@ public sealed class ContentEditorModCardView : MonoBehaviour
     /// <param name="onInstall">The callback for installing the latest online release.</param>
     /// <param name="texture">The cached package artwork, or null while loading.</param>
     internal void Render(
+        int index,
         ContentEditorModEntry entry,
         bool interactive,
         bool canInstall,
@@ -59,9 +58,9 @@ public sealed class ContentEditorModCardView : MonoBehaviour
         Texture2D texture
     )
     {
+        ConfigureSelectableRow(index, hitArea);
         if (!bound)
         {
-            button.onClick.AddListener(Select);
             primaryAction.onClick.AddListener(PerformPrimaryAction);
             bound = true;
         }
@@ -70,28 +69,12 @@ public sealed class ContentEditorModCardView : MonoBehaviour
         install = onInstall;
         requiresInstallation =
             entry.Listing != null && (entry.Installation == null || entry.HasUpdate);
-        actionInset.gameObject.SetActive(!requiresInstallation);
-        primaryAction
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(
-                requiresInstallation
-                    ? ContentEditorColorRole.Accent
-                    : ContentEditorColorRole.Divider
-            );
-        primaryAction
-            .GetComponentInChildren<TMP_Text>()
-            .GetComponent<ContentEditorColorBinding>()
-            .SetRole(
-                requiresInstallation
-                    ? ContentEditorColorRole.Background
-                    : ContentEditorColorRole.Text
-            );
+        ContentEditorAppearance.SetActionStyle(primaryAction, requiresInstallation);
         primaryAction.GetComponentInChildren<TMP_Text>().text =
             entry.HasUpdate ? "Update"
             : requiresInstallation ? "Install"
             : "Manage";
         caption.text = entry.Name;
-        caption.GetComponent<ContentEditorColorBinding>().SetRole(ContentEditorColorRole.Text);
         author.text =
             "by "
             + entry.Author
@@ -99,7 +82,6 @@ public sealed class ContentEditorModCardView : MonoBehaviour
         description.text = entry.Description;
         popularity.text =
             entry.Listing == null ? string.Empty : entry.DownloadCount + "\n" + entry.LikeCount;
-        button.GetComponent<ContentEditorColorBinding>().SetRole(ContentEditorColorRole.Panel);
         SetInteractable(interactive, canInstall);
         initials.text = string.IsNullOrEmpty(entry.Name)
             ? "?"
@@ -126,7 +108,8 @@ public sealed class ContentEditorModCardView : MonoBehaviour
     /// <param name="canInstall">Whether a new installation can begin.</param>
     internal void SetInteractable(bool value, bool canInstall)
     {
-        button.interactable = value;
+        enabled = value;
+        hitArea.raycastTarget = value;
         primaryAction.interactable = value && (!requiresInstallation || canInstall);
     }
 
@@ -153,7 +136,6 @@ public sealed class ContentEditorModCardView : MonoBehaviour
     {
         if (bound)
         {
-            button.onClick.RemoveListener(Select);
             primaryAction.onClick.RemoveListener(PerformPrimaryAction);
         }
     }

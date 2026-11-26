@@ -1,4 +1,3 @@
-using System;
 using System.IO;
 using System.Text.RegularExpressions;
 using UnityEngine;
@@ -54,12 +53,15 @@ internal static class ContentEditorPublishingStorage
             byte[] icon = ReadIcon(settings.IconPath);
             string destination = Path.Combine(folder, "icon.png");
             ContentEditorPaths.VerifyWritePath(project, destination);
-            WriteAtomically(destination, icon);
+            ContentPackEditorStorage.WriteBytesAtomically(destination, icon);
         }
         ContentEditorPublishingSettings copy =
             JsonUtility.FromJson<ContentEditorPublishingSettings>(JsonUtility.ToJson(settings));
         copy.IconPath = string.Empty;
-        WriteAtomically(path, System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(copy, true)));
+        ContentPackEditorStorage.WriteBytesAtomically(
+            path,
+            System.Text.Encoding.UTF8.GetBytes(JsonUtility.ToJson(copy, true))
+        );
         settings.IconPath = File.Exists(Path.Combine(folder, "icon.png"))
             ? Path.Combine(folder, "icon.png")
             : string.Empty;
@@ -77,7 +79,7 @@ internal static class ContentEditorPublishingStorage
         string path = Path.Combine(project.PackRootPath, DirectoryName, "icon.png");
         ContentEditorPaths.VerifyWritePath(project, path);
         Directory.CreateDirectory(Path.GetDirectoryName(path));
-        WriteAtomically(path, bytes);
+        ContentPackEditorStorage.WriteBytesAtomically(path, bytes);
         return path;
     }
 
@@ -123,29 +125,6 @@ internal static class ContentEditorPublishingStorage
                 UnityEngine.Object.Destroy(texture);
             else
                 UnityEngine.Object.DestroyImmediate(texture);
-        }
-    }
-
-    /// <summary>
-    /// Replaces a draft file only after its complete new contents have been written.
-    /// </summary>
-    /// <param name="path">The destination inside the publishing workspace.</param>
-    /// <param name="contents">The complete replacement bytes.</param>
-    private static void WriteAtomically(string path, byte[] contents)
-    {
-        string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllBytes(temporary, contents);
-            if (File.Exists(path))
-                File.Replace(temporary, path, null);
-            else
-                File.Move(temporary, path);
-        }
-        finally
-        {
-            if (File.Exists(temporary))
-                File.Delete(temporary);
         }
     }
 }

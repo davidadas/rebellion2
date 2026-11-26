@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine.EventSystems;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
 
@@ -128,7 +129,12 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(item =>
                     item.Entry?.Installation?.Content.Any(content => content.ID == id) == true
                 );
-            card.GetComponent<Button>().onClick.Invoke();
+            card.OnPointerDown(
+                new PointerEventData(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                }
+            );
             Button activate = view
                 .ModManager.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "activateButton");

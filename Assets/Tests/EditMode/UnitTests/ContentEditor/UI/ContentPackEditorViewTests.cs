@@ -13,6 +13,94 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ZoomContent_ModPageIsSelected_PreservesPageAndOpenProjectDraft(bool library)
+        {
+            ContentEditorPage page = library ? ContentEditorPage.Library : ContentEditorPage.Browse;
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            view.ShowField(officer.GetField("EncyclopediaDescription"), null);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == "EncyclopediaDescription");
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("Uncommitted project draft");
+            view.SetWorkspaceNavigation(page);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), library, 0, true);
+
+            view.ZoomContent(-0.1f);
+
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.True);
+            Assert.That(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == page.ToString()),
+                Is.True
+            );
+            view.ShowProjects();
+            view.EditCurrentProject();
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.False);
+            Assert.That(input.gameObject.activeInHierarchy, Is.True);
+            Assert.That(input.text, Is.EqualTo("Uncommitted project draft"));
+        }
+
+        [Test]
+        public void Render_ManyCategories_SelectsMultipleKeysWithoutClosingDropdown()
+        {
+            view.SetWorkspaceNavigation(ContentEditorPage.Browse);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), false, 0, true);
+            view.ModManager.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "filterButton")
+                .onClick.Invoke();
+            MultiSelectDropdown picker = view
+                .ModManager.GetComponentsInChildren<MultiSelectDropdown>()
+                .Single(item => item.name == "IncludeCategories");
+            var choices = Enumerable
+                .Range(0, 40)
+                .ToDictionary(index => "key-" + index, index => "Category " + index.ToString("D2"));
+            string[] selected = null;
+            picker.Changed += values => selected = values;
+            picker.Render(choices, Array.Empty<string>(), "Any category");
+            picker.GetComponent<Button>().onClick.Invoke();
+            Toggle[] options = picker.GetComponentsInChildren<Toggle>();
+
+            options[1].isOn = true;
+            options[35].isOn = true;
+
+            CollectionAssert.AreEquivalent(new[] { "key-1", "key-35" }, selected);
+            Assert.That(picker.IsExpanded, Is.True);
+        }
+
+        [TestCase("ContinuePublishing")]
+        [TestCase("ReleaseStep")]
+        [TestCase("ReviewStep")]
+        public void Show_PublishingDraftHasMissingRequirements_PreventsForwardNavigation(
+            string buttonName
+        )
+        {
+            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            Button advance = view
+                .Publishing.GetComponentsInChildren<Button>()
+                .Single(button => button.name == buttonName);
+
+            advance.onClick.Invoke();
+
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_InputField>()
+                    .Any(input => input.name == "PublishingPackageName"),
+                Is.True
+            );
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "PublishingStatus")
+                    .text,
+                Does.Contain("Package name")
+            );
+        }
+
         [TestCase(EventModifiers.Control)]
         [TestCase(EventModifiers.Command)]
         public void HandleKeyboardShortcut_ValidatePackShortcut_RaisesValidateRequested(

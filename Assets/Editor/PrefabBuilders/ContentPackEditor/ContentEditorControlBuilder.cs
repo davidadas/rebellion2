@@ -284,13 +284,14 @@ internal static class ContentEditorControlBuilder
             MenuControlStyle.Flat
         );
         Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
+        Transform arrow = dropdown.transform.Find("Arrow");
         foreach (Image image in dropdown.GetComponentsInChildren<Image>(true))
         {
             if (image.GetComponent<Mask>() == null)
                 BindColor(
                     image,
-                    image == item.graphic
-                        ? ContentEditorColorRole.Checkmark
+                    image.transform.IsChildOf(arrow) ? ContentEditorColorRole.Text
+                        : image == item.graphic ? ContentEditorColorRole.Checkmark
                         : ContentEditorColorRole.Panel
                 );
         }
@@ -309,8 +310,6 @@ internal static class ContentEditorControlBuilder
         outline.useGraphicAlpha = false;
         BindColor(dropdown.targetGraphic, ContentEditorColorRole.Input, dropdown);
         Stretch(dropdown.captionText.rectTransform, 12, 0, 40, 0);
-        Object.DestroyImmediate(dropdown.transform.Find("Arrow").gameObject);
-        AddDropdownArrow(dropdown.transform);
         return dropdown;
     }
 
@@ -320,22 +319,9 @@ internal static class ContentEditorControlBuilder
     /// <param name="parent">The field receiving the chevron.</param>
     internal static void AddDropdownArrow(Transform parent)
     {
-        RectTransform arrow = Layer("Arrow", parent);
-        arrow.anchorMin = Vector2.right;
-        arrow.anchorMax = Vector2.one;
-        arrow.offsetMin = new Vector2(-32, 0);
-        arrow.offsetMax = new Vector2(-12, 0);
-        for (int index = 0; index < 2; index++)
-        {
-            Image stroke = Surface("ChevronStroke", arrow, ContentEditorColorRole.Text);
-            stroke.rectTransform.anchorMin = stroke.rectTransform.anchorMax = new Vector2(
-                0.5f,
-                0.5f
-            );
-            stroke.rectTransform.sizeDelta = new Vector2(8, 2);
-            stroke.rectTransform.anchoredPosition = new Vector2(index == 0 ? -2.5f : 2.5f, 0);
-            stroke.rectTransform.localRotation = Quaternion.Euler(0, 0, index == 0 ? -45 : 45);
-        }
+        RectTransform arrow = MenuControlPrefabBuilder.CreateDropdownArrow(parent);
+        foreach (Image stroke in arrow.GetComponentsInChildren<Image>())
+            BindColor(stroke, ContentEditorColorRole.Text);
     }
 
     /// <summary>
@@ -641,5 +627,63 @@ internal static class ContentEditorControlBuilder
         for (int index = 0; index < values.Count; index++)
             property.GetArrayElementAtIndex(index).objectReferenceValue = values[index];
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Authors an attached multi-select dropdown using compact checkbox rows.
+    /// </summary>
+    /// <param name="parent">The filter strip.</param>
+    /// <param name="name">The control identity.</param>
+    /// <param name="caption">The empty-selection label.</param>
+    /// <returns>The checkbox dropdown.</returns>
+    internal static MultiSelectDropdown MultiSelect(Transform parent, string name, string caption)
+    {
+        Button picker = Button(name, parent, caption);
+        Rect((RectTransform)picker.transform, 0, 0, 280, 44);
+        Outline outline = picker.gameObject.AddComponent<Outline>();
+        outline.effectDistance = new Vector2(1, -1);
+        outline.useGraphicAlpha = false;
+        BindColor(picker.targetGraphic, ContentEditorColorRole.Input, picker);
+        TMP_Text label = picker.GetComponentInChildren<TMP_Text>();
+        BindColor(label, ContentEditorColorRole.Text);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        Stretch(label.rectTransform, 12, 0, 40, 0);
+        AddDropdownArrow(picker.transform);
+        MultiSelectDropdown dropdown = picker.gameObject.AddComponent<MultiSelectDropdown>();
+        Image popup = Surface("CategoryOptions", picker.transform, ContentEditorColorRole.Border);
+        Rect(popup.rectTransform, 0, 48, 280, 304);
+        popup.raycastTarget = true;
+        Canvas canvas = popup.gameObject.AddComponent<Canvas>();
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 30000;
+        popup.gameObject.AddComponent<GraphicRaycaster>();
+        Image interior = Surface("Interior", popup.transform, ContentEditorColorRole.Panel);
+        Stretch(interior.rectTransform, 1, 1, 1, 1);
+        ScrollAreaLayout scroll = Scroll("Choices", popup.transform, 8, 8);
+        Rect((RectTransform)scroll.transform, 8, 8, 264, 256);
+        UICheckboxView row = Checkbox(scroll.ScrollArea.ContentRoot);
+        row.name = "CategoryTemplate";
+        Rect((RectTransform)row.transform, 0, 0, 248, 32);
+        Rect((RectTransform)row.transform.Find("Frame"), 0, 5, 22, 22);
+        TMP_Text rowLabel = row.GetComponentInChildren<TMP_Text>(true);
+        rowLabel.fontSize = 14;
+        rowLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        rowLabel.overflowMode = TextOverflowModes.Ellipsis;
+        row.gameObject.SetActive(false);
+        Button clear = PlainButton("ClearSelection", popup.transform, "Clear selection");
+        Rect((RectTransform)clear.transform, 8, 268, 264, 28);
+        TMP_Text clearLabel = clear.GetComponentInChildren<TMP_Text>();
+        clearLabel.fontSize = 13;
+        clearLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        Assign(dropdown, "control", picker);
+        Assign(dropdown, "caption", label);
+        Assign(dropdown, "popup", popup.rectTransform);
+        Assign(dropdown, "scroll", scroll);
+        Assign(dropdown, "rowTemplate", row);
+        Assign(dropdown, "clear", clear);
+        popup.gameObject.SetActive(false);
+        return dropdown;
     }
 }

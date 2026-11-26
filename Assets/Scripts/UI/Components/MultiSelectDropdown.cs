@@ -10,7 +10,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Presents an attached checkbox dropdown whose selections apply without closing its list.
 /// </summary>
-public sealed class ContentEditorMultiSelectDropdown : MonoBehaviour
+public sealed class MultiSelectDropdown : MonoBehaviour
 {
     private const int _rowHeight = 32;
     private const int _visibleRows = 8;
@@ -40,8 +40,8 @@ public sealed class ContentEditorMultiSelectDropdown : MonoBehaviour
     private string emptyCaption;
     private GameObject blocker;
     private bool bound;
-    internal event Action<string[]> Changed;
-    internal bool IsExpanded => popup && popup.gameObject.activeSelf;
+    public event Action<string[]> Changed;
+    public bool IsExpanded => popup && popup.gameObject.activeSelf;
 
     /// <summary>
     /// Connects the authored dropdown once its references are available.
@@ -77,7 +77,7 @@ public sealed class ContentEditorMultiSelectDropdown : MonoBehaviour
     /// <param name="choices">The available option keys and display names.</param>
     /// <param name="values">The selected keys.</param>
     /// <param name="empty">The caption for an empty selection.</param>
-    internal void Render(
+    public void Render(
         IReadOnlyDictionary<string, string> choices,
         IEnumerable<string> values,
         string empty
@@ -99,7 +99,7 @@ public sealed class ContentEditorMultiSelectDropdown : MonoBehaviour
     /// Controls availability and closes the popup when its owner locks input.
     /// </summary>
     /// <param name="value">Whether the dropdown accepts input.</param>
-    internal void SetInteractable(bool value)
+    public void SetInteractable(bool value)
     {
         control.interactable = value;
         if (!value)
@@ -110,7 +110,7 @@ public sealed class ContentEditorMultiSelectDropdown : MonoBehaviour
     /// Dismisses an open list before its containing screen handles Escape.
     /// </summary>
     /// <returns>Whether an expanded list was closed.</returns>
-    internal bool TryCancel()
+    public bool TryCancel()
     {
         if (!IsExpanded)
             return false;

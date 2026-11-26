@@ -22,6 +22,11 @@ public sealed class SelectableListView<TRowView, TRowData>
     private readonly Transform navigationScope;
 
     /// <summary>
+    /// Gets the pooled row views for artwork updates and feature-specific row sizing.
+    /// </summary>
+    public IReadOnlyList<TRowView> Rows => rowViews;
+
+    /// <summary>
     /// Creates a reusable list renderer around an authored scroll area and row template.
     /// </summary>
     /// <param name="scrollArea">The authored scroll area.</param>
