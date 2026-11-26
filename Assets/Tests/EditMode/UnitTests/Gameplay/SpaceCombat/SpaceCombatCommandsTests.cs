@@ -4403,11 +4403,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsNotNull(game.ActiveBattle);
             Assert.AreEqual(
                 battle.Units.Single(unit => unit.Side == CombatSide.Attacker).Unit.OwnerInstanceID,
-                game.ActiveBattle.AttackerOwnerInstanceID
+                game.ActiveBattle.AttackingFactionIDs.Single()
             );
             Assert.AreEqual(
                 battle.Units.Single(unit => unit.Side == CombatSide.Defender).Unit.OwnerInstanceID,
-                game.ActiveBattle.DefenderOwnerInstanceID
+                game.ActiveBattle.DefendingFactionIDs.Single()
             );
             Assert.AreNotSame(attacker, game.ActiveBattle.GetCombatant(attacker.InstanceID).Unit);
         }

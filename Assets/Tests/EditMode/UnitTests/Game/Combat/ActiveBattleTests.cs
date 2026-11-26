@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Numerics;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
@@ -171,20 +172,56 @@ namespace Rebellion.Tests.Game.Combat
                 {
                     Kind = BattleKind.Space,
                     PlanetInstanceID = "planet",
-                    AttackerOwnerInstanceID = "attacker",
-                    DefenderOwnerInstanceID = "defender",
+                    AttackingFactionIDs = { "attacker", "other-attacker" },
+                    DefendingFactionIDs = { "defender", "other-defender" },
                 },
             };
-
-            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
-                SerializationHelper.Serialize(game)
+            game.ActiveBattle.AddCombatant(
+                new CapitalShip { InstanceID = "ship", OwnerInstanceID = "attacker" }
             );
 
-            Assert.IsNotNull(restored.ActiveBattle);
-            Assert.AreEqual("planet", restored.ActiveBattle.PlanetInstanceID);
-            Assert.AreEqual(BattleKind.Space, restored.ActiveBattle.Kind);
-            Assert.AreEqual("attacker", restored.ActiveBattle.AttackerOwnerInstanceID);
-            Assert.AreEqual("defender", restored.ActiveBattle.DefenderOwnerInstanceID);
+            string xml = SerializationHelper.Serialize(game);
+            XElement battle = XDocument.Parse(xml).Root.Element("ActiveBattle");
+            CollectionAssert.AreEqual(
+                new[] { "attacker", "other-attacker" },
+                battle.Element("AttackingFactionIDs").Elements("FactionID").Select(id => id.Value)
+            );
+            CollectionAssert.AreEqual(
+                new[] { "defender", "other-defender" },
+                battle.Element("DefendingFactionIDs").Elements("FactionID").Select(id => id.Value)
+            );
+            Assert.IsNull(battle.Element("AttackerOwnerInstanceID"));
+            Assert.IsNull(battle.Element("DefenderOwnerInstanceID"));
+
+            ActiveBattle restored = SerializationHelper.Deserialize<GameRoot>(xml).ActiveBattle;
+            Assert.AreEqual("planet", restored.PlanetInstanceID);
+            Assert.AreEqual(BattleKind.Space, restored.Kind);
+            CollectionAssert.AreEqual(
+                game.ActiveBattle.AttackingFactionIDs,
+                restored.AttackingFactionIDs
+            );
+            CollectionAssert.AreEqual(
+                game.ActiveBattle.DefendingFactionIDs,
+                restored.DefendingFactionIDs
+            );
+            Assert.AreEqual("attacker", restored.Combatants.Single().Unit.OwnerInstanceID);
+        }
+
+        [Test]
+        public void Deserialize_LegacySingleFactionPerSide_MigratesToFactionLists()
+        {
+            const string xml =
+                @"<ActiveBattle>
+                  <AttackerOwnerInstanceID>attacker</AttackerOwnerInstanceID>
+                  <DefenderOwnerInstanceID>defender</DefenderOwnerInstanceID>
+                  <Kind>Space</Kind>
+                </ActiveBattle>";
+
+            ActiveBattle restored = SerializationHelper.Deserialize<ActiveBattle>(xml);
+
+            CollectionAssert.AreEqual(new[] { "attacker" }, restored.AttackingFactionIDs);
+            CollectionAssert.AreEqual(new[] { "defender" }, restored.DefendingFactionIDs);
+            Assert.IsEmpty(restored.Combatants);
         }
 
         [Test]

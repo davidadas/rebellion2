@@ -18,11 +18,42 @@ namespace Rebellion.Game.Combat
 
         public BattleKind Kind { get; set; }
         public string PlanetInstanceID { get; set; }
-        public string AttackerOwnerInstanceID { get; set; }
-        public string DefenderOwnerInstanceID { get; set; }
+
+        [PersistableCollectionItem(Name = "FactionID")]
+        public List<string> AttackingFactionIDs { get; set; } = new();
+
+        [PersistableCollectionItem(Name = "FactionID")]
+        public List<string> DefendingFactionIDs { get; set; } = new();
 
         [PersistableIgnore]
         public IReadOnlyList<CombatUnit> Combatants => _combatants;
+
+        // Older XML stored only one faction ID per side.
+        [PersistableMember(Name = "AttackerOwnerInstanceID")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private string LegacyAttackerOwnerInstanceID
+        {
+            get => null;
+            set
+            {
+                if (AttackingFactionIDs.Count == 0 && !string.IsNullOrEmpty(value))
+                    AttackingFactionIDs.Add(value);
+            }
+        }
+
+        [PersistableMember(Name = "DefenderOwnerInstanceID")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private string LegacyDefenderOwnerInstanceID
+        {
+            get => null;
+            set
+            {
+                if (DefendingFactionIDs.Count == 0 && !string.IsNullOrEmpty(value))
+                    DefendingFactionIDs.Add(value);
+            }
+        }
 
         // Older XML grouped combatants by owner.
         [PersistableMember(Name = "Participants")]

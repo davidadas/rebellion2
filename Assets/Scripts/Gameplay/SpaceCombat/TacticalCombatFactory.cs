@@ -390,8 +390,8 @@ namespace Rebellion.Gameplay
             {
                 Kind = BattleKind.Space,
                 PlanetInstanceID = planet.InstanceID,
-                AttackerOwnerInstanceID = roster.Attacker.OwnerID,
-                DefenderOwnerInstanceID = roster.Defender.OwnerID,
+                AttackingFactionIDs = { roster.Attacker.OwnerID },
+                DefendingFactionIDs = { roster.Defender.OwnerID },
             };
             Dictionary<string, CombatUnit> byID = new(StringComparer.Ordinal);
             List<CombatUnit>[] rosters = { new(), new() };
