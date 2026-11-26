@@ -85,7 +85,12 @@ internal sealed class ContentPackEditorSession : IDisposable
     }
 
     /// <summary>
-    /// Completes pending gestures before releasing the active project.
+    /// Completes pending gestures before releasing the active project's undo resources.
     /// </summary>
-    public void Dispose() => Open(null);
+    public void Dispose()
+    {
+        ContentPackEditorProject previous = Project;
+        Open(null);
+        previous?.Dispose();
+    }
 }

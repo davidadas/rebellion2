@@ -1158,7 +1158,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(shipyard, planet);
             game.CurrentTick = 11;
             processor.ProcessTick(game);
-            Assert.AreEqual(13, ship.SystemDamage.RepairDueTick);
+            Assert.AreEqual(13, ship.NextRepairTick);
         }
 
         [Test]
@@ -1176,21 +1176,46 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(1, ship.SystemDamage.Engines);
         }
 
+        [Test]
+        public void ProcessTick_MixedDamage_UsesExistingHullRepairPulse()
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            CapitalShip ship = CreateSystemDamagedShip(game, planet);
+            ship.CurrentHullStrength = 90;
+            ship.ScheduleRepair(1, 30);
+            game.Random = new FixedRandomProvider(new[] { 0.0, 0.0 });
+            game.CurrentTick = 30;
+            RecoveryTickProcessor processor = new();
+            processor.ProcessTick(game);
+
+            Assert.AreEqual(90, ship.CurrentHullStrength);
+            Assert.AreEqual(1, ship.SystemDamage.Engines);
+
+            game.CurrentTick = 31;
+            processor.ProcessTick(game);
+
+            Assert.AreEqual(100, ship.CurrentHullStrength);
+            Assert.AreEqual(0, ship.SystemDamage.Engines);
+            Assert.AreEqual(0, ship.NextRepairTick);
+        }
+
         /// <summary>
-        /// Creates a fully built ship with shared repair definitions and one damaged system.
+        /// Creates a fully built ship with one damaged system.
         /// </summary>
         /// <param name="game">The fixture's campaign graph.</param>
         /// <param name="planet">The ship's repair location.</param>
         /// <returns>The attached damaged ship.</returns>
         private static CapitalShip CreateSystemDamagedShip(GameRoot game, Planet planet)
         {
-            UnitFactory factory = TacticalTestData.CreateUnitFactory(game.Config);
-            CapitalShip ship = factory.Create<CapitalShip>("ALCS008", "empire");
-            ship.InstanceID = "repair-ship";
-            ship.OwnerInstanceID = "empire";
-            ship.ManufacturingStatus = ManufacturingStatus.Complete;
-            ship.CurrentHullStrength = ship.MaxHullStrength;
-            ship.DamageControl = 100;
+            CapitalShip ship = new()
+            {
+                InstanceID = "repair-ship",
+                OwnerInstanceID = "empire",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                DamageControl = 100,
+            };
             ship.SystemDamage.Engines = 1;
             Fleet fleet = EntityFactory.CreateFleet("repair-fleet", "empire");
             game.AttachNode(fleet, planet);

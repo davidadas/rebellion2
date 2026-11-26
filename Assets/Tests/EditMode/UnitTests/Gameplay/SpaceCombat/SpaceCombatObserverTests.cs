@@ -158,11 +158,10 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_SectorCandidates_ExcludesIneligibleUnpopulatedDestroyedAndDisabledPlanets()
+        public void HandleResults_SectorCandidates_UsesCurrentPopulationAndSector()
         {
-            Planet eligible = AddPlanet("eligible", _sector);
-            Planet ineligible = AddPlanet("ineligible", _sector);
-            ineligible.InitializeSectorSupportEligibility(false);
+            _sector.SectorType = PlanetSectorType.OuterRim;
+            Planet populatedRim = AddPlanet("populated-rim", _sector);
             Planet unpopulated = AddPlanet("unpopulated", _sector);
             unpopulated.IsColonized = false;
             Planet destroyed = AddPlanet("destroyed", _sector);
@@ -175,10 +174,8 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = Publish();
 
-            Assert.AreEqual(86, eligible.GetPopularSupport(_firstID));
-            foreach (
-                Planet excluded in new[] { ineligible, unpopulated, destroyed, disabled, other }
-            )
+            Assert.AreEqual(86, populatedRim.GetPopularSupport(_firstID));
+            foreach (Planet excluded in new[] { unpopulated, destroyed, disabled, other })
                 Assert.AreEqual(70, excluded.GetPopularSupport(_firstID));
             Assert.AreEqual(2, results.OfType<PopularSupportShiftResult>().Count());
         }
@@ -318,23 +315,6 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void BeginTacticalCombat_MissingPlanetHistory_RejectsBeforeDeployment()
-        {
-            SpaceCombatCommands commands = CreatePendingEncounter();
-            Planet unknown = new Planet { InstanceID = "old-save-planet", IsColonized = true };
-            _game.AttachNode(unknown, _sector);
-
-            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
-                commands.BeginTacticalCombat()
-            );
-
-            StringAssert.Contains("old-save-planet", error.Message);
-            Assert.IsNull(commands.ActiveTacticalCombat);
-            Assert.IsTrue(commands.HasPendingDecision);
-            Assert.IsNull(unknown.IsSectorSupportEligible);
-        }
-
-        [Test]
         public void BeginTacticalCombat_CompleteAftermathInputs_DeploysWithoutApplyingConsequences()
         {
             SpaceCombatCommands commands = CreatePendingEncounter();
@@ -381,7 +361,6 @@ namespace Rebellion.Tests.Gameplay
             };
             planet.SetPopularSupport(_firstID, 70);
             planet.SetPopularSupport(_secondID, 30);
-            planet.InitializeSectorSupportEligibility(true);
             _game.AttachNode(planet, sector);
             return planet;
         }

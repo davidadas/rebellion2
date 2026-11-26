@@ -637,7 +637,7 @@ public static class ContentPackEditorStorage
         if (string.Equals(source, target, StringComparison.OrdinalIgnoreCase))
             return;
 
-        project.WriteAsset(target, File.ReadAllBytes(source));
+        project.CopyAsset(target, source);
     }
 
     /// <summary>
@@ -691,12 +691,12 @@ public static class ContentPackEditorStorage
         string target = Path.GetFullPath(address[5..], project.PackRootPath);
         ContentEditorPaths.VerifyWritePath(project, target);
         Directory.CreateDirectory(Path.GetDirectoryName(target));
-        WriteBytesAtomically(target, pngBytes);
-        if (layerRecipe != null)
-            WriteBytesAtomically(
-                target + ".layers.json",
-                System.Text.Encoding.UTF8.GetBytes(layerRecipe)
-            );
+        using (project.BeginEdit("Replace artwork"))
+        {
+            project.WriteAsset(target, pngBytes);
+            if (layerRecipe != null)
+                project.WriteAsset(target + ".layers.json", Encoding.UTF8.GetBytes(layerRecipe));
+        }
         return field.MediaRoot == null ? address : address[(root.Length + 1)..];
     }
 
@@ -732,6 +732,25 @@ public static class ContentPackEditorStorage
                 );
             }
         }
+        return address;
+    }
+
+    /// <summary>
+    /// Captures a draft's source bytes without publishing files or changing project state.
+    /// </summary>
+    /// <param name="sourcePath">The template or source image, or an absent optional template.</param>
+    /// <param name="pending">The source bytes owned by the active artwork draft.</param>
+    /// <returns>The portable source address, or null for an absent optional template.</returns>
+    internal static string StageArtworkLayerSource(
+        string sourcePath,
+        IDictionary<string, byte[]> pending
+    )
+    {
+        if (string.IsNullOrEmpty(sourcePath))
+            return null;
+        byte[] image = File.ReadAllBytes(sourcePath);
+        string address = GetArtworkLayerSourceAddress(image, Path.GetExtension(sourcePath));
+        pending[address] = image;
         return address;
     }
 
@@ -785,7 +804,7 @@ public static class ContentPackEditorStorage
         if (!File.Exists(target))
         {
             Directory.CreateDirectory(Path.GetDirectoryName(target));
-            WriteBytesAtomically(target, image);
+            project.WriteAsset(target, image);
         }
     }
 
@@ -899,7 +918,23 @@ public static class ContentPackEditorStorage
     /// </summary>
     /// <param name="target">The verified absolute pack path.</param>
     /// <param name="bytes">The complete encoded file.</param>
-    internal static void WriteBytesAtomically(string target, byte[] bytes)
+    internal static void WriteBytesAtomically(string target, byte[] bytes) =>
+        WriteAtomically(target, temporary => File.WriteAllBytes(temporary, bytes));
+
+    /// <summary>
+    /// Publishes a complete file copy without allocating a buffer as large as the source file.
+    /// </summary>
+    /// <param name="target">The verified destination file.</param>
+    /// <param name="source">The complete source file.</param>
+    internal static void CopyFileAtomically(string target, string source) =>
+        WriteAtomically(target, temporary => File.Copy(source, temporary));
+
+    /// <summary>
+    /// Replaces a destination only after its temporary file has been written successfully.
+    /// </summary>
+    /// <param name="target">The verified destination file.</param>
+    /// <param name="write">The operation that writes a complete temporary file.</param>
+    private static void WriteAtomically(string target, Action<string> write)
     {
         string temporary = Path.Combine(
             Path.GetDirectoryName(target),
@@ -907,7 +942,7 @@ public static class ContentPackEditorStorage
         );
         try
         {
-            File.WriteAllBytes(temporary, bytes);
+            write(temporary);
             if (File.Exists(target))
                 File.Replace(temporary, target, null);
             else
@@ -967,7 +1002,7 @@ public static class ContentPackEditorStorage
             );
         }
         ContentEditorPaths.VerifyWritePath(project, target);
-        File.Copy(source, target);
+        project.CopyAsset(target, source);
         return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
     }
 
@@ -978,6 +1013,8 @@ public static class ContentPackEditorStorage
     public static void Save(ContentPackEditorProject project)
     {
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
+        project.RestoreDocumentSave();
+        project.VerifyAssets();
         foreach (ContentPackEditorDocument document in project.AllDocuments)
         {
             document.Validate();
@@ -1010,13 +1047,34 @@ public static class ContentPackEditorStorage
             nextDefinition.BasePackID,
             StringComparison.Ordinal
         );
+        ContentPackEditorSaveRecovery recovery = project.BeginDocumentSave(dirtyDocuments);
+        IReadOnlyList<ContentPackEditorDocument> refreshed = null;
+        try
+        {
+            foreach (ContentPackEditorDocument document in dirtyDocuments)
+                recovery.Write(document);
+            if (baseChanged)
+                refreshed = CreateDocuments(nextResolver, nextDefinition);
+        }
+        catch (Exception saveFailure)
+        {
+            try
+            {
+                project.RestoreDocumentSave();
+            }
+            catch (IOException restoreFailure)
+            {
+                throw new IOException(
+                    restoreFailure.Message,
+                    new AggregateException(saveFailure, restoreFailure)
+                );
+            }
+            throw;
+        }
         foreach (ContentPackEditorDocument document in dirtyDocuments)
-            SaveDocument(project, document);
-
-        project.AcceptSave(
-            nextDefinition,
-            baseChanged ? CreateDocuments(nextResolver, nextDefinition) : null
-        );
+            document.AcceptSave();
+        project.AcceptSave(nextDefinition, refreshed);
+        project.CompleteDocumentSave();
     }
 
     /// <summary>
@@ -1036,66 +1094,11 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
-    /// Validates and writes the working text to the selected pack's local layer.
-    /// </summary>
-    /// <param name="project">The owner of the write.</param>
-    /// <param name="document">The validated working document.</param>
-    private static void SaveDocument(
-        ContentPackEditorProject project,
-        ContentPackEditorDocument document
-    )
-    {
-        document.Validate();
-        ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
-        VerifyUnchangedTarget(document);
-
-        if (document.IsRemoved || document.InheritsAll)
-        {
-            if (File.Exists(document.TargetPath))
-                File.Delete(document.TargetPath);
-            document.AcceptSave();
-            return;
-        }
-
-        string directory = Path.GetDirectoryName(document.TargetPath);
-        if (string.IsNullOrWhiteSpace(directory))
-            throw new IOException($"Content document path has no directory: {document.TargetPath}");
-        Directory.CreateDirectory(directory);
-
-        string temporaryPath = document.TargetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllText(temporaryPath, document.AuthoredText);
-            ReplaceFile(temporaryPath, document.TargetPath);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-        }
-
-        document.AcceptSave();
-    }
-
-    /// <summary>
     /// Refuses to overwrite a file that another process changed after this document was opened.
     /// </summary>
     /// <param name="document">The document and its last observed disk state.</param>
     private static void VerifyUnchangedTarget(ContentPackEditorDocument document)
     {
         document.VerifyUnchangedSources();
-    }
-
-    /// <summary>
-    /// Moves a completed temporary file into place without exposing partial XML.
-    /// </summary>
-    /// <param name="temporaryPath">The complete temporary file.</param>
-    /// <param name="destinationPath">The final document path.</param>
-    private static void ReplaceFile(string temporaryPath, string destinationPath)
-    {
-        if (File.Exists(destinationPath))
-            File.Replace(temporaryPath, destinationPath, null);
-        else
-            File.Move(temporaryPath, destinationPath);
     }
 }

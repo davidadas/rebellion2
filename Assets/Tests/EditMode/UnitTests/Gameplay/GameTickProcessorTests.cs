@@ -1022,7 +1022,6 @@ namespace Rebellion.Tests.Gameplay
                     OwnerInstanceID = "FNALL1",
                     IsColonized = true,
                 };
-                planet.InitializeSectorSupportEligibility(true);
                 _game.AttachNode(planet, sector);
                 foreach (string factionId in new[] { "FNEMP1", "FNALL1" })
                 {
@@ -1114,9 +1113,6 @@ namespace Rebellion.Tests.Gameplay
                 },
                 sector
             );
-            _game
-                .GetSceneNodeByInstanceID<Planet>("RETREAT_DESTINATION")
-                .InitializeSectorSupportEligibility(true);
             _tick.ReconcileLoadedState();
         }
 
