@@ -113,12 +113,27 @@ public static class ContentXmlOverrides
         XElement baseline = XElement.Parse(defaults);
         XElement edited = XElement.Parse(effective);
         XElement authored = previous == null ? null : XElement.Parse(previous);
-        if (IsAtomicCollection(baseline))
+        if (
+            IsAtomicCollection(baseline)
+            || baseline.Name.LocalName == "MessageDefinitions" && IsAtomicCollection(edited)
+        )
             return XNode.DeepEquals(baseline, edited) && (previous == null || IsEmpty(previous))
                 ? Create(defaults)
                 : edited.ToString();
         XElement result = Difference(baseline, edited, authored) ?? new XElement(baseline.Name);
         result.SetAttributeValue(_inherit, true);
+        if (baseline.Name.LocalName == "MessageDefinitions")
+        {
+            AddMessageInsertionAnchors(baseline, edited, result);
+            XElement merged = XElement.Parse(Merge(defaults, result.ToString()));
+            if (
+                !merged
+                    .Elements()
+                    .Select(Identity)
+                    .SequenceEqual(edited.Elements().Select(Identity))
+            )
+                return edited.ToString();
+        }
         return result.ToString();
     }
 
@@ -293,7 +308,10 @@ public static class ContentXmlOverrides
             target.ReplaceNodes(source.Nodes().Select(CloneNode));
             return;
         }
-        if (IsAtomicCollection(target))
+        if (
+            IsAtomicCollection(target)
+            || target.Name.LocalName == "MessageDefinitions" && IsAtomicCollection(source)
+        )
         {
             target.ReplaceNodes(source.Nodes().Select(CloneNode));
             return;
@@ -319,7 +337,23 @@ public static class ContentXmlOverrides
                 continue;
             }
             if (existing == null)
+            {
+                if (target.Name.LocalName == "MessageDefinitions" && Identity(child) != null)
+                {
+                    if (HasOnlyIdentity(child))
+                        continue;
+                    XElement following = child
+                        .ElementsAfterSelf()
+                        .Select(next => FindChild(target, next))
+                        .FirstOrDefault(next => next != null);
+                    if (following != null)
+                    {
+                        following.AddBeforeSelf(new XElement(child));
+                        continue;
+                    }
+                }
                 target.Add(new XElement(child));
+            }
             else
                 MergeElement(existing, child);
         }
@@ -462,6 +496,48 @@ public static class ContentXmlOverrides
     }
 
     /// <summary>
+    /// Retains insertion positions using identity-only neighbors without copying their settings.
+    /// </summary>
+    /// <param name="baseline">The inherited message definitions.</param>
+    /// <param name="edited">The definitions in the author's requested order.</param>
+    /// <param name="result">The sparse settings and removals being saved.</param>
+    private static void AddMessageInsertionAnchors(
+        XElement baseline,
+        XElement edited,
+        XElement result
+    )
+    {
+        HashSet<string> anchors = edited
+            .Elements()
+            .Where(record => FindChild(baseline, record) == null)
+            .Select(record =>
+                record.ElementsAfterSelf().FirstOrDefault(next => FindChild(baseline, next) != null)
+            )
+            .Where(record => record != null)
+            .Select(Identity)
+            .ToHashSet(StringComparer.Ordinal);
+        if (anchors.Count == 0)
+            return;
+        Dictionary<string, XElement> changes = result
+            .Elements()
+            .ToDictionary(Identity, StringComparer.Ordinal);
+        List<XElement> ordered = new();
+        foreach (XElement record in edited.Elements())
+        {
+            string key = Identity(record);
+            if (changes.TryGetValue(key, out XElement change))
+            {
+                changes.Remove(key);
+                ordered.Add(new XElement(change));
+            }
+            else if (anchors.Contains(key))
+                ordered.Add(IdentityElement(record));
+        }
+        ordered.AddRange(changes.Values.Select(record => new XElement(record)));
+        result.ReplaceNodes(ordered);
+    }
+
+    /// <summary>
     /// Recognizes the stable identities already used by content catalogs.
     /// </summary>
     /// <param name="element">The record to inspect.</param>
@@ -490,7 +566,7 @@ public static class ContentXmlOverrides
             or "Building"
             or "PlanetSector"
             or "Unit" => "TypeID",
-            "Planet" or "GameEvent" or "Faction" => "InstanceID",
+            "Planet" or "GameEvent" or "Faction" or "MessageDefinition" => "InstanceID",
             "FactionTheme" => "FactionInstanceID",
             "Trait" => "ID",
             "Entry" => "Key",
@@ -576,6 +652,8 @@ public static class ContentXmlOverrides
             return false;
         Type type = ElementType(element);
         Type itemType = SerializationMetadata.GetCollectionItemType(type);
+        if (itemType == typeof(MessageDefinition) && children.Length > 0)
+            return true;
         if (
             type != null && TypeHelper.IsDictionary(type)
             || itemType != null

@@ -11,6 +11,10 @@ namespace Rebellion.Multiplayer
     /// </summary>
     public static class MultiplayerPacketCodec
     {
+        internal const int MaximumTacticalMetadataBytes = 2048;
+        internal const int MaximumTacticalCommandBytes = 16 * 1024;
+        internal const int MaximumTacticalSnapshotBytes = 4 * 1024 * 1024;
+        internal const int MaximumTacticalEffectsBytes = 4 * 1024 * 1024;
         private const int _headerLength = 14;
         private const int _maximumMetadataLength = 1024 * 1024;
         private const int _maximumPayloadLength = 128 * 1024 * 1024;
@@ -22,6 +26,20 @@ namespace Rebellion.Multiplayer
         /// </summary>
         public static int MaximumPacketLength =>
             _headerLength + _maximumMetadataLength + _maximumPayloadLength;
+
+        /// <summary>
+        /// Validates a typed packet and measures its complete wire size before transport retention.
+        /// </summary>
+        /// <param name="packet">The complete outgoing packet.</param>
+        /// <returns>The validated header, UTF-8 metadata, and payload byte count.</returns>
+        internal static int GetEncodedLength(MultiplayerPacket packet)
+        {
+            if (packet == null)
+                throw new ArgumentNullException(nameof(packet));
+            int metadataBytes = Encoding.UTF8.GetByteCount(packet.Metadata);
+            ValidateLengths(packet.Type, metadataBytes, packet.Payload.Length);
+            return _headerLength + metadataBytes + packet.Payload.Length;
+        }
 
         /// <summary>
         /// Writes one complete packet to a stream.
@@ -41,9 +59,10 @@ namespace Rebellion.Multiplayer
             if (packet == null)
                 throw new ArgumentNullException(nameof(packet));
 
-            byte[] metadata = Encoding.UTF8.GetBytes(packet.Metadata ?? string.Empty);
+            int metadataLength = Encoding.UTF8.GetByteCount(packet.Metadata ?? string.Empty);
             byte[] payload = packet.Payload ?? Array.Empty<byte>();
-            ValidateLengths(metadata.Length, payload.Length);
+            ValidateLengths(packet.Type, metadataLength, payload.Length);
+            byte[] metadata = Encoding.UTF8.GetBytes(packet.Metadata ?? string.Empty);
 
             byte[] header = new byte[_headerLength];
             Buffer.BlockCopy(_magic, 0, header, 0, _magic.Length);
@@ -94,7 +113,7 @@ namespace Rebellion.Multiplayer
 
             int metadataLength = ReadInt32(header, 6);
             int payloadLength = ReadInt32(header, 10);
-            ValidateLengths(metadataLength, payloadLength);
+            ValidateLengths((MultiplayerMessageType)header[5], metadataLength, payloadLength);
             byte[] metadata = new byte[metadataLength];
             byte[] payload = new byte[payloadLength];
             await ReadExactlyAsync(stream, metadata, 0, metadata.Length, cancellationToken);
@@ -141,13 +160,36 @@ namespace Rebellion.Multiplayer
         /// <summary>
         /// Validates metadata and payload bounds before allocating or writing buffers.
         /// </summary>
+        /// <param name="type">The closed wire message type.</param>
         /// <param name="metadataLength">The metadata byte count.</param>
         /// <param name="payloadLength">The payload byte count.</param>
-        private static void ValidateLengths(int metadataLength, int payloadLength)
+        private static void ValidateLengths(
+            MultiplayerMessageType type,
+            int metadataLength,
+            int payloadLength
+        )
         {
-            if (metadataLength < 0 || metadataLength > _maximumMetadataLength)
+            int metadataLimit = type
+                is >= MultiplayerMessageType.TacticalReady
+                    and <= MultiplayerMessageType.TacticalResync
+                ? MaximumTacticalMetadataBytes
+                : _maximumMetadataLength;
+            int payloadLimit = type switch
+            {
+                MultiplayerMessageType.TacticalCommand => MaximumTacticalCommandBytes,
+                MultiplayerMessageType.TacticalSnapshot
+                or MultiplayerMessageType.TacticalCheckpoint => MaximumTacticalSnapshotBytes,
+                MultiplayerMessageType.TacticalEffects => MaximumTacticalEffectsBytes,
+                MultiplayerMessageType.TacticalReady
+                or MultiplayerMessageType.TacticalCommandResult
+                or MultiplayerMessageType.TacticalSnapshotReceipt
+                or MultiplayerMessageType.TacticalMovieReceipt
+                or MultiplayerMessageType.TacticalResync => 0,
+                _ => _maximumPayloadLength,
+            };
+            if (metadataLength < 0 || metadataLength > metadataLimit)
                 throw new InvalidDataException("The multiplayer metadata length is invalid.");
-            if (payloadLength < 0 || payloadLength > _maximumPayloadLength)
+            if (payloadLength < 0 || payloadLength > payloadLimit)
                 throw new InvalidDataException("The multiplayer payload length is invalid.");
         }
 

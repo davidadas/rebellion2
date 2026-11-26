@@ -76,9 +76,11 @@ public sealed class ContentEditorPlaySession : IDisposable
                 cancellationToken
             );
             cancellationToken.ThrowIfCancellationRequested();
-            ContentEditorPackValidator.ValidateFields(
-                ContentPackEditorStorage.OpenFolder(project.ContentRootPath, session.PackPath)
+            using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                session.PackPath
             );
+            ContentEditorPackValidator.ValidateFields(snapshot);
             ContentPack pack = ContentPackLoader.OpenFolder(
                 project.ContentRootPath,
                 session.PackPath,

@@ -7,6 +7,31 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentEditorArtworkRecipeTests
     {
         [Test]
+        public void SourceAddresses_StoredSourcesAndLayers_ReturnsEveryReferenceOnEachAttempt()
+        {
+            ContentEditorArtworkRecipe recipe = new()
+            {
+                ExistingSources = new[] { "existing.png" },
+                TravelPatterns = new[] { "pattern.png", null },
+                TravelSubjects = new[] { "subject.png", "" },
+            };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { ImageSource = "layer.png" });
+            recipe.Layers.Add(new ContentEditorArtworkLayer());
+            string[] expected = { "existing.png", "pattern.png", "subject.png", "layer.png" };
+
+            CollectionAssert.AreEqual(expected, recipe.SourceAddresses);
+            CollectionAssert.AreEqual(expected, recipe.SourceAddresses);
+        }
+
+        [Test]
+        public void SourceAddresses_ProceduralRecipeWithoutSources_ReturnsNoReferences()
+        {
+            ContentEditorArtworkRecipe recipe = new();
+
+            Assert.IsEmpty(recipe.SourceAddresses);
+        }
+
+        [Test]
         public void ReadForOutput_OtherSizesHaveNoSidecars_RestoresThisOutput()
         {
             var saved = new ContentEditorArtworkRecipe { OutputMember = "InTransitSmallImagePath" };

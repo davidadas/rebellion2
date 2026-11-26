@@ -70,7 +70,7 @@ internal static class ContentPackEditorExporter
     )
     {
         await WriteSnapshotAsync(project, staging, cancellationToken);
-        ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+        using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
             project.ContentRootPath,
             staging
         );

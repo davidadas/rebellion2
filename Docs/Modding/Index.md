@@ -192,10 +192,35 @@ It clears the overrides shown in the active tab and uses the inherited or built-
 Resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
 snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
+Artwork edits count as unsaved changes. Saving the pack commits its current files; discarding
+changes restores the files and settings from the last successful save. Undoing an image change
+after saving marks the pack as unsaved again. If another application changes a file, discard
+stops without overwriting it, and closing retains the recovery files if restoration fails.
+If a save fails partway through writing settings, the editor attempts to restore every written
+document. Blocked restores keep the pack marked as unsaved and retain the preceding files with
+a recovery manifest. After resolving the reported file conflict or permissions, retry Save or
+Discard to finish recovery.
+
+Artwork undo and redo belong to the open editing session. Temporary revisions are stored in a
+separate `.rebellion2-editor/History/<session>` directory for each open project and are removed
+when that project closes, is replaced, or the editor exits normally. Ordinary saves and refreshing
+the same project preserve its undo history. Cleanup preserves authored artwork, editable layer
+sources, conversion backups, and revisions owned by other open projects. Files left by older
+editor versions or interrupted sessions are not automatically deleted.
+
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
 in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
+
+Message definitions with stable `InstanceID` values inherit per report and per setting. Changing
+one report's picture keeps the other reports and its unedited text inherited. Keep an existing
+report's ID when changing its text or outcome; give a new report its own unique ID. Removing a
+report records an explicit removal so future base updates do not bring it back.
+
+Older anonymous message lists remain complete replacements, including their omissions. They are
+not automatically converted or rewritten. Explicitly reordering existing reports also retains a
+complete replacement because their lookup order affects which report is selected.
 
 ### Faction and neutral themes
 

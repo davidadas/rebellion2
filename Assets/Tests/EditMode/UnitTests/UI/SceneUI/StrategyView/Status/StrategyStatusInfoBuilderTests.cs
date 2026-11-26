@@ -456,6 +456,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 CurrentSquadronSize = 8,
                 MaxSquadronSize = 12,
+                NextReplacementTick = 102,
+                ReplacementIntervalTicks = 2,
                 LaserCannon = 3,
                 IonCannon = 2,
                 Torpedoes = 4,
@@ -476,11 +478,38 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
 
             Assert.AreEqual("Fighter Squadron Status", info.Header);
             Assert.AreEqual("8:12", info.Rows.Single(row => row.Left == "Squadron Size:").Right);
+            Assert.AreEqual(
+                "Day 108",
+                info.Rows.Single(row => row.Left == "Estimated Repair Completion:").Right
+            );
             Assert.AreEqual("24:36", info.Rows.Single(row => row.Left == "Laser Rating:").Right);
             Assert.AreEqual("16:24", info.Rows.Single(row => row.Left == "Ion Cannon:").Right);
             Assert.AreEqual("32:48", info.Rows.Single(row => row.Left == "Torpedoes:").Right);
             CollectionAssert.IsEmpty(info.Images);
             CollectionAssert.AreEqual(new[] { starfighter }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_OpponentStarfighterWithReplacementSchedule_OmitsRepairCompletion()
+        {
+            Starfighter starfighter = new Starfighter
+            {
+                InstanceID = "opponent-fighter",
+                DisplayName = "Opponent Squadron",
+                OwnerInstanceID = _opponentId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                CurrentSquadronSize = 8,
+                MaxSquadronSize = 12,
+                NextReplacementTick = 102,
+                ReplacementIntervalTicks = 2,
+            };
+            _game.AttachNode(starfighter, _planet);
+
+            StrategyStatusInfo info = _builder.Build(
+                new StrategyStatusTarget(_mapPlanet, starfighter)
+            );
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Estimated Repair Completion:"));
         }
 
         [Test]
@@ -977,6 +1006,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
                 RegimentCapacity = 3,
                 MaxHullStrength = 360,
                 CurrentHullStrength = 300,
+                NextRepairTick = 102,
+                RepairIntervalTicks = 2,
                 DamageControl = 5,
                 Hyperdrive = 100,
                 ShieldRechargeRate = 7,
@@ -1012,6 +1043,10 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             Assert.AreEqual("Yes", info.Rows.Single(row => row.Left == "Ship Damaged:").Right);
             Assert.AreEqual("300:360", info.Rows.Single(row => row.Left == "Hull Value:").Right);
             Assert.AreEqual(
+                "Day 104",
+                info.Rows.Single(row => row.Left == "Estimated Repair Completion:").Right
+            );
+            Assert.AreEqual(
                 "5",
                 info.Rows.Single(row => row.Left == "Damage Control Rating:").Right
             );
@@ -1040,6 +1075,34 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Status
             );
             CollectionAssert.IsEmpty(info.Images);
             CollectionAssert.AreEqual(new[] { ship }, info.ImageItems);
+        }
+
+        [Test]
+        public void Build_OpponentCapitalShipWithRepairSchedule_OmitsRepairCompletion()
+        {
+            GameFleet fleet = new GameFleet
+            {
+                InstanceID = "opponent-fleet",
+                DisplayName = "Opponent Fleet",
+                OwnerInstanceID = _opponentId,
+            };
+            _game.AttachNode(fleet, _planet);
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "opponent-capital-ship",
+                DisplayName = "Opponent Ship",
+                OwnerInstanceID = _opponentId,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                MaxHullStrength = 360,
+                CurrentHullStrength = 300,
+                NextRepairTick = 102,
+                RepairIntervalTicks = 2,
+            };
+            _game.AttachNode(ship, fleet);
+
+            StrategyStatusInfo info = _builder.Build(new StrategyStatusTarget(_mapPlanet, ship));
+
+            Assert.IsFalse(info.Rows.Any(row => row.Left == "Estimated Repair Completion:"));
         }
 
         [Test]
