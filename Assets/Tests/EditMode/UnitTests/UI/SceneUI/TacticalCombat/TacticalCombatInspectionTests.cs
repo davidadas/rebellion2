@@ -307,7 +307,6 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CombatSide.Attacker,
                 100,
                 new SystemRandomProvider(1),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
     }
