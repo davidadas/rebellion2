@@ -16,9 +16,9 @@ namespace Rebellion.Tactical.Synchronization
         public int SystemTime;
         public bool Paused;
         public bool Complete;
-        public CombatSide Winner;
-        public SpaceCombatSideOutcome AttackerOutcome;
-        public SpaceCombatSideOutcome DefenderOutcome;
+        public SpaceCombatResult.BattleOutcome Winner;
+        public SpaceCombatResult.SideOutcome AttackerOutcome;
+        public SpaceCombatResult.SideOutcome DefenderOutcome;
         public bool[] TerminalFlags = new bool[7];
         public float StationCharge;
         public bool StationDeparted;
@@ -121,7 +121,7 @@ namespace Rebellion.Tactical.Synchronization
         public bool Withdrawing;
         public float WithdrawalMilliseconds;
         public bool HasWithdrawalPhase;
-        public TacticalCombatWithdrawalPhase WithdrawalPhase;
+        public TacticalCombatSide.DeparturePhase WithdrawalPhase;
         public float AttackBudget;
     }
 

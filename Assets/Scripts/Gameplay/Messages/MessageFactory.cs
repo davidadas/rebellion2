@@ -2769,14 +2769,14 @@ namespace Rebellion.Gameplay
         /// <returns>The requested outcome.</returns>
         private static MessageResultOutcome GetOutcome(Faction faction, SpaceCombatResult result)
         {
-            if (result.Winner == CombatSide.Draw)
+            if (result.Winner == SpaceCombatResult.BattleOutcome.Draw)
                 return MessageResultOutcome.Stalemate;
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
-                return result.Winner == CombatSide.Attacker
+                return result.Winner == SpaceCombatResult.BattleOutcome.Attacker
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Defender))
-                return result.Winner == CombatSide.Defender
+                return result.Winner == SpaceCombatResult.BattleOutcome.Defender
                     ? MessageResultOutcome.Victory
                     : MessageResultOutcome.Defeat;
             return MessageResultOutcome.None;
@@ -2788,13 +2788,13 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction.</param>
         /// <param name="result">The result.</param>
         /// <returns>The requested side.</returns>
-        private static CombatSide GetSide(Faction faction, SpaceCombatResult result)
+        private static CombatSide? GetSide(Faction faction, SpaceCombatResult result)
         {
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
                 return CombatSide.Attacker;
             if (faction?.InstanceID == GetOwnerID(result, CombatSide.Defender))
                 return CombatSide.Defender;
-            return CombatSide.Draw;
+            return null;
         }
 
         /// <summary>
@@ -2803,16 +2803,10 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction.</param>
         /// <param name="result">The result.</param>
         /// <returns>The requested side outcome.</returns>
-        private static SpaceCombatSideOutcome GetSideOutcome(
+        private static SpaceCombatResult.SideOutcome GetSideOutcome(
             Faction faction,
             SpaceCombatResult result
-        ) =>
-            GetSide(faction, result) switch
-            {
-                CombatSide.Attacker => result.AttackerOutcome,
-                CombatSide.Defender => result.DefenderOutcome,
-                _ => SpaceCombatSideOutcome.Unknown,
-            };
+        ) => result.GetOutcome(GetSide(faction, result));
 
         /// <summary>
         /// Returns the recorded withdrawal destination for one battle perspective.

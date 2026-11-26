@@ -288,9 +288,9 @@ namespace Rebellion.Tactical
                 || snapshot.Selections?.Length != 2
                 || snapshot.TerminalFlags?.Length != 7
                 || snapshot.Effects == null
-                || !Enum.IsDefined(typeof(CombatSide), snapshot.Winner)
-                || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), snapshot.AttackerOutcome)
-                || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), snapshot.DefenderOutcome)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.BattleOutcome), snapshot.Winner)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.SideOutcome), snapshot.AttackerOutcome)
+                || !Enum.IsDefined(typeof(SpaceCombatResult.SideOutcome), snapshot.DefenderOutcome)
             )
                 throw new ArgumentException(
                     "The combat projection is stale or incomplete.",
@@ -387,7 +387,7 @@ namespace Rebellion.Tactical
                     || !sides.Add(state.Side)
                     || state.HasWithdrawalPhase
                         && !Enum.IsDefined(
-                            typeof(TacticalCombatWithdrawalPhase),
+                            typeof(TacticalCombatSide.DeparturePhase),
                             state.WithdrawalPhase
                         )
                 )

@@ -895,11 +895,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(HasOpposingReadyFleets(planet));
         }
 
-        [TestCase(true, CombatSide.Defender)]
-        [TestCase(false, CombatSide.Attacker)]
+        [TestCase(true, SpaceCombatResult.BattleOutcome.Defender)]
+        [TestCase(false, SpaceCombatResult.BattleOutcome.Attacker)]
         public void Resolve_OnlyOneUnarmedSideCanEvacuate_ReportsStationarySideVictory(
             bool attackerCanEvacuate,
-            CombatSide expectedWinner
+            SpaceCombatResult.BattleOutcome expectedWinner
         )
         {
             GameRoot game = CreateGame();
@@ -918,14 +918,14 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(expectedWinner, combatResult.Winner);
             Assert.AreEqual(
                 attackerCanEvacuate
-                    ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Active,
+                    ? SpaceCombatResult.SideOutcome.Withdrawn
+                    : SpaceCombatResult.SideOutcome.Active,
                 combatResult.AttackerOutcome
             );
             Assert.AreEqual(
                 attackerCanEvacuate
-                    ? SpaceCombatSideOutcome.Active
-                    : SpaceCombatSideOutcome.Withdrawn,
+                    ? SpaceCombatResult.SideOutcome.Active
+                    : SpaceCombatResult.SideOutcome.Withdrawn,
                 combatResult.DefenderOutcome
             );
             Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
@@ -1059,14 +1059,14 @@ namespace Rebellion.Tests.Gameplay
             if (commands.HasPendingDecision)
                 results = commands.ResolvePending(autoResolve: true);
             SpaceCombatResult result = GetCombatResult(results);
-            SpaceCombatSideOutcome outcome =
+            SpaceCombatResult.SideOutcome outcome =
                 result.AttackerOwnerInstanceID == owner
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
             if (controller == PlayerControllerType.Human)
             {
-                Assert.AreEqual(SpaceCombatSideOutcome.Active, outcome);
+                Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, outcome);
                 Assert.IsNull(fleet.Movement);
                 Assert.AreEqual(0, enemy.CurrentSquadronSize);
                 Assert.Greater(ship.CurrentHullStrength, ship.MaxHullStrength / 2);
@@ -1074,7 +1074,7 @@ namespace Rebellion.Tests.Gameplay
             }
             else
             {
-                Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, outcome);
+                Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, outcome);
                 Assert.IsNotNull(fleet.Movement);
             }
             if (losesSupportingFighter)
@@ -1737,11 +1737,11 @@ namespace Rebellion.Tests.Gameplay
             );
 
             SpaceCombatResult combatResult = results.OfType<SpaceCombatResult>().Single();
-            SpaceCombatSideOutcome empireOutcome =
+            SpaceCombatResult.SideOutcome empireOutcome =
                 combatResult.AttackerOwnerInstanceID == "empire"
                     ? combatResult.AttackerOutcome
                     : combatResult.DefenderOutcome;
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, empireOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, empireOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
             Assert.AreSame(combatPlanet, allianceFleet.GetParentOfType<Planet>());
         }
@@ -1944,9 +1944,9 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult combatResult = GetCombatResult(results);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(empireFleet.InstanceID));
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(allianceFleet.InstanceID));
-            Assert.AreEqual(CombatSide.Draw, combatResult.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, combatResult.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, combatResult.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, combatResult.DefenderOutcome);
             CollectionAssert.AreEquivalent(
                 new[] { empireShip.InstanceID, allianceShip.InstanceID },
                 combatResult
@@ -2034,9 +2034,9 @@ namespace Rebellion.Tests.Gameplay
                     game.GetSceneNodeByInstanceID<Fleet>(fleetId) == null
                 )
             );
-            Assert.AreEqual(CombatSide.Draw, combatResult.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, combatResult.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, combatResult.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, combatResult.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, combatResult.DefenderOutcome);
             CollectionAssert.AreEquivalent(
                 expectedShipIds,
                 combatResult
@@ -2318,11 +2318,11 @@ namespace Rebellion.Tests.Gameplay
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackingUnits
                     : result.DefendingUnits;
-            SpaceCombatSideOutcome losingOutcome =
+            SpaceCombatResult.SideOutcome losingOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, losingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, losingOutcome);
             CollectionAssert.AreEquivalent(
                 expectedLosingShipIds,
                 losingSnapshots
@@ -2408,7 +2408,7 @@ namespace Rebellion.Tests.Gameplay
                 .OfType<SpaceCombatResult>()
                 .Single();
 
-            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Defender, result.Winner);
             Assert.AreEqual("alliance", result.DefenderOwnerInstanceID);
             Assert.AreSame(planet, defender.GetParentOfType<Planet>());
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(fleet.InstanceID));
@@ -2459,12 +2459,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, allianceOutcome);
             Assert.IsNull(result.ManualRetreatingFactionID);
             Assert.AreSame(fighter, game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.AreSame(allianceFallback, fighter.GetParentOfType<Planet>());
@@ -2511,12 +2511,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, allianceOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, allianceOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
         }
 
@@ -2589,12 +2589,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, allianceOutcome);
             Assert.AreSame(allianceFallback, defenderFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(defenderFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(defenderFighter.InstanceID));
@@ -2655,12 +2655,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, allianceOutcome);
             Assert.AreSame(allianceFallback, retreatingFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(retreatingFleet.Movement);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(trappedFleet.InstanceID));
@@ -2739,12 +2739,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, allianceOutcome);
             Assert.AreSame(allianceFallback, defenderFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(defenderFleet.Movement);
             Assert.AreSame(
@@ -2771,12 +2771,12 @@ namespace Rebellion.Tests.Gameplay
                 displacedFighterHyperdrives: new[] { 0 }
             );
             Starfighter fighter = displacedFighters.Single();
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 result.AttackerOwnerInstanceID == retreatingFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, retreatingOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
             Assert.AreSame(
                 recoveryCarrier,
@@ -2857,12 +2857,12 @@ namespace Rebellion.Tests.Gameplay
                 includeUnrelatedOutboundCarrier: true
             );
             Starfighter fighter = displacedFighters.Single();
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 result.AttackerOwnerInstanceID == recoveryFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, retreatingOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
             Assert.AreSame(fallbackPlanet, recoveryFleet.GetParentOfType<Planet>());
             Assert.IsNotNull(recoveryFleet.Movement);
@@ -2887,12 +2887,12 @@ namespace Rebellion.Tests.Gameplay
                 displacedFighterHyperdrives: new[] { 0 }
             );
             Starfighter fighter = displacedFighters.Single();
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 result.AttackerOwnerInstanceID == retreatingFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, retreatingOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
             Assert.AreSame(
                 recoveryCarrier,
@@ -2924,12 +2924,12 @@ namespace Rebellion.Tests.Gameplay
             Starfighter existingFighter = existingFighters.Single();
             Starfighter recoveredFighter = displacedFighters[0];
             Starfighter strandedFighter = displacedFighters[1];
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 result.AttackerOwnerInstanceID == retreatingFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, retreatingOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
             Assert.AreSame(fallbackPlanet, retreatingFleet.GetParentOfType<Planet>());
             Assert.AreSame(recoveryCarrier, existingFighter.GetParent());
@@ -3075,12 +3075,12 @@ namespace Rebellion.Tests.Gameplay
                 .ResolvePending(autoResolve: true)
                 .OfType<SpaceCombatResult>()
                 .Single();
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 result.AttackerOwnerInstanceID == retreatingFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, retreatingOutcome);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Fleet>(retreatingFleet.InstanceID));
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(retreatingShip.InstanceID));
         }
@@ -3207,7 +3207,7 @@ namespace Rebellion.Tests.Gameplay
                 .OfType<SpaceCombatResult>()
                 .Single();
 
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
             Assert.Less(ship.CurrentHullStrength, 500);
             Assert.IsNull(game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID));
             Assert.IsNotNull(game.GetSceneNodeByInstanceID<Fleet>("alliance-fleet"));
@@ -3267,7 +3267,7 @@ namespace Rebellion.Tests.Gameplay
             TryResolveCombat(commands, enemy, fleet, out List<GameResult> results);
 
             Assert.AreEqual(
-                SpaceCombatSideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Active,
                 GetCombatResult(results).DefenderOutcome
             );
             Assert.IsNull(game.GetSceneNodeByInstanceID<CapitalShip>(destroyedCarrier.InstanceID));
@@ -3402,14 +3402,14 @@ namespace Rebellion.Tests.Gameplay
             );
             Assert.AreEqual(
                 empireWasAttacker ? CombatSide.Defender : CombatSide.Attacker,
-                combatResult.Winner
+                combatResult.WinningSide
             );
             Assert.AreEqual(
-                SpaceCombatSideOutcome.Withdrawn,
+                SpaceCombatResult.SideOutcome.Withdrawn,
                 empireWasAttacker ? combatResult.AttackerOutcome : combatResult.DefenderOutcome
             );
             Assert.AreEqual(
-                SpaceCombatSideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Active,
                 empireWasAttacker ? combatResult.DefenderOutcome : combatResult.AttackerOutcome
             );
         }
@@ -3967,7 +3967,7 @@ namespace Rebellion.Tests.Gameplay
                 combatResult.AttackerOwnerInstanceID == "empire"
                     ? combatResult.AttackingUnits
                     : combatResult.DefendingUnits;
-            SpaceCombatSideOutcome retreatingOutcome =
+            SpaceCombatResult.SideOutcome retreatingOutcome =
                 combatResult.AttackerOwnerInstanceID == "empire"
                     ? combatResult.AttackerOutcome
                     : combatResult.DefenderOutcome;
@@ -3975,7 +3975,7 @@ namespace Rebellion.Tests.Gameplay
                 expectedRetreatingShipIds,
                 retreatingSnapshots.Select(snapshot => snapshot.Unit.GetInstanceID())
             );
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, retreatingOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, retreatingOutcome);
             Assert.IsFalse(HasHostileFleets(combatPlanet));
         }
 
@@ -4323,15 +4323,15 @@ namespace Rebellion.Tests.Gameplay
             );
             Assert.AreSame(allianceHome, torpedoSquadron.GetParentOfType<Planet>());
             Assert.IsNotNull(torpedoSquadron.Movement);
-            SpaceCombatSideOutcome allianceOutcome =
+            SpaceCombatResult.SideOutcome allianceOutcome =
                 result.AttackerOwnerInstanceID == "alliance"
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, allianceOutcome);
-            CombatSide expectedWinner =
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, allianceOutcome);
+            SpaceCombatResult.BattleOutcome expectedWinner =
                 result.AttackerOwnerInstanceID == (shielded ? "empire" : "alliance")
-                    ? CombatSide.Attacker
-                    : CombatSide.Defender;
+                    ? SpaceCombatResult.BattleOutcome.Attacker
+                    : SpaceCombatResult.BattleOutcome.Defender;
             Assert.AreEqual(expectedWinner, result.Winner);
         }
 
@@ -4354,11 +4354,11 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsTrue(accepted);
             SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
-            SpaceCombatSideOutcome humanOutcome =
+            SpaceCombatResult.SideOutcome humanOutcome =
                 result.AttackerOwnerInstanceID == empireFleet.OwnerInstanceID
                     ? result.AttackerOutcome
                     : result.DefenderOutcome;
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, humanOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, humanOutcome);
             Assert.AreEqual(1, result.IterationsCompleted);
             Assert.IsNotNull(empireFleet.Movement);
         }
@@ -4881,7 +4881,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult combat = results.OfType<SpaceCombatResult>().Single();
             Assert.IsTrue(combat.IsTacticalCombat);
             ShipDamageResult damage = combat.ShipDamage.Single(item => item.Ship == attacker);
-            Assert.AreEqual(battle.PlayerSide, combat.Winner);
+            Assert.AreEqual(battle.PlayerSide, combat.WinningSide);
             Assert.AreEqual(1000, damage.HullBefore);
             Assert.AreEqual(900, damage.HullAfter);
             Assert.AreEqual(900, attacker.CurrentHullStrength);
@@ -4966,7 +4966,7 @@ namespace Rebellion.Tests.Gameplay
                 results.OfType<BlockadeChangedResult>().Single()
             );
             Assert.IsTrue(planet.IsBlockaded());
-            Assert.AreEqual(battle.PlayerSide, combat.Winner);
+            Assert.AreEqual(battle.PlayerSide, combat.WinningSide);
         }
 
         [Test]

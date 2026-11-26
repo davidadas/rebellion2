@@ -296,42 +296,53 @@ namespace Rebellion.Tactical
         /// <param name="side">The withdrawing side.</param>
         private void AdvanceWithdrawalCountdown(TacticalCombatSide side)
         {
-            TacticalCombatWithdrawal withdrawal = side.Withdrawal;
-            if (withdrawal == null)
+            if (
+                !side.AdvanceWithdrawal(1000)
+                || side.FactionIndex != 1
+                || BattleStation?.IsOperational != true
+            )
                 return;
-            withdrawal.AdvanceCountdown(
-                1000,
-                true,
-                BattleStation?.IsOperational == true,
-                side.Side == PlayerSide || _synchronizationAuthority
-            );
+
+            if (side.Side == PlayerSide || _synchronizationAuthority)
+                (
+                    _synchronizationAuthority ? GetSynchronizedSelection(side.Side) : Selection
+                ).ProcessStationDeparture();
+            QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit));
         }
 
-        /// <summary>
-        /// Rechecks retained capital members before fighters after the side's candidate-maintenance phase.
-        /// </summary>
-        /// <param name="side">The withdrawing side whose departure phase is active.</param>
         private void AdvanceWithdrawalMembers(TacticalCombatSide side)
         {
-            TacticalCombatWithdrawal withdrawal = side.Withdrawal;
-            if (withdrawal?.Phase != TacticalCombatWithdrawalPhase.Departing)
+            if (side.WithdrawalPhase != TacticalCombatSide.DeparturePhase.Departing)
                 return;
-            List<ITacticalCombatWithdrawalMember> capitals = _withdrawalCapitals[(int)side.Side];
-            List<ITacticalCombatWithdrawalMember> fighters = _withdrawalFighters[(int)side.Side];
-            capitals.Clear();
-            fighters.Clear();
-            foreach (WithdrawalMember member in _orderedWithdrawalMembers)
-                if (member.Unit.Side == side.Side && IsDisplayedMember(member.Unit))
-                    (member.Unit.IsFighter ? fighters : capitals).Add(member);
-            withdrawal.AdvanceMembers(capitals, fighters, _requestUnreadyScuttle);
-        }
 
-        /// <summary>
-        /// Queues one addressed retained member's scuttling command without traversing the roster.
-        /// </summary>
-        /// <param name="index">The member's tactical registration key.</param>
-        private void RequestUnreadyScuttle(int index) =>
-            QueueCommand(new Command(CommandKind.Scuttle, _withdrawalUnitsByIndex[index]));
+            // Capital ships are checked before fighters on both passes.
+            for (int pass = 0; pass < 2; pass++)
+                foreach (CombatUnit unit in _registeredMobileUnits)
+                    if (
+                        unit.Side == side.Side
+                        && unit.IsFighter == (pass == 1)
+                        && IsDisplayedMember(unit)
+                        && CheckWithdrawalReadiness(unit)
+                        && (
+                            unit.IsActiveDisplayObject
+                            || unit.Status
+                                is CombatUnitStatus.EnteringHyperspace
+                                    or CombatUnitStatus.AwaitingWithdrawal
+                        )
+                    )
+                        return;
+
+            side.StartScuttling();
+            for (int pass = 0; pass < 2; pass++)
+                foreach (CombatUnit unit in _registeredMobileUnits)
+                    if (
+                        unit.Side == side.Side
+                        && unit.IsFighter == (pass == 1)
+                        && IsDisplayedMember(unit)
+                        && !CheckWithdrawalReadiness(unit)
+                    )
+                        QueueCommand(new Command(CommandKind.Scuttle, unit));
+        }
 
         /// <summary>
         /// Checks the deployed capital or fighter chain's retained participation domain independently of hull.
@@ -345,17 +356,6 @@ namespace Rebellion.Tactical
                     or CombatUnitStatus.EnteringHyperspace
                     or CombatUnitStatus.AwaitingWithdrawal
                     or CombatUnitStatus.AttackingBattleStation;
-
-        /// <summary>
-        /// Compares tactical member keys using their unsigned registration ordering.
-        /// </summary>
-        /// <param name="first">The first registered member.</param>
-        /// <param name="second">The second registered member.</param>
-        /// <returns>The comparison of their unsigned keys.</returns>
-        private static int CompareWithdrawalMembers(
-            WithdrawalMember first,
-            WithdrawalMember second
-        ) => unchecked((uint)first.Index).CompareTo(unchecked((uint)second.Index));
 
         /// <summary>
         /// Reads a participant's movement using current command support and retained beam sources.

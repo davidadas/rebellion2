@@ -90,9 +90,9 @@ namespace Rebellion.Tactical
                 second.ActiveCount != 0
                 || BattleStation?.Unit.Side == CombatSide.Defender && BattleStation.IsOperational;
             Winner =
-                attacker == defender ? CombatSide.Draw
-                : attacker ? CombatSide.Attacker
-                : CombatSide.Defender;
+                attacker == defender ? SpaceCombatResult.BattleOutcome.Draw
+                : attacker ? SpaceCombatResult.BattleOutcome.Attacker
+                : SpaceCombatResult.BattleOutcome.Defender;
             _outcomes[0] = GetEndingOutcome(CombatSide.Attacker, attacker);
             _outcomes[1] = GetEndingOutcome(CombatSide.Defender, defender);
         }
@@ -137,7 +137,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="side">The requested encounter side.</param>
         /// <returns>The side's resolved participation outcome.</returns>
-        public SpaceCombatSideOutcome GetOutcome(CombatSide side) => _outcomes[(int)side];
+        public SpaceCombatResult.SideOutcome GetOutcome(CombatSide side) => _outcomes[(int)side];
 
         /// <summary>
         /// Captures final losses, component damage, recovery assignments, and actual departures without mutating campaign units.
@@ -267,14 +267,14 @@ namespace Rebellion.Tactical
         /// <param name="side">The resolved side.</param>
         /// <param name="active">Whether active units remain.</param>
         /// <returns>The resolved side outcome.</returns>
-        private SpaceCombatSideOutcome GetEndingOutcome(CombatSide side, bool active)
+        private SpaceCombatResult.SideOutcome GetEndingOutcome(CombatSide side, bool active)
         {
             if (active)
-                return SpaceCombatSideOutcome.Active;
+                return SpaceCombatResult.SideOutcome.Active;
             foreach (CombatUnit unit in _departed)
                 if (unit.Side == side)
-                    return SpaceCombatSideOutcome.Withdrawn;
-            return SpaceCombatSideOutcome.Destroyed;
+                    return SpaceCombatResult.SideOutcome.Withdrawn;
+            return SpaceCombatResult.SideOutcome.Destroyed;
         }
 
         /// <summary>
@@ -283,9 +283,8 @@ namespace Rebellion.Tactical
         private void AssignSurvivors()
         {
             _directCommandsSuspended = true;
-            foreach (WithdrawalMember fighterMember in _orderedWithdrawalMembers)
+            foreach (CombatUnit fighter in _registeredMobileUnits)
             {
-                CombatUnit fighter = fighterMember.Unit;
                 if (
                     !fighter.IsFighter
                     || !(
@@ -298,9 +297,8 @@ namespace Rebellion.Tactical
                 )
                     continue;
                 bool attached = false;
-                foreach (WithdrawalMember carrierMember in _orderedWithdrawalMembers)
+                foreach (CombatUnit carrier in _registeredMobileUnits)
                 {
-                    CombatUnit carrier = carrierMember.Unit;
                     if (
                         !carrier.IsFighter
                         && carrier.Side == fighter.Side

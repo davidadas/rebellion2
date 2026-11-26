@@ -79,8 +79,8 @@ namespace Rebellion.Tests.Gameplay
                 Planet = _planet,
                 AttackerOwnerInstanceID = _firstID,
                 DefenderOwnerInstanceID = _secondID,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 Tick = 42,
             };
             RecordCombatLoss(_lostShip);
@@ -192,8 +192,8 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_SecondSideSurvives_SignsSupportRelativeToTheFirstFaction()
         {
-            _result.AttackerOutcome = SpaceCombatSideOutcome.Destroyed;
-            _result.DefenderOutcome = SpaceCombatSideOutcome.Active;
+            _result.AttackerOutcome = SpaceCombatResult.SideOutcome.Destroyed;
+            _result.DefenderOutcome = SpaceCombatResult.SideOutcome.Active;
             _result.Events.Clear();
             RecordCombatLoss(new CapitalShip { OwnerInstanceID = _firstID, UprisingDefense = 20 });
 
@@ -221,12 +221,12 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(90, _planet.GetPopularSupport(_firstID));
         }
 
-        [TestCase(SpaceCombatSideOutcome.Active, SpaceCombatSideOutcome.Active)]
-        [TestCase(SpaceCombatSideOutcome.Withdrawn, SpaceCombatSideOutcome.Withdrawn)]
-        [TestCase(SpaceCombatSideOutcome.Destroyed, SpaceCombatSideOutcome.Destroyed)]
+        [TestCase(SpaceCombatResult.SideOutcome.Active, SpaceCombatResult.SideOutcome.Active)]
+        [TestCase(SpaceCombatResult.SideOutcome.Withdrawn, SpaceCombatResult.SideOutcome.Withdrawn)]
+        [TestCase(SpaceCombatResult.SideOutcome.Destroyed, SpaceCombatResult.SideOutcome.Destroyed)]
         public void HandleResults_NoExclusiveSurvivingSide_DoesNotApplyAftermath(
-            SpaceCombatSideOutcome attacker,
-            SpaceCombatSideOutcome defender
+            SpaceCombatResult.SideOutcome attacker,
+            SpaceCombatResult.SideOutcome defender
         )
         {
             _result.AttackerOutcome = attacker;

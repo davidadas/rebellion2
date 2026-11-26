@@ -9,9 +9,9 @@ namespace Rebellion.Game.Results
     [PersistableObject]
     public sealed class TacticalCombatOutcome
     {
-        public CombatSide Winner { get; set; }
-        public SpaceCombatSideOutcome AttackerOutcome { get; set; }
-        public SpaceCombatSideOutcome DefenderOutcome { get; set; }
+        public SpaceCombatResult.BattleOutcome Winner { get; set; }
+        public SpaceCombatResult.SideOutcome AttackerOutcome { get; set; }
+        public SpaceCombatResult.SideOutcome DefenderOutcome { get; set; }
         public int IterationsCompleted { get; set; }
         public ShipOutcome[] Ships { get; set; }
         public FighterOutcome[] Fighters { get; set; }

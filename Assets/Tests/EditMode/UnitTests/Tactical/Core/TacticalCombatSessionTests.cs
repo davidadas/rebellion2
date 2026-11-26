@@ -2231,7 +2231,7 @@ namespace Rebellion.Tests.Tactical
             session.Advance(16);
 
             CollectionAssert.AreEqual(new bool[7], session.TerminalFlags);
-            Assert.AreEqual(CombatSide.Draw, session.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, session.Winner);
         }
 
         [TestCase(1, "carrier")]
@@ -2544,7 +2544,7 @@ namespace Rebellion.Tests.Tactical
             Assert.IsTrue(session.BeginWithdrawal(side));
             CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
             Assert.AreEqual(
-                TacticalCombatWithdrawalPhase.Waiting,
+                TacticalCombatSide.DeparturePhase.Waiting,
                 session.GetSide(side).WithdrawalPhase
             );
         }
@@ -2860,7 +2860,7 @@ namespace Rebellion.Tests.Tactical
 
             for (
                 int frame = 0;
-                frame < 100 && side.WithdrawalPhase == TacticalCombatWithdrawalPhase.Waiting;
+                frame < 100 && side.WithdrawalPhase == TacticalCombatSide.DeparturePhase.Waiting;
                 frame++
             )
                 session.Advance(50);

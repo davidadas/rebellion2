@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -227,8 +228,7 @@ namespace Rebellion.Gameplay
             SpaceCombatResult result;
             try
             {
-                ValidateTacticalOutcome(outcome);
-                result = CreateTacticalResult(outcome);
+                result = CreateTacticalResult(outcome, validateNetwork: true);
             }
             catch (InvalidDataException)
             {
@@ -237,6 +237,171 @@ namespace Rebellion.Gameplay
             results = ImportTacticalResult(result, immediateResult: false);
             return true;
         }
+
+        private SpaceCombatResult CreateTacticalResult(
+            TacticalCombatOutcome outcome,
+            bool validateNetwork = false
+        )
+        {
+            if (
+                outcome?.Ships == null
+                || outcome.Fighters == null
+                || validateNetwork
+                    && (
+                        !Enum.IsDefined(typeof(SpaceCombatResult.BattleOutcome), outcome.Winner)
+                        || !Enum.IsDefined(
+                            typeof(SpaceCombatResult.SideOutcome),
+                            outcome.AttackerOutcome
+                        )
+                        || !Enum.IsDefined(
+                            typeof(SpaceCombatResult.SideOutcome),
+                            outcome.DefenderOutcome
+                        )
+                    )
+            )
+                throw new InvalidDataException("The tactical outcome is incomplete.");
+
+            Dictionary<string, TacticalCombatOutcome.ShipOutcome> ships = new(
+                StringComparer.Ordinal
+            );
+            foreach (TacticalCombatOutcome.ShipOutcome ship in outcome.Ships)
+                if (string.IsNullOrEmpty(ship?.UnitID) || !ships.TryAdd(ship.UnitID, ship))
+                    throw new InvalidDataException(
+                        "A tactical ship outcome has an invalid identity."
+                    );
+
+            Dictionary<string, TacticalCombatOutcome.FighterOutcome> fighters = new(
+                StringComparer.Ordinal
+            );
+            foreach (TacticalCombatOutcome.FighterOutcome fighter in outcome.Fighters)
+                if (
+                    string.IsNullOrEmpty(fighter?.UnitID)
+                    || !fighters.TryAdd(fighter.UnitID, fighter)
+                )
+                    throw new InvalidDataException(
+                        "A tactical fighter outcome has an invalid identity."
+                    );
+
+            if (ships.Count + fighters.Count != _tacticalCombat.Units.Count)
+                throw new InvalidDataException(
+                    "The tactical outcome does not cover the captured roster."
+                );
+
+            SpaceCombatResult result = new()
+            {
+                Winner = outcome.Winner,
+                AttackerOutcome = outcome.AttackerOutcome,
+                DefenderOutcome = outcome.DefenderOutcome,
+                IterationsCompleted = outcome.IterationsCompleted,
+            };
+            foreach (CombatUnit unit in _tacticalCombat.Units)
+            {
+                ISceneNode source = ResolveTacticalSource(unit);
+                if (
+                    source is CapitalShip ship
+                    && ships.TryGetValue(unit.InstanceID, out var shipState)
+                )
+                {
+                    if (
+                        validateNetwork
+                        && (
+                            shipState.Hull < 0
+                            || shipState.Hull > Math.Max(1, (int)unit.MaximumHull)
+                            || !IsValidTacticalComponentDamage(shipState.SystemDamage, unit, ship)
+                        )
+                    )
+                        throw new InvalidDataException("A tactical ship outcome is invalid.");
+
+                    result.ShipDamage.Add(
+                        new ShipDamageResult
+                        {
+                            Ship = ship,
+                            HullBefore = (int)unit.InitialHull,
+                            HullAfter = shipState.Hull,
+                            SystemDamage = shipState.SystemDamage,
+                        }
+                    );
+                    if (shipState.Withdrawn)
+                        result.WithdrawnUnits.Add(ship);
+                    continue;
+                }
+                if (
+                    source is not Starfighter fighter
+                    || !fighters.TryGetValue(unit.InstanceID, out var fighterState)
+                )
+                    throw new InvalidDataException(
+                        "A tactical outcome has no matching participant."
+                    );
+                if (
+                    validateNetwork
+                    && (
+                        fighterState.SquadronSize < 0
+                        || fighterState.SquadronSize > Math.Max(1, fighter.MaxSquadronSize)
+                    )
+                )
+                    throw new InvalidDataException("A tactical fighter outcome is invalid.");
+
+                CapitalShip carrier = null;
+                if (fighterState.CarrierID != null)
+                {
+                    CombatUnit host = _tacticalCombat.GetUnit(fighterState.CarrierID);
+                    if (
+                        ResolveTacticalSource(host) is not CapitalShip shipHost
+                        || validateNetwork && host.Side != unit.Side
+                    )
+                        throw new InvalidDataException("A tactical recovery host is invalid.");
+                    carrier = shipHost;
+                }
+                result.FighterLosses.Add(
+                    new FighterLossResult
+                    {
+                        Fighter = fighter,
+                        SquadsBefore = unit.InitialSquadronSize,
+                        SquadsAfter = fighterState.SquadronSize,
+                    }
+                );
+                result.FighterRecovery.Add(
+                    new FighterRecoveryResult { Fighter = fighter, Carrier = carrier }
+                );
+                if (fighterState.Withdrawn)
+                    result.WithdrawnUnits.Add(fighter);
+            }
+            return result;
+        }
+
+        private ISceneNode ResolveTacticalSource(CombatUnit unit)
+        {
+            string sourceID = unit?.SourceUnitInstanceID;
+            ISceneNode source = _game.GetSceneNodeByInstanceID<ISceneNode>(
+                sourceID,
+                includeDisabled: true
+            );
+            return source
+                ?? throw new InvalidDataException(
+                    $"Tactical source '{sourceID}' is no longer present in the campaign."
+                );
+        }
+
+        /// <summary>
+        /// Admits only component levels and installed hyperdrives represented by the captured ship.
+        /// </summary>
+        /// <param name="damage">The authoritative component damage.</param>
+        /// <param name="unit">The captured tactical participant.</param>
+        /// <param name="ship">Its immutable campaign source during the encounter.</param>
+        /// <returns>Whether all component fields are within their supported ranges.</returns>
+        private static bool IsValidTacticalComponentDamage(
+            CapitalShipSystemDamage damage,
+            CombatUnit unit,
+            CapitalShip ship
+        ) =>
+            damage?.Shields is >= 0 and <= 4
+            && damage.Weapons is >= 0 and <= 4
+            && damage.TractorBeam is >= 0 and <= 4
+            && damage.Engines is >= 0 and <= 4
+            && damage.PrimaryHyperdrive >= 0
+            && damage.PrimaryHyperdrive <= (ship.Hyperdrive != 0 ? 1 : 0)
+            && damage.BackupHyperdrive >= 0
+            && damage.BackupHyperdrive <= (unit.HasBackupHyperdrive ? 1 : 0);
 
         /// <summary>
         /// Applies captured tactical pools through the shared campaign loss and withdrawal boundary.
@@ -672,13 +837,15 @@ namespace Rebellion.Gameplay
                 DefenderOwnerInstanceID = decision.DefenderOwnerInstanceID,
                 Planet = planet,
                 PlanetOwnerInstanceID = planet.OwnerInstanceID,
-                Winner = attackerRetreated ? CombatSide.Defender : CombatSide.Attacker,
+                Winner = attackerRetreated
+                    ? SpaceCombatResult.BattleOutcome.Defender
+                    : SpaceCombatResult.BattleOutcome.Attacker,
                 AttackerOutcome = attackerRetreated
-                    ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Active,
+                    ? SpaceCombatResult.SideOutcome.Withdrawn
+                    : SpaceCombatResult.SideOutcome.Active,
                 DefenderOutcome = attackerRetreated
-                    ? SpaceCombatSideOutcome.Active
-                    : SpaceCombatSideOutcome.Withdrawn,
+                    ? SpaceCombatResult.SideOutcome.Active
+                    : SpaceCombatResult.SideOutcome.Withdrawn,
                 Tick = _game.CurrentTick,
             };
 
@@ -868,12 +1035,14 @@ namespace Rebellion.Gameplay
         /// <param name="result">The encounter result to update.</param>
         private static void UpdateCombatEncounterWinner(SpaceCombatResult result)
         {
-            bool attackerActive = result.AttackerOutcome == SpaceCombatSideOutcome.Active;
-            bool defenderActive = result.DefenderOutcome == SpaceCombatSideOutcome.Active;
+            bool attackerActive = result.AttackerOutcome == SpaceCombatResult.SideOutcome.Active;
+            bool defenderActive = result.DefenderOutcome == SpaceCombatResult.SideOutcome.Active;
             if (attackerActive == defenderActive)
                 return;
 
-            result.Winner = attackerActive ? CombatSide.Attacker : CombatSide.Defender;
+            result.Winner = attackerActive
+                ? SpaceCombatResult.BattleOutcome.Attacker
+                : SpaceCombatResult.BattleOutcome.Defender;
         }
 
         /// <summary>
@@ -888,10 +1057,10 @@ namespace Rebellion.Gameplay
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Starfighter> fighters,
             Planet battlePlanet,
-            SpaceCombatSideOutcome outcome
+            SpaceCombatResult.SideOutcome outcome
         )
         {
-            if (outcome != SpaceCombatSideOutcome.Withdrawn)
+            if (outcome != SpaceCombatResult.SideOutcome.Withdrawn)
                 return null;
             Planet destination = (fleets ?? Array.Empty<Fleet>())
                 .Select(fleet => fleet?.GetParentOfType<Planet>())
@@ -913,25 +1082,25 @@ namespace Rebellion.Gameplay
         /// <param name="battlePlanet">The encounter location.</param>
         /// <param name="resolvedOutcome">The outcome recorded by the tactical resolver.</param>
         /// <returns>The final encounter outcome.</returns>
-        private static SpaceCombatSideOutcome GetCombatSideOutcome(
+        private static SpaceCombatResult.SideOutcome GetCombatSideOutcome(
             IReadOnlyList<Fleet> fleets,
             IReadOnlyList<Starfighter> fighters,
             string ownerInstanceId,
             Planet battlePlanet,
-            SpaceCombatSideOutcome resolvedOutcome
+            SpaceCombatResult.SideOutcome resolvedOutcome
         )
         {
-            if (resolvedOutcome == SpaceCombatSideOutcome.Destroyed)
-                return SpaceCombatSideOutcome.Destroyed;
+            if (resolvedOutcome == SpaceCombatResult.SideOutcome.Destroyed)
+                return SpaceCombatResult.SideOutcome.Destroyed;
 
             if (SpaceCombatQueries.HasActiveSpaceUnits(fleets, battlePlanet, ownerInstanceId))
-                return SpaceCombatSideOutcome.Active;
+                return SpaceCombatResult.SideOutcome.Active;
 
             if (
                 fleets?.Any(fleet => fleet?.Movement != null) == true
                 || fighters?.Any(fighter => fighter?.Movement != null) == true
             )
-                return SpaceCombatSideOutcome.Withdrawn;
+                return SpaceCombatResult.SideOutcome.Withdrawn;
 
             List<Planet> currentPlanets = (fleets ?? Array.Empty<Fleet>())
                 .Select(fleet => fleet?.GetParentOfType<Planet>())
@@ -943,12 +1112,12 @@ namespace Rebellion.Gameplay
                 .Where(planet => planet != null)
                 .ToList();
             if (currentPlanets.Count == 0)
-                return SpaceCombatSideOutcome.Destroyed;
+                return SpaceCombatResult.SideOutcome.Destroyed;
 
             if (battlePlanet != null && currentPlanets.Any(planet => planet != battlePlanet))
-                return SpaceCombatSideOutcome.Withdrawn;
+                return SpaceCombatResult.SideOutcome.Withdrawn;
 
-            return SpaceCombatSideOutcome.Active;
+            return SpaceCombatResult.SideOutcome.Active;
         }
 
         /// <summary>
@@ -1192,7 +1361,7 @@ namespace Rebellion.Gameplay
             result.Tick = tick;
             HashSet<ISceneNode> tacticallyWithdrawnUnits = result.WithdrawnUnits.ToHashSet();
             attackerWithdrawalPlan =
-                result.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
+                result.AttackerOutcome == SpaceCombatResult.SideOutcome.Withdrawn
                     ? _withdrawalResolver.ResolveAutomaticWithdrawal(
                         result,
                         attackerFleets,
@@ -1203,7 +1372,7 @@ namespace Rebellion.Gameplay
                     )
                     : new SpaceCombatWithdrawalPlan();
             defenderWithdrawalPlan =
-                result.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+                result.DefenderOutcome == SpaceCombatResult.SideOutcome.Withdrawn
                     ? _withdrawalResolver.ResolveAutomaticWithdrawal(
                         result,
                         defenderFleets,
@@ -1582,14 +1751,14 @@ namespace Rebellion.Gameplay
             RecoverFightersFromDestroyedCarriers(
                 attackerFleets,
                 destroyedCarriers,
-                result.DefenderOutcome == SpaceCombatSideOutcome.Active,
+                result.DefenderOutcome == SpaceCombatResult.SideOutcome.Active,
                 unrecoverableLosses,
                 events
             );
             RecoverFightersFromDestroyedCarriers(
                 defenderFleets,
                 destroyedCarriers,
-                result.AttackerOutcome == SpaceCombatSideOutcome.Active,
+                result.AttackerOutcome == SpaceCombatResult.SideOutcome.Active,
                 unrecoverableLosses,
                 events
             );

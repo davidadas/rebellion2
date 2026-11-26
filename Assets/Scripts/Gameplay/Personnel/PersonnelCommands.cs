@@ -142,6 +142,30 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Weighs the opposing losses twice and the favored losses once, retaining the
+        /// separate truncated divisions and wrapping the difference and final sum.
+        /// </summary>
+        /// <param name="favoredLoss">The favored faction's accepted lost unit value.</param>
+        /// <param name="opposingLoss">The opposing faction's accepted lost unit value.</param>
+        /// <param name="divisor">The favored faction's authored loyalty divisor.</param>
+        /// <returns>The signed loyalty change relative to the favored faction.</returns>
+        /// <exception cref="OverflowException">A quotient cannot be represented as an integer.</exception>
+        internal static int CalculateBattleLossLoyalty(
+            int favoredLoss,
+            int opposingLoss,
+            int divisor
+        )
+        {
+            int difference = unchecked(opposingLoss - favoredLoss);
+            if (divisor == -1 && (difference == int.MinValue || opposingLoss == int.MinValue))
+                throw new OverflowException(
+                    "The loyalty quotient exceeds the signed integer range."
+                );
+
+            return unchecked(difference / divisor + opposingLoss / divisor);
+        }
+
+        /// <summary>
         /// Applies one signed global loyalty shift relative to the favored faction.
         /// </summary>
         /// <param name="favoredFaction">The faction for which the shift is positive.</param>

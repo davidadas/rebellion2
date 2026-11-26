@@ -32,19 +32,7 @@ namespace Rebellion.Tactical
             CombatUnit,
             SortedDictionary<uint, CombatUnit>
         > _tractorSources = new();
-        private readonly List<WithdrawalMember> _orderedWithdrawalMembers = new();
-        private readonly Dictionary<int, CombatUnit> _withdrawalUnitsByIndex = new();
-        private readonly Action<int> _requestUnreadyScuttle;
-        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalCapitals =
-        {
-            new(),
-            new(),
-        };
-        private readonly List<ITacticalCombatWithdrawalMember>[] _withdrawalFighters =
-        {
-            new(),
-            new(),
-        };
+        private readonly List<CombatUnit> _registeredMobileUnits = new();
         private readonly HashSet<CombatUnit> _departed = new();
         private readonly List<CombatUnit> _initiallyDockedFighters = new();
         private readonly SortedDictionary<int, Queue<Command>> _commands = new();
@@ -71,7 +59,8 @@ namespace Rebellion.Tactical
         private bool _userPaused;
         private bool _directCommandsSuspended;
         private int _moviePauses;
-        private readonly SpaceCombatSideOutcome[] _outcomes = new SpaceCombatSideOutcome[2];
+        private readonly SpaceCombatResult.SideOutcome[] _outcomes =
+            new SpaceCombatResult.SideOutcome[2];
 
         public IReadOnlyList<CombatUnit> Units { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
@@ -90,7 +79,8 @@ namespace Rebellion.Tactical
         public bool IsComplete { get; private set; }
         public bool IsArriving => _arrival?.IsComplete == false;
         public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
-        public CombatSide Winner { get; private set; } = CombatSide.Draw;
+        public SpaceCombatResult.BattleOutcome Winner { get; private set; } =
+            SpaceCombatResult.BattleOutcome.Draw;
         public bool IsPaused
         {
             get => _userPaused || _moviePauses > 0;
@@ -245,7 +235,6 @@ namespace Rebellion.Tactical
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
             this._groups = new(groups ?? throw new ArgumentNullException(nameof(groups)));
             this._random = random ?? throw new ArgumentNullException(nameof(random));
-            _requestUnreadyScuttle = RequestUnreadyScuttle;
             _sides = new[]
             {
                 attacker ?? throw new ArgumentNullException(nameof(attacker)),
@@ -286,10 +275,7 @@ namespace Rebellion.Tactical
             {
                 _unitsByID.Add(unit.InstanceID, unit);
                 if (!unit.IsBattleStation)
-                {
-                    _orderedWithdrawalMembers.Add(new WithdrawalMember(this, unit));
-                    _withdrawalUnitsByIndex.Add(unit.Index, unit);
-                }
+                    _registeredMobileUnits.Add(unit);
                 if (unit.IsBattleStation)
                 {
                     if (BattleStation != null)
@@ -322,7 +308,13 @@ namespace Rebellion.Tactical
                     _carriers.Add(unit.InstanceID, carrier);
                 }
             }
-            _orderedWithdrawalMembers.Sort(CompareWithdrawalMembers);
+            _registeredMobileUnits.Sort(CompareUnits);
+            for (int index = 1; index < _registeredMobileUnits.Count; index++)
+                if (_registeredMobileUnits[index - 1].Index == _registeredMobileUnits[index].Index)
+                    throw new ArgumentException(
+                        "Tactical units share a registration index.",
+                        nameof(units)
+                    );
             foreach (CombatUnit unit in this._units)
                 if (
                     unit.Status == CombatUnitStatus.Docked
@@ -519,38 +511,6 @@ namespace Rebellion.Tactical
                 Run = run;
                 RunState = runState;
             }
-        }
-
-        /// <summary>
-        /// Reads live unit facts for the ordered withdrawal lifecycle without copying mutable readiness state.
-        /// </summary>
-        private sealed class WithdrawalMember : ITacticalCombatWithdrawalMember
-        {
-            private readonly TacticalCombatSession _session;
-            public CombatUnit Unit { get; }
-            public int Index => Unit.Index;
-            public bool IsActiveMember => IsActiveDisplayObject(Unit);
-            public bool IsAwaitingDeparture =>
-                Unit.Status
-                    is CombatUnitStatus.EnteringHyperspace
-                        or CombatUnitStatus.AwaitingWithdrawal;
-
-            /// <summary>
-            /// Captures the session that owns the member's live support and retained tractor links.
-            /// </summary>
-            /// <param name="session">The owning local encounter.</param>
-            /// <param name="unit">The registered non-station participant.</param>
-            public WithdrawalMember(TacticalCombatSession session, CombatUnit unit)
-            {
-                _session = session;
-                Unit = unit;
-            }
-
-            /// <summary>
-            /// Reads the current budgets before the lifecycle observes participation state.
-            /// </summary>
-            /// <returns>Whether both live departure budgets are ordered and nonzero.</returns>
-            public bool CheckWithdrawalReadiness() => _session.CheckWithdrawalReadiness(Unit);
         }
 
         /// <summary>

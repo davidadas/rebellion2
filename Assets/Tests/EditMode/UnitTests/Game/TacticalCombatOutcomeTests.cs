@@ -63,9 +63,9 @@ namespace Rebellion.Tests.Game.Results
         private static TacticalCombatOutcome CreateOutcome() =>
             new()
             {
-                Winner = CombatSide.Attacker,
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 IterationsCompleted = 19,
                 Ships = new[]
                 {

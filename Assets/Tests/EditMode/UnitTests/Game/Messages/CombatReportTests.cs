@@ -168,9 +168,9 @@ namespace Rebellion.Tests.Game.Messages
                 CombatType = CombatReportType.SpaceBattle,
                 PlanetInstanceID = "PLANET1",
                 PlanetName = "Test System",
-                Winner = CombatSide.Attacker,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                 AttackingUnits =
                 {
                     new CombatReportUnit

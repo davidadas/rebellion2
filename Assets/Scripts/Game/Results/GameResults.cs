@@ -63,6 +63,12 @@ namespace Rebellion.Game.Results
 
     #endregion
 
+    public enum CombatSide
+    {
+        Attacker,
+        Defender,
+    }
+
     #region Planet
 
     /// <summary>
@@ -721,6 +727,15 @@ namespace Rebellion.Game.Results
         public bool Destroyed { get; set; }
         public bool Captured { get; set; }
 
+        internal static int GetMilitaryValue(ISceneNode unit) =>
+            unit switch
+            {
+                Regiment regiment => regiment.UprisingDefense,
+                CapitalShip ship => ship.UprisingDefense,
+                Starfighter fighter => fighter.UprisingDefense,
+                _ => 0,
+            };
+
         /// <summary>
         /// Restores an existing detached snapshot without copying its unit reference again.
         /// </summary>
@@ -835,6 +850,22 @@ namespace Rebellion.Game.Results
     /// </summary>
     public class SpaceCombatResult : GameResult
     {
+        // Names and numeric values are part of saved reports and synchronized battle results.
+        public enum BattleOutcome
+        {
+            Attacker,
+            Defender,
+            Draw,
+        }
+
+        public enum SideOutcome
+        {
+            Unknown,
+            Active,
+            Destroyed,
+            Withdrawn,
+        }
+
         /// <summary>
         /// Gets whether this encounter imported a manually played battle, including any continuation.
         /// </summary>
@@ -853,9 +884,9 @@ namespace Rebellion.Game.Results
         public string PlanetOwnerInstanceID { get; set; }
         public string AttackerRetreatPlanetInstanceID { get; set; }
         public string DefenderRetreatPlanetInstanceID { get; set; }
-        public CombatSide Winner { get; set; }
-        public SpaceCombatSideOutcome AttackerOutcome { get; set; }
-        public SpaceCombatSideOutcome DefenderOutcome { get; set; }
+        public BattleOutcome Winner { get; set; }
+        public SideOutcome AttackerOutcome { get; set; }
+        public SideOutcome DefenderOutcome { get; set; }
         public List<ShipDamageResult> ShipDamage { get; set; } = new List<ShipDamageResult>();
         public List<FighterLossResult> FighterLosses { get; set; } = new List<FighterLossResult>();
         public List<FighterRecoveryResult> FighterRecovery { get; set; } = new();
@@ -866,6 +897,50 @@ namespace Rebellion.Game.Results
         public List<ISceneNode> WithdrawnUnits { get; set; } = new List<ISceneNode>();
         public int IterationsCompleted { get; set; }
         public List<GameResult> Events { get; set; } = new List<GameResult>();
+
+        public SideOutcome GetOutcome(CombatSide? side) =>
+            SelectOutcome(side, AttackerOutcome, DefenderOutcome);
+
+        public CombatSide? WinningSide => GetWinningSide(Winner);
+
+        public CombatSide? RemainingSide =>
+            (AttackerOutcome == SideOutcome.Active, DefenderOutcome == SideOutcome.Active) switch
+            {
+                (true, false) => CombatSide.Attacker,
+                (false, true) => CombatSide.Defender,
+                _ => null,
+            };
+
+        public static CombatSide? GetWinningSide(BattleOutcome winner) =>
+            winner switch
+            {
+                BattleOutcome.Attacker => CombatSide.Attacker,
+                BattleOutcome.Defender => CombatSide.Defender,
+                _ => null,
+            };
+
+        public static SideOutcome SelectOutcome(
+            CombatSide? side,
+            SideOutcome attacker,
+            SideOutcome defender
+        ) =>
+            side switch
+            {
+                CombatSide.Attacker => attacker,
+                CombatSide.Defender => defender,
+                _ => SideOutcome.Unknown,
+            };
+
+        public static CombatSide? OpposingSide(CombatSide? side) =>
+            side switch
+            {
+                CombatSide.Attacker => CombatSide.Defender,
+                CombatSide.Defender => CombatSide.Attacker,
+                _ => null,
+            };
+
+        internal string GetOwner(CombatSide side) =>
+            side == CombatSide.Attacker ? AttackerOwnerInstanceID : DefenderOwnerInstanceID;
     }
 
     /// <summary>

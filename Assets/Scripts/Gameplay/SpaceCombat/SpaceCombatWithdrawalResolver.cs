@@ -230,12 +230,12 @@ namespace Rebellion.Gameplay
 
             if (attackerRetreated)
                 result.AttackerOutcome = plan.CanWithdraw
-                    ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Destroyed;
+                    ? SpaceCombatResult.SideOutcome.Withdrawn
+                    : SpaceCombatResult.SideOutcome.Destroyed;
             else
                 result.DefenderOutcome = plan.CanWithdraw
-                    ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Destroyed;
+                    ? SpaceCombatResult.SideOutcome.Withdrawn
+                    : SpaceCombatResult.SideOutcome.Destroyed;
         }
 
         /// <summary>

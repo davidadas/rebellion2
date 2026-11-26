@@ -69,7 +69,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession authority = CreateAuthority();
 
-            Assert.IsFalse(authority.ApplySynchronizedCommand(CombatSide.Draw, Object("empire")));
+            Assert.IsFalse(authority.ApplySynchronizedCommand((CombatSide)2, Object("empire")));
             Assert.IsFalse(
                 authority.ApplySynchronizedCommand(CombatSide.Attacker, Object("missing"))
             );

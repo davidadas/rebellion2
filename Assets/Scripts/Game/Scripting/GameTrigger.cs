@@ -393,7 +393,7 @@ namespace Rebellion.Game.Scripting
         public string DefenderFactionInstanceID { get; set; }
 
         [PersistableAttribute]
-        public CombatSide? Winner { get; set; }
+        public SpaceCombatResult.BattleOutcome? Winner { get; set; }
 
         [PersistableAttribute]
         public string SourceEventInstanceID { get; set; }

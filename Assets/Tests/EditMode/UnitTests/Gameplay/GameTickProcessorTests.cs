@@ -791,7 +791,7 @@ namespace Rebellion.Tests.Gameplay
 
                 SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
 
-                Assert.AreEqual(battle.PlayerSide, result.Winner);
+                Assert.AreEqual(battle.PlayerSide, result.WinningSide);
                 Assert.AreEqual(40, _game.CurrentTick);
                 if (encounter + 1 < encounterCount)
                 {
@@ -907,7 +907,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatResult result = _tick.CompleteTacticalCombat(battle);
 
             Assert.AreEqual(battle.Winner, result.Winner);
-            Assert.AreNotEqual(CombatSide.Draw, result.Winner);
+            Assert.AreNotEqual(SpaceCombatResult.BattleOutcome.Draw, result.Winner);
             Assert.AreEqual(40, result.Tick);
             Assert.AreEqual(40, _game.CurrentTick);
             Assert.IsFalse(commands.HasPendingDecision);

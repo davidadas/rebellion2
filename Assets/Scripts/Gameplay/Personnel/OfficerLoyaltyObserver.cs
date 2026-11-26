@@ -166,14 +166,10 @@ namespace Rebellion.Gameplay
             if (result == null)
                 return false;
 
-            bool attackerActive = result.AttackerOutcome == SpaceCombatSideOutcome.Active;
-            bool defenderActive = result.DefenderOutcome == SpaceCombatSideOutcome.Active;
-            if (attackerActive == defenderActive)
+            if (result.RemainingSide is not CombatSide side)
                 return false;
 
-            controllerId = attackerActive
-                ? result.AttackerOwnerInstanceID
-                : result.DefenderOwnerInstanceID;
+            controllerId = result.GetOwner(side);
             return !string.IsNullOrEmpty(controllerId);
         }
 
@@ -217,7 +213,7 @@ namespace Rebellion.Gameplay
         private static int GetDestroyedUnitValue(IEnumerable<CombatUnitSnapshot> snapshots) =>
             (snapshots ?? Enumerable.Empty<CombatUnitSnapshot>())
                 .Where(snapshot => snapshot?.Destroyed == true)
-                .Sum(snapshot => GetUnitValue(snapshot.Unit));
+                .Sum(snapshot => CombatUnitSnapshot.GetMilitaryValue(snapshot.Unit));
 
         /// <summary>
         /// Totals eligible values for destroyed live-unit records.
@@ -226,21 +222,8 @@ namespace Rebellion.Gameplay
         /// <param name="units">The destroyed live-unit records.</param>
         /// <returns>The eligible destroyed-unit value.</returns>
         private static int GetDestroyedUnitValue<T>(IEnumerable<T> units)
-            where T : class, ISceneNode => (units ?? Enumerable.Empty<T>()).Sum(GetUnitValue);
-
-        /// <summary>
-        /// Returns the authored value for an eligible destroyed-unit family.
-        /// </summary>
-        /// <param name="unit">The unit to evaluate.</param>
-        /// <returns>The unit's authored value, or zero for an ineligible family.</returns>
-        private static int GetUnitValue(ISceneNode unit) =>
-            unit switch
-            {
-                Regiment regiment => regiment.UprisingDefense,
-                CapitalShip capitalShip => capitalShip.UprisingDefense,
-                Starfighter starfighter => starfighter.UprisingDefense,
-                _ => 0,
-            };
+            where T : class, ISceneNode =>
+            (units ?? Enumerable.Empty<T>()).Sum(CombatUnitSnapshot.GetMilitaryValue);
 
         /// <summary>
         /// Calculates and applies the configured battle-loss loyalty formula.
@@ -269,7 +252,11 @@ namespace Rebellion.Gameplay
                     $"Faction '{controller.InstanceID}' BattleLossLoyaltyDivisor must be greater than zero."
                 );
 
-            int shift = CombatLoyaltyCalculator.Calculate(controllerLoss, opponentLoss, divisor);
+            int shift = PersonnelCommands.CalculateBattleLossLoyalty(
+                controllerLoss,
+                opponentLoss,
+                divisor
+            );
             _commands.ApplyGlobalLoyaltyShift(controller, shift);
         }
     }

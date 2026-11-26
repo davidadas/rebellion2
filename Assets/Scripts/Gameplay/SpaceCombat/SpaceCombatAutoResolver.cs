@@ -320,7 +320,7 @@ namespace Rebellion.Gameplay
         /// <returns>Whether an automatic withdrawal can be attempted.</returns>
         private static bool CanWithdraw(CombatForce force, CombatForce opponent)
         {
-            if (!force.CanWithdraw || force.Outcome != SpaceCombatSideOutcome.Active)
+            if (!force.CanWithdraw || force.Outcome != SpaceCombatResult.SideOutcome.Active)
                 return false;
             foreach (CapitalShipState ship in opponent.Ships)
                 if (ship.IsTargetable && ship.Ship.HasGravityWell)
@@ -622,8 +622,8 @@ namespace Rebellion.Gameplay
         private static void CompleteForce(CombatForce force)
         {
             force.Outcome = force.HasWithdrawnUnits
-                ? SpaceCombatSideOutcome.Withdrawn
-                : SpaceCombatSideOutcome.Destroyed;
+                ? SpaceCombatResult.SideOutcome.Withdrawn
+                : SpaceCombatResult.SideOutcome.Destroyed;
         }
 
         /// <summary>
@@ -868,12 +868,17 @@ namespace Rebellion.Gameplay
         /// <param name="attacker">The resolved attacking force.</param>
         /// <param name="defender">The resolved defending force.</param>
         /// <returns>The winning side, or a draw.</returns>
-        private static CombatSide DetermineWinner(CombatForce attacker, CombatForce defender)
+        private static SpaceCombatResult.BattleOutcome DetermineWinner(
+            CombatForce attacker,
+            CombatForce defender
+        )
         {
-            bool attackerActive = attacker.Outcome == SpaceCombatSideOutcome.Active;
-            bool defenderActive = defender.Outcome == SpaceCombatSideOutcome.Active;
+            bool attackerActive = attacker.Outcome == SpaceCombatResult.SideOutcome.Active;
+            bool defenderActive = defender.Outcome == SpaceCombatResult.SideOutcome.Active;
             if (attackerActive != defenderActive)
-                return attackerActive ? CombatSide.Attacker : CombatSide.Defender;
+                return attackerActive
+                    ? SpaceCombatResult.BattleOutcome.Attacker
+                    : SpaceCombatResult.BattleOutcome.Defender;
 
             bool attackerSurvived =
                 attacker.Units.Any(unit => unit.IsAlive)
@@ -882,9 +887,11 @@ namespace Rebellion.Gameplay
                 defender.Units.Any(unit => unit.IsAlive)
                 || defender.PlanetDestroyers.Any(planetDestroyer => planetDestroyer.IsAlive);
             if (attackerSurvived == defenderSurvived)
-                return CombatSide.Draw;
+                return SpaceCombatResult.BattleOutcome.Draw;
 
-            return attackerSurvived ? CombatSide.Attacker : CombatSide.Defender;
+            return attackerSurvived
+                ? SpaceCombatResult.BattleOutcome.Attacker
+                : SpaceCombatResult.BattleOutcome.Defender;
         }
 
         /// <summary>
@@ -965,7 +972,7 @@ namespace Rebellion.Gameplay
             internal bool HasAttackRunUnderWay =>
                 Fighters.Any(fighter => fighter.IsAlive && fighter.AttackRunTarget != null);
             internal bool CanWithdraw { get; }
-            internal SpaceCombatSideOutcome Outcome { get; set; }
+            internal SpaceCombatResult.SideOutcome Outcome { get; set; }
             internal bool WithdrawalOrdered { get; private set; }
 
             /// <summary>
@@ -1049,7 +1056,7 @@ namespace Rebellion.Gameplay
                 Units.AddRange(Ships);
                 Units.AddRange(Fighters);
                 CanWithdraw = canWithdraw;
-                Outcome = SpaceCombatSideOutcome.Active;
+                Outcome = SpaceCombatResult.SideOutcome.Active;
             }
 
             /// <summary>

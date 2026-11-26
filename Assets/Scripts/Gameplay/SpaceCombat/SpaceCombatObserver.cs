@@ -97,9 +97,7 @@ namespace Rebellion.Gameplay
             {
                 if (result?.IsTacticalCombat != true)
                     continue;
-                bool attackerActive = result.AttackerOutcome == SpaceCombatSideOutcome.Active;
-                bool defenderActive = result.DefenderOutcome == SpaceCombatSideOutcome.Active;
-                if (attackerActive == defenderActive)
+                if (result.RemainingSide is not CombatSide remaining)
                     continue;
 
                 SpaceCombatSupportProfile profile = null;
@@ -119,9 +117,7 @@ namespace Rebellion.Gameplay
                         "The campaign has no complete battle support profile."
                     );
 
-                string controllerID = attackerActive
-                    ? result.AttackerOwnerInstanceID
-                    : result.DefenderOwnerInstanceID;
+                string controllerID = result.GetOwner(remaining);
                 int survivingSide =
                     controllerID == firstID ? 1
                     : controllerID == secondID ? 2
@@ -139,7 +135,7 @@ namespace Rebellion.Gameplay
                     secondID
                 );
                 Faction controller = survivingSide == 1 ? first : second;
-                int loyalty = CombatLoyaltyCalculator.Calculate(
+                int loyalty = PersonnelCommands.CalculateBattleLossLoyalty(
                     survivingSide == 1 ? firstLoss : secondLoss,
                     survivingSide == 1 ? secondLoss : firstLoss,
                     controller.Settings.BattleLossLoyaltyDivisor
@@ -195,7 +191,7 @@ namespace Rebellion.Gameplay
                     }
                 )
                     continue;
-                int value = GetMilitaryValue(unit);
+                int value = CombatUnitSnapshot.GetMilitaryValue(unit);
                 string owner = unit.OwnerInstanceID;
                 if (owner == firstOwnerInstanceId)
                     first = unchecked(first + value);
@@ -224,7 +220,7 @@ namespace Rebellion.Gameplay
                     }
                 )
                     continue;
-                int value = GetMilitaryValue(unit);
+                int value = CombatUnitSnapshot.GetMilitaryValue(unit);
                 string owner = unit.OwnerInstanceID;
                 if (owner == firstOwner)
                     firstLoss = unchecked(firstLoss + value);
@@ -233,15 +229,6 @@ namespace Rebellion.Gameplay
             }
             return (firstLoss, secondLoss);
         }
-
-        private static int GetMilitaryValue(ISceneNode unit) =>
-            unit switch
-            {
-                Regiment regiment => regiment.UprisingDefense,
-                CapitalShip ship => ship.UprisingDefense,
-                Starfighter fighter => fighter.UprisingDefense,
-                _ => 0,
-            };
 
         /// <summary>
         /// Selects populated sector planets whose counterpart support falls below the threshold.
