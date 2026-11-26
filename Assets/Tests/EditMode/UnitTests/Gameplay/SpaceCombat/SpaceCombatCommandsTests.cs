@@ -4785,6 +4785,31 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_ReportCaptureFails_AllowsPreparingPendingEncounterAgain()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            Officer officer = new OfficerWithoutReportCopy
+            {
+                InstanceID = "uncopyable-passenger",
+                OwnerInstanceID = attacker.OwnerInstanceID,
+            };
+            game.AttachNode(officer, attacker);
+
+            InvalidOperationException error = Assert.Throws<InvalidOperationException>(() =>
+                commands.BeginTacticalCombat()
+            );
+
+            Assert.AreEqual("The passenger cannot be copied for the report.", error.Message);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsNull(commands.ActiveTacticalCombat);
+            Assert.IsNull(game.ActiveBattle);
+            game.DeleteNode(officer);
+            Assert.AreSame(commands.BeginTacticalCombat(), commands.ActiveTacticalCombat);
+            Assert.IsNotNull(game.ActiveBattle);
+        }
+
+        [Test]
         public void CancelTacticalPreparation_UnstartedEncounter_AllowsPreparingPendingEncounterAgain()
         {
             (GameRoot game, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
@@ -6535,6 +6560,18 @@ namespace Rebellion.Tests.Gameplay
             foreach (CombatUnitSnapshot row in units)
                 trace.Add(
                     $"report {side} {row.Unit.InstanceID} {row.Unit.ParentInstanceID} {row.WasOperational} {row.Damaged} {row.Destroyed} {row.Captured}"
+                );
+        }
+
+        private sealed class OfficerWithoutReportCopy : Officer
+        {
+            /// <summary>
+            /// Fails when the encounter tries to detach this passenger for its report.
+            /// </summary>
+            /// <returns>No copy is available.</returns>
+            protected override BaseSceneNode CreateNodeCopy() =>
+                throw new InvalidOperationException(
+                    "The passenger cannot be copied for the report."
                 );
         }
     }

@@ -30,7 +30,7 @@ namespace Rebellion.Gameplay
             SpaceCombatDecision decision = _pendingDecision;
             if (
                 decision == null
-                || _tacticalCombat != null
+                || _tacticalEncounter.HasValue
                 || (
                     factionID != decision.AttackerOwnerInstanceID
                     && factionID != decision.DefenderOwnerInstanceID
@@ -136,7 +136,7 @@ namespace Rebellion.Gameplay
             if (
                 _game.Metadata?.IsMultiplayer != true
                 || !Guid.TryParseExact(battleID, "N", out _)
-                || _tacticalCombat != null
+                || _tacticalEncounter.HasValue
                 || !CanTakeCommand
                 || factionID != _pendingDecision.AttackerOwnerInstanceID
                     && factionID != _pendingDecision.DefenderOwnerInstanceID

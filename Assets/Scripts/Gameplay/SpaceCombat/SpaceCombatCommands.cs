@@ -46,10 +46,12 @@ namespace Rebellion.Gameplay
         private SpaceCombatDecision _pendingDecision;
         private readonly TacticalCombatFactory _tacticalFactory;
         private readonly SpaceCombatAftermath _aftermath;
-        private TacticalCombatSession _tacticalCombat;
-        private string _tacticalBattleID;
-        private List<CombatUnitSnapshot> _tacticalAttackingUnits;
-        private List<CombatUnitSnapshot> _tacticalDefendingUnits;
+        private (
+            TacticalCombatSession Session,
+            string BattleID,
+            List<CombatUnitSnapshot> AttackingUnits,
+            List<CombatUnitSnapshot> DefendingUnits
+        )? _tacticalEncounter;
 
         /// <summary>
         /// Whether a player-involved combat encounter is waiting for resolution.
@@ -59,12 +61,12 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Gets the captured manual encounter while the campaign decision remains suspended.
         /// </summary>
-        public TacticalCombatSession ActiveTacticalCombat => _tacticalCombat;
+        public TacticalCombatSession ActiveTacticalCombat => _tacticalEncounter?.Session;
 
         /// <summary>
         /// Gets the identity of the active network battle, or null outside network combat.
         /// </summary>
-        public string ActiveTacticalBattleID => _tacticalBattleID;
+        public string ActiveTacticalBattleID => _tacticalEncounter?.BattleID;
 
         /// <summary>
         /// Gets whether the waiting encounter has complete tactical deployment definitions.
@@ -78,7 +80,7 @@ namespace Rebellion.Gameplay
         /// <returns>The deployed tactical encounter.</returns>
         public TacticalCombatSession BeginTacticalCombat()
         {
-            if (_tacticalCombat != null)
+            if (_tacticalEncounter.HasValue)
                 throw new InvalidOperationException("A tactical encounter is already active.");
             if (
                 _tacticalFactory == null
@@ -89,9 +91,9 @@ namespace Rebellion.Gameplay
                 );
             Planet planet = roster.Planet;
             _aftermath?.ValidateBattle(planet);
-            _tacticalCombat = _tacticalFactory.Create(roster);
-            CaptureTacticalReport(roster);
-            return _tacticalCombat;
+            (ActiveBattle battle, TacticalCombatSession session) = _tacticalFactory.Create(roster);
+            PublishTacticalEncounter(roster, battle, session);
+            return session;
         }
 
         /// <summary>
@@ -115,7 +117,7 @@ namespace Rebellion.Gameplay
             if (_game.Metadata?.IsMultiplayer != true)
                 throw new InvalidOperationException("A multiplayer campaign is required.");
             if (
-                _tacticalCombat != null
+                _tacticalEncounter.HasValue
                 || _tacticalFactory == null
                 || !_tacticalFactory.TryPrepare(_pendingDecision, out var roster)
                 || _pendingDecision.AttackerRetreatResponse != false
@@ -126,26 +128,19 @@ namespace Rebellion.Gameplay
 
             Planet planet = roster.Planet;
             _aftermath?.ValidateBattle(planet);
-            _tacticalCombat = _tacticalFactory.Create(
+            (ActiveBattle battle, TacticalCombatSession session) = _tacticalFactory.Create(
                 roster,
                 seed,
                 unchecked((uint)scenerySeed),
                 _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID
             );
-            CaptureTacticalReport(roster);
             if (_game.LocalPlayerFactionID == _game.Metadata.MultiplayerCampaign.HostFactionID)
             {
-                _tacticalCombat.SetAutomated(
-                    CombatSide.Attacker,
-                    !_pendingDecision.AttackerTakeCommand
-                );
-                _tacticalCombat.SetAutomated(
-                    CombatSide.Defender,
-                    !_pendingDecision.DefenderTakeCommand
-                );
+                session.SetAutomated(CombatSide.Attacker, !_pendingDecision.AttackerTakeCommand);
+                session.SetAutomated(CombatSide.Defender, !_pendingDecision.DefenderTakeCommand);
             }
-            _tacticalBattleID = battleID;
-            return _tacticalCombat;
+            PublishTacticalEncounter(roster, battle, session, battleID);
+            return session;
         }
 
         /// <summary>
@@ -154,15 +149,15 @@ namespace Rebellion.Gameplay
         /// <param name="session">The unstarted encounter to release.</param>
         public void CancelTacticalPreparation(TacticalCombatSession session)
         {
-            if (!ReferenceEquals(session, _tacticalCombat) || session.SystemTime != 3)
+            if (
+                session == null
+                || !ReferenceEquals(session, ActiveTacticalCombat)
+                || session.SystemTime != 3
+            )
                 throw new InvalidOperationException(
                     "Only an unstarted tactical encounter can be released."
                 );
-            _tacticalCombat = null;
-            _game.ActiveBattle = null;
-            _tacticalBattleID = null;
-            _tacticalAttackingUnits = null;
-            _tacticalDefendingUnits = null;
+            ClearTacticalEncounter();
         }
 
         /// <summary>
@@ -173,7 +168,8 @@ namespace Rebellion.Gameplay
         public List<GameResult> CompleteTacticalCombat(TacticalCombatSession session)
         {
             if (
-                !ReferenceEquals(session, _tacticalCombat)
+                session == null
+                || !ReferenceEquals(session, ActiveTacticalCombat)
                 || !session.IsComplete
                 || _pendingDecision == null
             )
@@ -219,10 +215,10 @@ namespace Rebellion.Gameplay
         {
             results = null;
             if (
-                _tacticalCombat?.IsComplete != true
+                ActiveTacticalCombat?.IsComplete != true
                 || _pendingDecision == null
-                || string.IsNullOrEmpty(_tacticalBattleID)
-                || !string.Equals(_tacticalBattleID, battleID, StringComparison.Ordinal)
+                || string.IsNullOrEmpty(ActiveTacticalBattleID)
+                || !string.Equals(ActiveTacticalBattleID, battleID, StringComparison.Ordinal)
             )
                 return false;
             SpaceCombatResult result;
@@ -288,7 +284,8 @@ namespace Rebellion.Gameplay
                         "A tactical fighter outcome has an invalid identity."
                     );
 
-            if (ships.Count + fighters.Count != _tacticalCombat.Units.Count)
+            TacticalCombatSession session = ActiveTacticalCombat;
+            if (ships.Count + fighters.Count != session.Units.Count)
                 throw new InvalidDataException(
                     "The tactical outcome does not cover the captured roster."
                 );
@@ -300,7 +297,7 @@ namespace Rebellion.Gameplay
                 DefenderOutcome = outcome.DefenderOutcome,
                 IterationsCompleted = outcome.IterationsCompleted,
             };
-            foreach (CombatUnit unit in _tacticalCombat.Units)
+            foreach (CombatUnit unit in session.Units)
             {
                 ISceneNode source = ResolveTacticalSource(unit);
                 if (
@@ -350,7 +347,7 @@ namespace Rebellion.Gameplay
                 CapitalShip carrier = null;
                 if (fighterState.CarrierID != null)
                 {
-                    CombatUnit host = _tacticalCombat.GetUnit(fighterState.CarrierID);
+                    CombatUnit host = session.GetUnit(fighterState.CarrierID);
                     if (
                         ResolveTacticalSource(host) is not CapitalShip shipHost
                         || validateNetwork && host.Side != unit.Side
@@ -427,6 +424,7 @@ namespace Rebellion.Gameplay
         )
         {
             SpaceCombatDecision decision = _pendingDecision;
+            var encounter = _tacticalEncounter.Value;
             List<Fleet> attackers = _queries.GetFleets(decision.AttackerFleetInstanceIDs);
             List<Fleet> defenders = _queries.GetFleets(decision.DefenderFleetInstanceIDs);
             Planet planet = _queries.ResolveCombatPlanet(decision);
@@ -437,8 +435,8 @@ namespace Rebellion.Gameplay
             result.Planet = planet;
             result.PlanetOwnerInstanceID = planet.OwnerInstanceID;
             result.Tick = _game.CurrentTick;
-            result.AttackingUnits = _tacticalAttackingUnits;
-            result.DefendingUnits = _tacticalDefendingUnits;
+            result.AttackingUnits = encounter.AttackingUnits;
+            result.DefendingUnits = encounter.DefendingUnits;
             bool wasBlockaded = planet.IsBlockaded(_game);
             List<GameResult> events = ApplyFighterResults(result);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
@@ -478,8 +476,8 @@ namespace Rebellion.Gameplay
                     events
                 );
             }
-            result.AttackingUnits = _tacticalAttackingUnits;
-            result.DefendingUnits = _tacticalDefendingUnits;
+            result.AttackingUnits = encounter.AttackingUnits;
+            result.DefendingUnits = encounter.DefendingUnits;
             IEnumerable<ISceneNode> destroyed = result
                 .Events.OfType<GameObjectDestroyedResult>()
                 .Select(destruction => destruction.DestroyedObject)
@@ -501,11 +499,7 @@ namespace Rebellion.Gameplay
             result.IsTacticalCombat = true;
             ClearCombatFlags(decision);
             _pendingDecision = null;
-            _tacticalCombat = null;
-            _game.ActiveBattle = null;
-            _tacticalBattleID = null;
-            _tacticalAttackingUnits = null;
-            _tacticalDefendingUnits = null;
+            ClearTacticalEncounter();
             List<GameResult> results = new() { result };
             results.AddRange(
                 result.Events.Where(item =>
@@ -715,7 +709,7 @@ namespace Rebellion.Gameplay
         /// <returns>Combat results generated by the encounter.</returns>
         public List<GameResult> ResolvePending(bool autoResolve)
         {
-            if (_tacticalCombat != null)
+            if (_tacticalEncounter.HasValue)
                 throw new InvalidOperationException(
                     "The active manual encounter must finish first."
                 );
@@ -735,7 +729,7 @@ namespace Rebellion.Gameplay
         /// <returns>The combat results, or null when that side cannot withdraw.</returns>
         public List<GameResult> ResolvePendingRetreat(string retreatingFactionInstanceId)
         {
-            if (_tacticalCombat != null)
+            if (_tacticalEncounter.HasValue)
                 throw new InvalidOperationException(
                     "The active manual encounter must finish first."
                 );
@@ -1552,28 +1546,47 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Retains the initial report rows for both forces using the battle's detached copies.
+        /// Publishes the encounter after both forces' report rows have been captured.
         /// </summary>
         /// <param name="roster">The validated roster captured for this encounter.</param>
-        private void CaptureTacticalReport(TacticalCombatFactory.EncounterRoster roster)
+        /// <param name="battle">The encounter's detached battle state.</param>
+        /// <param name="session">The encounter's initialized tactical session.</param>
+        /// <param name="battleID">The network encounter identity, when synchronized.</param>
+        private void PublishTacticalEncounter(
+            TacticalCombatFactory.EncounterRoster roster,
+            ActiveBattle battle,
+            TacticalCombatSession session,
+            string battleID = null
+        )
         {
-            Dictionary<string, ISceneNode> battleCopies = _tacticalCombat.Units.ToDictionary(
+            Dictionary<string, ISceneNode> battleCopies = session.Units.ToDictionary(
                 unit => unit.SourceUnitInstanceID,
                 unit => (ISceneNode)unit.Unit,
                 StringComparer.Ordinal
             );
-            _tacticalAttackingUnits = CaptureCombatUnits(
+            List<CombatUnitSnapshot> attackingUnits = CaptureCombatUnits(
                 roster.Attacker.Fleets,
                 roster.Planet,
                 roster.Attacker.OwnerID,
                 battleCopies
             );
-            _tacticalDefendingUnits = CaptureCombatUnits(
+            List<CombatUnitSnapshot> defendingUnits = CaptureCombatUnits(
                 roster.Defender.Fleets,
                 roster.Planet,
                 roster.Defender.OwnerID,
                 battleCopies
             );
+            _tacticalEncounter = (session, battleID, attackingUnits, defendingUnits);
+            _game.ActiveBattle = battle;
+        }
+
+        /// <summary>
+        /// Removes the active encounter and its saved battle state from the campaign.
+        /// </summary>
+        private void ClearTacticalEncounter()
+        {
+            _tacticalEncounter = null;
+            _game.ActiveBattle = null;
         }
 
         /// <summary>
