@@ -187,7 +187,7 @@ namespace Rebellion.Tactical
             if (sources.Count == 0)
             {
                 Audio.Enqueue(TacticalCombatSound.TractorEngaged);
-                target.SetTractorSources(true);
+                SetTractorSources(target, true);
             }
             source.TractorTargetID = target.InstanceID;
             sources.TryAdd(unchecked((uint)source.Index), source);
@@ -210,9 +210,15 @@ namespace Rebellion.Tactical
             if (!populated || sources.Count == 0)
             {
                 Audio.Enqueue(TacticalCombatSound.TractorReleased);
-                target.SetTractorSources(false);
+                SetTractorSources(target, false);
             }
             target.TractorRestraint = GetTractorRestraint(target);
+        }
+
+        private void SetTractorSources(CombatUnit target, bool populated)
+        {
+            target.HasTractorSources = populated;
+            TractorSourcesChanged?.Invoke(target, populated);
         }
 
         /// <summary>

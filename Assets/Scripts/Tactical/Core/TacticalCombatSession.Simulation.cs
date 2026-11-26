@@ -284,7 +284,7 @@ namespace Rebellion.Tactical
                         elapsedMilliseconds
                     );
                 if (unit.Status == CombatUnitStatus.Active && unit.HasGravityWell)
-                    unit.RequestGravityWellPresentation();
+                    GravityWellPresentationRequested?.Invoke(unit);
             }
             CheckCompletion();
             UpdateCenters();

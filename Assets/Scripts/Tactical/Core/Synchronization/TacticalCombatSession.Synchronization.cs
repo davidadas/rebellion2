@@ -90,26 +90,19 @@ namespace Rebellion.Tactical
                 GetSide(remote).FactionIndex,
                 message => EnqueueFactionNotification(remote, message)
             );
-            foreach (CombatUnit unit in _units)
-            {
-                unit.TractorSourcesChanged += populated =>
-                    RecordSynchronizedEvent(
-                        new()
-                        {
-                            Kind = TacticalCombatEventKind.TractorSources,
-                            TargetID = unit.InstanceID,
-                            Enabled = populated,
-                        }
-                    );
-                unit.GravityWellPresentationRequested += () =>
-                    RecordSynchronizedEvent(
-                        new()
-                        {
-                            Kind = TacticalCombatEventKind.GravityWell,
-                            TargetID = unit.InstanceID,
-                        }
-                    );
-            }
+            TractorSourcesChanged += (unit, populated) =>
+                RecordSynchronizedEvent(
+                    new()
+                    {
+                        Kind = TacticalCombatEventKind.TractorSources,
+                        TargetID = unit.InstanceID,
+                        Enabled = populated,
+                    }
+                );
+            GravityWellPresentationRequested += unit =>
+                RecordSynchronizedEvent(
+                    new() { Kind = TacticalCombatEventKind.GravityWell, TargetID = unit.InstanceID }
+                );
         }
 
         /// <summary>

@@ -219,7 +219,7 @@ namespace Rebellion.Tactical
             unit.ApplyBatteryProjection(state.Charge, state.Ready);
             unit.HyperspaceMilliseconds = state.HyperspaceMilliseconds;
             unit.TractorRestraint = state.TractorRestraint;
-            unit.ApplySnapshotTractorMembership(state.HasTractorSources);
+            unit.HasTractorSources = state.HasTractorSources;
             unit.CommandBudget = state.CommandBudget;
             unit.TurnRate = state.TurnRate;
             unit.HasCollision = state.HasCollision;
@@ -259,10 +259,10 @@ namespace Rebellion.Tactical
                     SuperlaserFired?.Invoke(source, target);
                     break;
                 case TacticalCombatEventKind.TractorSources:
-                    target.SetTractorSources(effect.Enabled);
+                    SetTractorSources(target, effect.Enabled);
                     break;
                 case TacticalCombatEventKind.GravityWell:
-                    target.RequestGravityWellPresentation();
+                    GravityWellPresentationRequested?.Invoke(target);
                     break;
                 case TacticalCombatEventKind.Notification:
                     if (!effect.HasRecipient || effect.Recipient == PlayerSide)

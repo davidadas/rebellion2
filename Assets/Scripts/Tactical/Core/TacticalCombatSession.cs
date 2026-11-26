@@ -116,6 +116,8 @@ namespace Rebellion.Tactical
         public event Action<CombatUnit> DestructionEffectRequested;
         public event Action<CombatUnit> UnitDestroyed;
         public event Action<CombatUnit> UnitWithdrawn;
+        public event Action<CombatUnit, bool> TractorSourcesChanged;
+        public event Action<CombatUnit> GravityWellPresentationRequested;
         public event Action<CombatUnit, TacticalSystemEvent> SystemChanged;
         public event Action<CombatUnit> FighterRecovered;
         public event Action<TacticalCombatGroup> RecoveryUnavailable;

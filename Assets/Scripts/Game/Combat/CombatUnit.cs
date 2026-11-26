@@ -305,7 +305,7 @@ namespace Rebellion.Game.Combat
         /// <summary>
         /// Gets whether the retained tractor-source chain contains any contributor, even with no current restraint.
         /// </summary>
-        public bool HasTractorSources { get; private set; }
+        public bool HasTractorSources { get; internal set; }
 
         public float CommandBudget { get; internal set; }
         public float MaximumTurnRate { get; internal set; }
@@ -339,16 +339,6 @@ namespace Rebellion.Game.Combat
                     or CombatUnitStatus.AwaitingWithdrawal
                     or CombatUnitStatus.AttackingBattleStation;
         public int SquadronSize => IsAlive ? Math.Max((int)(Hull / 8), 1) : 0;
-
-        /// <summary>
-        /// Announces the first retained source and every removal that leaves the source chain empty.
-        /// </summary>
-        public event Action<bool> TractorSourcesChanged;
-
-        /// <summary>
-        /// Requests the generator's presentation during an admitted active movement interval.
-        /// </summary>
-        public event Action GravityWellPresentationRequested;
 
         /// <summary>
         /// Creates tactical simulation state over an independently copied campaign unit.
@@ -470,30 +460,6 @@ namespace Rebellion.Game.Combat
         {
             return GetTurnBudget(CommandBudget, TractorRestraint);
         }
-
-        /// <summary>
-        /// Stores retained tractor membership and announces its admitted transition.
-        /// Empty removals are announced even when the previous membership was already empty.
-        /// </summary>
-        /// <param name="populated">Whether the source chain contains a retained contributor.</param>
-        internal void SetTractorSources(bool populated)
-        {
-            HasTractorSources = populated;
-            TractorSourcesChanged?.Invoke(populated);
-        }
-
-        /// <summary>
-        /// Restores retained membership before separately replaying its ordered presentation edges.
-        /// </summary>
-        /// <param name="populated">Whether the authoritative source chain contains a contributor.</param>
-        internal void ApplySnapshotTractorMembership(bool populated) =>
-            HasTractorSources = populated;
-
-        /// <summary>
-        /// Announces the gravity generator after its active movement has been applied.
-        /// </summary>
-        internal void RequestGravityWellPresentation() =>
-            GravityWellPresentationRequested?.Invoke();
 
         /// <summary>
         /// Gets the angular speed selected when the unit entered tactical combat.

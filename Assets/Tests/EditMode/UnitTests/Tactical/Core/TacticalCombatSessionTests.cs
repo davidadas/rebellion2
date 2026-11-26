@@ -598,7 +598,11 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
             CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
-            target.TractorSourcesChanged += transitions.Add;
+            session.TractorSourcesChanged += (unit, populated) =>
+            {
+                if (ReferenceEquals(unit, target))
+                    transitions.Add(populated);
+            };
 
             AdvanceSeconds(session, 20);
 
@@ -616,7 +620,11 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
             CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
-            target.TractorSourcesChanged += transitions.Add;
+            session.TractorSourcesChanged += (unit, populated) =>
+            {
+                if (ReferenceEquals(unit, target))
+                    transitions.Add(populated);
+            };
             AdvanceSeconds(session, 20);
             Assert.IsTrue(target.HasTractorSources);
             session.GetUnit("a").Destroy();
@@ -638,7 +646,11 @@ namespace Rebellion.Tests.Tactical
             CombatUnit contributor = session.GetUnit("a");
             CombatUnit target = session.GetUnit("b");
             List<bool> transitions = new();
-            target.TractorSourcesChanged += transitions.Add;
+            session.TractorSourcesChanged += (unit, populated) =>
+            {
+                if (ReferenceEquals(unit, target))
+                    transitions.Add(populated);
+            };
             AdvanceSeconds(session, 20);
             Assert.IsTrue(target.HasTractorSources);
             for (int damage = 0; damage < 4; damage++)
@@ -664,7 +676,11 @@ namespace Rebellion.Tests.Tactical
             source.HasGravityWell = hasGravityWell;
             TacticalCombatSession session = CreateSession(source, CreateShip("b", 1000000, 0));
             int requests = 0;
-            session.GetUnit("a").GravityWellPresentationRequested += () => requests++;
+            session.GravityWellPresentationRequested += unit =>
+            {
+                if (unit.InstanceID == "a")
+                    requests++;
+            };
             session.IsPaused = paused;
 
             AdvanceSeconds(session, 6);
