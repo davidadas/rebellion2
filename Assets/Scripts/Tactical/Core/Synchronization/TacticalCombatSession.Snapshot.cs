@@ -405,7 +405,6 @@ namespace Rebellion.Tactical
                     || !Enum.IsDefined(typeof(TacticalCombatSelectionKind), state.Kind)
                     || state.HasGroup && !groups.Contains(state.GroupID)
                     || state.Members == null
-                    || state.Highlights == null
                     || state.Targets == null
                     || state.Waypoints == null
                     || state.Groups?.Any(id => !groups.Contains(id)) != false
@@ -415,7 +414,6 @@ namespace Rebellion.Tactical
                         nameof(snapshot)
                     );
                 RequireSnapshotUnits(state.Members);
-                RequireSnapshotUnits(state.Highlights);
                 RequireSnapshotUnits(state.Targets);
                 RequireSnapshotUnit(state.PrimaryID);
                 RequireSnapshotUnit(state.InspectedID);

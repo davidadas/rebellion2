@@ -175,7 +175,6 @@ namespace Rebellion.Tactical
                     )
                 )
                     _inspected = Group.RequestedMembers[0];
-                _highlights.AddRange(_members.Where(IsDisplayObject));
                 CopyRequests(Group);
                 _groups.Add(Group);
             }
@@ -186,14 +185,9 @@ namespace Rebellion.Tactical
                     Clear();
                     return;
                 }
-                _highlights.Add(_primary);
                 TacticalCombatGroup group = _session.GetRequestedGroup(_primary);
                 if (group != null)
                 {
-                    if (FindObjectCategory(group) >= 0)
-                        foreach (CombatUnit unit in group.RequestedMembers)
-                            if (IsDisplayObject(unit))
-                                AddUnique(_highlights, unit);
                     CopyRequests(group);
                     _groups.Add(group);
                 }
@@ -212,15 +206,12 @@ namespace Rebellion.Tactical
                     return;
                 }
                 _primary = _members[0];
-                _highlights.AddRange(_members);
             }
-            else if (Kind == TacticalCombatSelectionKind.EnemyInspection)
-            {
-                if (!IsDisplayObject(_primary))
-                    Clear();
-                else
-                    _highlights.Add(_primary);
-            }
+            else if (
+                Kind == TacticalCombatSelectionKind.EnemyInspection
+                && !IsDisplayObject(_primary)
+            )
+                Clear();
             else if (
                 Kind == TacticalCombatSelectionKind.StationTarget
                 && (
@@ -231,7 +222,35 @@ namespace Rebellion.Tactical
                 )
             )
                 Clear();
+            BuildHighlights();
             RefreshNotification();
+        }
+
+        /// <summary>
+        /// Builds the display highlights from the refreshed command context and current unit visibility.
+        /// </summary>
+        private void BuildHighlights()
+        {
+            switch (Kind)
+            {
+                case TacticalCombatSelectionKind.ObjectGroup:
+                case TacticalCombatSelectionKind.FighterGroup:
+                    _highlights.AddRange(_members.Where(IsDisplayObject));
+                    break;
+                case TacticalCombatSelectionKind.SingleObject when IsDisplayObject(_primary):
+                    _highlights.Add(_primary);
+                    if (_groups.Count != 0 && FindObjectCategory(_groups[0]) >= 0)
+                        foreach (CombatUnit unit in _groups[0].RequestedMembers)
+                            if (IsDisplayObject(unit))
+                                AddUnique(_highlights, unit);
+                    break;
+                case TacticalCombatSelectionKind.MultipleObjects:
+                    _highlights.AddRange(_members);
+                    break;
+                case TacticalCombatSelectionKind.EnemyInspection when IsDisplayObject(_primary):
+                    _highlights.Add(_primary);
+                    break;
+            }
         }
 
         /// <summary>

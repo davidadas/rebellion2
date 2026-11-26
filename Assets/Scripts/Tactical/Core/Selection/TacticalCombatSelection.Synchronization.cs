@@ -35,7 +35,6 @@ namespace Rebellion.Tactical
                 PrimaryID = _primary?.InstanceID,
                 InspectedID = _inspected?.InstanceID,
                 Members = _members.Select(unit => unit.InstanceID).ToArray(),
-                Highlights = _highlights.Select(unit => unit.InstanceID).ToArray(),
                 Targets = _targets.Select(unit => unit.InstanceID).ToArray(),
                 Waypoints = _waypoints
                     .Select(point => new TacticalCombatSnapshotVector(point))
@@ -68,13 +67,13 @@ namespace Rebellion.Tactical
             _members.Clear();
             _members.AddRange(state.Members.Select(_session.GetUnit));
             _highlights.Clear();
-            _highlights.AddRange(state.Highlights.Select(_session.GetUnit));
             _targets.Clear();
             _targets.AddRange(state.Targets.Select(_session.GetUnit));
             _waypoints.Clear();
             _waypoints.AddRange(state.Waypoints.Select(point => point.ToVector()));
             _groups.Clear();
             _groups.AddRange(state.Groups.Select(_session.GetSynchronizedGroup));
+            BuildHighlights();
             if (changed)
                 ContextReplaced?.Invoke(Kind);
             if (previous == TacticalCombatSelectionKind.StationTarget && previous != Kind)

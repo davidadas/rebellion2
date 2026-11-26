@@ -385,14 +385,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 PrimaryID = "\u96ea-unit",
                 InspectedID = "\u96ea-unit",
                 Members = new[] { "\u96ea-unit", null, string.Empty, "other-unit", "\u96ea-unit" },
-                Highlights = new[]
-                {
-                    "\u96ea-unit",
-                    null,
-                    string.Empty,
-                    "other-unit",
-                    "\u96ea-unit",
-                },
                 Targets = new[] { "\u96ea-unit", null, string.Empty, "other-unit", "\u96ea-unit" },
                 Waypoints = new[] { CreateVector() },
                 Groups = new[] { 1, 2, 3 },

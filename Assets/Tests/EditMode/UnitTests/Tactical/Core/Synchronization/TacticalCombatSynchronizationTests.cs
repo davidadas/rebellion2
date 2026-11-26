@@ -9,6 +9,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Multiplayer.Tactical;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
@@ -226,6 +227,49 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(2, replacements);
             Assert.AreEqual(TacticalCombatSelectionKind.SingleObject, replica.Selection.Kind);
             Assert.AreSame(replica.GetUnit("alliance-wing"), replica.Selection.PrimaryUnit);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ApplySnapshot_SelectionHighlights_FollowVisibleRequestedMembers(
+            bool selectCategory
+        )
+        {
+            TacticalCombatSession authority = CreateAuthority(additionalDefender: true);
+            TacticalCombatSession replica = CreateReplica(additionalDefender: true);
+            CombatUnit primary = authority.GetUnit("alliance");
+            CombatUnit joining = authority.GetUnit("alliance-wing");
+            TacticalCombatGroup group = authority.GetRequestedGroup(primary);
+            authority.SetObjectGroup(CombatSide.Defender, 0, group);
+            authority.AddGroupMember(group, joining);
+            Assert.AreNotSame(group, authority.GetGroup(joining));
+
+            TacticalCombatCommand selection = selectCategory
+                ? new() { Kind = TacticalCombatCommandKind.ObjectCategory, Category = 0 }
+                : Object(primary.InstanceID);
+            Assert.IsTrue(authority.ApplySynchronizedCommand(CombatSide.Defender, selection));
+            ApplyCapturedProjection(replica, authority.CaptureSnapshot(1));
+            CollectionAssert.AreEqual(
+                new[] { "alliance", "alliance-wing" },
+                replica.Selection.Highlights.Select(unit => unit.InstanceID)
+            );
+            Assert.AreEqual(selectCategory ? 2 : 1, replica.Selection.Members.Count);
+
+            joining.Status = CombatUnitStatus.EnteringHyperspace;
+            ApplyCapturedProjection(replica, authority.CaptureSnapshot(2));
+            CollectionAssert.AreEqual(
+                new[] { "alliance" },
+                replica.Selection.Highlights.Select(unit => unit.InstanceID)
+            );
+            Assert.AreEqual(selectCategory ? 2 : 1, replica.Selection.Members.Count);
+
+            joining.Status = CombatUnitStatus.Active;
+            authority.SetObjectGroup(CombatSide.Defender, 0, null);
+            ApplyCapturedProjection(replica, authority.CaptureSnapshot(3));
+            CollectionAssert.AreEqual(
+                selectCategory ? new[] { "alliance", "alliance-wing" } : new[] { "alliance" },
+                replica.Selection.Highlights.Select(unit => unit.InstanceID)
+            );
         }
 
         [Test]
@@ -709,8 +753,16 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatEvent[] effects = frame.Effects;
             frame.Effects = Array.Empty<TacticalCombatEvent>();
-            session.ApplySnapshot(frame);
-            session.ApplySynchronizedEvents(effects);
+            session.ApplySnapshot(
+                MultiplayerTacticalSnapshotCodec.Decode(
+                    MultiplayerTacticalSnapshotCodec.Encode(frame)
+                )
+            );
+            session.ApplySynchronizedEvents(
+                MultiplayerTacticalSnapshotCodec.DecodeEffects(
+                    MultiplayerTacticalSnapshotCodec.EncodeEffects(effects)
+                )
+            );
         }
 
         /// <summary>

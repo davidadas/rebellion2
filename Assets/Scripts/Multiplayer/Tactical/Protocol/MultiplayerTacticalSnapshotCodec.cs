@@ -22,7 +22,7 @@ namespace Rebellion.Multiplayer.Tactical
         private const int _maximumExpandedBytes = 4 * 1024 * 1024;
         private const int _headerBytes = 18;
         private const uint _magic = 0x43543252;
-        private const byte _version = 2;
+        private const byte _version = 3;
         private static readonly Encoding _utf8 = new UTF8Encoding(false, true);
         private static readonly uint[] _checksums = CreateChecksumTable();
 
@@ -413,7 +413,6 @@ namespace Rebellion.Multiplayer.Tactical
                 ID(value.PrimaryID);
                 ID(value.InspectedID);
                 Array(value.Members, item => ID(item), 65536);
-                Array(value.Highlights, item => ID(item), 65536);
                 Array(value.Targets, item => ID(item), 65536);
                 Array(value.Waypoints, item => Vector(item), 65536);
                 Array(value.Groups, item => _writer.Write(item), 65536);
@@ -662,7 +661,6 @@ namespace Rebellion.Multiplayer.Tactical
                     PrimaryID = ID(),
                     InspectedID = ID(),
                     Members = Array(() => ID(), 65536),
-                    Highlights = Array(() => ID(), 65536),
                     Targets = Array(() => ID(), 65536),
                     Waypoints = Array(() => Vector(), 65536),
                     Groups = Array(() => _reader.ReadInt32(), 65536),
