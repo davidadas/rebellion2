@@ -113,9 +113,9 @@ namespace Rebellion.Tactical
         /// <param name="unit">The unit addressed by the scuttling request.</param>
         private void Scuttle(CombatUnit unit)
         {
-            if (!IsActiveDisplayObject(unit) || !(unit.Systems.Hull > 0))
+            if (!IsActiveDisplayObject(unit) || !(unit.Hull > 0))
                 return;
-            Audio.Enqueue(unit.Systems.GetExplosionSound());
+            Audio.Enqueue(unit.GetExplosionSound());
             DestructionEffectRequested?.Invoke(unit);
             Destroy(unit);
         }
@@ -131,7 +131,7 @@ namespace Rebellion.Tactical
             if (unit.IsBattleStation)
                 BattleStation.Destroy();
             else
-                unit.Systems.Destroy();
+                unit.Destroy();
             unit.Status = CombatUnitStatus.Destroyed;
             _initiallyDockedFighters.Remove(unit);
             if (unit.TractorTargetID != null)
@@ -226,9 +226,7 @@ namespace Rebellion.Tactical
             float restraint = 0;
             if (_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources))
                 foreach (CombatUnit source in sources.Values)
-                    restraint = (float)(
-                        (double)restraint + source.Systems.GetTractorContribution()
-                    );
+                    restraint = (float)((double)restraint + source.GetTractorContribution());
             return restraint;
         }
 

@@ -43,7 +43,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = CreateFighter();
             unit.CommandBudget = float.Epsilon;
             for (int index = 0; index < 3; index++)
-                unit.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitX);
             TacticalCombatSpatialIndex spatial = new(new[] { unit });
             TacticalCombatMotion motion = new();

@@ -1182,12 +1182,12 @@ namespace Rebellion.Tests.Gameplay
             + string.Join(
                 "; ",
                 battle.Units.Select(unit =>
-                    $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Systems.Hull}, "
-                    + $"shields={unit.Systems.Shields}, position={unit.Position}, heading={unit.Heading}, "
+                    $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Hull}, "
+                    + $"shields={unit.Shields}, position={unit.Position}, heading={unit.Heading}, "
                     + $"order={battle.GetGroup(unit)?.ActiveOrder}, target={battle.GetGroup(unit)?.PrimaryTarget?.InstanceID}, "
                     + $"shots={shots[unit]}, forwardCharge={unit.GetBatteryCharge(TacticalWeaponArc.Forward)}/"
                     + $"{unit.GetBatteryCapacity(TacticalWeaponArc.Forward)}, "
-                    + $"weaponsDamage={unit.Systems.GetDamage(TacticalShipSystem.Weapons)}"
+                    + $"weaponsDamage={unit.GetDamage(TacticalShipSystem.Weapons)}"
                 )
             );
 
@@ -1215,8 +1215,8 @@ namespace Rebellion.Tests.Gameplay
                 battle.Advance(50);
             Assert.IsTrue(
                 battle.IsComplete,
-                $"Player: {player.Status}, hull={player.Systems.Hull}, position={player.Position}; "
-                    + $"opponent: {opponent.Status}, hull={opponent.Systems.Hull}, position={opponent.Position}"
+                $"Player: {player.Status}, hull={player.Hull}, position={player.Position}; "
+                    + $"opponent: {opponent.Status}, hull={opponent.Hull}, position={opponent.Position}"
             );
             Assert.Greater(playerShots, 0);
         }

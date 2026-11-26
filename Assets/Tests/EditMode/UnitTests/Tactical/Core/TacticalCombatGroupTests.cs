@@ -224,12 +224,12 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit fighter = CreateFighter("fighter", CombatSide.Attacker);
             CombatUnit target = CreateFighter("target", CombatSide.Defender);
-            fighter.Systems.Destroy();
+            fighter.Destroy();
             TacticalCombatGroup group = new(10, new[] { fighter }, Vector3.UnitZ);
 
             group.GetAttackRate(target);
 
-            Assert.AreEqual(0, fighter.Systems.GetWeaponRechargeRatio());
+            Assert.AreEqual(0, fighter.GetWeaponRechargeRatio());
         }
 
         [Test]

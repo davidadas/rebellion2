@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = CreateUnit(1, 12);
             TacticalCombatDeployment deployment = new(unit);
             for (int damage = 0; damage < 4; damage++)
-                unit.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(0, unit.GetSpeed());
             Assert.AreEqual(-120001.96f, deployment.Score);

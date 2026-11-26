@@ -295,8 +295,8 @@ namespace Rebellion.Tactical
                 return 0;
             int message =
                 unit.IsFighter ? (_session.GetSide(unit.Side).FactionIndex == 0 ? 22 : 21)
-                : !(unit.Systems.MaximumHull >= 1100) ? 25
-                : !(unit.Systems.MaximumHull >= 2000) ? 24
+                : !(unit.MaximumHull >= 1100) ? 25
+                : !(unit.MaximumHull >= 2000) ? 24
                 : 23;
             return _session.Audio.EnqueueNotification(message, true);
         }

@@ -231,7 +231,7 @@ namespace Rebellion.Tactical
                     RequestAttackRunState(group.AttackRun, TacticalCombatAttackRunState.Cancelled);
                 SetOrder(
                     group,
-                    group.Members[0].Systems.HasHyperdrive
+                    group.Members[0].HasHyperdrive
                         ? TacticalCombatOrder.Withdraw
                         : TacticalCombatOrder.Recover
                 );

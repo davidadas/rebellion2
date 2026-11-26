@@ -23,11 +23,11 @@ namespace Rebellion.Tests.Tactical
             CombatUnit first = new(ship, CombatSide.Attacker, 1);
             CombatUnit second = new(ship, CombatSide.Attacker, 1);
 
-            first.Systems.ApplyHullLoss(20);
-            first.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            first.ApplyHullLoss(20);
+            first.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            Assert.AreEqual(100, second.Systems.Hull);
-            Assert.AreEqual(0, second.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(100, second.Hull);
+            Assert.AreEqual(0, second.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual(0, ship.SystemDamage.Engines);
             Assert.AreNotSame(first.Batteries[0], second.Batteries[0]);
         }
@@ -52,9 +52,9 @@ namespace Rebellion.Tests.Tactical
             fighter.BackupHyperdrive = backup;
             CombatUnit unit = new(fighter, CombatSide.Attacker, 1);
             for (int index = 0; index < damaged; index++)
-                unit.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+                unit.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
 
-            Assert.AreEqual(expected, unit.Systems.HasHyperdrive);
+            Assert.AreEqual(expected, unit.HasHyperdrive);
         }
 
         [TestCase(0, 3.6f)]

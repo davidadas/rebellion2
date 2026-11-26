@@ -146,7 +146,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateNetworkEncounter();
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
-            battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
+            battle.GetUnit(attacker.InstanceID).ApplyHullLoss(100);
             TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
 

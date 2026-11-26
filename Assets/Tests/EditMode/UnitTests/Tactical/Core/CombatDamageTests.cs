@@ -4,13 +4,14 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 using Rebellion.Tactical;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
 {
     [TestFixture]
-    public sealed class TacticalCombatSystemsTests
+    public sealed class CombatDamageTests
     {
         [TestCase(TacticalWeaponType.LaserCannon, 0f)]
         [TestCase(TacticalWeaponType.LaserCannon, -5f)]
@@ -29,7 +30,19 @@ namespace Rebellion.Tests.Tactical
             float entryHull
         )
         {
-            TacticalCombatSystems systems = new(false, 100, entryHull, 37, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(
+                false,
+                100,
+                entryHull,
+                37,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            );
             SystemRandomProvider random = new(42);
             List<string> events = new();
             systems.SoundRequested += _ => events.Add("sound");
@@ -56,7 +69,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Destroy_ChargedUnit_ClearsHullAndRetainsShieldPool()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             float shields = systems.Shields;
 
             systems.Destroy();
@@ -68,7 +81,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_ConventionalDamage_ConsumesShieldsBeforeHull()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyHit(TacticalWeaponType.Turbolaser, 125, 1, 1, new SequenceRandom(0), null);
 
             Assert.AreEqual(0, systems.Shields);
@@ -78,7 +91,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_IonDamagePastShields_DoesNotDamageHull()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyHit(TacticalWeaponType.IonCannon, 101, 1, 1, new SequenceRandom(3), null);
 
             Assert.AreEqual(1000, systems.Hull);
@@ -92,7 +105,7 @@ namespace Rebellion.Tests.Tactical
             float reportedHull
         )
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
             systems.SoundRequested += sound => events.Add(sound.ToString());
             systems.LethalHit += attackerID =>
@@ -129,7 +142,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_IonImpact_DoesNotReportDestruction()
         {
-            TacticalCombatSystems systems = new(true, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> reports = new();
             systems.LethalHit += reports.Add;
 
@@ -163,7 +176,7 @@ namespace Rebellion.Tests.Tactical
             float expectedMovementDelay
         )
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
             SequenceRandom random =
@@ -185,7 +198,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_MixedIonComponentSelections_PreservesDrawOrderAndEverySelectedBattery()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
             SequenceRandom random = new(1, 30, 2, 50, 3, 5, 7, 10);
@@ -205,7 +218,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_UnorderedIonExcess_RequestsEmptyDisruptionWithoutComponentDraws()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
             SequenceRandom random = new();
@@ -222,7 +235,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_RepeatedIonTimerSelections_AccumulatesEverySelectedDuration()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
 
@@ -244,7 +257,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRecharge_PartialFighterHull_RetainsLiveBudgetBeforeSampleStore()
         {
-            TacticalCombatSystems systems = new(true, 96, 73, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 73, 0, 0, 0, 0, 0, 0, 1, 0);
 
             double recharge = systems.GetWeaponRecharge();
 
@@ -254,7 +267,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRecharge_HullAndWeaponDamage_ReducesBaseRecharge()
         {
-            TacticalCombatSystems systems = CreateSystems(currentHull: 500);
+            CombatUnit systems = CreateSystems(currentHull: 500);
             systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
 
             Assert.AreEqual(18.75f, systems.GetWeaponRecharge());
@@ -263,7 +276,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void HullFraction_PartialHull_RetainsDivisionUntilConsumerStore()
         {
-            TacticalCombatSystems systems = CreateSystems(currentHull: 631);
+            CombatUnit systems = CreateSystems(currentHull: 631);
 
             double fraction = systems.HullFraction;
 
@@ -273,7 +286,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRechargeRatio_FighterSample_UsesUpdatedStoredRateWithoutRoundingNumerator()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
             double ratio = systems.GetWeaponRechargeRatio();
 
@@ -283,7 +296,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesUpdatedRechargeSample()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.GetWeaponRecharge();
             systems.ApplyHullLoss(48);
 
@@ -295,7 +308,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRechargeRatio_DestroyedFighter_UpdatesSampleBeforeDivisionThenStopsAtZero()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.GetWeaponRecharge();
             systems.ApplyHullLoss(96);
 
@@ -309,7 +322,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetWeaponRecharge_FighterZeroHull_StoresZeroForSubsequentRatioAdmission()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.Destroy();
 
             Assert.AreEqual(0, systems.GetWeaponRecharge());
@@ -319,7 +332,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetTractorRatio_HullAndSystemDamage_UsesCompleteTractorBudget()
         {
-            TacticalCombatSystems systems = new(false, 1000, 500, 0, 0, 0, 0, 0, 8, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 1000, 500, 0, 0, 0, 0, 0, 8, 1, 0);
             systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
 
             Assert.AreEqual(0.25d, systems.GetTractorRatio());
@@ -328,7 +341,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMovementRatio_LiveSupportDamageAndRestraint_UsesStoredEngineDenominator()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 20, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 20, 0, 0, 1, 0);
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(1d, systems.GetMovementRatio(8, 4));
@@ -339,7 +352,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMovementRatio_ZeroStoredEngines_DoesNotDivideLiveCommandSupport()
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
 
             Assert.AreEqual(0d, systems.GetMovementRatio(9, 0));
             Assert.AreEqual(9d, systems.GetMovementBudget(9, 0));
@@ -352,7 +365,7 @@ namespace Rebellion.Tests.Tactical
             float expected
         )
         {
-            TacticalCombatSystems systems = new(isFighter, 100, 100, 0, 0, 0, 0, 5, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(isFighter, 100, 100, 0, 0, 0, 0, 5, 0, 1, 0);
             for (int index = 0; index < 3; index++)
                 systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
@@ -365,7 +378,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetHyperdriveRatio_DamagedPrimaryAndBackup_TracksRemainingInstalledDriveCount()
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 2, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 2, 0);
             systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
 
             Assert.AreEqual(0.5d, systems.GetHyperdriveRatio());
@@ -377,7 +390,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(float.NaN)]
         public void GetShieldFraction_ZeroOrUnorderedLimit_ReturnsZero(float limit)
         {
-            TacticalCombatSystems systems = new(false, 100, 100, limit, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, limit, 0, 0, 0, 0, 0, 1, 0);
 
             Assert.AreEqual(0d, systems.GetShieldFraction());
         }
@@ -385,7 +398,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetShieldFraction_OverLimitPool_RetainsUnclampedRatio()
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 100, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, 100, 0, 0, 0, 0, 0, 1, 0);
             systems.RestorePools(100, 125);
 
             Assert.AreEqual(1.25d, systems.GetShieldFraction());
@@ -394,7 +407,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetShieldRecharge_FighterHull_ReturnsLiveBudgetBeforeStoredSampleRounding()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
             double recharge = systems.GetShieldRecharge();
 
@@ -408,7 +421,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetShieldRechargeRatio_DestroyedFighter_UpdatesSampleBeforeDivisionThenStopsAtZero()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.ApplyHullLoss(96);
 
             double first = systems.GetShieldRechargeRatio();
@@ -421,7 +434,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetShieldRechargeRatio_ZeroSampleFromRechargeRead_ReturnsZeroWithoutAnotherDivision()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.ApplyHullLoss(96);
             Assert.AreEqual(0, systems.GetShieldRecharge());
 
@@ -434,7 +447,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(float.NaN)]
         public void GetShieldRechargeRatio_UnavailableCapitalRate_ReturnsZero(float rechargeRate)
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 1000,
                 1000,
@@ -456,7 +469,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetShieldRechargeRatio_CapitalShieldRepair_PreservesAuthoredRateAsDenominator()
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 1000,
                 1000,
@@ -481,7 +494,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ScaleByHull_PartialHull_MultipliesBeforeDividing()
         {
-            TacticalCombatSystems systems = CreateSystems(currentHull: 631);
+            CombatUnit systems = CreateSystems(currentHull: 631);
 
             float scaled = systems.ScaleByHull(BitConverter.Int32BitsToSingle(0x42122223));
 
@@ -496,7 +509,7 @@ namespace Rebellion.Tests.Tactical
             float expectedHull
         )
         {
-            TacticalCombatSystems systems = new(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
 
             systems.ApplyHullLoss(loss);
 
@@ -510,7 +523,7 @@ namespace Rebellion.Tests.Tactical
             float entryHull
         )
         {
-            TacticalCombatSystems systems = new(false, 96, entryHull, 12, 0, 0, 0, 0, 0, 0, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 96, entryHull, 12, 0, 0, 0, 0, 0, 0, 0);
 
             systems.ApplyHullLoss(-8);
 
@@ -521,7 +534,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHullLoss_FatalLoss_ClearsHullAndShields()
         {
-            TacticalCombatSystems systems = new(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 96, 96, 12, 0, 0, 0, 0, 0, 0, 0);
 
             systems.ApplyHullLoss(1000);
 
@@ -532,7 +545,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyComponentEvent_FourEngineHits_DisablesMovement()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             for (int hit = 0; hit < 4; hit++)
                 systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
@@ -542,7 +555,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyComponentEvent_LastHyperdriveHit_PreventsHyperspace()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
 
             Assert.IsFalse(systems.HasHyperdrive);
@@ -551,9 +564,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_TemporaryDisruption_RecoversAfterElapsedTime()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyDisruption(30, 50);
-            systems.Advance(1000, new SequenceRandom());
+            systems.AdvanceSystems(1000, new SequenceRandom());
 
             Assert.AreEqual(29, systems.AttackDelay);
             Assert.AreEqual(49, systems.MovementDelay);
@@ -562,7 +575,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyDisruption_ExplicitEvent_UsesDefinedTimerIncrements()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             TacticalSystemEvent change = new(11, 17, 4);
 
             systems.ApplyDisruption(change.AttackDelay.Value, change.MovementDelay.Value);
@@ -574,11 +587,11 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_RepeatedDisruptionDecay_UsesStoredSinglePrecisionElapsedProduct()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyDisruption(30, 30);
 
             for (int index = 0; index < 29; index++)
-                systems.Advance(1000, new SequenceRandom());
+                systems.AdvanceSystems(1000, new SequenceRandom());
 
             Assert.AreEqual(1, systems.AttackDelay);
             Assert.AreEqual(1, systems.MovementDelay);
@@ -587,10 +600,10 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DisruptionSecondsProduct_RoundsBeforeSubtractingDelay()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyDisruption(2, 2);
 
-            systems.Advance(1000, new SequenceRandom());
+            systems.AdvanceSystems(1000, new SequenceRandom());
 
             Assert.AreEqual(1, systems.AttackDelay);
             Assert.AreEqual(1, systems.MovementDelay);
@@ -604,7 +617,7 @@ namespace Rebellion.Tests.Tactical
             TacticalWeaponType weapon
         )
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 100,
                 100,
@@ -640,7 +653,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_HullDamageScoreJustAboveThreshold_RequestsShieldDamage()
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 100.00001f,
                 100.00001f,
@@ -666,7 +679,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_UnorderedHullDamageScore_DoesNotRequestComponentDamage()
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 float.PositiveInfinity,
                 float.PositiveInfinity,
@@ -698,9 +711,9 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_FighterWithoutShieldDeficit_UpdatesRechargeSample()
         {
-            TacticalCombatSystems systems = new(true, 96, 0, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 0, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            systems.Advance(1000, new SequenceRandom());
+            systems.AdvanceSystems(1000, new SequenceRandom());
 
             Assert.AreEqual(0, systems.GetShieldRechargeRatio());
         }
@@ -708,10 +721,22 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_UnorderedRepairRating_DoesNotConsumeRandomDraw()
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, float.NaN);
+            CombatUnit systems = CreateUnitWithPools(
+                false,
+                100,
+                100,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                float.NaN
+            );
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            systems.Advance(1000, new SequenceRandom());
+            systems.AdvanceSystems(1000, new SequenceRandom());
 
             Assert.AreEqual(1u, systems.GetDamage(TacticalShipSystem.Engines));
         }
@@ -719,7 +744,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_UnorderedConventionalDamage_ClearsInvalidHull()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
 
             TacticalCombatImpactKind result = systems.ApplyHit(
                 TacticalWeaponType.Turbolaser,
@@ -738,11 +763,11 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_DamagedSystem_RequestsRepairWithoutApplyingItEarly()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
-            systems.Advance(1000, new SequenceRandom(1));
+            systems.AdvanceSystems(1000, new SequenceRandom(1));
 
             Assert.AreEqual(1u, systems.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual(1, events.Count);
@@ -753,7 +778,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void ApplyHit_FighterTarget_UsesRelativeManeuverRating()
         {
-            TacticalCombatSystems systems = new(true, 96, 96, 0, 0, 0, 8, 8, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 8, 8, 0, 1, 0);
             systems.ApplyHit(TacticalWeaponType.LaserCannon, 8, 8, 4, new SequenceRandom(), null);
 
             Assert.AreEqual(92, systems.Hull);
@@ -762,15 +787,15 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_InitialWeaponOnlyDamage_DoesNotRequestRepairsOrConsumeRandomDraws()
         {
-            TacticalCombatSystems systems = CreateSystems(
+            CombatUnit systems = CreateSystems(
                 initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
             );
             List<TacticalSystemEvent> events = new();
             systems.SystemEventRequested += events.Add;
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.Advance(50, random);
-            systems.Advance(50000, random);
+            systems.AdvanceSystems(50, random);
+            systems.AdvanceSystems(50000, random);
 
             Assert.IsEmpty(events);
             Assert.IsEmpty(random.Requests);
@@ -780,7 +805,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_InitialMixedDamage_StopsAfterCountedDamageIsRepaired()
         {
-            TacticalCombatSystems systems = CreateSystems(
+            CombatUnit systems = CreateSystems(
                 initialDamage: new CapitalShipSystemDamage { Engines = 1, Weapons = 2 }
             );
             List<TacticalSystemEvent> events = new();
@@ -791,8 +816,8 @@ namespace Rebellion.Tests.Tactical
             };
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.Advance(50, random);
-            systems.Advance(50000, random);
+            systems.AdvanceSystems(50, random);
+            systems.AdvanceSystems(50000, random);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalShipSystem.Engines, events[0].System);
@@ -804,7 +829,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_SaturatedWeaponHit_AdmitsOneRepairForNewDamageEvent()
         {
-            TacticalCombatSystems systems = CreateSystems(
+            CombatUnit systems = CreateSystems(
                 initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
             );
             List<TacticalSystemEvent> events = new();
@@ -816,8 +841,8 @@ namespace Rebellion.Tests.Tactical
             systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.Advance(50, random);
-            systems.Advance(50000, random);
+            systems.AdvanceSystems(50, random);
+            systems.AdvanceSystems(50000, random);
 
             Assert.AreEqual(1, events.Count);
             Assert.IsTrue(events[0].IsRepair);
@@ -829,7 +854,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void CaptureDamage_FullyRepairedComponents_ReturnsNoDamage()
         {
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CreateUnitWithPools(
                 false,
                 100,
                 100,
@@ -856,7 +881,7 @@ namespace Rebellion.Tests.Tactical
             TacticalWeaponType weapon
         )
         {
-            TacticalCombatSystems systems = new(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
             systems.SoundRequested += _ => events.Add("sound");
             systems.ImpactRequested += (kind, impact) =>
@@ -885,7 +910,7 @@ namespace Rebellion.Tests.Tactical
             TacticalWeaponType weapon
         )
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             List<string> events = new();
             systems.SoundRequested += _ => events.Add("sound");
             systems.SystemEventRequested += _ => events.Add("component");
@@ -905,7 +930,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(float.NaN)]
         public void ApplyHit_InactiveHull_DoesNotRequestSoundReportOrEffect(float hull)
         {
-            TacticalCombatSystems systems = new(false, 100, hull, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CreateUnitWithPools(false, 100, hull, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
             systems.SoundRequested += _ => events.Add("sound");
             systems.LethalHit += _ => events.Add("report");
@@ -927,7 +952,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void GetMovementBudget_UnorderedMovementDelay_EvaluatesMovement()
         {
-            TacticalCombatSystems systems = CreateSystems();
+            CombatUnit systems = CreateSystems();
             float budget = systems.GetMovementBudget(1, 0);
             systems.ApplyDisruption(0, float.NaN);
 
@@ -940,12 +965,12 @@ namespace Rebellion.Tests.Tactical
         /// <param name="currentHull">The hull strength at entry.</param>
         /// <param name="initialDamage">The component damage captured before the encounter.</param>
         /// <returns>The captured tactical systems.</returns>
-        private static TacticalCombatSystems CreateSystems(
+        private static CombatUnit CreateSystems(
             float currentHull = 1000,
             CapitalShipSystemDamage initialDamage = null
         )
         {
-            return new TacticalCombatSystems(
+            return CreateUnitWithPools(
                 false,
                 1000,
                 currentHull,
@@ -959,6 +984,39 @@ namespace Rebellion.Tests.Tactical
                 100,
                 initialDamage
             );
+        }
+
+        internal static CombatUnit CreateUnitWithPools(
+            bool isFighter,
+            float maximumHull,
+            float currentHull,
+            float maximumShields,
+            float weaponRechargeRate,
+            float shieldRechargeRate,
+            float sublightSpeed,
+            float maneuverability,
+            float tractorPower,
+            uint hyperdrives,
+            float damageControlRating,
+            CapitalShipSystemDamage initialDamage = null
+        )
+        {
+            BaseSceneNode ship = isFighter ? new Starfighter() : new CapitalShip();
+            CombatUnit unit = CombatUnit.Create(ship);
+            unit.InitializeCombatPools(
+                maximumHull,
+                currentHull,
+                maximumShields,
+                weaponRechargeRate,
+                shieldRechargeRate,
+                sublightSpeed,
+                maneuverability,
+                tractorPower,
+                hyperdrives,
+                damageControlRating,
+                initialDamage
+            );
+            return unit;
         }
 
         /// <summary>

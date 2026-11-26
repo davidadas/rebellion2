@@ -174,7 +174,8 @@ namespace Rebellion.Tests.Game.Combat
             );
             unit.InitializeTacticalState(CombatSide.Attacker, 1);
             unit.Position = new Vector3(12, 0, -48);
-            unit.Systems.ApplyHullLoss(99.5f);
+            unit.ApplyHullLoss(99.5f);
+            unit.ApplyComponentEvent(TacticalShipSystem.Engines, isRepair: false);
 
             string xml = SerializationHelper.Serialize(game);
             Assert.That(xml, Does.Contain("<Hull>900.5</Hull>"));
@@ -183,7 +184,8 @@ namespace Rebellion.Tests.Game.Combat
                 .ActiveBattle.GetCombatant("ship");
 
             Assert.AreEqual(unit.Position, restored.Position);
-            Assert.AreEqual(900.5f, restored.Systems.Hull);
+            Assert.AreEqual(900.5f, restored.Hull);
+            Assert.AreEqual(1u, restored.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual("ship", restored.InstanceID);
             Assert.AreEqual(
                 unit.GetBatteryCharge(TacticalWeaponArc.Forward),
@@ -258,11 +260,21 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void Deserialize_ActiveBattleWithLegacyWeapons_RestoresQueuedCharge()
+        public void Deserialize_ActiveBattleWithLegacySystemsAndWeapons_RestoresLiveState()
         {
             const string xml =
                 @"<CombatUnit>
                   <CapitalShip />
+                  <Systems>
+                    <ComponentDamage><UInt32>1</UInt32><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>2</UInt32><UInt32>1</UInt32></ComponentDamage>
+                    <HyperdriveCount>2</HyperdriveCount>
+                    <DamageEventCount>4</DamageEventCount>
+                    <RepairMilliseconds>98.25</RepairMilliseconds>
+                    <ShieldLimit>50</ShieldLimit>
+                    <MaximumHull>100</MaximumHull>
+                    <Hull>35.5</Hull>
+                    <Shields>12.25</Shields>
+                  </Systems>
                   <Weapons>
                     <Charge><Single>1.5</Single><Single>0</Single><Single>0</Single><Single>0</Single></Charge>
                     <Ready><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32></Ready>
@@ -272,6 +284,11 @@ namespace Rebellion.Tests.Game.Combat
                 </CombatUnit>";
 
             CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
+            Assert.AreEqual(35.5f, restored.Hull);
+            Assert.AreEqual(12.25f, restored.Shields);
+            Assert.AreEqual(2u, restored.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(98.25f, restored.RepairMilliseconds);
+            Assert.IsTrue(restored.HasHyperdrive);
             Assert.AreEqual(1.5f, restored.GetBatteryCharge(TacticalWeaponArc.Forward));
             Assert.IsFalse(restored.IsBatteryReady(TacticalWeaponArc.Forward));
         }

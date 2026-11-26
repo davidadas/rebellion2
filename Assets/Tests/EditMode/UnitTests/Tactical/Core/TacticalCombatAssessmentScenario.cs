@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 index
             );
-            unit.Systems.ApplyHullLoss(loss);
+            unit.ApplyHullLoss(loss);
             return unit;
         }
 

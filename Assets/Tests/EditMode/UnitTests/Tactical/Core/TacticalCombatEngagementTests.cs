@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Tactical
         public void GetAttackRate_UnorderedFighterHull_ReturnsZero()
         {
             CombatUnit unit = CreateFighter();
-            unit.Systems.RestorePools(float.NaN, 0);
+            unit.RestorePools(float.NaN, 0);
 
             Assert.AreEqual(0, TacticalCombatEngagement.GetAttackRate(unit, null));
         }
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 1
             );
-            unit.Systems.ApplyHullLoss(23);
+            unit.ApplyHullLoss(23);
             return unit;
         }
     }

@@ -138,7 +138,7 @@ namespace Rebellion.Tests.Tactical
             int applications = 0;
             int localRequests = 0;
             int localApplications = 0;
-            source.Systems.SystemEventRequested += change =>
+            source.SystemEventRequested += change =>
             {
                 if (change.IsRepair)
                     requests++;
@@ -148,34 +148,34 @@ namespace Rebellion.Tests.Tactical
                 if (ReferenceEquals(unit, source) && change.IsRepair)
                     applications++;
             };
-            projected.Systems.SystemEventRequested += _ => localRequests++;
+            projected.SystemEventRequested += _ => localRequests++;
             replica.SystemChanged += (_, _) => localApplications++;
-            source.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
-            source.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             TacticalCombatSnapshot damaged = authority.CaptureSnapshot(1);
             ApplyCapturedProjection(replica, damaged);
             long localDraws = replicaRandom.CallCount;
-            Assert.AreEqual(2, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(2, projected.GetDamage(TacticalShipSystem.Engines));
 
-            source.Systems.Advance(1, new SystemRandomProvider(12));
+            source.AdvanceSystems(1, new SystemRandomProvider(12));
 
             Assert.AreEqual(1, requests);
             Assert.AreEqual(0, applications);
-            Assert.AreEqual(2, source.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(2, source.GetDamage(TacticalShipSystem.Engines));
             for (int frame = 0; frame < 6 * 60 && !authority.IsComplete; frame++)
                 authority.Advance(1000f / 60);
             Assert.AreEqual(1, applications);
-            Assert.AreEqual(1, source.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(1, source.GetDamage(TacticalShipSystem.Engines));
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(2));
 
-            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(1, projected.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual(localDraws, replicaRandom.CallCount);
             Assert.AreEqual(0, localRequests);
             Assert.AreEqual(0, localApplications);
             Assert.Throws<ArgumentException>(() => replica.ApplySnapshot(damaged));
-            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(1, projected.GetDamage(TacticalShipSystem.Engines));
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(3));
-            Assert.AreEqual(1, projected.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(1, projected.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual(localDraws, replicaRandom.CallCount);
             Assert.AreEqual(0, localRequests);
             Assert.AreEqual(0, localApplications);
@@ -335,8 +335,8 @@ namespace Rebellion.Tests.Tactical
             {
                 CombatUnit projected = replica.GetUnit(unit.InstanceID);
                 Assert.AreEqual(unit.Position, projected.Position);
-                Assert.AreEqual(unit.Systems.Hull, projected.Systems.Hull);
-                Assert.AreEqual(unit.Systems.Shields, projected.Systems.Shields);
+                Assert.AreEqual(unit.Hull, projected.Hull);
+                Assert.AreEqual(unit.Shields, projected.Shields);
                 Assert.AreEqual(
                     unit.GetBatteryCharge(TacticalWeaponArc.Forward),
                     projected.GetBatteryCharge(TacticalWeaponArc.Forward)

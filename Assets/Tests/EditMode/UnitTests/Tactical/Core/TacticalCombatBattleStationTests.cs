@@ -110,7 +110,7 @@ namespace Rebellion.Tests.Tactical
 
             Assert.IsTrue(station.HasDeparted);
             Assert.IsFalse(station.IsOperational);
-            Assert.AreEqual(1000, station.Unit.Systems.Hull);
+            Assert.AreEqual(1000, station.Unit.Hull);
         }
 
         [Test]

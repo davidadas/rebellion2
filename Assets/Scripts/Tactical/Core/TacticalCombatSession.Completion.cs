@@ -155,7 +155,7 @@ namespace Rebellion.Tactical
                 if (!unit.IsFighter)
                 {
                     int hull = GetCapitalResultHull(unit);
-                    CapitalShipSystemDamage damage = unit.Systems.CaptureDamage(
+                    CapitalShipSystemDamage damage = unit.CaptureDamage(
                         unit.HasPrimaryHyperdrive,
                         unit.HasBackupHyperdrive
                     );
@@ -208,7 +208,7 @@ namespace Rebellion.Tactical
         /// <returns>The truncated hull count carried into the campaign result.</returns>
         private static int GetCapitalResultHull(CombatUnit unit)
         {
-            float hull = unit.Systems.Hull;
+            float hull = unit.Hull;
             if (unit.IsBattleStation)
                 return TruncateResultCount(hull);
             if (unit.Status == CombatUnitStatus.Destroyed)
@@ -225,7 +225,7 @@ namespace Rebellion.Tactical
         {
             if (unit.Status == CombatUnitStatus.Destroyed)
                 return 0;
-            int count = TruncateResultCount((double)unit.Systems.Hull / 8);
+            int count = TruncateResultCount((double)unit.Hull / 8);
             return count == 0 ? 1 : count;
         }
 

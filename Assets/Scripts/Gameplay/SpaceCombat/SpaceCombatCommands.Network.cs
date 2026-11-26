@@ -49,7 +49,7 @@ namespace Rebellion.Gameplay
                     || ResolveTacticalSource(unit) is not CapitalShip ship
                     || !imported.Add(shipOutcome.UnitID)
                     || shipOutcome.Hull < 0
-                    || shipOutcome.Hull > Math.Max(1, (int)unit.Systems.MaximumHull)
+                    || shipOutcome.Hull > Math.Max(1, (int)unit.MaximumHull)
                     || !IsValidTacticalComponentDamage(shipOutcome.SystemDamage, unit, ship)
                 )
                     throw new InvalidDataException("A tactical ship outcome is invalid.");

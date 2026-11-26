@@ -460,14 +460,14 @@ namespace Rebellion.Tactical
                 DesiredMovement = new(unit.DesiredMovement),
                 Status = unit.Status,
                 CarrierID = unit.CarrierID,
-                Hull = unit.Systems.Hull,
-                Shields = unit.Systems.Shields,
-                ShieldLimit = unit.Systems.MaximumShields,
-                AttackDelay = unit.Systems.AttackDelay,
-                MovementDelay = unit.Systems.MovementDelay,
+                Hull = unit.Hull,
+                Shields = unit.Shields,
+                ShieldLimit = unit.MaximumShields,
+                AttackDelay = unit.AttackDelay,
+                MovementDelay = unit.MovementDelay,
                 ComponentDamage = Enumerable
                     .Range(0, 5)
-                    .Select(index => unit.Systems.GetDamage((TacticalShipSystem)index))
+                    .Select(index => unit.GetDamage((TacticalShipSystem)index))
                     .ToArray(),
                 Charge = Enumerable
                     .Range(0, 4)
@@ -484,8 +484,8 @@ namespace Rebellion.Tactical
                 TurnRate = unit.TurnRate,
                 HasCollision = unit.HasCollision,
             };
-            state.WeaponRechargeSample = unit.Systems.WeaponRechargeSample;
-            state.ShieldRechargeSample = unit.Systems.ShieldRechargeSample;
+            state.WeaponRechargeSample = unit.WeaponRechargeSample;
+            state.ShieldRechargeSample = unit.ShieldRechargeSample;
             return state;
         }
 

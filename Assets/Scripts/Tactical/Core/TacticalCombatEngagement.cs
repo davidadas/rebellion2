@@ -115,7 +115,7 @@ namespace Rebellion.Tactical
             bool targetIsFighter = false
         )
         {
-            double liveRecharge = unit.Systems.GetWeaponRecharge();
+            double liveRecharge = unit.GetWeaponRecharge();
             float recharge = (float)liveRecharge;
             if (liveRecharge == 0 || double.IsNaN(liveRecharge))
                 return 0;
@@ -134,9 +134,7 @@ namespace Rebellion.Tactical
             if (unit.IsFighter)
             {
                 float count = total;
-                total = unchecked(
-                    (uint)(long)((double)unit.Systems.Hull * count / unit.Systems.MaximumHull)
-                );
+                total = unchecked((uint)(long)((double)unit.Hull * count / unit.MaximumHull));
             }
             double liveNormalized = (double)total / recharge;
             float normalized = (float)liveNormalized;
@@ -157,7 +155,7 @@ namespace Rebellion.Tactical
                 if (fighter && weapon != TacticalWeaponType.IonCannon)
                     value = (float)((double)value * maneuverRatio);
                 double contribution = unit.IsFighter
-                    ? (double)unit.Systems.Hull * value / unit.Systems.MaximumHull
+                    ? (double)unit.Hull * value / unit.MaximumHull
                     : value;
                 damage = index == 0 ? (float)contribution : (float)(contribution + damage);
             }
@@ -166,13 +164,12 @@ namespace Rebellion.Tactical
                 double torpedo = unit.GetTorpedoAttack();
                 if (torpedo != 0 && !double.IsNaN(torpedo) && unit.IsFighter && !target.IsFighter)
                 {
-                    double shields = target.Systems.GetShieldFraction();
+                    double shields = target.GetShieldFraction();
                     if (shields == 0 || double.IsNaN(shields))
                     {
                         float roundedTorpedo = (float)unit.GetTorpedoAttack();
                         damage = (float)(
-                            (double)unit.Systems.Hull * roundedTorpedo / unit.Systems.MaximumHull
-                            + damage
+                            (double)unit.Hull * roundedTorpedo / unit.MaximumHull + damage
                         );
                     }
                 }
@@ -203,7 +200,7 @@ namespace Rebellion.Tactical
                 float range = unit.GetWeaponRange(selected.Value, weapon);
                 float scalar = TacticalCombatFireControl.GetRangeScalar(weapon, targetIsFighter);
                 float score = (float)(
-                    unit.Systems.GetWeaponRecharge()
+                    unit.GetWeaponRecharge()
                     * scalar
                     * unit.GetWeaponStrength(selected.Value, weapon)
                 );

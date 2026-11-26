@@ -373,7 +373,7 @@ namespace Rebellion.Tests.Tactical
             };
             WaitForQueuedDischarge(session);
             Assert.AreEqual(0, shots);
-            session.GetUnit(sourceReachesZero ? "a" : "b").Systems.Destroy();
+            session.GetUnit(sourceReachesZero ? "a" : "b").Destroy();
 
             AdvanceSeconds(session, 12);
 
@@ -395,7 +395,7 @@ namespace Rebellion.Tests.Tactical
             session.ShotFired += _ =>
             {
                 shots++;
-                target.Systems.RestorePools(entryHull, 37);
+                target.RestorePools(entryHull, 37);
             };
             session.ImpactApplied += (_, _, _) => effects++;
             session.UnitDestroyed += _ => deaths++;
@@ -403,8 +403,8 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
 
             Assert.That(shots, Is.GreaterThan(0));
-            Assert.AreEqual(0, target.Systems.Hull);
-            Assert.AreEqual(37, target.Systems.Shields);
+            Assert.AreEqual(0, target.Hull);
+            Assert.AreEqual(37, target.Shields);
             Assert.AreEqual(CombatUnitStatus.Active, target.Status);
             Assert.IsNotNull(session.GetGroup(target));
             Assert.AreEqual(0, effects);
@@ -436,7 +436,7 @@ namespace Rebellion.Tests.Tactical
 
             AdvanceSeconds(session, 20);
 
-            Assert.That(target.Systems.Hull, Is.LessThan(1000));
+            Assert.That(target.Hull, Is.LessThan(1000));
         }
 
         [Test]
@@ -457,7 +457,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 60);
 
             Assert.AreEqual(0, repairs);
-            Assert.AreEqual(4, target.Systems.GetDamage(TacticalShipSystem.Weapons));
+            Assert.AreEqual(4, target.GetDamage(TacticalShipSystem.Weapons));
         }
 
         [TestCase(CombatUnitStatus.Active)]
@@ -472,20 +472,13 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 0)
             );
             CombatUnit target = session.GetUnit("b");
-            target.Systems.ApplyHit(
-                TacticalWeaponType.Turbolaser,
-                1,
-                1,
-                1,
-                new FixedRandom(100),
-                "a"
-            );
+            target.ApplyHit(TacticalWeaponType.Turbolaser, 1, 1, 1, new FixedRandom(100), "a");
             target.Status = status;
-            target.Systems.Destroy();
+            target.Destroy();
 
             AdvanceSeconds(session, 6);
 
-            Assert.AreEqual(1, target.Systems.GetDamage(TacticalShipSystem.Hyperdrive));
+            Assert.AreEqual(1, target.GetDamage(TacticalShipSystem.Hyperdrive));
         }
 
         [Test, Combinatorial]
@@ -504,7 +497,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 1)
             );
             CombatUnit target = session.GetUnit("b");
-            target.Systems.ApplyDisruption(11, 17);
+            target.ApplyDisruption(11, 17);
             TacticalSystemEvent? applied = null;
             session.SystemChanged += (unit, change) =>
             {
@@ -514,7 +507,7 @@ namespace Rebellion.Tests.Tactical
                 )
                     applied = change;
             };
-            target.Systems.ApplyHit(
+            target.ApplyHit(
                 TacticalWeaponType.IonCannon,
                 1,
                 1,
@@ -523,7 +516,7 @@ namespace Rebellion.Tests.Tactical
                 "a"
             );
             target.Status = status;
-            target.Systems.Destroy();
+            target.Destroy();
 
             AdvanceSeconds(session, 6);
 
@@ -532,8 +525,8 @@ namespace Rebellion.Tests.Tactical
             int movementDelay = componentOffset == 1 ? 31 : 0;
             Assert.AreEqual(attackDelay, applied.Value.AttackDelay);
             Assert.AreEqual(movementDelay, applied.Value.MovementDelay);
-            Assert.AreEqual(11 + attackDelay, target.Systems.AttackDelay);
-            Assert.AreEqual(17 + movementDelay, target.Systems.MovementDelay);
+            Assert.AreEqual(11 + attackDelay, target.AttackDelay);
+            Assert.AreEqual(17 + movementDelay, target.MovementDelay);
             int dischargedArc = componentOffset >= 2 ? (componentOffset - 2) >> 1 : -1;
             foreach (TacticalWeaponArc arc in Enum.GetValues(typeof(TacticalWeaponArc)))
                 Assert.AreEqual(
@@ -554,14 +547,14 @@ namespace Rebellion.Tests.Tactical
             victim.DamageControl = 100;
             TacticalCombatSession session = CreateSession(CreateShip("a", 1000, 0), victim);
             CombatUnit target = session.GetUnit("b");
-            target.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
-            target.Systems.Advance(1, new FixedRandom(0));
+            target.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            target.AdvanceSystems(1, new FixedRandom(0));
             target.Status = status;
-            target.Systems.Destroy();
+            target.Destroy();
 
             AdvanceSeconds(session, 6);
 
-            Assert.AreEqual(0, target.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(0, target.GetDamage(TacticalShipSystem.Engines));
         }
 
         [Test]
@@ -575,13 +568,13 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = session.GetUnit("a");
             AdvanceSeconds(session, 20);
             Assert.AreEqual("b", unit.TractorTargetID);
-            unit.Systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
-            unit.Systems.Advance(1, new FixedRandom(0));
-            unit.Systems.Destroy();
+            unit.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+            unit.AdvanceSystems(1, new FixedRandom(0));
+            unit.Destroy();
 
             AdvanceSeconds(session, 12);
 
-            Assert.AreEqual(0, unit.Systems.GetDamage(TacticalShipSystem.TractorBeam));
+            Assert.AreEqual(0, unit.GetDamage(TacticalShipSystem.TractorBeam));
             Assert.AreEqual("b", unit.TractorTargetID);
         }
 
@@ -615,7 +608,7 @@ namespace Rebellion.Tests.Tactical
             target.TractorSourcesChanged += transitions.Add;
             AdvanceSeconds(session, 20);
             Assert.IsTrue(target.HasTractorSources);
-            session.GetUnit("a").Systems.Destroy();
+            session.GetUnit("a").Destroy();
 
             AdvanceSeconds(session, 1);
 
@@ -638,7 +631,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
             Assert.IsTrue(target.HasTractorSources);
             for (int damage = 0; damage < 4; damage++)
-                contributor.Systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+                contributor.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
 
             AdvanceSeconds(session, 12);
 
@@ -687,7 +680,7 @@ namespace Rebellion.Tests.Tactical
                 Assert.AreSame(session.GetUnit("b"), victim);
                 Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
                 Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
-                Assert.AreEqual(0, victim.Systems.Hull);
+                Assert.AreEqual(0, victim.Hull);
                 Assert.AreEqual(CombatUnitStatus.Active, victim.Status);
                 output.Add("effect");
             };
@@ -725,7 +718,7 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            victim.Systems.ApplyHit(
+            victim.ApplyHit(
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,
@@ -762,7 +755,7 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            victim.Systems.ApplyHit(
+            victim.ApplyHit(
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,
@@ -796,7 +789,7 @@ namespace Rebellion.Tests.Tactical
 
             session
                 .GetUnit("enemy")
-                .Systems.ApplyHit(
+                .ApplyHit(
                     TacticalWeaponType.Turbolaser,
                     200,
                     1,
@@ -833,7 +826,7 @@ namespace Rebellion.Tests.Tactical
 
             session
                 .GetUnit("enemy")
-                .Systems.ApplyHit(
+                .ApplyHit(
                     TacticalWeaponType.Turbolaser,
                     200,
                     1,
@@ -865,7 +858,7 @@ namespace Rebellion.Tests.Tactical
 
             session
                 .GetUnit("b")
-                .Systems.ApplyHit(
+                .ApplyHit(
                     TacticalWeaponType.Turbolaser,
                     2000,
                     1,
@@ -885,7 +878,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 0),
                 NotificationBank(86)
             );
-            session.GetUnit("a").Systems.Destroy();
+            session.GetUnit("a").Destroy();
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -895,7 +888,7 @@ namespace Rebellion.Tests.Tactical
 
             session
                 .GetUnit("b")
-                .Systems.ApplyHit(
+                .ApplyHit(
                     TacticalWeaponType.Turbolaser,
                     2000,
                     1,
@@ -915,7 +908,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateSession(attacker, defender);
             AdvanceSeconds(session, 20);
 
-            Assert.Less(session.GetUnit("defender").Systems.Hull, 1000);
+            Assert.Less(session.GetUnit("defender").Hull, 1000);
             Assert.AreEqual(1000, defender.CurrentHullStrength);
         }
 
@@ -936,7 +929,7 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(first.IsComplete, second.IsComplete);
             for (int index = 0; index < first.Units.Count; index++)
             {
-                Assert.AreEqual(first.Units[index].Systems.Hull, second.Units[index].Systems.Hull);
+                Assert.AreEqual(first.Units[index].Hull, second.Units[index].Hull);
                 Assert.AreEqual(first.Units[index].Status, second.Units[index].Status);
                 Assert.AreEqual(first.Units[index].Position, second.Units[index].Position);
             }
@@ -950,8 +943,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 0)
             );
             bool observedDischargeBeforeImpact = false;
-            session.ShotFired += shot =>
-                observedDischargeBeforeImpact |= shot.Target.Systems.Hull == 1000;
+            session.ShotFired += shot => observedDischargeBeforeImpact |= shot.Target.Hull == 1000;
             AdvanceSeconds(session, 20);
 
             Assert.IsTrue(observedDischargeBeforeImpact);
@@ -982,7 +974,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
 
             Assert.AreEqual(3, session.SystemTime);
-            Assert.AreEqual(100, session.GetUnit("b").Systems.Hull);
+            Assert.AreEqual(100, session.GetUnit("b").Hull);
         }
 
         [Test]
@@ -1386,11 +1378,11 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatOutcome.ShipOutcome ship = outcome.Ships.Single(item =>
                 item.UnitID == unit.InstanceID
             );
-            uint previous = unit.Systems.GetDamage(TacticalShipSystem.Engines);
+            uint previous = unit.GetDamage(TacticalShipSystem.Engines);
 
             ship.SystemDamage.Engines++;
 
-            Assert.AreEqual(previous, unit.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(previous, unit.GetDamage(TacticalShipSystem.Engines));
         }
 
         [TestCase(0.5f, 1)]
@@ -1412,7 +1404,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateCompletedExportSession();
             CombatUnit unit = session.GetUnit("exported");
-            unit.Systems.RestorePools(hull, 0);
+            unit.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
 
@@ -1420,7 +1412,7 @@ namespace Rebellion.Tests.Tactical
                 expected,
                 result.Ships.Single(damage => damage.UnitID == unit.InstanceID).Hull
             );
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
         }
 
         [TestCase(0f)]
@@ -1432,7 +1424,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateCompletedExportSession();
             CombatUnit unit = session.GetUnit("exported");
             unit.Status = CombatUnitStatus.Destroyed;
-            unit.Systems.RestorePools(hull, 0);
+            unit.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
 
@@ -1440,7 +1432,7 @@ namespace Rebellion.Tests.Tactical
                 0,
                 result.Ships.Single(damage => damage.UnitID == unit.InstanceID).Hull
             );
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
         }
 
         [TestCase(0.5f, 1)]
@@ -1461,7 +1453,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
             CombatUnit unit = session.GetUnit("exported");
-            unit.Systems.RestorePools(hull, 0);
+            unit.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
 
@@ -1469,7 +1461,7 @@ namespace Rebellion.Tests.Tactical
                 expected,
                 result.Fighters.Single(loss => loss.UnitID == unit.InstanceID).SquadronSize
             );
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
         }
 
         [TestCase(0f)]
@@ -1481,7 +1473,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateCompletedExportSession(fighter: true);
             CombatUnit unit = session.GetUnit("exported");
             unit.Status = CombatUnitStatus.Destroyed;
-            unit.Systems.RestorePools(hull, 0);
+            unit.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
 
@@ -1489,7 +1481,7 @@ namespace Rebellion.Tests.Tactical
                 0,
                 result.Fighters.Single(loss => loss.UnitID == unit.InstanceID).SquadronSize
             );
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
         }
 
         [TestCase(0.5f, 0)]
@@ -1504,7 +1496,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateCompletedExportSession(station: true);
             CombatUnit unit = session.GetUnit("exported");
-            unit.Systems.RestorePools(hull, 0);
+            unit.RestorePools(hull, 0);
 
             TacticalCombatOutcome result = session.CaptureOutcome();
 
@@ -1512,7 +1504,7 @@ namespace Rebellion.Tests.Tactical
                 expected,
                 result.Ships.Single(damage => damage.UnitID == unit.InstanceID).Hull
             );
-            Assert.AreEqual(hull, unit.Systems.Hull);
+            Assert.AreEqual(hull, unit.Hull);
         }
 
         [Test]
@@ -1894,7 +1886,7 @@ namespace Rebellion.Tests.Tactical
             };
             session.SuperlaserFired += (_, _) => output.Add("visual");
             Assert.IsTrue(session.FireSuperlaser(target));
-            target.Systems.Destroy();
+            target.Destroy();
             AdvanceSeconds(session, 5);
             CollectionAssert.AreEqual(new[] { "visual" }, output);
         }
@@ -1913,7 +1905,7 @@ namespace Rebellion.Tests.Tactical
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
-                Assert.AreEqual(1000, target.Systems.Hull);
+                Assert.AreEqual(1000, target.Hull);
                 Assert.IsNotNull(session.GetGroup(target));
                 output.Add(clip.Path);
                 return null;
@@ -1921,7 +1913,7 @@ namespace Rebellion.Tests.Tactical
             session.DestructionEffectRequested += unit =>
             {
                 Assert.AreSame(target, unit);
-                Assert.AreEqual(1000, unit.Systems.Hull);
+                Assert.AreEqual(1000, unit.Hull);
                 Assert.AreEqual(CombatUnitStatus.Active, unit.Status);
                 Assert.IsNotNull(session.GetGroup(unit));
                 output.Add("effect");
@@ -1929,7 +1921,7 @@ namespace Rebellion.Tests.Tactical
             session.UnitDestroyed += unit =>
             {
                 Assert.AreSame(target, unit);
-                Assert.AreEqual(0, unit.Systems.Hull);
+                Assert.AreEqual(0, unit.Hull);
                 Assert.AreEqual(CombatUnitStatus.Destroyed, unit.Status);
                 Assert.IsNull(session.GetGroup(unit));
                 output.Add("destroyed");
@@ -1954,11 +1946,11 @@ namespace Rebellion.Tests.Tactical
             );
             CombatUnit target = session.GetUnit("target");
             Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
-            target.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            target.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
-                Assert.AreEqual(1000, target.Systems.Hull);
+                Assert.AreEqual(1000, target.Hull);
                 Assert.IsTrue(target.IsActiveDisplayObject);
                 output.Add(clip.Path);
                 return null;
@@ -1966,7 +1958,7 @@ namespace Rebellion.Tests.Tactical
             session.DestructionEffectRequested += unit =>
             {
                 Assert.AreSame(target, unit);
-                Assert.AreEqual(1000, unit.Systems.Hull);
+                Assert.AreEqual(1000, unit.Hull);
                 Assert.IsTrue(unit.IsActiveDisplayObject);
                 Assert.IsNotNull(session.GetGroup(unit));
                 output.Add("effect");
@@ -1974,7 +1966,7 @@ namespace Rebellion.Tests.Tactical
             session.UnitDestroyed += unit =>
             {
                 Assert.AreSame(target, unit);
-                Assert.AreEqual(0, unit.Systems.Hull);
+                Assert.AreEqual(0, unit.Hull);
                 Assert.AreEqual(CombatUnitStatus.Destroyed, unit.Status);
                 Assert.IsNull(session.GetGroup(unit));
                 output.Add("destroyed");
@@ -2162,7 +2154,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             AdvanceSeconds(session, 3);
-            session.GetUnit("b").Systems.Destroy();
+            session.GetUnit("b").Destroy();
 
             session.Advance(16);
 
@@ -2290,7 +2282,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateLiveRecoverySession(0);
             CombatUnit fighter = session.GetUnit("fighter");
-            session.BattleStation.Unit.Systems.Destroy();
+            session.BattleStation.Unit.Destroy();
             TacticalCombatGroup group = session.GetGroup(fighter);
             session.SetOrder(group, TacticalCombatOrder.Recover);
 
@@ -2348,7 +2340,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_TerminalAssignmentUnavailableStation_DoesNotUseStationFallback()
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession(carrierCapacity: 0);
-            session.BattleStation.Unit.Systems.Destroy();
+            session.BattleStation.Unit.Destroy();
 
             AdvanceSeconds(session, 10);
 
@@ -2360,7 +2352,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession(carrierCapacity: 0);
             Assert.IsTrue(session.BattleStation.TryWithdraw());
-            session.BattleStation.Unit.Systems.Destroy();
+            session.BattleStation.Unit.Destroy();
 
             AdvanceSeconds(session, 10);
 
@@ -2395,7 +2387,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_TerminalAssignmentZeroHull_DoesNotReplaceParticipationGate(string id)
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession();
-            session.GetUnit(id).Systems.Destroy();
+            session.GetUnit(id).Destroy();
 
             AdvanceSeconds(session, 10);
 
@@ -2407,7 +2399,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatSession session = CreateSurvivorAssignmentSession();
             CombatUnit fighter = session.GetUnit("fighter");
-            fighter.Systems.Destroy();
+            fighter.Destroy();
             AdvanceSeconds(session, 10);
 
             var result = session.CaptureOutcome();
@@ -2462,7 +2454,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
             Assert.IsTrue(session.IsComplete);
             Assert.IsTrue(session.HasDeparted(departed));
-            departed.Systems.RestorePools(0, 0);
+            departed.RestorePools(0, 0);
 
             var result = session.CaptureOutcome();
 
@@ -2498,7 +2490,7 @@ namespace Rebellion.Tests.Tactical
             CapitalShip interdictor = CreateShip("b", 100, 0);
             interdictor.HasGravityWell = true;
             TacticalCombatSession session = CreateSession(CreateShip("a", 100, 0), interdictor);
-            session.GetUnit("b").Systems.Destroy();
+            session.GetUnit("b").Destroy();
 
             Assert.IsFalse(session.CanWithdraw(CombatSide.Attacker));
         }
@@ -2510,7 +2502,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("a", 100, 0),
                 CreateShip("b", 100, 0)
             );
-            session.GetUnit("a").Systems.ApplyDisruption(0, float.NaN);
+            session.GetUnit("a").ApplyDisruption(0, float.NaN);
 
             Assert.IsTrue(session.CanWithdraw(CombatSide.Attacker));
         }
@@ -2598,9 +2590,7 @@ namespace Rebellion.Tests.Tactical
         public void PreparePlayerWithdrawal_UnreadyCapital_QueuesWarningWithoutStartingDeparture()
         {
             TacticalCombatSession session = CreateMembershipSession(NotificationBank(149));
-            session
-                .GetUnit("first")
-                .Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            session.GetUnit("first").ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {

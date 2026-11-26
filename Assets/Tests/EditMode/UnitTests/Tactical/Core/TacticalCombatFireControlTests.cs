@@ -193,7 +193,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit source = CreateTorpedoFighter(10);
             CombatUnit target = CreateCapitalUnit(0, 0, 0, shieldLimit);
             target.Position = new Vector3(0, 0, 10);
-            target.Systems.RestorePools(1000, shields);
+            target.RestorePools(1000, shields);
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
             TacticalCombatSpatialIndex index = new(new[] { source, target });

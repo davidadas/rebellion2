@@ -94,7 +94,7 @@ namespace Rebellion.Tactical
                 return;
             bool valid =
                 target?.IsTargetable == true
-                && unit.Systems.GetTractorBudget() > 0
+                && unit.GetTractorBudget() > 0
                 && TacticalCombatGeometry.GetTractorDistance(unit.Position, target.Position)
                     <= unit.TractorRange;
             if (unit.TractorTargetID != null)
@@ -141,8 +141,8 @@ namespace Rebellion.Tactical
                 }
                 if (!unit.IsTargetable)
                     continue;
-                unit.Systems.Advance(1000, _random);
-                unit.RechargeBatteries(1, unit.Systems.GetWeaponRecharge());
+                unit.AdvanceSystems(1000, _random);
+                unit.RechargeBatteries(1, unit.GetWeaponRecharge());
                 if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
                     carrier.Advance(SystemTime, _random);
                 TacticalCombatGroup group = GetGroup(unit);
@@ -361,7 +361,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The participant being inspected.</param>
         /// <returns>The available movement before a single-precision speed store.</returns>
         public double GetMovementBudget(CombatUnit unit) =>
-            unit.Systems.GetAvailableMovement(
+            unit.GetAvailableMovement(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
                 GetTractorRestraint(unit)
             );
@@ -372,7 +372,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The participant being inspected.</param>
         /// <returns>The available movement ratio using current command support and retained beams.</returns>
         public double GetMovementRatio(CombatUnit unit) =>
-            unit.Systems.GetMovementRatio(
+            unit.GetMovementRatio(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
                 GetTractorRestraint(unit)
             );
@@ -383,8 +383,8 @@ namespace Rebellion.Tactical
         /// <param name="unit">The participating capital ship or fighter.</param>
         /// <returns>Whether its hyperdrive and movement budgets are ordered and nonzero.</returns>
         private bool CheckWithdrawalReadiness(CombatUnit unit) =>
-            unit.Systems.HasHyperdrive
-            && unit.Systems.CanEnterHyperspace(
+            unit.HasHyperdrive
+            && unit.CanEnterHyperspace(
                 GetSide(unit.Side).GetMovementSupport(unit.IsFighter),
                 GetTractorRestraint(unit)
             );
@@ -652,7 +652,7 @@ namespace Rebellion.Tactical
                 case CommandKind.Hit:
                     if (IsActiveDisplayObject(target))
                     {
-                        TacticalCombatImpactKind impact = target.Systems.ApplyHit(
+                        TacticalCombatImpactKind impact = target.ApplyHit(
                             command.Shot.Weapon,
                             command.Shot.Strength,
                             target.GetManeuverability(),
@@ -670,7 +670,7 @@ namespace Rebellion.Tactical
                     if (change.Kind == TacticalSystemEventKind.Disruption)
                     {
                         if (change.AttackDelay.HasValue && change.MovementDelay.HasValue)
-                            source.Systems.ApplyDisruption(
+                            source.ApplyDisruption(
                                 change.AttackDelay.Value,
                                 change.MovementDelay.Value
                             );
@@ -680,12 +680,12 @@ namespace Rebellion.Tactical
                     }
                     else
                     {
-                        source.Systems.ApplyComponentEvent(change.System, change.IsRepair);
+                        source.ApplyComponentEvent(change.System, change.IsRepair);
                         if (
                             !change.IsRepair
                             && change.System == TacticalShipSystem.TractorBeam
                             && source.TractorTargetID != null
-                            && source.Systems.GetTractorBudget() == 0
+                            && source.GetTractorBudget() == 0
                         )
                         {
                             _tractorCommandsPending.Add(source);
@@ -703,7 +703,7 @@ namespace Rebellion.Tactical
                     break;
                 case CommandKind.Launch:
                     if (
-                        target.Systems.IsAlive
+                        target.IsAlive
                         && GetGroup(target)?.ActiveOrder != TacticalCombatOrder.Recover
                         && _carriers[source.InstanceID].Launch(target)
                     )
@@ -785,12 +785,12 @@ namespace Rebellion.Tactical
                         IsActiveDisplayObject(source)
                         && (
                             (BattleStation != null && ReferenceEquals(target, BattleStation.Unit))
-                            || source.Systems.Hull < 0
-                            || float.IsNaN(source.Systems.Hull)
+                            || source.Hull < 0
+                            || float.IsNaN(source.Hull)
                         )
                     )
                     {
-                        Audio.Enqueue(source.Systems.GetExplosionSound());
+                        Audio.Enqueue(source.GetExplosionSound());
                         DestructionEffectRequested?.Invoke(source);
                         if (BattleStation == null || !ReferenceEquals(target, BattleStation.Unit))
                             ReportDestruction(source, target?.InstanceID);

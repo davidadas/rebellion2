@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
             TacticalCombatSession session = CreateSession(20, 20, false, 4);
             CombatUnit damaged = session.GetUnit("defender-0");
             for (int damage = 0; damage < 4; damage++)
-                damaged.Systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                damaged.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
             Advance(session);
 

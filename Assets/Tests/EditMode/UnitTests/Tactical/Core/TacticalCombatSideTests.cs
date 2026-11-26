@@ -20,7 +20,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit host = CreateHost();
             TacticalCombatSide side = CreateSide(host, 50, 60);
-            host.Systems.Destroy();
+            host.Destroy();
 
             Assert.AreEqual(expected, side.GetCommandBudget(fighter));
         }

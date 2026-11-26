@@ -91,11 +91,11 @@ namespace Rebellion.Tactical
         )
         {
             attack = (float)((double)attack + group.GetAttackRate(target));
-            float weightedHull = (float)((double)target.Systems.Hull * 0.65f);
-            float durability = (float)((double)weightedHull + target.Systems.Shields);
+            float weightedHull = (float)((double)target.Hull * 0.65f);
+            float durability = (float)((double)weightedHull + target.Shields);
             if (durability < 1)
                 durability = 1;
-            float recharge = (float)target.Systems.GetShieldRecharge();
+            float recharge = (float)target.GetShieldRecharge();
             float remaining = (float)((double)attack - recharge);
             if (!(remaining > 0))
                 return -1;
@@ -265,12 +265,12 @@ namespace Rebellion.Tactical
             CombatSide attackingSide =
                 target.Side == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
             if (!_session.GetSide(attackingSide).IsWithdrawing)
-                return target.Systems.GetWeaponRecharge() != 0;
-            return target.Systems.HasHyperdrive
+                return target.GetWeaponRecharge() != 0;
+            return target.HasHyperdrive
                 && (
                     target.GetSpeed() > 0
-                    || target.Systems.GetDamage(TacticalShipSystem.Engines) < 4
-                        && target.Systems.MovementDelay < 10000
+                    || target.GetDamage(TacticalShipSystem.Engines) < 4
+                        && target.MovementDelay < 10000
                 );
         }
 
@@ -285,9 +285,9 @@ namespace Rebellion.Tactical
             float priority = (float)(
                 (double)TacticalCombatEngagement.GetAttackRate(unit, null) * 15 + payload
             );
-            double rechargeRatio = unit.Systems.GetShieldRechargeRatio();
+            double rechargeRatio = unit.GetShieldRechargeRatio();
             priority = (float)((double)priority - rechargeRatio * 0.01f);
-            priority = (float)((double)priority - unit.Systems.HullFraction * 0.01f);
+            priority = (float)((double)priority - unit.HullFraction * 0.01f);
             if (unit.Status == CombatUnitStatus.Docked)
                 priority -= 0.01f;
             return priority;
@@ -317,7 +317,7 @@ namespace Rebellion.Tactical
                 foreach (TacticalCombatGroup group in _targetingGroups[unit])
                 {
                     float interaction = group.GetAttackRate(unit);
-                    double recharge = unit.Systems.GetShieldRecharge();
+                    double recharge = unit.GetShieldRecharge();
                     if (!(recharge > interaction))
                     {
                         suppressed = true;

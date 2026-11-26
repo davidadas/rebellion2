@@ -190,7 +190,7 @@ namespace Rebellion.Tactical
                 _entryPools.Clear();
                 foreach (CombatUnit unit in Group.Members)
                 {
-                    _entryPools.Add(unit, new Pools(unit.Systems.Hull, unit.Systems.Shields));
+                    _entryPools.Add(unit, new Pools(unit.Hull, unit.Shields));
                     unit.Status = CombatUnitStatus.AttackingBattleStation;
                     UnitParticipationChanged?.Invoke(unit);
                 }
@@ -253,12 +253,12 @@ namespace Rebellion.Tactical
                 if (maneuver < _random.NextInt(1, 11))
                 {
                     _candidateDecayed = true;
-                    int fighters = (int)(unit.Systems.Hull / 8);
-                    unit.Systems.ApplyHullLoss(
+                    int fighters = (int)(unit.Hull / 8);
+                    unit.ApplyHullLoss(
                         fighters <= 1 ? 100000 : _random.NextInt(1, fighters + 1) * 8
                     );
                 }
-                if (unit.Systems.Hull > 0)
+                if (unit.Hull > 0)
                 {
                     float threshold = (float)(
                         (double)unit.GetTorpedoDamage() + Math.Min(_commandBudget(), 9)
@@ -276,7 +276,7 @@ namespace Rebellion.Tactical
                 }
                 if (++attempts > 1000)
                     break;
-                if (unit.Systems.Hull > 0)
+                if (unit.Hull > 0)
                     _candidates.Insert(0, unit);
             }
             State = TacticalCombatAttackRunState.Failing;
@@ -364,7 +364,7 @@ namespace Rebellion.Tactical
         private void RestorePools(CombatUnit unit)
         {
             if (_entryPools.TryGetValue(unit, out Pools pools))
-                unit.Systems.RestorePools(pools.Hull, pools.Shields);
+                unit.RestorePools(pools.Hull, pools.Shields);
         }
 
         /// <summary>

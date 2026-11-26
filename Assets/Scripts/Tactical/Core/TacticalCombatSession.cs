@@ -309,10 +309,10 @@ namespace Rebellion.Tactical
                 }
                 unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
                 unit.TurnRate = unit.GetInitialTurnRate();
-                unit.Systems.SystemEventRequested += change => QueueSystemChange(unit, change);
-                unit.Systems.SoundRequested += Audio.Enqueue;
-                unit.Systems.LethalHit += attackerID => ReportDestruction(unit, attackerID);
-                unit.Systems.ImpactRequested += (weapon, impact) =>
+                unit.SystemEventRequested += change => QueueSystemChange(unit, change);
+                unit.SoundRequested += Audio.Enqueue;
+                unit.LethalHit += attackerID => ReportDestruction(unit, attackerID);
+                unit.ImpactRequested += (weapon, impact) =>
                     ImpactApplied?.Invoke(unit, weapon, impact);
                 if (!unit.IsFighter)
                 {

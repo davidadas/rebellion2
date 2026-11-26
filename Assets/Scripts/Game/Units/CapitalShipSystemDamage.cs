@@ -49,9 +49,11 @@ namespace Rebellion.Game.Units
                 _ => throw new ArgumentOutOfRangeException(nameof(system)),
             };
 
-        internal void AddCombatDamage(TacticalShipSystem system, int capacity)
+        internal void AddCombatDamage(TacticalShipSystem system, int capacity) =>
+            SetCombatDamage(system, Math.Min(GetCombatDamage(system) + 1, capacity));
+
+        internal void SetCombatDamage(TacticalShipSystem system, int damage)
         {
-            int damage = Math.Min(GetCombatDamage(system) + 1, capacity);
             switch (system)
             {
                 case TacticalShipSystem.Shields:

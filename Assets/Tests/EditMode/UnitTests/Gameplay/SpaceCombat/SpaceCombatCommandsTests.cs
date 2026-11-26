@@ -4771,7 +4771,7 @@ namespace Rebellion.Tests.Gameplay
                 return null;
             };
 
-            victim.Systems.ApplyHit(
+            victim.ApplyHit(
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,
@@ -4845,7 +4845,7 @@ namespace Rebellion.Tests.Gameplay
                 string.Join(
                     "; ",
                     battle.Units.Select(unit =>
-                        $"{unit.InstanceID}: hull={unit.Systems.Hull}, position={unit.Position}, state={unit.Status}"
+                        $"{unit.InstanceID}: hull={unit.Hull}, position={unit.Position}, state={unit.Status}"
                     )
                 )
             );
@@ -4871,7 +4871,7 @@ namespace Rebellion.Tests.Gameplay
                 CreateTacticalEncounter();
             Fleet fleet = attacker.GetParentOfType<Fleet>();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
+            battle.GetUnit(attacker.InstanceID).ApplyHullLoss(100);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
@@ -4928,7 +4928,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(planet.IsBlockaded());
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             CombatUnit casualty = battle.GetUnit(first.InstanceID);
-            casualty.Systems.Destroy();
+            casualty.Destroy();
             casualty.Status = CombatUnitStatus.Destroyed;
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
@@ -4992,7 +4992,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             CombatUnit unit = battle.GetUnit(fighter.InstanceID);
             Assert.AreEqual(CombatUnitStatus.Docked, unit.Status);
-            unit.Systems.ApplyHullLoss(8);
+            unit.ApplyHullLoss(8);
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
             Assert.AreEqual(
@@ -5111,9 +5111,9 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(battle.CanWithdraw(battle.PlayerSide));
             Assert.AreEqual(0, attacker.GetOperationalHyperdrive());
             CombatUnit repaired = battle.GetUnit(attacker.InstanceID);
-            repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
-            repaired.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
-            Assert.IsTrue(repaired.Systems.HasHyperdrive);
+            repaired.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
+            repaired.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
+            Assert.IsTrue(repaired.HasHyperdrive);
             Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
             for (int frame = 0; frame < 6000 && !battle.IsComplete; frame++)
                 battle.Advance(50);
@@ -5279,7 +5279,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(CombatUnitStatus.Docked, docked.Status);
             Assert.AreEqual(Vector3.Zero, docked.Position);
             Assert.AreEqual(carrier.InstanceID, docked.CarrierID);
-            Assert.AreEqual(40, docked.Systems.Hull);
+            Assert.AreEqual(40, docked.Hull);
             Assert.AreEqual(CombatUnitStatus.Active, independent.Status);
             Assert.AreEqual(CombatUnitStatus.Active, planetary.Status);
             Assert.AreEqual(0, independent.Position.X);
@@ -5438,7 +5438,7 @@ namespace Rebellion.Tests.Gameplay
             (_, SpaceCombatCommands commands, CapitalShip attacker) = CreateTacticalEncounter();
             attacker.UprisingDefense = 23;
             TacticalCombatSession battle = commands.BeginTacticalCombat();
-            battle.GetUnit(attacker.InstanceID).Systems.ApplyHullLoss(100);
+            battle.GetUnit(attacker.InstanceID).ApplyHullLoss(100);
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
 
@@ -5471,7 +5471,7 @@ namespace Rebellion.Tests.Gameplay
             game.AttachNode(second, first.GetParent());
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             CombatUnit casualty = battle.GetUnit(first.InstanceID);
-            casualty.Systems.Destroy();
+            casualty.Destroy();
             casualty.Status = CombatUnitStatus.Destroyed;
             Assert.IsTrue(battle.RequestImmediateResult());
             battle.Advance(0);
@@ -6356,7 +6356,7 @@ namespace Rebellion.Tests.Gameplay
                         foreach (CombatUnit unit in battle.Units)
                             trace.Add(
                                 FormattableString.Invariant(
-                                    $"unit {frame} {battle.SystemTime} {unit.InstanceID} {unit.Status} {unit.CarrierID} {unit.Position.X:R} {unit.Position.Y:R} {unit.Position.Z:R} {unit.Systems.Hull:R} {unit.Systems.Shields:R}"
+                                    $"unit {frame} {battle.SystemTime} {unit.InstanceID} {unit.Status} {unit.CarrierID} {unit.Position.X:R} {unit.Position.Y:R} {unit.Position.Z:R} {unit.Hull:R} {unit.Shields:R}"
                                 )
                             );
                     }

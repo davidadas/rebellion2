@@ -15,10 +15,7 @@ namespace Rebellion.Tactical
         public bool HasDeparted { get; private set; }
         public float Charge { get; private set; } = 100;
         public bool IsOperational =>
-            IsConstructionComplete
-            && Unit.Systems.Hull != 0
-            && !float.IsNaN(Unit.Systems.Hull)
-            && !HasDeparted;
+            IsConstructionComplete && Unit.Hull != 0 && !float.IsNaN(Unit.Hull) && !HasDeparted;
         public bool CanBeginTargetSelection =>
             MaximumHull > 0 && (Charge == 100 || float.IsNaN(Charge));
         public bool CanReceiveAttackRun => IsOperational && !HasPlanetaryProtection;
@@ -54,7 +51,7 @@ namespace Rebellion.Tactical
                 throw new ArgumentException("A battle station unit is required.", nameof(unit));
             HasPlanetaryProtection = hasPlanetaryProtection;
             IsConstructionComplete = unit.Status != CombatUnitStatus.UnderConstruction;
-            MaximumHull = unit.Systems.MaximumHull;
+            MaximumHull = unit.MaximumHull;
         }
 
         /// <summary>
@@ -63,7 +60,7 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The elapsed system interval.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            if (!IsConstructionComplete || !(Unit.Systems.Hull > 0))
+            if (!IsConstructionComplete || !(Unit.Hull > 0))
                 return;
             float increment = (float)((double)elapsedMilliseconds * 0.33333334f * 0.001f);
             if (Charge < 100 && (double)Charge + increment >= 100)
@@ -101,7 +98,7 @@ namespace Rebellion.Tactical
         internal void Destroy()
         {
             Charge = 0;
-            Unit.Systems.Destroy();
+            Unit.Destroy();
         }
 
         /// <summary>

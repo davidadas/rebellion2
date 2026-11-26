@@ -174,13 +174,13 @@ namespace Rebellion.Tests.Tactical
             random.BeforeDraw = (_, max) =>
             {
                 if (max == 101)
-                    hullAtSelection = run.Group.Members[0].Systems.Hull;
+                    hullAtSelection = run.Group.Members[0].Hull;
             };
             run.ApplyState(TacticalCombatAttackRunState.Starting);
             Assert.AreEqual(TacticalCombatAttackRunState.Succeeding, run.State);
             Assert.AreEqual(3, random.DrawCount);
             Assert.AreEqual(88, hullAtSelection);
-            Assert.AreEqual(96, run.Group.Members[0].Systems.Hull);
+            Assert.AreEqual(96, run.Group.Members[0].Hull);
             List<int> messages = new();
             run.NotificationRequested += messages.Add;
 

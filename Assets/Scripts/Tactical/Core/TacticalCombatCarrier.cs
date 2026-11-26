@@ -31,7 +31,7 @@ namespace Rebellion.Tactical
                 : new(Unit.Position.X, Unit.Position.Y - Unit.HalfHeight, Unit.Position.Z);
         public bool IsAvailable =>
             Unit.IsBattleStation
-                ? Unit.Systems.IsAlive && Unit.Status == CombatUnitStatus.Active
+                ? Unit.IsAlive && Unit.Status == CombatUnitStatus.Active
                 : Unit.IsTargetable;
         public event Action<TacticalCombatCarrier, CombatUnit> LaunchRequested;
 

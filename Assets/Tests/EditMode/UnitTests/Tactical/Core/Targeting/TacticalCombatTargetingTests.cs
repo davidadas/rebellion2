@@ -29,7 +29,7 @@ namespace Rebellion.Tests.Tactical
                 20,
                 false
             );
-            target.Systems.ApplyHullLoss(99999);
+            target.ApplyHullLoss(99999);
             TacticalCombatGroup group = new(2, new[] { attacker }, Vector3.UnitZ);
             group.Formation.Refresh(0);
             target.Position = group.Formation.Position + new Vector3(x, 1234, 5678);
@@ -83,8 +83,8 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 1000001
             );
-            target.Systems.ApplyHullLoss(5);
-            float attack = (float)target.Systems.GetShieldRecharge();
+            target.ApplyHullLoss(5);
+            float attack = (float)target.GetShieldRecharge();
 
             float metric = TacticalCombatTargeting.GetTargetMetric(group, target, ref attack);
 

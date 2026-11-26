@@ -273,7 +273,7 @@ namespace Rebellion.Tactical
             double unscaled = TacticalCombatFireControl.GetOpportunityDamage(unit, arc, weapon);
             if (!(unscaled > _scores[(int)arc, (int)weapon]))
                 return;
-            _scores[(int)arc, (int)weapon] = unit.Systems.ScaleByHull((float)unscaled);
+            _scores[(int)arc, (int)weapon] = unit.ScaleByHull((float)unscaled);
             _targets[(int)arc, (int)weapon] = candidate;
         }
 
@@ -346,7 +346,7 @@ namespace Rebellion.Tactical
         /// <returns>Whether the shield and range comparisons admit an accompanying torpedo.</returns>
         private static bool CanFireTorpedo(CombatUnit unit, CombatUnit target)
         {
-            double shields = target.Systems.GetShieldFraction();
+            double shields = target.GetShieldFraction();
             if (shields != 0 && !double.IsNaN(shields))
                 return false;
             double distance = TacticalCombatGeometry.MeasureTargetDistance(

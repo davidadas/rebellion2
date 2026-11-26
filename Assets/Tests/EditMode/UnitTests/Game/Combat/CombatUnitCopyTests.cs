@@ -37,8 +37,8 @@ namespace Rebellion.Tests.Game.Combat
 
             Assert.AreEqual("Entry name", unit.DisplayName);
             Assert.AreEqual(80, unit.InitialHull);
-            Assert.AreEqual(100, unit.Systems.MaximumHull);
-            Assert.AreEqual(1, unit.Systems.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(100, unit.MaximumHull);
+            Assert.AreEqual(1, unit.GetDamage(TacticalShipSystem.Engines));
             Assert.IsTrue(unit.HasPrimaryHyperdrive);
             Assert.AreEqual(
                 10,
@@ -74,8 +74,8 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(unit.IsFighter);
             Assert.AreEqual(7, unit.InitialSquadronSize);
             Assert.AreEqual(56, unit.InitialHull);
-            Assert.AreEqual(96, unit.Systems.MaximumHull);
-            Assert.AreEqual(24, unit.Systems.MaximumShields);
+            Assert.AreEqual(96, unit.MaximumHull);
+            Assert.AreEqual(24, unit.MaximumShields);
             Assert.AreEqual(
                 36,
                 unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)

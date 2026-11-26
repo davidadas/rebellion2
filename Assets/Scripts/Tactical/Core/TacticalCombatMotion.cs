@@ -238,10 +238,7 @@ namespace Rebellion.Tactical
             );
             if (dot < 0.25f || float.IsNaN(dot))
                 dot = 0.25f;
-            double speed = unit.Systems.GetAvailableMovement(
-                unit.CommandBudget,
-                unit.TractorRestraint
-            );
+            double speed = unit.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint);
             float distance = (float)(speed * dot * elapsed * 0.001f);
             index.QueryCollision(unit, distance, _neighbors);
             ResolveVerticalBounds(unit);
@@ -278,7 +275,7 @@ namespace Rebellion.Tactical
         {
             float angle = TacticalCombatGeometry.GetHeadingAngle(unit.Heading, unit.DesiredHeading);
             if (
-                unit.Systems.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint) == 0
+                unit.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint) == 0
                 || angle == 0
                 || float.IsNaN(angle)
                 || elapsed == 0

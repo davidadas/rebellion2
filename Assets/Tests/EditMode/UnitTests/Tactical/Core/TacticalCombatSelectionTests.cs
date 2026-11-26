@@ -521,7 +521,7 @@ namespace Rebellion.Tests.Tactical
         {
             Encounter encounter = Create(currentHull: 0);
 
-            Assert.IsFalse(encounter.Friendly[0].Systems.IsAlive);
+            Assert.IsFalse(encounter.Friendly[0].IsAlive);
             Assert.IsTrue(encounter.Selection.IsDisplayObject(encounter.Friendly[0]));
         }
 

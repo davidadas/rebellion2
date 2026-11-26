@@ -206,7 +206,7 @@ namespace Rebellion.Tactical
             unit.DesiredMovement = state.DesiredMovement.ToVector();
             unit.Status = state.Status;
             unit.CarrierID = string.IsNullOrEmpty(state.CarrierID) ? null : state.CarrierID;
-            unit.Systems.ApplyProjection(
+            unit.ApplySystemProjection(
                 state.Hull,
                 state.Shields,
                 state.ShieldLimit,

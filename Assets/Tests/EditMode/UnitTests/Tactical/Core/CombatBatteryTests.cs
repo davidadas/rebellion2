@@ -51,7 +51,19 @@ namespace Rebellion.Tests.Tactical
                 0,
                 true
             );
-            TacticalCombatSystems systems = new(true, 96, 5, 0, 0, 0, 0, 0, 0, 1, 0);
+            CombatUnit systems = CombatDamageTests.CreateUnitWithPools(
+                true,
+                96,
+                5,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                1,
+                0
+            );
             weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
 
             weapons.RechargeBatteries(1, systems.GetWeaponRecharge());
@@ -301,7 +313,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_DisabledWeaponSystem_LeavesBatteryDischarged()
         {
             CombatUnit weapons = CreateWeapons(4);
-            TacticalCombatSystems systems = new(
+            CombatUnit systems = CombatDamageTests.CreateUnitWithPools(
                 false,
                 100,
                 100,
