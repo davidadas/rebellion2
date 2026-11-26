@@ -26,7 +26,9 @@ namespace Rebellion.Tactical
         private readonly Dictionary<string, TacticalCombatCarrier> _carriers = new(
             StringComparer.Ordinal
         );
-        private readonly Dictionary<CombatUnit, Recovery> _recoveries = new();
+
+        // Index the carriers' recovery assignments by fighter for queued commands and movement.
+        private readonly Dictionary<CombatUnit, TacticalCombatCarrier.Recovery> _recoveries = new();
         private readonly HashSet<CombatUnit> _tractorCommandsPending = new();
         private readonly Dictionary<
             CombatUnit,
@@ -511,21 +513,6 @@ namespace Rebellion.Tactical
                 Run = run;
                 RunState = runState;
             }
-        }
-
-        /// <summary>
-        /// Tracks the reservation, approach, queued recovery, and completed recovery states.
-        /// </summary>
-        private sealed class Recovery
-        {
-            public TacticalCombatCarrier Carrier { get; }
-            public int State { get; set; } = 1;
-
-            /// <summary>
-            /// Creates a pending carrier assignment.
-            /// </summary>
-            /// <param name="carrier">The carrier holding the reserved berth.</param>
-            public Recovery(TacticalCombatCarrier carrier) => Carrier = carrier;
         }
     }
 }

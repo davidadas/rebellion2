@@ -402,20 +402,18 @@ namespace Rebellion.Tactical
             {
                 if (!fighter.IsTargetable)
                     continue;
-                if (!_recoveries.TryGetValue(fighter, out Recovery recovery))
+                if (!_recoveries.TryGetValue(fighter, out TacticalCombatCarrier.Recovery recovery))
                 {
-                    TacticalCombatCarrier carrier = null;
                     if (
                         fighter.CarrierID != null
                         && _carriers.TryGetValue(
                             fighter.CarrierID,
                             out TacticalCombatCarrier linked
                         )
-                        && linked.Reserve(fighter)
                     )
-                        carrier = linked;
+                        recovery = linked.ReserveRecovery(fighter);
                     bool full = true;
-                    if (carrier == null)
+                    if (recovery == null)
                         foreach (CombatUnit candidate in _units)
                             if (
                                 !candidate.IsFighter
@@ -427,26 +425,23 @@ namespace Rebellion.Tactical
                                 TacticalCombatCarrier candidateCarrier = _carriers[
                                     candidate.InstanceID
                                 ];
-                                if (candidateCarrier.Reserve(fighter))
-                                {
-                                    carrier = candidateCarrier;
+                                recovery = candidateCarrier.ReserveRecovery(fighter);
+                                if (recovery != null)
                                     break;
-                                }
                                 full &= candidateCarrier.IsFullAndLaunched;
                             }
                     if (
-                        carrier == null
+                        recovery == null
                         && GetSide(fighter.Side).FactionIndex == 1
                         && BattleStation?.IsOperational == true
                         && BattleStation.Unit.Side == fighter.Side
                     )
                     {
                         TacticalCombatCarrier station = _carriers[BattleStation.Unit.InstanceID];
-                        if (station.Reserve(fighter))
-                            carrier = station;
+                        recovery = station.ReserveRecovery(fighter);
                         full &= station.IsFullAndLaunched;
                     }
-                    if (carrier == null)
+                    if (recovery == null)
                     {
                         if (!warned)
                         {
@@ -459,24 +454,13 @@ namespace Rebellion.Tactical
                             SetOrder(group, TacticalCombatOrder.None);
                         continue;
                     }
-                    recovery = new Recovery(carrier);
                     _recoveries.Add(fighter, recovery);
-                    QueueCommand(new Command(CommandKind.SetRecovery, fighter, carrier.Unit));
-                }
-                if (recovery.State == 2)
-                {
-                    float distance = TacticalCombatGeometry.GetRecoveryDistance(
-                        fighter.Position,
-                        recovery.Carrier.HangarPosition
+                    QueueCommand(
+                        new Command(CommandKind.SetRecovery, fighter, recovery.Carrier.Unit)
                     );
-                    if (distance < 2 || float.IsNaN(distance))
-                    {
-                        recovery.State = 3;
-                        QueueCommand(
-                            new Command(CommandKind.Recover, recovery.Carrier.Unit, fighter)
-                        );
-                    }
                 }
+                if (recovery.TryQueueLanding())
+                    QueueCommand(new Command(CommandKind.Recover, recovery.Carrier.Unit, fighter));
             }
         }
 
@@ -486,7 +470,8 @@ namespace Rebellion.Tactical
         /// <param name="fighter">The approaching fighter squadron.</param>
         /// <returns>The assigned carrier, or null before assignment.</returns>
         private TacticalCombatCarrier GetRecoveryCarrier(CombatUnit fighter) =>
-            _recoveries.TryGetValue(fighter, out Recovery recovery) && recovery.State >= 2
+            _recoveries.TryGetValue(fighter, out TacticalCombatCarrier.Recovery recovery)
+            && recovery.IsAssigned
                 ? recovery.Carrier
                 : null;
 
@@ -496,7 +481,7 @@ namespace Rebellion.Tactical
         /// <param name="fighter">The reassigned or destroyed squadron.</param>
         private void ReleaseRecovery(CombatUnit fighter)
         {
-            if (!_recoveries.Remove(fighter, out Recovery recovery))
+            if (!_recoveries.Remove(fighter, out TacticalCombatCarrier.Recovery recovery))
                 return;
             recovery.Carrier.Detach(fighter);
             fighter.CarrierID = null;
@@ -721,18 +706,17 @@ namespace Rebellion.Tactical
                         ReleaseRecovery(source);
                     else if (
                         source.IsTargetable
-                        && _recoveries.TryGetValue(source, out Recovery recovery)
+                        && _recoveries.TryGetValue(
+                            source,
+                            out TacticalCombatCarrier.Recovery recovery
+                        )
                         && ReferenceEquals(recovery.Carrier.Unit, target)
                     )
-                    {
-                        recovery.State = 2;
-                        source.CarrierID = target.InstanceID;
-                    }
+                        recovery.BeginApproach();
                     break;
                 case CommandKind.Recover:
                     if (target.IsTargetable && _carriers[source.InstanceID].Recover(target))
                     {
-                        _recoveries[target].State = 4;
                         RemoveFromGroup(target);
                         _spatial.Update(target);
                         FighterRecovered?.Invoke(target);

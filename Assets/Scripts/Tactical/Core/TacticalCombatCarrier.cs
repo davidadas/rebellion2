@@ -13,7 +13,7 @@ namespace Rebellion.Tactical
     {
         private readonly List<CombatUnit> _launchQueue = new();
         private readonly List<CombatUnit> _recovered = new();
-        private readonly HashSet<CombatUnit> _approaching = new();
+        private readonly Dictionary<CombatUnit, Recovery> _approaching = new();
         private int _occupied;
         private int _reserved;
         private float _nextLaunch;
@@ -110,14 +110,18 @@ namespace Rebellion.Tactical
         /// Reserves a recovery berth before the recovery command enters the queue.
         /// </summary>
         /// <param name="fighter">The approaching squadron.</param>
-        /// <returns>Whether a berth was reserved.</returns>
-        public bool Reserve(CombatUnit fighter)
+        /// <returns>The recovery holding the berth, or null when no berth is available.</returns>
+        internal Recovery ReserveRecovery(CombatUnit fighter)
         {
             if (!IsAvailable || _reserved >= Unit.FighterCapacity)
-                return false;
+                return null;
             _reserved++;
-            _approaching.Add(fighter);
-            return true;
+            if (!_approaching.TryGetValue(fighter, out Recovery recovery))
+            {
+                recovery = new Recovery(this, fighter);
+                _approaching.Add(fighter, recovery);
+            }
+            return recovery;
         }
 
         /// <summary>
@@ -177,6 +181,51 @@ namespace Rebellion.Tactical
             _approaching.Clear();
             _occupied = 0;
             _reserved = 0;
+        }
+
+        internal sealed class Recovery
+        {
+            private enum Phase
+            {
+                Reserved,
+                Approaching,
+                LandingQueued,
+            }
+
+            private readonly CombatUnit _fighter;
+            private Phase _phase;
+
+            public TacticalCombatCarrier Carrier { get; }
+            public bool IsAssigned => _phase != Phase.Reserved;
+
+            internal Recovery(TacticalCombatCarrier carrier, CombatUnit fighter)
+            {
+                Carrier = carrier;
+                _fighter = fighter;
+            }
+
+            public void BeginApproach()
+            {
+                _phase = Phase.Approaching;
+                _fighter.CarrierID = Carrier.Unit.InstanceID;
+            }
+
+            public bool TryQueueLanding()
+            {
+                if (_phase != Phase.Approaching)
+                    return false;
+
+                float distance = TacticalCombatGeometry.GetRecoveryDistance(
+                    _fighter.Position,
+                    Carrier.HangarPosition
+                );
+                // The original also admits a landing when the distance is NaN.
+                if (distance >= 2)
+                    return false;
+
+                _phase = Phase.LandingQueued;
+                return true;
+            }
         }
     }
 }

@@ -92,7 +92,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             carrier.AddDocked(CreateFighter(), 3, new SystemRandomProvider(42));
-            Assert.IsFalse(carrier.Reserve(CreateFighter("second")));
+            Assert.IsNull(carrier.ReserveRecovery(CreateFighter("second")));
         }
 
         [Test]
@@ -100,7 +100,16 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             CombatUnit fighter = CreateFighter();
-            Assert.IsTrue(carrier.Reserve(fighter));
+            TacticalCombatCarrier.Recovery recovery = carrier.ReserveRecovery(fighter);
+            Assert.IsNotNull(recovery);
+            Assert.IsFalse(recovery.IsAssigned);
+            Assert.IsFalse(recovery.TryQueueLanding());
+            recovery.BeginApproach();
+            Assert.IsTrue(recovery.IsAssigned);
+            Assert.AreEqual(carrier.Unit.InstanceID, fighter.CarrierID);
+            fighter.Position = carrier.HangarPosition;
+            Assert.IsTrue(recovery.TryQueueLanding());
+            Assert.IsFalse(recovery.TryQueueLanding());
             Assert.IsTrue(carrier.Recover(fighter));
             Assert.AreEqual(1, carrier.Reserved);
             Assert.AreEqual(1, carrier.Occupied);
@@ -112,7 +121,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatCarrier carrier = CreateCarrier(1);
             CombatUnit fighter = CreateFighter();
-            carrier.Reserve(fighter);
+            carrier.ReserveRecovery(fighter);
             carrier.Detach(fighter);
             Assert.AreEqual(0, carrier.Reserved);
         }
