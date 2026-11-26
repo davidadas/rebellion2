@@ -206,7 +206,10 @@ namespace Rebellion.Tests.Game.Combat
             unit.ApplyComponentEvent(TacticalShipSystem.Engines, isRepair: false);
 
             string xml = SerializationHelper.Serialize(game);
-            Assert.That(xml, Does.Contain("<Hull>900.5</Hull>"));
+            Assert.That(
+                xml,
+                Does.Contain("<Hull>900.5</Hull>").And.Not.Contain("<ComponentDamage>")
+            );
             CombatUnit restored = SerializationHelper
                 .Deserialize<GameRoot>(xml)
                 .ActiveBattle.GetCombatant("ship");
@@ -214,6 +217,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(unit.Position, restored.Position);
             Assert.AreEqual(900.5f, restored.Hull);
             Assert.AreEqual(1u, restored.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(1, ((CapitalShip)restored.Unit).SystemDamage.Engines);
             Assert.AreEqual("ship", restored.InstanceID);
             Assert.AreEqual(
                 unit.GetBatteryCharge(TacticalWeaponArc.Forward),
@@ -293,6 +297,29 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(restored.IsBatteryReady(TacticalWeaponArc.Starboard));
             Assert.AreEqual(25, restored.Batteries[1].GetHardpoints()[0].FiringArcDegrees);
             Assert.AreNotSame(group, unit.Batteries[1]);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Deserialize_LegacyCapitalShipDamage_UsesTheLiveBattleDamage(
+            bool damageBeforeShip
+        )
+        {
+            const string ship =
+                "<CapitalShip><SystemDamage><Engines>1</Engines></SystemDamage></CapitalShip>";
+            const string damage = "<ComponentDamage><Engines>3</Engines></ComponentDamage>";
+            string contents = damageBeforeShip ? damage + ship : ship + damage;
+
+            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(
+                "<CombatUnit>" + contents + "</CombatUnit>"
+            );
+
+            Assert.AreEqual(3u, restored.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(3, ((CapitalShip)restored.Unit).SystemDamage.Engines);
+            Assert.That(
+                SerializationHelper.Serialize(restored),
+                Does.Not.Contain("<ComponentDamage>")
+            );
         }
 
         [Test]

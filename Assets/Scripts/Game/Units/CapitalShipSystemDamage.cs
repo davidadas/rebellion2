@@ -70,7 +70,12 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="system">The affected ship system.</param>
         /// <param name="damage">The new damage level.</param>
-        internal void SetCombatDamage(TacticalShipSystem system, int damage)
+        /// <param name="primaryHyperdriveInstalled">Whether to assign the first disabled drive to the primary position.</param>
+        internal void SetCombatDamage(
+            TacticalShipSystem system,
+            int damage,
+            bool primaryHyperdriveInstalled = true
+        )
         {
             switch (system)
             {
@@ -87,7 +92,7 @@ namespace Rebellion.Game.Units
                     Engines = damage;
                     break;
                 case TacticalShipSystem.Hyperdrive:
-                    PrimaryHyperdrive = Math.Min(damage, 1);
+                    PrimaryHyperdrive = primaryHyperdriveInstalled ? Math.Min(damage, 1) : 0;
                     BackupHyperdrive = damage - PrimaryHyperdrive;
                     break;
             }

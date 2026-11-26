@@ -60,23 +60,27 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
-        public void ApplyCapitalShipState_Starfighter_ThrowsInvalidOperationException()
+        public void ApplyComponentEvent_BackupOnlyShip_UpdatesTheBattleCopy()
         {
-            CombatUnit combatant = CombatUnit.Create(new Starfighter());
+            CapitalShip source = new()
+            {
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                BackupHyperdrive = 4,
+                SystemDamage = new CapitalShipSystemDamage { Engines = 1 },
+            };
+            CombatUnit combatant = new(source, CombatSide.Attacker, 1);
+            CapitalShip battleShip = (CapitalShip)combatant.Unit;
 
-            Assert.Throws<InvalidOperationException>(() =>
-                combatant.ApplyCapitalShipState(10, new CapitalShipSystemDamage())
-            );
-        }
+            combatant.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, isRepair: false);
+            combatant.ApplyComponentEvent(TacticalShipSystem.Engines, isRepair: true);
 
-        [Test]
-        public void ApplyStarfighterState_CapitalShip_ThrowsInvalidOperationException()
-        {
-            CombatUnit combatant = CombatUnit.Create(new CapitalShip());
-
-            Assert.Throws<InvalidOperationException>(() =>
-                combatant.ApplyStarfighterState(1, "carrier")
-            );
+            Assert.AreEqual(0, battleShip.SystemDamage.PrimaryHyperdrive);
+            Assert.AreEqual(1, battleShip.SystemDamage.BackupHyperdrive);
+            Assert.AreEqual(0, battleShip.SystemDamage.Engines);
+            Assert.IsFalse(combatant.HasHyperdrive);
+            Assert.AreEqual(1, source.SystemDamage.Engines);
+            Assert.AreEqual(0, source.SystemDamage.BackupHyperdrive);
         }
     }
 

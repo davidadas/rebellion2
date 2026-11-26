@@ -57,10 +57,27 @@ namespace Rebellion.Game.Combat
     [PersistableObject]
     public sealed class CombatUnit : BaseGameEntity
     {
+        private BaseSceneNode _unit;
+        private CapitalShipSystemDamage _fighterDamage;
+
         [PersistableMember(Name = nameof(Unit))]
         [PersistableInclude(typeof(CapitalShip))]
         [PersistableInclude(typeof(Starfighter))]
-        private BaseSceneNode _unit;
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private BaseSceneNode SavedUnit
+        {
+            get => _unit;
+            set
+            {
+                _unit = value;
+                if (value is CapitalShip ship && _fighterDamage != null)
+                {
+                    // A legacy damage element can precede the enclosed ship.
+                    ship.SystemDamage = _fighterDamage;
+                    _fighterDamage = null;
+                }
+            }
+        }
 
         [PersistableMember(Name = "BatteryCharge")]
         private float[] _batteryCharge = new float[4];
@@ -260,8 +277,27 @@ namespace Rebellion.Game.Combat
                     or CombatUnitStatus.AttackingBattleStation;
         public int SquadronSize => IsAlive ? Math.Max((int)(Hull / 8), 1) : 0;
 
+        // Older saves also used this element for the capital ship's current battle damage.
         [PersistableMember(Name = "ComponentDamage")]
-        private CapitalShipSystemDamage _battleDamage = new();
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private CapitalShipSystemDamage SavedFighterDamage
+        {
+            get => _unit is CapitalShip ? null : _fighterDamage;
+            set
+            {
+                if (value == null)
+                    return;
+                if (_unit is CapitalShip ship)
+                    ship.SystemDamage = value;
+                else
+                    _fighterDamage = value;
+            }
+        }
+
+        private CapitalShipSystemDamage ComponentDamage =>
+            _unit is CapitalShip ship
+                ? ship.SystemDamage ??= new CapitalShipSystemDamage()
+                : _fighterDamage ??= new CapitalShipSystemDamage();
 
         [PersistableMember(Name = "WeaponRecharge")]
         private float _weaponRecharge;
@@ -378,32 +414,6 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Replaces the battle copy's mutable capital-ship result state.
-        /// </summary>
-        /// <param name="hull">The surviving hull strength.</param>
-        /// <param name="systemDamage">The surviving component damage.</param>
-        public void ApplyCapitalShipState(int hull, CapitalShipSystemDamage systemDamage)
-        {
-            if (_unit is not CapitalShip ship)
-                throw new InvalidOperationException("The battle unit is not a capital ship.");
-            ship.CurrentHullStrength = hull;
-            ship.SystemDamage = systemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
-        }
-
-        /// <summary>
-        /// Replaces the battle copy's mutable starfighter result state.
-        /// </summary>
-        /// <param name="squadronSize">The surviving fighter count.</param>
-        /// <param name="carrierSourceUnitInstanceID">The campaign carrier identity after recovery.</param>
-        public void ApplyStarfighterState(int squadronSize, string carrierSourceUnitInstanceID)
-        {
-            if (_unit is not Starfighter fighter)
-                throw new InvalidOperationException("The battle unit is not a starfighter.");
-            fighter.CurrentSquadronSize = squadronSize;
-            CarrierSourceUnitInstanceID = carrierSourceUnitInstanceID;
-        }
-
-        /// <summary>
         /// Creates tactical simulation state over an independently copied campaign unit.
         /// </summary>
         /// <param name="sourceUnit">The campaign unit to copy into battle.</param>
@@ -443,7 +453,6 @@ namespace Rebellion.Game.Combat
             float maneuverability = isFighter ? fighter.Agility : ship.Maneuverability;
             float tractorBeamPower = isFighter ? 0 : ship.TractorBeamPower;
             float damageControl = isFighter ? 0 : ship.DamageControl;
-            CapitalShipSystemDamage systemDamage = ship?.SystemDamage?.CreateCopy();
 
             Side = side;
             Index = index;
@@ -458,8 +467,7 @@ namespace Rebellion.Game.Combat
                 maneuverability,
                 tractorBeamPower,
                 (uint)((HasPrimaryHyperdrive ? 1 : 0) + (HasBackupHyperdrive ? 1 : 0)),
-                damageControl,
-                systemDamage
+                damageControl
             );
             InitializeBatteries(IsFighter ? 0 : GetDamage(TacticalShipSystem.Weapons), IsFighter);
             CapitalShipGeometry geometry = ship?.PhysicalGeometry;
@@ -819,7 +827,6 @@ namespace Rebellion.Game.Combat
         /// <param name="tractorPower">The unit's tractor beam strength.</param>
         /// <param name="hyperdrives">The number of installed hyperdrives.</param>
         /// <param name="damageControlRating">The damage-control repair chance out of 100.</param>
-        /// <param name="initialDamage">The component damage carried into the battle.</param>
         internal void InitializeCombatPools(
             float maximumHull,
             float currentHull,
@@ -830,14 +837,12 @@ namespace Rebellion.Game.Combat
             float maneuverability,
             float tractorPower,
             uint hyperdrives,
-            float damageControlRating,
-            CapitalShipSystemDamage initialDamage = null
+            float damageControlRating
         )
         {
             bool isFighter = IsFighter;
             AttackDelay = MovementDelay = _repairMilliseconds = 0;
             _damageEventCount = 0;
-            _battleDamage = initialDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             MaximumHull = maximumHull;
             Hull = currentHull;
             _shieldLimit = maximumShields;
@@ -851,7 +856,7 @@ namespace Rebellion.Game.Combat
             _tractorBudget = tractorPower;
             _hyperdriveCount = hyperdrives;
             _damageControl = damageControlRating;
-            if (initialDamage != null)
+            if (_unit is CapitalShip || _fighterDamage != null)
             {
                 // Existing weapon damage does not seed repair work; later weapon hits add events.
                 _damageEventCount =
@@ -895,7 +900,7 @@ namespace Rebellion.Game.Combat
         /// <returns>The component's damage level.</returns>
         public uint GetDamage(TacticalShipSystem system)
         {
-            return unchecked((uint)_battleDamage.GetCombatDamage(system));
+            return unchecked((uint)ComponentDamage.GetCombatDamage(system));
         }
 
         /// <summary>
@@ -1141,7 +1146,11 @@ namespace Rebellion.Game.Combat
         /// <param name="system">The affected ship system.</param>
         /// <param name="damage">The new damage level.</param>
         private void SetDamage(TacticalShipSystem system, uint damage) =>
-            _battleDamage.SetCombatDamage(system, unchecked((int)damage));
+            ComponentDamage.SetCombatDamage(
+                system,
+                unchecked((int)damage),
+                primaryHyperdriveInstalled: _unit is not CapitalShip || HasPrimaryHyperdrive
+            );
 
         /// <summary>
         /// Restores the ordered component damage values from persisted battle state.
