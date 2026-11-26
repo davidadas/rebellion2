@@ -139,9 +139,9 @@ namespace Rebellion.Tests.Tactical
             int applications = 0;
             int localRequests = 0;
             int localApplications = 0;
-            source.SystemEventRequested += change =>
+            authority.Damage.SystemChangeRequested += (unit, change) =>
             {
-                if (change.IsRepair)
+                if (ReferenceEquals(unit, source) && change.IsRepair)
                     requests++;
             };
             authority.SystemChanged += (unit, change) =>
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Tactical
                 if (ReferenceEquals(unit, source) && change.IsRepair)
                     applications++;
             };
-            projected.SystemEventRequested += _ => localRequests++;
+            replica.Damage.SystemChangeRequested += (_, _) => localRequests++;
             replica.SystemChanged += (_, _) => localApplications++;
             source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
@@ -158,7 +158,7 @@ namespace Rebellion.Tests.Tactical
             long localDraws = replicaRandom.CallCount;
             Assert.AreEqual(2, projected.GetDamage(TacticalShipSystem.Engines));
 
-            source.AdvanceSystems(1, new SystemRandomProvider(12));
+            authority.Damage.AdvanceSystems(source, 1, new SystemRandomProvider(12));
 
             Assert.AreEqual(1, requests);
             Assert.AreEqual(0, applications);

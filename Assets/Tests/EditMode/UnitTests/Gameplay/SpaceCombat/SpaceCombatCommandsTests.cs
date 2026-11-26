@@ -4771,7 +4771,8 @@ namespace Rebellion.Tests.Gameplay
                 return null;
             };
 
-            victim.ApplyHit(
+            battle.Damage.ApplyHit(
+                victim,
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,

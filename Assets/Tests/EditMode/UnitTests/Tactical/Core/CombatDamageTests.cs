@@ -13,6 +13,11 @@ namespace Rebellion.Tests.Tactical
     [TestFixture]
     public sealed class CombatDamageTests
     {
+        private TacticalCombatDamage _damage;
+
+        [SetUp]
+        public void SetUp() => _damage = new TacticalCombatDamage();
+
         [TestCase(TacticalWeaponType.LaserCannon, 0f)]
         [TestCase(TacticalWeaponType.LaserCannon, -5f)]
         [TestCase(TacticalWeaponType.LaserCannon, float.NaN)]
@@ -45,11 +50,12 @@ namespace Rebellion.Tests.Tactical
             );
             SystemRandomProvider random = new(42);
             List<string> events = new();
-            systems.LethalHit += _ => events.Add("report");
-            systems.ImpactRequested += (_, _) => events.Add("impact");
-            systems.SystemEventRequested += _ => events.Add("component");
+            _damage.LethalHit += (_, _) => events.Add("report");
+            _damage.ImpactApplied += (_, _, _) => events.Add("impact");
+            _damage.SystemChangeRequested += (_, _) => events.Add("component");
 
-            TacticalCombatImpactKind impact = systems.ApplyHit(
+            TacticalCombatImpactKind impact = _damage.ApplyHit(
+                systems,
                 weapon,
                 100,
                 1,
@@ -82,7 +88,15 @@ namespace Rebellion.Tests.Tactical
         public void ApplyHit_ConventionalDamage_ConsumesShieldsBeforeHull()
         {
             CombatUnit systems = CreateSystems();
-            systems.ApplyHit(TacticalWeaponType.Turbolaser, 125, 1, 1, new SequenceRandom(0), null);
+            _damage.ApplyHit(
+                systems,
+                TacticalWeaponType.Turbolaser,
+                125,
+                1,
+                1,
+                new SequenceRandom(0),
+                null
+            );
 
             Assert.AreEqual(0, systems.Shields);
             Assert.AreEqual(975, systems.Hull);
@@ -92,7 +106,15 @@ namespace Rebellion.Tests.Tactical
         public void ApplyHit_IonDamagePastShields_DoesNotDamageHull()
         {
             CombatUnit systems = CreateSystems();
-            systems.ApplyHit(TacticalWeaponType.IonCannon, 101, 1, 1, new SequenceRandom(3), null);
+            _damage.ApplyHit(
+                systems,
+                TacticalWeaponType.IonCannon,
+                101,
+                1,
+                1,
+                new SequenceRandom(3),
+                null
+            );
 
             Assert.AreEqual(1000, systems.Hull);
             Assert.AreEqual(0, systems.Shields);
@@ -107,13 +129,13 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.LethalHit += attackerID =>
+            _damage.LethalHit += (_, attackerID) =>
             {
                 Assert.AreEqual("attacker", attackerID);
                 Assert.AreEqual(reportedHull, systems.Hull);
                 events.Add("report");
             };
-            systems.ImpactRequested += (weapon, impact) =>
+            _damage.ImpactApplied += (_, weapon, impact) =>
             {
                 Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
                 Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
@@ -121,7 +143,8 @@ namespace Rebellion.Tests.Tactical
                 events.Add("effect");
             };
 
-            TacticalCombatImpactKind result = systems.ApplyHit(
+            TacticalCombatImpactKind result = _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.Turbolaser,
                 damage,
                 1,
@@ -144,9 +167,10 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> reports = new();
-            systems.LethalHit += reports.Add;
+            _damage.LethalHit += (_, attackerID) => reports.Add(attackerID);
 
-            systems.ApplyHit(
+            _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.IonCannon,
                 150,
                 1,
@@ -178,11 +202,11 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random =
                 selector <= 2 ? new SequenceRandom(selector, 35) : new SequenceRandom(selector);
 
-            systems.ApplyHit(TacticalWeaponType.IonCannon, 101, 1, 1, random, null);
+            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, 101, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalSystemEventKind.Disruption, events[0].Kind);
@@ -200,10 +224,10 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random = new(1, 30, 2, 50, 3, 5, 7, 10);
 
-            systems.ApplyHit(TacticalWeaponType.IonCannon, 106, 1, 1, random, null);
+            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, 106, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(15, events[0].DischargedArcMask);
@@ -220,10 +244,10 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random = new();
 
-            systems.ApplyHit(TacticalWeaponType.IonCannon, float.NaN, 1, 1, random, null);
+            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, float.NaN, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(0, events[0].DischargedArcMask);
@@ -237,9 +261,10 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
 
-            systems.ApplyHit(
+            _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.IonCannon,
                 104,
                 1,
@@ -566,7 +591,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             systems.ApplyDisruption(30, 50);
-            systems.AdvanceSystems(1000, new SequenceRandom());
+            _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
             Assert.AreEqual(29, systems.AttackDelay);
             Assert.AreEqual(49, systems.MovementDelay);
@@ -591,7 +616,7 @@ namespace Rebellion.Tests.Tactical
             systems.ApplyDisruption(30, 30);
 
             for (int index = 0; index < 29; index++)
-                systems.AdvanceSystems(1000, new SequenceRandom());
+                _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
             Assert.AreEqual(1, systems.AttackDelay);
             Assert.AreEqual(1, systems.MovementDelay);
@@ -603,7 +628,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateSystems();
             systems.ApplyDisruption(2, 2);
 
-            systems.AdvanceSystems(1000, new SequenceRandom());
+            _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
             Assert.AreEqual(1, systems.AttackDelay);
             Assert.AreEqual(1, systems.MovementDelay);
@@ -631,9 +656,10 @@ namespace Rebellion.Tests.Tactical
                 0
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
 
-            TacticalCombatImpactKind impact = systems.ApplyHit(
+            TacticalCombatImpactKind impact = _damage.ApplyHit(
+                systems,
                 weapon,
                 1,
                 1,
@@ -667,9 +693,17 @@ namespace Rebellion.Tests.Tactical
                 0
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
 
-            systems.ApplyHit(TacticalWeaponType.LaserCannon, 1, 1, 1, new SequenceRandom(51), null);
+            _damage.ApplyHit(
+                systems,
+                TacticalWeaponType.LaserCannon,
+                1,
+                1,
+                1,
+                new SequenceRandom(51),
+                null
+            );
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalShipSystem.Shields, events[0].System);
@@ -693,9 +727,10 @@ namespace Rebellion.Tests.Tactical
                 0
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
 
-            systems.ApplyHit(
+            _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.LaserCannon,
                 1,
                 1,
@@ -713,7 +748,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 0, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            systems.AdvanceSystems(1000, new SequenceRandom());
+            _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
             Assert.AreEqual(0, systems.GetShieldRechargeRatio());
         }
@@ -736,7 +771,7 @@ namespace Rebellion.Tests.Tactical
             );
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            systems.AdvanceSystems(1000, new SequenceRandom());
+            _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
             Assert.AreEqual(1u, systems.GetDamage(TacticalShipSystem.Engines));
         }
@@ -746,7 +781,8 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
 
-            TacticalCombatImpactKind result = systems.ApplyHit(
+            TacticalCombatImpactKind result = _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.Turbolaser,
                 float.NaN,
                 1,
@@ -766,8 +802,8 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateSystems();
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
-            systems.AdvanceSystems(1000, new SequenceRandom(1));
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
+            _damage.AdvanceSystems(systems, 1000, new SequenceRandom(1));
 
             Assert.AreEqual(1u, systems.GetDamage(TacticalShipSystem.Engines));
             Assert.AreEqual(1, events.Count);
@@ -779,7 +815,15 @@ namespace Rebellion.Tests.Tactical
         public void ApplyHit_FighterTarget_UsesRelativeManeuverRating()
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 8, 8, 0, 1, 0);
-            systems.ApplyHit(TacticalWeaponType.LaserCannon, 8, 8, 4, new SequenceRandom(), null);
+            _damage.ApplyHit(
+                systems,
+                TacticalWeaponType.LaserCannon,
+                8,
+                8,
+                4,
+                new SequenceRandom(),
+                null
+            );
 
             Assert.AreEqual(92, systems.Hull);
         }
@@ -791,11 +835,11 @@ namespace Rebellion.Tests.Tactical
                 initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += events.Add;
+            _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.AdvanceSystems(50, random);
-            systems.AdvanceSystems(50000, random);
+            _damage.AdvanceSystems(systems, 50, random);
+            _damage.AdvanceSystems(systems, 50000, random);
 
             Assert.IsEmpty(events);
             Assert.IsEmpty(random.Requests);
@@ -809,15 +853,15 @@ namespace Rebellion.Tests.Tactical
                 initialDamage: new CapitalShipSystemDamage { Engines = 1, Weapons = 2 }
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += change =>
+            _damage.SystemChangeRequested += (_, change) =>
             {
                 events.Add(change);
                 systems.ApplyComponentEvent(change.System, change.IsRepair);
             };
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.AdvanceSystems(50, random);
-            systems.AdvanceSystems(50000, random);
+            _damage.AdvanceSystems(systems, 50, random);
+            _damage.AdvanceSystems(systems, 50000, random);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalShipSystem.Engines, events[0].System);
@@ -833,7 +877,7 @@ namespace Rebellion.Tests.Tactical
                 initialDamage: new CapitalShipSystemDamage { Weapons = 4 }
             );
             List<TacticalSystemEvent> events = new();
-            systems.SystemEventRequested += change =>
+            _damage.SystemChangeRequested += (_, change) =>
             {
                 events.Add(change);
                 systems.ApplyComponentEvent(change.System, change.IsRepair);
@@ -841,8 +885,8 @@ namespace Rebellion.Tests.Tactical
             systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
             SequenceRandom random = new(1, 1, 1, 1);
 
-            systems.AdvanceSystems(50, random);
-            systems.AdvanceSystems(50000, random);
+            _damage.AdvanceSystems(systems, 50, random);
+            _damage.AdvanceSystems(systems, 50000, random);
 
             Assert.AreEqual(1, events.Count);
             Assert.IsTrue(events[0].IsRepair);
@@ -883,14 +927,15 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.ImpactRequested += (kind, impact) =>
+            _damage.ImpactApplied += (_, kind, impact) =>
             {
                 Assert.AreEqual(weapon, kind);
                 Assert.AreEqual(TacticalCombatImpactKind.Hull, impact);
                 events.Add("effect");
             };
-            systems.SystemEventRequested += _ => events.Add("component");
-            systems.ApplyHit(
+            _damage.SystemChangeRequested += (_, _) => events.Add("component");
+            _damage.ApplyHit(
+                systems,
                 weapon,
                 1,
                 1,
@@ -912,15 +957,16 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             List<string> events = new();
-            systems.SystemEventRequested += _ => events.Add("component");
-            systems.ImpactRequested += (kind, impact) =>
+            _damage.SystemChangeRequested += (_, _) => events.Add("component");
+            _damage.ImpactApplied += (_, kind, impact) =>
             {
                 Assert.AreEqual(weapon, kind);
                 Assert.AreEqual(TacticalCombatImpactKind.Shield, impact);
                 events.Add("effect");
             };
 
-            systems.ApplyHit(
+            _damage.ApplyHit(
+                systems,
                 weapon,
                 1,
                 1,
@@ -939,10 +985,11 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, hull, 0, 0, 0, 0, 0, 0, 1, 0);
             List<string> events = new();
-            systems.LethalHit += _ => events.Add("report");
-            systems.ImpactRequested += (_, _) => events.Add("effect");
+            _damage.LethalHit += (_, _) => events.Add("report");
+            _damage.ImpactApplied += (_, _, _) => events.Add("effect");
 
-            TacticalCombatImpactKind impact = systems.ApplyHit(
+            TacticalCombatImpactKind impact = _damage.ApplyHit(
+                systems,
                 TacticalWeaponType.Turbolaser,
                 100,
                 1,

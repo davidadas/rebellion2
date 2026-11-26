@@ -143,7 +143,7 @@ namespace Rebellion.Tactical
                 }
                 if (!unit.IsTargetable)
                     continue;
-                unit.AdvanceSystems(1000, _random);
+                Damage.AdvanceSystems(unit, 1000, _random);
                 unit.RechargeBatteries(1, unit.GetWeaponRecharge());
                 if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
                     carrier.Advance(SystemTime, _random);
@@ -639,7 +639,8 @@ namespace Rebellion.Tactical
                 case CommandKind.Hit:
                     if (IsActiveDisplayObject(target))
                     {
-                        TacticalCombatImpactKind impact = target.ApplyHit(
+                        TacticalCombatImpactKind impact = Damage.ApplyHit(
+                            target,
                             command.Shot.Weapon,
                             command.Shot.Strength,
                             target.GetManeuverability(),

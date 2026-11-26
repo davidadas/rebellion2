@@ -5,16 +5,24 @@ using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
 {
-    internal static class TacticalCombatDamage
+    internal sealed class TacticalCombatDamage
     {
+        internal event Action<CombatUnit, TacticalSystemEvent> SystemChangeRequested;
+        internal event Action<CombatUnit, string> LethalHit;
+        internal event Action<
+            CombatUnit,
+            TacticalWeaponType,
+            TacticalCombatImpactKind
+        > ImpactApplied;
+
         /// <summary>
         /// Recharges shields, recovers temporary delays, and requests due component repairs.
         /// </summary>
         /// <param name="unit">The affected battle unit.</param>
         /// <param name="elapsedMilliseconds">The system update interval in milliseconds.</param>
         /// <param name="random">The battle's random-number stream.</param>
-        internal static void AdvanceSystems(
-            this CombatUnit unit,
+        internal void AdvanceSystems(
+            CombatUnit unit,
             float elapsedMilliseconds,
             IRandomNumberProvider random
         )
@@ -73,8 +81,8 @@ namespace Rebellion.Tactical
         /// <param name="attackerInstanceID">The firing unit's identity for a lethal impact report.</param>
         /// <param name="playSound">The encounter audio callback, when playback is available.</param>
         /// <returns>The affected surface, destruction, or no impact for an inactive target.</returns>
-        internal static TacticalCombatImpactKind ApplyHit(
-            this CombatUnit unit,
+        internal TacticalCombatImpactKind ApplyHit(
+            CombatUnit unit,
             TacticalWeaponType weapon,
             float damage,
             float ownTurnBudget,
@@ -107,7 +115,7 @@ namespace Rebellion.Tactical
                 if (weapon == TacticalWeaponType.IonCannon)
                 {
                     playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, true));
-                    unit.NotifyImpact(weapon, TacticalCombatImpactKind.Hull);
+                    ImpactApplied?.Invoke(unit, weapon, TacticalCombatImpactKind.Hull);
                     if (!unit.IsFighter)
                         RequestIonDisruption(unit, (float)-remainingShields, random);
                     return TacticalCombatImpactKind.Hull;
@@ -118,14 +126,14 @@ namespace Rebellion.Tactical
                 playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, true));
                 if (!unit.IsAlive)
                 {
-                    unit.NotifyLethalHit(attackerInstanceID);
+                    LethalHit?.Invoke(unit, attackerInstanceID);
                     unit.Hull = 0;
-                    unit.NotifyImpact(weapon, TacticalCombatImpactKind.Destroyed);
+                    ImpactApplied?.Invoke(unit, weapon, TacticalCombatImpactKind.Destroyed);
                     playSound?.Invoke(TacticalCombatAudio.GetExplosionSound(unit));
                     return TacticalCombatImpactKind.Destroyed;
                 }
 
-                unit.NotifyImpact(weapon, TacticalCombatImpactKind.Hull);
+                ImpactApplied?.Invoke(unit, weapon, TacticalCombatImpactKind.Hull);
                 if (!unit.IsFighter)
                     RequestHullHitEvent(unit, previousHull, random);
                 return TacticalCombatImpactKind.Hull;
@@ -138,11 +146,12 @@ namespace Rebellion.Tactical
                     100.0 / previousShields * ((double)previousShields - unit.Shields);
                 float chance = progress < 1 ? 1 : (float)progress;
                 if (!(random.NextInt(0, 101) > chance))
-                    unit.NotifySystemEvent(
+                    SystemChangeRequested?.Invoke(
+                        unit,
                         new TacticalSystemEvent(TacticalShipSystem.Shields, false)
                     );
             }
-            unit.NotifyImpact(weapon, TacticalCombatImpactKind.Shield);
+            ImpactApplied?.Invoke(unit, weapon, TacticalCombatImpactKind.Shield);
             return TacticalCombatImpactKind.Shield;
         }
 
@@ -152,7 +161,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The affected battle unit.</param>
         /// <param name="previousHull">The hull strength before impact.</param>
         /// <param name="random">The battle's random-number stream.</param>
-        private static void RequestHullHitEvent(
+        private void RequestHullHitEvent(
             CombatUnit unit,
             float previousHull,
             IRandomNumberProvider random
@@ -174,7 +183,7 @@ namespace Rebellion.Tactical
                 unit.Hull = 0;
                 return;
             }
-            unit.NotifySystemEvent(new TacticalSystemEvent(system, false));
+            SystemChangeRequested?.Invoke(unit, new TacticalSystemEvent(system, false));
         }
 
         /// <summary>
@@ -183,7 +192,7 @@ namespace Rebellion.Tactical
         /// <param name="unit">The affected battle unit.</param>
         /// <param name="excessDamage">The ion strength past the shields.</param>
         /// <param name="random">The battle's random-number stream.</param>
-        private static void RequestIonDisruption(
+        private void RequestIonDisruption(
             CombatUnit unit,
             float excessDamage,
             IRandomNumberProvider random
@@ -203,14 +212,17 @@ namespace Rebellion.Tactical
                     arcs |= 1 << ((component - 3) >> 1);
                 excessDamage = (float)((double)excessDamage - 1);
             }
-            unit.NotifySystemEvent(new TacticalSystemEvent(attackDelay, movementDelay, arcs));
+            SystemChangeRequested?.Invoke(
+                unit,
+                new TacticalSystemEvent(attackDelay, movementDelay, arcs)
+            );
         }
 
         /// <summary>
         /// Selects a damaged component after a successful damage-control roll.
         /// </summary>
         /// <param name="random">The battle's random-number stream.</param>
-        private static void RequestComponentRepair(CombatUnit unit, IRandomNumberProvider random)
+        private void RequestComponentRepair(CombatUnit unit, IRandomNumberProvider random)
         {
             if (
                 unit.DamageControl == 0
@@ -235,11 +247,82 @@ namespace Rebellion.Tactical
                 uint damage = unit.GetDamage(system);
                 if (roll <= damage)
                 {
-                    unit.NotifySystemEvent(new TacticalSystemEvent(system, true));
+                    SystemChangeRequested?.Invoke(unit, new TacticalSystemEvent(system, true));
                     return;
                 }
                 roll -= damage;
             }
+        }
+    }
+
+    /// <summary>
+    /// Identifies the surface reached by an applied tactical weapon impact.
+    /// </summary>
+    public enum TacticalCombatImpactKind
+    {
+        None,
+        Shield,
+        Hull,
+        Destroyed,
+    }
+
+    /// <summary>
+    /// Identifies a persistent component change or temporary ion disruption.
+    /// </summary>
+    public enum TacticalSystemEventKind
+    {
+        Damage,
+        Repair,
+        Disruption,
+    }
+
+    /// <summary>
+    /// Describes a system event awaiting application by the battle's command queue.
+    /// </summary>
+    public readonly struct TacticalSystemEvent
+    {
+        public TacticalShipSystem System { get; }
+        public TacticalSystemEventKind Kind { get; }
+        public bool IsRepair => Kind == TacticalSystemEventKind.Repair;
+
+        /// <summary>
+        /// Gets the attack timer increment for disruption, or null for a component change.
+        /// </summary>
+        public float? AttackDelay { get; }
+
+        /// <summary>
+        /// Gets the movement timer increment for disruption, or null for a component change.
+        /// </summary>
+        public float? MovementDelay { get; }
+        public int DischargedArcMask { get; }
+
+        /// <summary>
+        /// Creates a persistent component damage or repair event.
+        /// </summary>
+        /// <param name="system">The affected ship system.</param>
+        /// <param name="isRepair">Whether the event repairs one damage level.</param>
+        public TacticalSystemEvent(TacticalShipSystem system, bool isRepair)
+        {
+            System = system;
+            Kind = isRepair ? TacticalSystemEventKind.Repair : TacticalSystemEventKind.Damage;
+            AttackDelay = null;
+            MovementDelay = null;
+            DischargedArcMask = 0;
+        }
+
+        /// <summary>
+        /// Creates a disruption event with explicit timer increments and discharged batteries.
+        /// </summary>
+        /// <param name="attackDelay">The additional attack delay in seconds.</param>
+        /// <param name="movementDelay">The additional movement delay in seconds.</param>
+        /// <param name="dischargedArcMask">The batteries whose charge must be cleared.</param>
+        public TacticalSystemEvent(float attackDelay, float movementDelay, int dischargedArcMask)
+        {
+            System = TacticalShipSystem.Weapons;
+            Kind = TacticalSystemEventKind.Disruption;
+            AttackDelay = attackDelay;
+            MovementDelay = movementDelay;
+            DischargedArcMask = dischargedArcMask;
         }
     }
 }

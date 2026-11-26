@@ -473,7 +473,15 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 1000, 0)
             );
             CombatUnit target = session.GetUnit("b");
-            target.ApplyHit(TacticalWeaponType.Turbolaser, 1, 1, 1, new FixedRandom(100), "a");
+            session.Damage.ApplyHit(
+                target,
+                TacticalWeaponType.Turbolaser,
+                1,
+                1,
+                1,
+                new FixedRandom(100),
+                "a"
+            );
             target.Status = status;
             target.Destroy();
 
@@ -508,7 +516,8 @@ namespace Rebellion.Tests.Tactical
                 )
                     applied = change;
             };
-            target.ApplyHit(
+            session.Damage.ApplyHit(
+                target,
                 TacticalWeaponType.IonCannon,
                 1,
                 1,
@@ -549,7 +558,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateSession(CreateShip("a", 1000, 0), victim);
             CombatUnit target = session.GetUnit("b");
             target.ApplyComponentEvent(TacticalShipSystem.Engines, false);
-            target.AdvanceSystems(1, new FixedRandom(0));
+            session.Damage.AdvanceSystems(target, 1, new FixedRandom(0));
             target.Status = status;
             target.Destroy();
 
@@ -570,7 +579,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
             Assert.AreEqual("b", unit.TractorTargetID);
             unit.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
-            unit.AdvanceSystems(1, new FixedRandom(0));
+            session.Damage.AdvanceSystems(unit, 1, new FixedRandom(0));
             unit.Destroy();
 
             AdvanceSeconds(session, 12);
@@ -719,7 +728,8 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            victim.ApplyHit(
+            session.Damage.ApplyHit(
+                victim,
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,
@@ -757,7 +767,8 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            victim.ApplyHit(
+            session.Damage.ApplyHit(
+                victim,
                 TacticalWeaponType.Turbolaser,
                 2000,
                 1,
@@ -789,16 +800,15 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            session
-                .GetUnit("enemy")
-                .ApplyHit(
-                    TacticalWeaponType.Turbolaser,
-                    200,
-                    1,
-                    1,
-                    new SystemRandomProvider(1),
-                    attacker.InstanceID
-                );
+            session.Damage.ApplyHit(
+                session.GetUnit("enemy"),
+                TacticalWeaponType.Turbolaser,
+                200,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                attacker.InstanceID
+            );
 
             Assert.AreSame(applied, session.GetGroup(attacker));
             Assert.AreSame(requested, session.GetRequestedGroup(attacker));
@@ -826,16 +836,15 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            session
-                .GetUnit("enemy")
-                .ApplyHit(
-                    TacticalWeaponType.Turbolaser,
-                    200,
-                    1,
-                    1,
-                    new SystemRandomProvider(1),
-                    attacker.InstanceID
-                );
+            session.Damage.ApplyHit(
+                session.GetUnit("enemy"),
+                TacticalWeaponType.Turbolaser,
+                200,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                attacker.InstanceID
+            );
 
             CollectionAssert.AreEqual(new[] { reportID.ToString() }, output);
         }
@@ -858,16 +867,15 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            session
-                .GetUnit("b")
-                .ApplyHit(
-                    TacticalWeaponType.Turbolaser,
-                    2000,
-                    1,
-                    1,
-                    new SystemRandomProvider(1),
-                    attackerID
-                );
+            session.Damage.ApplyHit(
+                session.GetUnit("b"),
+                TacticalWeaponType.Turbolaser,
+                2000,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                attackerID
+            );
 
             Assert.IsEmpty(output);
         }
@@ -888,16 +896,15 @@ namespace Rebellion.Tests.Tactical
                 return null;
             };
 
-            session
-                .GetUnit("b")
-                .ApplyHit(
-                    TacticalWeaponType.Turbolaser,
-                    2000,
-                    1,
-                    1,
-                    new SystemRandomProvider(1),
-                    "a"
-                );
+            session.Damage.ApplyHit(
+                session.GetUnit("b"),
+                TacticalWeaponType.Turbolaser,
+                2000,
+                1,
+                1,
+                new SystemRandomProvider(1),
+                "a"
+            );
 
             CollectionAssert.AreEqual(new[] { "86" }, output);
         }

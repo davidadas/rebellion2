@@ -28,6 +28,29 @@ namespace Rebellion.Game.Combat
     }
 
     /// <summary>
+    /// Identifies a ship system that can suffer damage or receive repairs in combat.
+    /// </summary>
+    public enum TacticalShipSystem
+    {
+        Shields,
+        Weapons,
+        TractorBeam,
+        Engines,
+        Hyperdrive,
+    }
+
+    /// <summary>
+    /// Identifies the damage delivered by a tactical weapon.
+    /// </summary>
+    public enum TacticalWeaponType
+    {
+        LaserCannon,
+        IonCannon,
+        Turbolaser,
+        Torpedo,
+    }
+
+    /// <summary>
     /// Owns the independently mutable copy of one strategic battle participant.
     /// </summary>
     [PersistableObject]
@@ -739,18 +762,6 @@ namespace Rebellion.Game.Combat
 
         public bool HasHyperdrive => GetDamage(TacticalShipSystem.Hyperdrive) < _hyperdriveCount;
         public double HullFraction => (double)Hull / MaximumHull;
-        public event Action<TacticalSystemEvent> SystemEventRequested;
-
-        /// <summary>
-        /// Reports a lethal weapon impact while its resulting hull value is still stored.
-        /// The argument identifies the firing unit.
-        /// </summary>
-        public event Action<string> LethalHit;
-
-        /// <summary>
-        /// Requests the weapon's impact effect after the affected surface and hull state are stored.
-        /// </summary>
-        public event Action<TacticalWeaponType, TacticalCombatImpactKind> ImpactRequested;
 
         internal float WeaponRechargeSample => _weaponRecharge;
         internal float ShieldRechargeSample => _shieldRecharge;
@@ -1130,14 +1141,6 @@ namespace Rebellion.Game.Combat
 
         internal float DamageControl => _damageControl;
         internal uint DamageEventCount => _damageEventCount;
-
-        internal void NotifyImpact(TacticalWeaponType weapon, TacticalCombatImpactKind impact) =>
-            ImpactRequested?.Invoke(weapon, impact);
-
-        internal void NotifyLethalHit(string attackerID) => LethalHit?.Invoke(attackerID);
-
-        internal void NotifySystemEvent(TacticalSystemEvent change) =>
-            SystemEventRequested?.Invoke(change);
 
         private void SetDamage(TacticalShipSystem system, uint damage) =>
             _battleDamage.SetCombatDamage(system, unchecked((int)damage));
