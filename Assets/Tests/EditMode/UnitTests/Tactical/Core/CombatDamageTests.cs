@@ -1074,7 +1074,9 @@ namespace Rebellion.Tests.Tactical
             CapitalShipSystemDamage initialDamage = null
         )
         {
-            BaseSceneNode ship = isFighter ? new Starfighter() : new CapitalShip();
+            BaseSceneNode ship = isFighter
+                ? new Starfighter()
+                : new CapitalShip { SystemDamage = initialDamage };
             CombatUnit unit = CombatUnit.Create(ship);
             unit.InitializeCombatPools(
                 maximumHull,
@@ -1086,8 +1088,7 @@ namespace Rebellion.Tests.Tactical
                 maneuverability,
                 tractorPower,
                 hyperdrives,
-                damageControlRating,
-                initialDamage
+                damageControlRating
             );
             return unit;
         }
