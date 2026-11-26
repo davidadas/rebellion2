@@ -385,7 +385,6 @@ namespace Rebellion.Tactical
                 Winner = Winner,
                 AttackerOutcome = _outcomes[0],
                 DefenderOutcome = _outcomes[1],
-                TerminalFlags = _ending.Flags.ToArray(),
                 StationCharge = BattleStation?.Charge ?? 0,
                 StationDeparted = BattleStation?.HasDeparted ?? false,
                 MovieID = PendingSynchronizedMovieID,

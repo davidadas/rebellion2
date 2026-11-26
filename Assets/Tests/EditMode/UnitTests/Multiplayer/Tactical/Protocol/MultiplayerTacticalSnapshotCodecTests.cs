@@ -241,7 +241,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Winner = (SpaceCombatResult.BattleOutcome)6,
                 AttackerOutcome = (SpaceCombatResult.SideOutcome)7,
                 DefenderOutcome = (SpaceCombatResult.SideOutcome)8,
-                TerminalFlags = new[] { true, false, true, false, true, false, true },
                 StationCharge = 10.125f,
                 StationDeparted = false,
                 MovieID = 12,

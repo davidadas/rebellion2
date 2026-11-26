@@ -451,7 +451,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void RequestImmediateResult_NetworkCombat_PreservesLiveBattleAndTerminalFlags()
+        public void RequestImmediateResult_NetworkCombat_KeepsBattleRunning()
         {
             TacticalCombatSession authority = CreateAuthority();
 
@@ -465,7 +465,7 @@ namespace Rebellion.Tests.Tactical
             );
 
             Assert.IsFalse(authority.IsComplete);
-            Assert.IsFalse(authority.TerminalFlags[6]);
+            Assert.IsFalse(authority.ImmediateResultRequested);
         }
 
         [Test]

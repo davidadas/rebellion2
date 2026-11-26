@@ -40,10 +40,6 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0), false, false);
             Assert.AreEqual(message, ending.GetTerminalNotification(faction));
-            CollectionAssert.AreEqual(
-                new[] { false, true, false, false, false, false, false },
-                ending.Flags
-            );
         }
 
         [TestCase(0, 153)]
@@ -65,8 +61,6 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3, departed: true), Force(1), false, false);
             Assert.AreEqual(message, ending.GetTerminalNotification(faction));
-            Assert.IsTrue(ending.Flags[0]);
-            Assert.IsTrue(ending.Flags[3]);
         }
 
         [TestCase(0, 151)]
@@ -79,16 +73,15 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0, 4, departed: true), false, false);
             Assert.AreEqual(message, ending.GetTerminalNotification(faction));
-            Assert.IsTrue(ending.Flags[2]);
         }
 
         [Test]
-        public void TryBegin_StationDeparted_ContributesToEmpireDepartureFlag()
+        public void TryBegin_StationDeparted_QueuesEmpireWithdrawalCues()
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0, 5), false, true);
             Assert.AreEqual(151, ending.GetTerminalNotification(0));
-            Assert.IsTrue(ending.Flags[2]);
+            Assert.AreEqual(280, ending.GetTerminalNotification(1));
         }
 
         [TestCase(0, false)]
@@ -105,7 +98,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, state, departed: true), Force(1), false, false);
-            Assert.AreEqual(expected, ending.Flags[0]);
+            Assert.AreEqual(expected ? 150 : 153, ending.GetTerminalNotification(0));
         }
 
         [Test]
@@ -113,7 +106,7 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3, stillActive: true, departed: true), Force(1), false, false);
-            Assert.IsFalse(ending.Flags[0]);
+            Assert.AreEqual(153, ending.GetTerminalNotification(0));
         }
 
         [Test]
@@ -121,19 +114,16 @@ namespace Rebellion.Tests.Tactical
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0, 3), Force(1), false, false);
-            Assert.IsFalse(ending.Flags[0]);
+            Assert.AreEqual(153, ending.GetTerminalNotification(0));
         }
 
         [Test]
-        public void TryBegin_MutualDestruction_ClearsWinnerFlagsAndOmitsCue()
+        public void TryBegin_MutualDestruction_OmitsBothTerminalCues()
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(0), Force(0), false, false);
-            CollectionAssert.AreEqual(
-                new[] { false, false, false, false, false, false, false },
-                ending.Flags
-            );
             Assert.IsNull(ending.GetTerminalNotification(0));
+            Assert.IsNull(ending.GetTerminalNotification(1));
         }
 
         [Test]
@@ -143,7 +133,7 @@ namespace Rebellion.Tests.Tactical
             Assert.IsTrue(ending.TryBegin(Force(1), Force(0), false, false));
             Assert.IsFalse(ending.TryBegin(Force(0), Force(1), false, false));
             Assert.AreEqual(152, ending.GetTerminalNotification(0));
-            Assert.IsTrue(ending.Flags[1]);
+            Assert.AreEqual(283, ending.GetTerminalNotification(1));
         }
 
         [Test]
@@ -177,12 +167,12 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void FinishWithoutAssessment_AfterCapturedResult_PreservesOtherSnapshotFlags()
+        public void FinishWithoutAssessment_AfterCapturedResult_PreservesTerminalCue()
         {
             TacticalCombatEnding ending = new();
             ending.TryBegin(Force(1), Force(0), false, false);
             ending.FinishWithoutAssessment();
-            Assert.IsTrue(ending.Flags[1]);
+            Assert.AreEqual(152, ending.GetTerminalNotification(0));
             Assert.IsTrue(ending.ImmediateResultRequested);
         }
 

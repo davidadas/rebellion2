@@ -286,7 +286,6 @@ namespace Rebellion.Multiplayer.Tactical
                 _writer.Write((int)value.Winner);
                 _writer.Write((int)value.AttackerOutcome);
                 _writer.Write((int)value.DefenderOutcome);
-                Array(value.TerminalFlags, item => _writer.Write(item), 7);
                 _writer.Write(value.StationCharge);
                 _writer.Write(value.StationDeparted);
                 _writer.Write(value.MovieID);
@@ -538,7 +537,6 @@ namespace Rebellion.Multiplayer.Tactical
                     Winner = (SpaceCombatResult.BattleOutcome)_reader.ReadInt32(),
                     AttackerOutcome = (SpaceCombatResult.SideOutcome)_reader.ReadInt32(),
                     DefenderOutcome = (SpaceCombatResult.SideOutcome)_reader.ReadInt32(),
-                    TerminalFlags = Array(() => Boolean(), 7),
                     StationCharge = _reader.ReadSingle(),
                     StationDeparted = Boolean(),
                     MovieID = _reader.ReadInt32(),

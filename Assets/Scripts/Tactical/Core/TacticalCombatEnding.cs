@@ -1,6 +1,3 @@
-using System;
-using System.Collections.Generic;
-
 namespace Rebellion.Tactical
 {
     /// <summary>
@@ -39,24 +36,14 @@ namespace Rebellion.Tactical
     /// </summary>
     internal sealed class TacticalCombatEnding
     {
-        private readonly bool[] _flags = new bool[7];
         private bool _assessmentCaptured;
-
-        public IReadOnlyList<bool> Flags { get; }
+        private bool _allianceWithdrew;
+        private bool _empireWithdrew;
+        private bool _allianceOutlastedEmpire;
+        private bool _empireOutlastedAlliance;
         public float RemainingMilliseconds { get; private set; }
         public bool IsComplete { get; private set; }
-        public bool ImmediateResultRequested => _flags[6];
-
-        /// <summary>
-        /// Restores the authoritative terminal flags without running local ending callbacks.
-        /// </summary>
-        /// <param name="flags">The seven validated terminal flags.</param>
-        internal void ApplySnapshotFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
-
-        /// <summary>
-        /// Initializes the battle's terminal assessment.
-        /// </summary>
-        internal TacticalCombatEnding() => Flags = Array.AsReadOnly(_flags);
+        public bool ImmediateResultRequested { get; private set; }
 
         /// <summary>
         /// Captures a terminal assessment once after active-object movement and counting complete.
@@ -83,18 +70,16 @@ namespace Rebellion.Tactical
 
             _assessmentCaptured = true;
             RemainingMilliseconds = 4000;
-            _flags[0] = IsWithdrawing(alliance) && !alliance.StillActive && alliance.HasDeparted;
-            _flags[1] = empire.ActiveCount == 0 && !stationOperational;
-            _flags[2] =
+            _allianceWithdrew =
+                IsWithdrawing(alliance) && !alliance.StillActive && alliance.HasDeparted;
+            _empireWithdrew =
                 IsWithdrawing(empire)
                 && !empire.StillActive
                 && (empire.HasDeparted || stationDeparted);
-            _flags[3] = alliance.ActiveCount == 0;
-            if (_flags[1] && _flags[3])
-            {
-                _flags[1] = false;
-                _flags[3] = false;
-            }
+            bool allianceInactive = alliance.ActiveCount == 0;
+            bool empireInactive = empire.ActiveCount == 0 && !stationOperational;
+            _allianceOutlastedEmpire = empireInactive && !allianceInactive;
+            _empireOutlastedAlliance = allianceInactive && !empireInactive;
 
             return true;
         }
@@ -118,7 +103,7 @@ namespace Rebellion.Tactical
         /// </summary>
         public void FinishWithoutAssessment()
         {
-            _flags[6] = true;
+            ImmediateResultRequested = true;
             IsComplete = true;
         }
 
@@ -139,24 +124,24 @@ namespace Rebellion.Tactical
         {
             if (factionIndex == 0)
             {
-                if (_flags[1] && _flags[2])
+                if (_allianceOutlastedEmpire && _empireWithdrew)
                     return 151;
-                if (_flags[0])
+                if (_allianceWithdrew)
                     return 150;
-                if (_flags[1])
+                if (_allianceOutlastedEmpire)
                     return 152;
-                if (_flags[3])
+                if (_empireOutlastedAlliance)
                     return 153;
             }
             else
             {
-                if (_flags[3] && _flags[0])
+                if (_empireOutlastedAlliance && _allianceWithdrew)
                     return 281;
-                if (_flags[2])
+                if (_empireWithdrew)
                     return 280;
-                if (_flags[3])
+                if (_empireOutlastedAlliance)
                     return 282;
-                if (_flags[1])
+                if (_allianceOutlastedEmpire)
                     return 283;
             }
             return null;

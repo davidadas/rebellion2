@@ -82,7 +82,6 @@ namespace Rebellion.Tactical
                 : unchecked((int)(_scheduler?.SystemTime ?? 3));
         public bool IsComplete { get; private set; }
         public bool IsArriving => _arrival?.IsComplete == false;
-        public IReadOnlyList<bool> TerminalFlags => _ending.Flags;
         public SpaceCombatResult.BattleOutcome Winner { get; private set; } =
             SpaceCombatResult.BattleOutcome.Draw;
         public bool IsPaused

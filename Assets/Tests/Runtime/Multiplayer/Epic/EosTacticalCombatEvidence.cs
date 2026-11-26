@@ -107,8 +107,6 @@ namespace Rebellion.Tests.MultiplayerIntegration
             writer.WriteField("IsPaused", session.IsPaused);
             writer.WriteField("IsComplete", session.IsComplete);
             writer.WriteField("Winner", (int)session.Winner);
-            for (int index = 0; index < session.TerminalFlags.Count; index++)
-                writer.WriteField("TerminalFlags." + index, session.TerminalFlags[index]);
             Dictionary<int, TacticalCombatGroup> groups = session.Groups.ToDictionary(group =>
                 group.ID
             );
