@@ -195,11 +195,19 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
-        [Test]
-        public void ChangePopularSupport_EnemySectorSuppression_AppliesFullShift()
+        [TestCase(SupportChange.Decrease, -10, 45)]
+        [TestCase(SupportChange.Increase, 10, 55)]
+        [TestCase(SupportChange.Decrease, 10, 60)]
+        [TestCase(SupportChange.Increase, -10, 40)]
+        [TestCase(SupportChange.Decrease, -1, 50)]
+        public void ChangePopularSupport_EnemySectorSuppression_UsesConfiguredResistance(
+            SupportChange resistance,
+            int shift,
+            int expectedSupport
+        )
         {
             _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
-            _empire.Settings.SupportResistance = SupportChange.Decrease;
+            _empire.Settings.SupportResistance = resistance;
             Fleet fleet = new Fleet { OwnerInstanceID = _rebels.InstanceID };
             _game.AttachNode(fleet, _targetPlanet);
             _game.AttachNode(
@@ -216,9 +224,9 @@ namespace Rebellion.Tests.Gameplay
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, 50);
 
-            _commands.ChangePopularSupport(_targetPlanet, _empire, -10);
+            _commands.ChangePopularSupport(_targetPlanet, _empire, shift);
 
-            Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(expectedSupport, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
         [Test]

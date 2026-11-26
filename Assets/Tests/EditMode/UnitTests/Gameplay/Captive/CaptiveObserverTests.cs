@@ -380,6 +380,38 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_CaptureAfterOfficerKilled_DoesNotRelocatePersonnel()
+        {
+            (GameRoot game, _, Officer captive, MovementCommands movement) = BuildScene();
+            Planet capturePlanet = game.GetSceneNodeByInstanceID<Planet>("emp_planet");
+            game.MoveNode(captive, capturePlanet);
+            OfficerCaptureStateResult capture = CaptureResult(captive, capturePlanet);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(captive);
+            CaptiveObserver observer = CreateObserver(game, movement);
+
+            observer.HandleResults(new[] { capture });
+
+            Assert.AreSame(capturePlanet, captive.GetParent());
+            Assert.IsTrue(captive.IsKilled);
+            Assert.IsFalse(captive.IsEnabled);
+            Assert.IsNull(captive.Movement);
+        }
+
+        [Test]
+        public void HandleResults_CaptureAfterOfficerKilled_DoesNotRevealCustody()
+        {
+            (GameRoot game, Planet planet, Officer captive, MovementCommands movement) =
+                BuildScene();
+            OfficerCaptureStateResult capture = CaptureResult(captive, planet);
+            new PersonnelCommands(game, new PersonnelQueries(game)).KillOfficer(captive);
+            CaptiveObserver observer = CreateObserver(game, movement);
+
+            List<GameResult> reactions = observer.HandleResults(new[] { capture });
+
+            Assert.IsEmpty(reactions.OfType<IntelligenceRevealedResult>());
+        }
+
+        [Test]
         public void HandleResults_InactiveCaptureAwayFromCaptorPlanet_PlacesAtCustodyDestination()
         {
             (GameRoot game, Planet destination, Officer captive, MovementCommands movement) =

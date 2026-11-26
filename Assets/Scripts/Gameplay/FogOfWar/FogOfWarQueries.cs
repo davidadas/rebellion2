@@ -96,6 +96,9 @@ namespace Rebellion.Gameplay
             foreach (PlanetSector masterSector in _game.Galaxy.GetChildren<PlanetSector>())
             {
                 PlanetSector viewSector = (PlanetSector)masterSector.CreateCopy();
+                viewSector.SetProjectedSectorSuppression(
+                    masterSector.GetSectorSuppressionDivisor()
+                );
                 foreach (Faction sectorFaction in factions)
                     viewSector.SetProjectedSectorSuppression(
                         sectorFaction.InstanceID,
