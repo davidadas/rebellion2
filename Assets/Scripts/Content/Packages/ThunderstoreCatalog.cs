@@ -38,7 +38,7 @@ public sealed class ThunderstoreCatalog
         try
         {
             _catalog = File.Exists(CachePath)
-                ? ThunderstoreClient.ParseCatalog(File.ReadAllText(CachePath))
+                ? ThunderstoreClient.ParseCatalog(AtomicTextFile.ReadAllText(CachePath))
                 : Array.Empty<ThunderstorePackage>();
         }
         catch (Exception exception)
@@ -73,7 +73,9 @@ public sealed class ThunderstoreCatalog
         try
         {
             _communityFilters = File.Exists(CommunityFiltersPath)
-                ? ThunderstoreClient.ParseCommunityFilters(File.ReadAllText(CommunityFiltersPath))
+                ? ThunderstoreClient.ParseCommunityFilters(
+                    AtomicTextFile.ReadAllText(CommunityFiltersPath)
+                )
                 : new ThunderstoreCommunityFilters();
         }
         catch (Exception exception)

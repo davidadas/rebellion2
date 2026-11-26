@@ -36,6 +36,18 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [UnityTest]
+        public IEnumerator Activate_InvalidSavedSettings_LeavesDocumentUntouched()
+        {
+            yield return PrepareLibrary();
+            const string invalid = "{broken";
+            File.WriteAllText(settingsPath, invalid);
+
+            Toggle("Parent");
+
+            Assert.That(File.ReadAllText(settingsPath), Is.EqualTo(invalid));
+        }
+
+        [UnityTest]
         public IEnumerator Activate_EnablingDependent_EnablesRequiredAddOn()
         {
             yield return PrepareLibrary();
@@ -77,7 +89,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <returns>The asynchronous fixture preparation.</returns>
         private IEnumerator PrepareLibrary()
         {
-            settingsPath = Path.Combine(UserDataPaths.Root, "user-settings.json");
+            settingsPath = Path.Combine(UserDataPaths.GameRoot, "user-settings.json");
             previousSettings = File.Exists(settingsPath) ? File.ReadAllText(settingsPath) : null;
             string root = Path.Combine(folder, "library", "Content");
             ContentDefinitionSerializer.Serialize(

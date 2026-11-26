@@ -132,12 +132,21 @@ internal static class ContentEditorModCatalog
                     : null,
                 package
             ))
-            : catalog.Select(package => new ContentEditorModEntry(
-                package,
-                installations.TryGetValue(package.full_name, out InstalledModPackage installation)
-                    ? installation
-                    : null
-            ));
+            : catalog
+                .Select(package => new ContentEditorModEntry(
+                    package,
+                    installations.TryGetValue(
+                        package.full_name,
+                        out InstalledModPackage installation
+                    )
+                        ? installation
+                        : null
+                ))
+                .Concat(
+                    installed
+                        .Where(package => !listings.ContainsKey(package.PackageID))
+                        .Select(package => new ContentEditorModEntry(null, package))
+                );
         string[] terms = (query ?? string.Empty)
             .Split((char[])null, StringSplitOptions.RemoveEmptyEntries)
             .Select(Normalize)

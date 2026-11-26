@@ -269,7 +269,12 @@ internal sealed class ContentEditorModManagerController : IDisposable
         view.RenderRows(
             entries,
             installedTab,
-            installedTab ? entries.Count : catalog.Length,
+            installedTab
+                ? entries.Count
+                : catalog
+                    .Select(package => package.full_name)
+                    .Union(installed.Select(package => package.PackageID), StringComparer.Ordinal)
+                    .Count(),
             resetScroll
         );
     }

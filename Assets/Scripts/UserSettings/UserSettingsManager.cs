@@ -348,7 +348,7 @@ public sealed class UserSettingsManager
             path,
             () =>
             {
-                UserSettings latest = ReadSettingsForUpdate(path);
+                UserSettings latest = ReadSettingsForUpdate(path, settings);
                 persisted = JsonUtility.FromJson<UserSettings>(JsonUtility.ToJson(settings));
                 persisted.AcceptedAgreementVersion =
                     acceptedAgreementVersion ?? latest.AcceptedAgreementVersion;
@@ -362,16 +362,30 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Reads authoritative settings for a write; invalid files block the update.
+    /// Reads authoritative settings under the publication lock, preserving invalid files before runtime recovery.
     /// </summary>
     /// <param name="path">The shared settings file.</param>
+    /// <param name="fallback">The runtime snapshot for an invalid file, or null to reject the update.</param>
     /// <returns>The normalized settings.</returns>
-    private static UserSettings ReadSettingsForUpdate(string path)
+    private static UserSettings ReadSettingsForUpdate(string path, UserSettings fallback = null)
     {
-        UserSettings settings = File.Exists(path)
-            ? DeserializeSettings(AtomicTextFile.ReadAllText(path))
-                ?? throw new InvalidDataException("The user settings could not be read.")
-            : CreateDefaults();
+        if (!File.Exists(path))
+            return CreateDefaults();
+        UserSettings settings;
+        try
+        {
+            settings =
+                DeserializeSettings(AtomicTextFile.ReadAllText(path))
+                ?? throw new InvalidDataException("The user settings could not be read.");
+        }
+        catch (Exception exception)
+            when (fallback != null && exception is ArgumentException or InvalidDataException)
+        {
+            string backup = path + ".corrupt-" + Guid.NewGuid().ToString("N");
+            File.Copy(path, backup);
+            GameLogger.Warning("Invalid user settings were backed up to " + backup + ".");
+            return fallback;
+        }
         settings.Normalize();
         return settings;
     }
