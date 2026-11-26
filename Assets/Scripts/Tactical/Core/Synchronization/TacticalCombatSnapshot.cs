@@ -19,7 +19,6 @@ namespace Rebellion.Tactical.Synchronization
         public SpaceCombatResult.BattleOutcome Winner;
         public SpaceCombatResult.SideOutcome AttackerOutcome;
         public SpaceCombatResult.SideOutcome DefenderOutcome;
-        public bool[] TerminalFlags = new bool[7];
         public float StationCharge;
         public bool StationDeparted;
         public int MovieID;

@@ -102,7 +102,6 @@ namespace Rebellion.Tactical
             Winner = snapshot.Winner;
             _outcomes[0] = snapshot.AttackerOutcome;
             _outcomes[1] = snapshot.DefenderOutcome;
-            _ending.ApplySnapshotFlags(snapshot.TerminalFlags);
             BattleStation?.ApplySnapshot(snapshot.StationCharge, snapshot.StationDeparted);
             foreach (TacticalCombatSelectionSnapshot state in snapshot.Selections)
                 GetSynchronizedSelection(state.Side).ApplySnapshot(state);
@@ -286,7 +285,6 @@ namespace Rebellion.Tactical
                 || snapshot.Groups == null
                 || snapshot.Sides?.Length != 2
                 || snapshot.Selections?.Length != 2
-                || snapshot.TerminalFlags?.Length != 7
                 || snapshot.Effects == null
                 || !Enum.IsDefined(typeof(SpaceCombatResult.BattleOutcome), snapshot.Winner)
                 || !Enum.IsDefined(typeof(SpaceCombatResult.SideOutcome), snapshot.AttackerOutcome)

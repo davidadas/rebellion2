@@ -2190,7 +2190,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Advance(16);
 
-            CollectionAssert.AreEqual(new bool[7], session.TerminalFlags);
+            Assert.IsTrue(session.IsDirectControlEnabled);
             Assert.IsFalse(session.IsComplete);
         }
 
@@ -2221,10 +2221,7 @@ namespace Rebellion.Tests.Tactical
             session.AdvanceClocked(16);
 
             CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
-            CollectionAssert.AreEqual(
-                new[] { false, true, false, false, false, false, false },
-                session.TerminalFlags
-            );
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, session.Winner);
         }
 
         [TestCase(CombatSide.Attacker, 283, 152)]
@@ -2280,13 +2277,13 @@ namespace Rebellion.Tests.Tactical
             clock.Advance(16);
             session.AdvanceClocked(16);
 
-            Assert.IsTrue(session.TerminalFlags[1]);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, session.Winner);
             Assert.IsFalse(session.IsComplete);
             Assert.IsFalse(session.IsDirectControlEnabled);
         }
 
         [Test]
-        public void Advance_MutualExtinction_ClearsBothWinnerFlags()
+        public void Advance_MutualExtinction_CompletesAsADrawWithoutATerminalCue()
         {
             TacticalCombatSession session = CreateSession(
                 CreateShip("a", 100, 0),
@@ -2295,11 +2292,16 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 3);
             session.GetUnit("a").Status = CombatUnitStatus.Destroyed;
             session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
+            List<int> messages = new();
+            session.Audio.NotificationRequested += (messageID, _) => messages.Add(messageID);
 
-            session.Advance(16);
+            AdvanceSeconds(session, 5);
 
-            CollectionAssert.AreEqual(new bool[7], session.TerminalFlags);
+            Assert.IsTrue(session.IsComplete);
             Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, session.Winner);
+            Assert.IsFalse(
+                messages.Any(message => message is >= 150 and <= 153 or >= 280 and <= 283)
+            );
         }
 
         [TestCase(1, "carrier")]
