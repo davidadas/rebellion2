@@ -179,6 +179,8 @@ namespace Rebellion.Game.Units
             set => _hyperdrive = value;
         }
 
+        internal bool HasBackupHyperdriveRating => _backupHyperdrive.HasValue;
+
         [PersistableIgnore]
         public int BackupHyperdrive
         {
