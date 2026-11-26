@@ -12,6 +12,65 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
+        [TestCase(0)]
+        [TestCase(1)]
+        [TestCase(2)]
+        [TestCase(3)]
+        public void StoreArtworkLayerSource_FailedPublish_RetryWritesAllPreviouslyStagedRecipeSources(
+            int blockedSource
+        )
+        {
+            using ContentPackEditorProject project = CreateLoadableProject();
+            Dictionary<string, byte[]> pending = new(StringComparer.Ordinal);
+            string[] addresses = new string[4];
+            for (int index = 0; index < addresses.Length; index++)
+            {
+                string source = Path.Combine(
+                    Directory.GetParent(contentRoot).FullName,
+                    "source-" + index + ".png"
+                );
+                File.WriteAllBytes(source, new[] { (byte)(index + 1) });
+                addresses[index] = ContentPackEditorStorage.StageArtworkLayerSource(
+                    source,
+                    pending
+                );
+            }
+            ContentEditorArtworkRecipe recipe = new()
+            {
+                ExistingSources = new[] { addresses[0] },
+                TravelPatterns = new[] { addresses[1] },
+                TravelSubjects = new[] { addresses[2] },
+            };
+            recipe.Layers.Add(new ContentEditorArtworkLayer { ImageSource = addresses[3] });
+            string blocker = Path.Combine(project.PackRootPath, addresses[blockedSource][5..]);
+            Directory.CreateDirectory(blocker);
+            Assert.Throws<IOException>(() =>
+            {
+                foreach (string address in recipe.SourceAddresses)
+                    ContentPackEditorStorage.StoreArtworkLayerSource(
+                        project,
+                        address,
+                        pending[address]
+                    );
+            });
+            Directory.Delete(blocker);
+
+            foreach (string address in recipe.SourceAddresses)
+                ContentPackEditorStorage.StoreArtworkLayerSource(
+                    project,
+                    address,
+                    pending[address]
+                );
+            ContentPackEditorStorage.Save(project);
+            project.Dispose();
+
+            foreach (string address in addresses)
+                CollectionAssert.AreEqual(
+                    pending[address],
+                    File.ReadAllBytes(Path.Combine(project.PackRootPath, address[5..]))
+                );
+        }
+
         [Test]
         public void ImportAsset_ReadOnlySource_KeepsTheSourceReadOnlyAndCleansWritableUndoCopies()
         {

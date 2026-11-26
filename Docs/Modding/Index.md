@@ -196,6 +196,10 @@ Artwork edits count as unsaved changes. Saving the pack commits its current file
 changes restores the files and settings from the last successful save. Undoing an image change
 after saving marks the pack as unsaved again. If another application changes a file, discard
 stops without overwriting it, and closing retains the recovery files if restoration fails.
+If a save fails partway through writing settings, the editor attempts to restore every written
+document. Blocked restores keep the pack marked as unsaved and retain the preceding files with
+a recovery manifest. After resolving the reported file conflict or permissions, retry Save or
+Discard to finish recovery.
 
 Artwork undo and redo belong to the open editing session. Temporary revisions are stored in a
 separate `.rebellion2-editor/History/<session>` directory for each open project and are removed

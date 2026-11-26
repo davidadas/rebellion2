@@ -59,6 +59,15 @@ internal sealed class ContentEditorAssetChange
     }
 
     /// <summary>
+    /// Removes a published file while retaining its preceding revision for recovery.
+    /// </summary>
+    internal void Delete()
+    {
+        File.Delete(Path);
+        after = null;
+    }
+
+    /// <summary>
     /// Refuses to undo over changes made outside this history entry.
     /// </summary>
     /// <param name="forward">Whether redo is requested.</param>
@@ -70,15 +79,25 @@ internal sealed class ContentEditorAssetChange
     /// <param name="expected">The expected snapshot, or null for an absent file.</param>
     internal void VerifyRevision(string expected)
     {
-        ContentEditorPaths.VerifyWritePath(project, Path);
-        if (
-            expected == null ? File.Exists(Path) : !File.Exists(Path) || !FilesMatch(Path, expected)
-        )
+        if (!MatchesRevision(expected))
             throw new IOException(
-                "Artwork changed outside the editor: "
+                "File changed outside the editor: "
                     + System.IO.Path.GetRelativePath(project.PackRootPath, Path)
                     + ". Resolve the file conflict before continuing."
             );
+    }
+
+    /// <summary>
+    /// Checks whether an owned file already contains a captured revision.
+    /// </summary>
+    /// <param name="expected">The expected snapshot, or null for an absent file.</param>
+    /// <returns>Whether the destination matches the captured bytes or absence.</returns>
+    internal bool MatchesRevision(string expected)
+    {
+        ContentEditorPaths.VerifyWritePath(project, Path);
+        return expected == null
+            ? !File.Exists(Path)
+            : File.Exists(Path) && FilesMatch(Path, expected);
     }
 
     /// <summary>

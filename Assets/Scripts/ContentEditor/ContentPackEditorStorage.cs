@@ -1012,6 +1012,7 @@ public static class ContentPackEditorStorage
     public static void Save(ContentPackEditorProject project)
     {
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
+        project.RestoreDocumentSave();
         project.VerifyAssets();
         foreach (ContentPackEditorDocument document in project.AllDocuments)
         {
@@ -1045,52 +1046,34 @@ public static class ContentPackEditorStorage
             nextDefinition.BasePackID,
             StringComparison.Ordinal
         );
-        var previous = dirtyDocuments.ToDictionary(
-            document => document,
-            document =>
-                File.Exists(document.TargetPath) ? File.ReadAllBytes(document.TargetPath) : null
-        );
+        ContentPackEditorSaveRecovery recovery = project.BeginDocumentSave(dirtyDocuments);
         IReadOnlyList<ContentPackEditorDocument> refreshed = null;
-        int written = 0;
         try
         {
             foreach (ContentPackEditorDocument document in dirtyDocuments)
-            {
-                SaveDocument(project, document);
-                written++;
-            }
+                recovery.Write(document);
             if (baseChanged)
                 refreshed = CreateDocuments(nextResolver, nextDefinition);
         }
-        catch
+        catch (Exception saveFailure)
         {
-            for (int index = written - 1; index >= 0; index--)
+            try
             {
-                ContentPackEditorDocument document = dirtyDocuments[index];
-                ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
-                string expected =
-                    document.IsRemoved || document.InheritsAll ? null : document.AuthoredText;
-                if (
-                    (
-                        File.Exists(document.TargetPath)
-                            ? File.ReadAllText(document.TargetPath)
-                            : null
-                    ) != expected
-                )
-                    throw new IOException(
-                        "A content document changed outside the editor during saving: "
-                            + document.TargetPath
-                    );
-                if (previous[document] != null)
-                    WriteBytesAtomically(document.TargetPath, previous[document]);
-                else if (File.Exists(document.TargetPath))
-                    File.Delete(document.TargetPath);
+                project.RestoreDocumentSave();
+            }
+            catch (IOException restoreFailure)
+            {
+                throw new IOException(
+                    restoreFailure.Message,
+                    new AggregateException(saveFailure, restoreFailure)
+                );
             }
             throw;
         }
         foreach (ContentPackEditorDocument document in dirtyDocuments)
             document.AcceptSave();
         project.AcceptSave(nextDefinition, refreshed);
+        project.CompleteDocumentSave();
     }
 
     /// <summary>
@@ -1110,63 +1093,11 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
-    /// Validates and writes the working text to the selected pack's local layer.
-    /// </summary>
-    /// <param name="project">The owner of the write.</param>
-    /// <param name="document">The validated working document.</param>
-    private static void SaveDocument(
-        ContentPackEditorProject project,
-        ContentPackEditorDocument document
-    )
-    {
-        document.Validate();
-        ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
-        VerifyUnchangedTarget(document);
-
-        if (document.IsRemoved || document.InheritsAll)
-        {
-            if (File.Exists(document.TargetPath))
-                File.Delete(document.TargetPath);
-            return;
-        }
-
-        string directory = Path.GetDirectoryName(document.TargetPath);
-        if (string.IsNullOrWhiteSpace(directory))
-            throw new IOException($"Content document path has no directory: {document.TargetPath}");
-        Directory.CreateDirectory(directory);
-
-        string temporaryPath = document.TargetPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
-        try
-        {
-            File.WriteAllText(temporaryPath, document.AuthoredText);
-            ReplaceFile(temporaryPath, document.TargetPath);
-        }
-        finally
-        {
-            if (File.Exists(temporaryPath))
-                File.Delete(temporaryPath);
-        }
-    }
-
-    /// <summary>
     /// Refuses to overwrite a file that another process changed after this document was opened.
     /// </summary>
     /// <param name="document">The document and its last observed disk state.</param>
     private static void VerifyUnchangedTarget(ContentPackEditorDocument document)
     {
         document.VerifyUnchangedSources();
-    }
-
-    /// <summary>
-    /// Moves a completed temporary file into place without exposing partial XML.
-    /// </summary>
-    /// <param name="temporaryPath">The complete temporary file.</param>
-    /// <param name="destinationPath">The final document path.</param>
-    private static void ReplaceFile(string temporaryPath, string destinationPath)
-    {
-        if (File.Exists(destinationPath))
-            File.Replace(temporaryPath, destinationPath, null);
-        else
-            File.Move(temporaryPath, destinationPath);
     }
 }

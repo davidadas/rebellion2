@@ -1600,12 +1600,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     byte[] png = frames[index].Bake(draft.Layers);
                     draft.UpgradeImageLayerVersion();
                     images.Add((output.Field, png, JsonUtility.ToJson(draft)));
-                    foreach (var layer in draft.Layers)
-                        if (
-                            layer.ImageSource != null
-                            && pendingLayerSources.ContainsKey(layer.ImageSource)
-                        )
-                            layerSourcesToSave.Add(layer.ImageSource);
+                    foreach (string address in draft.SourceAddresses)
+                        if (pendingLayerSources.ContainsKey(address))
+                            layerSourcesToSave.Add(address);
                 }
 
                 bool persist = !project.IsDirty;

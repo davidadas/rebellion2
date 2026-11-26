@@ -11,6 +11,7 @@ using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
@@ -23,6 +24,7 @@ public sealed class ContentPackEditorProject : IDisposable
 
     private List<ContentPackEditorDocument> documents;
     private ContentPackEditorHistory history;
+    private ContentPackEditorSaveRecovery saveRecovery;
     private IReadOnlyList<ContentPackEditorCatalog> catalogs;
 
     public string ContentRootPath { get; }
@@ -42,7 +44,10 @@ public sealed class ContentPackEditorProject : IDisposable
     internal IEnumerable<string> RemovedDocumentPaths =>
         documents.Where(document => document.IsRemoved).Select(document => document.TargetPath);
 
-    public bool IsDirty => history.HasUnsavedAssets || documents.Any(document => document.IsDirty);
+    public bool IsDirty =>
+        saveRecovery?.HasPendingRestores == true
+        || history.HasUnsavedAssets
+        || documents.Any(document => document.IsDirty);
     public bool CanUndo => history.CanUndo;
     public bool CanRedo => history.CanRedo;
     public string UndoDescription => history.UndoDescription;
@@ -51,13 +56,28 @@ public sealed class ContentPackEditorProject : IDisposable
     /// <summary>
     /// Restores unsaved asset edits before releasing this project's temporary undo revisions.
     /// </summary>
-    public void Dispose() => history.Dispose();
+    public void Dispose()
+    {
+        try
+        {
+            RestoreDocumentSave();
+        }
+        catch (IOException exception)
+        {
+            GameLogger.Warning(exception.ToString());
+        }
+        finally
+        {
+            history.Dispose();
+        }
+    }
 
     /// <summary>
     /// Restores settings and artwork to their last successful save.
     /// </summary>
     public void DiscardChanges()
     {
+        RestoreDocumentSave();
         history.DiscardChanges();
         catalogs = null;
         RefreshDefinition();
@@ -67,6 +87,40 @@ public sealed class ContentPackEditorProject : IDisposable
     /// Refuses to save referencing documents over externally changed artwork.
     /// </summary>
     internal void VerifyAssets() => history.VerifyAssets();
+
+    /// <summary>
+    /// Prepares durable recovery before the first document of a save is written.
+    /// </summary>
+    /// <param name="changedDocuments">The documents participating in this save.</param>
+    /// <returns>The owned recovery transaction, or null when no documents changed.</returns>
+    internal ContentPackEditorSaveRecovery BeginDocumentSave(
+        IReadOnlyList<ContentPackEditorDocument> changedDocuments
+    )
+    {
+        RestoreDocumentSave();
+        return saveRecovery =
+            changedDocuments.Count == 0
+                ? null
+                : new ContentPackEditorSaveRecovery(this, changedDocuments);
+    }
+
+    /// <summary>
+    /// Resolves a failed save before Save, Discard, or close can release its preceding revisions.
+    /// </summary>
+    internal void RestoreDocumentSave()
+    {
+        saveRecovery?.Restore();
+        saveRecovery = null;
+    }
+
+    /// <summary>
+    /// Releases recovery after every saved document and the project save point are accepted.
+    /// </summary>
+    internal void CompleteDocumentSave()
+    {
+        saveRecovery?.Commit();
+        saveRecovery = null;
+    }
 
     /// <summary>
     /// Groups a continuous gesture or multi-field operation into one undoable edit.
