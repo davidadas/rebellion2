@@ -13,7 +13,7 @@ namespace Rebellion.Tests.ContentEditor
         public void AddMissionReportOverride_IdentifiedSharedReport_AssignsDistinctStableIdentities()
         {
             ContentPackEditorCatalog catalog = Create(
-                "<MessageDefinitions><MessageDefinition><InstanceID>espionage-success</InstanceID><DisplayName>Espionage report</DisplayName><ResultType>MissionReport</ResultType><MissionTypeID>Espionage</MissionTypeID><Outcome>Success</Outcome><Body>Report</Body></MessageDefinition></MessageDefinitions>"
+                "<MessageDefinitions><MessageDefinition><InstanceID>MESSAGE_ESPIONAGE_SUCCESS</InstanceID><DisplayName>Espionage report</DisplayName><ResultType>MissionReport</ResultType><MissionTypeID>Espionage</MissionTypeID><Outcome>Success</Outcome><Body>Report</Body></MessageDefinition></MessageDefinitions>"
             );
             ContentPackEditorCatalog factions = Create(
                 "<Factions><Faction><InstanceID>FNALL1</InstanceID><DisplayName>Alliance</DisplayName></Faction></Factions>"
@@ -24,7 +24,16 @@ namespace Rebellion.Tests.ContentEditor
             catalog.AddMissionReportOverride(shared, factions.Records[0]);
 
             Assert.AreEqual(3, catalog.Records.Select(record => record.ID).Distinct().Count());
-            Assert.AreEqual("espionage-success", shared.ID);
+            Assert.AreEqual("MESSAGE_ESPIONAGE_SUCCESS", shared.ID);
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "MESSAGE_ESPIONAGE_SUCCESS",
+                    "MESSAGE_ESPIONAGE_SUCCESS_FNALL1",
+                    "MESSAGE_ESPIONAGE_SUCCESS_FNALL12",
+                },
+                catalog.Records.Select(record => record.ID)
+            );
             Assert.IsTrue(
                 catalog
                     .Records.Where(record => record != shared)

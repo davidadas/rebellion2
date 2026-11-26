@@ -611,7 +611,7 @@ public sealed class ContentPackEditorCatalog
         report.SetElementValue(
             "InstanceID",
             AllocateIdentity(
-                shared.ID + "-" + faction.ID,
+                shared.ID + "_" + faction.ID,
                 Records
                     .SelectMany(record => GetIdentityValues(record.Element))
                     .ToHashSet(StringComparer.Ordinal)
