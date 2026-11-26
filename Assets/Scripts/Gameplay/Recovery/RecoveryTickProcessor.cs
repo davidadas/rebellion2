@@ -145,6 +145,11 @@ namespace Rebellion.Gameplay
     {
         private const int _repairPulseDivisor = 10;
 
+        /// <summary>
+        /// Checks whether a capital ship has hull or component damage left to repair.
+        /// </summary>
+        /// <param name="ship">The capital ship being assessed.</param>
+        /// <returns>Whether the ship has damage that can be repaired.</returns>
         internal static bool HasRepairableDamage(CapitalShip ship) =>
             ship.IsDamaged() || ship.SystemDamage?.Total > 0;
 
@@ -486,6 +491,11 @@ namespace Rebellion.Gameplay
             }
         }
 
+        /// <summary>
+        /// Determines whether a capital ship can advance its repair schedule this tick.
+        /// </summary>
+        /// <param name="ship">The capital ship being assessed.</param>
+        /// <returns>Whether the ship is damaged, complete, and stationary.</returns>
         private static bool CanRepairShip(CapitalShip ship) =>
             ShipRecoveryRules.HasRepairableDamage(ship)
             && ship.ManufacturingStatus == ManufacturingStatus.Complete
