@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
-using Rebellion.Tactical;
 using Rebellion.Tactical.Rendering;
 using TMPro;
 using UnityEngine;

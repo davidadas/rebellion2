@@ -57,6 +57,7 @@ namespace Rebellion.Tactical.Rendering
         /// </summary>
         /// <param name="shot">The applied discharge.</param>
         /// <param name="factionIndex">The firing faction's authored color index.</param>
+        /// <param name="split">Whether to use the split beam variant for a heavy turbolaser shot.</param>
         public void ShowShot(TacticalCombatShot shot, int factionIndex, bool split)
         {
             int variant = 0;
