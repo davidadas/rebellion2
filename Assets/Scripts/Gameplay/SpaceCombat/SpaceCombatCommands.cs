@@ -1498,26 +1498,7 @@ namespace Rebellion.Gameplay
                 result.Planet,
                 result.AcceptedLosses
             );
-            List<StarfighterHostAssignment> assignments = null;
-            foreach (FighterRecoveryResult recovery in result.FighterRecovery)
-                if (
-                    recovery.Fighter.CurrentSquadronSize > 0
-                    && !ReferenceEquals(
-                        recovery.Fighter.GetParent(),
-                        recovery.Carrier ?? (ContainerNode)result.Planet
-                    )
-                )
-                {
-                    assignments ??= new List<StarfighterHostAssignment>();
-                    assignments.Add(
-                        new StarfighterHostAssignment(
-                            recovery.Fighter,
-                            recovery.Carrier ?? (ContainerNode)result.Planet
-                        )
-                    );
-                }
-            if (assignments != null)
-                _game.MoveStarfighters(assignments);
+            _movement.RecoverStarfighters(result.Planet, result.FighterRecovery);
             return events;
         }
 

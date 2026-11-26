@@ -756,104 +756,29 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Moves squadrons in input order after releasing all outgoing host berths.
+        /// Applies an ordered batch of validated parent changes before publishing presence changes.
         /// </summary>
-        /// <param name="assignments">The distinct squadrons and their final planets or capital ships.</param>
-        /// <exception cref="ArgumentNullException">Thrown when the assignment list is null.</exception>
-        /// <exception cref="ArgumentException">Thrown when an assignment is incomplete, repeated, or has an unsupported host.</exception>
-        /// <exception cref="InvalidOperationException">Thrown when a squadron lacks a parent or a final destination rejects it.</exception>
-        public void MoveStarfighters(IReadOnlyList<StarfighterHostAssignment> assignments)
+        /// <param name="moves">Distinct nodes with existing parents and validated destinations.</param>
+        internal void ApplyNodeMoves(IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves)
         {
-            if (assignments == null)
-                throw new ArgumentNullException(nameof(assignments));
-            if (assignments.Count == 0)
-                return;
-            List<StarfighterHostAssignment> changes = new(assignments.Count);
-            List<Planet> origins = UnitPresenceChanged == null ? null : new(assignments.Count);
-            HashSet<Starfighter> fighters = new();
-            Dictionary<ContainerNode, StarfighterRosterSnapshot> rosters = new();
-            foreach (StarfighterHostAssignment assignment in assignments)
+            List<Planet> origins = UnitPresenceChanged == null ? null : new(moves.Count);
+            foreach (var (node, _) in moves)
             {
-                Starfighter fighter = assignment.Fighter;
-                ContainerNode host = assignment.Host;
-                if (fighter == null || host == null || !fighters.Add(fighter))
-                    throw new ArgumentException(
-                        "Each squadron requires one final host.",
-                        nameof(assignments)
-                    );
-                ISceneNode previous = fighter.GetParent();
-                if (previous == null)
-                    throw new InvalidOperationException(
-                        "A squadron must have a host before relocation."
-                    );
-                if (ReferenceEquals(previous, host))
-                    continue;
-                if (previous is not ContainerNode oldHost)
-                    throw new ArgumentException(
-                        "A squadron's current host must be a planet or capital ship.",
-                        nameof(assignments)
-                    );
-                CaptureStarfighterRoster(oldHost, rosters);
-                CaptureStarfighterRoster(host, rosters);
-                changes.Add(assignment);
-                origins?.Add(GetContainingPlanet(fighter));
+                origins?.Add(GetContainingPlanet(node));
+                node.GetParent().RemoveChild(node);
             }
 
-            try
-            {
-                foreach (StarfighterHostAssignment assignment in changes)
-                    assignment.Fighter.GetParent().RemoveChild(assignment.Fighter);
-                foreach (StarfighterHostAssignment assignment in changes)
-                {
-                    if (!assignment.Host.CanAcceptChild(assignment.Fighter))
-                        throw new InvalidOperationException(
-                            "A final host cannot accept its squadron."
-                        );
-                    assignment.Host.AddChild(assignment.Fighter);
-                }
-            }
-            catch
-            {
-                foreach (StarfighterRosterSnapshot roster in rosters.Values)
-                    roster.Restore();
-                throw;
-            }
+            foreach ((ISceneNode node, ContainerNode parent) in moves)
+                parent.AddChild(node);
+            foreach ((ISceneNode node, ContainerNode parent) in moves)
+                node.SetParent(parent);
 
-            foreach (StarfighterHostAssignment assignment in changes)
-                assignment.Fighter.SetParent(assignment.Host);
             if (origins != null)
-                for (int index = 0; index < changes.Count; index++)
-                    UnitPresenceChanged?.Invoke(
-                        changes[index].Fighter,
-                        origins[index],
-                        GetContainingPlanet(changes[index].Fighter)
-                    );
-        }
-
-        /// <summary>
-        /// Captures each affected host once before changing any squadron collection.
-        /// </summary>
-        /// <param name="host">The squadron host whose roster may change.</param>
-        /// <param name="rosters">The snapshots already captured for this update.</param>
-        private static void CaptureStarfighterRoster(
-            ContainerNode host,
-            Dictionary<ContainerNode, StarfighterRosterSnapshot> rosters
-        )
-        {
-            if (rosters.ContainsKey(host))
-                return;
-            rosters.Add(
-                host,
-                host switch
+                for (int index = 0; index < moves.Count; index++)
                 {
-                    CapitalShip ship => ship.CaptureStarfighterRoster(),
-                    Planet planet => planet.CaptureStarfighterRoster(),
-                    _ => throw new ArgumentException(
-                        "A squadron host must be a planet or capital ship.",
-                        nameof(host)
-                    ),
+                    ISceneNode node = moves[index].Node;
+                    UnitPresenceChanged?.Invoke(node, origins[index], GetContainingPlanet(node));
                 }
-            );
         }
 
         /// <summary>

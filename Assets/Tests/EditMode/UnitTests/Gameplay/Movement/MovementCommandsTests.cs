@@ -23,6 +23,293 @@ namespace Rebellion.Tests.Gameplay
     public class MovementCommandsTests
     {
         [Test]
+        public void RecoverStarfighters_FullCarrierExchange_UsesFinalCapacity()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip first = CreateRecoveryCarrier(game, fleet, "first", 1);
+            CapitalShip second = CreateRecoveryCarrier(game, fleet, "second", 1);
+            Starfighter firstFighter = CreateRecoverySquadron(game, first, "first-fighter");
+            Starfighter secondFighter = CreateRecoverySquadron(game, second, "second-fighter");
+
+            movement.RecoverStarfighters(
+                planet,
+                new[]
+                {
+                    new FighterRecoveryResult { Fighter = firstFighter, Carrier = second },
+                    new FighterRecoveryResult { Fighter = secondFighter, Carrier = first },
+                }
+            );
+
+            CollectionAssert.AreEqual(new[] { secondFighter }, first.GetChildren<Starfighter>());
+            CollectionAssert.AreEqual(new[] { firstFighter }, second.GetChildren<Starfighter>());
+            Assert.AreSame(second, firstFighter.GetParent());
+            Assert.AreSame(first, firstFighter.GetLastParent());
+            Assert.AreEqual(second.InstanceID, firstFighter.ParentInstanceID);
+            Assert.AreEqual(first.InstanceID, firstFighter.LastParentInstanceID);
+            Assert.AreSame(first, secondFighter.GetParent());
+        }
+
+        [Test]
+        public void RecoverStarfighters_OrderedIncomingSquadrons_AppendsInAssignmentOrder()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip host = CreateRecoveryCarrier(game, fleet, "host", 3);
+            Starfighter resident = CreateRecoverySquadron(game, host, "resident");
+            Starfighter first = CreateRecoverySquadron(game, planet, "first");
+            Starfighter second = CreateRecoverySquadron(game, planet, "second");
+
+            movement.RecoverStarfighters(
+                planet,
+                new[]
+                {
+                    new FighterRecoveryResult { Fighter = second, Carrier = host },
+                    new FighterRecoveryResult { Fighter = first, Carrier = host },
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { resident, second, first },
+                host.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(planet.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void RecoverStarfighters_OverCapacityDestination_PreservesOverfullSourceAndParentHistory()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip source = CreateRecoveryCarrier(game, fleet, "source", 3);
+            CapitalShip target = CreateRecoveryCarrier(game, fleet, "target", 1);
+            Starfighter first = CreateRecoverySquadron(game, source, "first");
+            Starfighter second = CreateRecoverySquadron(game, source, "second");
+            Starfighter third = CreateRecoverySquadron(game, source, "third");
+            ISceneNode previous = first.GetLastParent();
+            string previousID = first.LastParentInstanceID;
+            source.StarfighterCapacity = 0;
+
+            Assert.Throws<InvalidOperationException>(() =>
+                movement.RecoverStarfighters(
+                    planet,
+                    new[]
+                    {
+                        new FighterRecoveryResult { Fighter = first, Carrier = target },
+                        new FighterRecoveryResult { Fighter = third, Carrier = target },
+                    }
+                )
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { first, second, third },
+                source.GetChildren<Starfighter>()
+            );
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+            Assert.AreSame(source, first.GetParent());
+            Assert.AreSame(previous, first.GetLastParent());
+            Assert.AreEqual(previousID, first.LastParentInstanceID);
+            Assert.AreSame(source, third.GetParent());
+            Assert.AreSame(first, game.GetSceneNodeByInstanceID<Starfighter>(first.InstanceID));
+            CollectionAssert.Contains(
+                game.GetFactionByOwnerInstanceID("empire").GetOwnedUnitsByType<Starfighter>(),
+                first
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecoverStarfighters_UnavailableDestination_PreservesSource(bool destroyedPlanet)
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip source = CreateRecoveryCarrier(game, fleet, "source", 1);
+            Starfighter fighter = CreateRecoverySquadron(game, source, "fighter");
+            CapitalShip carrier = null;
+            ContainerNode target;
+            if (destroyedPlanet)
+            {
+                planet.IsDestroyed = true;
+                target = planet;
+            }
+            else
+            {
+                carrier = CreateRecoveryCarrier(game, fleet, "target", 1);
+                carrier.ManufacturingStatus = ManufacturingStatus.Building;
+                target = carrier;
+            }
+
+            Assert.Throws<InvalidOperationException>(() =>
+                movement.RecoverStarfighters(
+                    planet,
+                    new[]
+                    {
+                        new FighterRecoveryResult { Fighter = fighter, Carrier = carrier },
+                    }
+                )
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void RecoverStarfighters_UnchangedOverfullHost_PreservesParentHistoryAndOrder()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip host = CreateRecoveryCarrier(game, fleet, "host", 1);
+            Starfighter fighter = CreateRecoverySquadron(game, host, "fighter");
+            ISceneNode previous = fighter.GetLastParent();
+            host.StarfighterCapacity = 0;
+
+            movement.RecoverStarfighters(
+                planet,
+                new[]
+                {
+                    new FighterRecoveryResult { Fighter = fighter, Carrier = host },
+                }
+            );
+
+            Assert.AreSame(previous, fighter.GetLastParent());
+            CollectionAssert.AreEqual(new[] { fighter }, host.GetChildren<Starfighter>());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RecoverStarfighters_InvalidAssignment_LeavesEarlierAssignmentsUnchanged(
+            bool duplicate
+        )
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip source = CreateRecoveryCarrier(game, fleet, "source", 1);
+            CapitalShip target = CreateRecoveryCarrier(game, fleet, "target", 2);
+            Starfighter fighter = CreateRecoverySquadron(game, source, "fighter");
+            FighterRecoveryResult assignment = new() { Fighter = fighter, Carrier = target };
+
+            Assert.Throws<ArgumentException>(() =>
+                movement.RecoverStarfighters(
+                    planet,
+                    new[] { assignment, duplicate ? assignment : null }
+                )
+            );
+
+            Assert.AreSame(source, fighter.GetParent());
+            CollectionAssert.AreEqual(new[] { fighter }, source.GetChildren<Starfighter>());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void RecoverStarfighters_OrphanedSquadron_LeavesCarrierUnchanged()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip target = CreateRecoveryCarrier(game, fleet, "target", 1);
+            Starfighter fighter = new() { CurrentSquadronSize = 1 };
+
+            Assert.Throws<InvalidOperationException>(() =>
+                movement.RecoverStarfighters(
+                    planet,
+                    new[]
+                    {
+                        new FighterRecoveryResult { Fighter = fighter, Carrier = target },
+                    }
+                )
+            );
+
+            Assert.IsNull(fighter.GetParent());
+            Assert.IsEmpty(target.GetChildren<Starfighter>());
+        }
+
+        [Test]
+        public void RecoverStarfighters_DisabledSquadron_PreservesRegistrationAndAvailability()
+        {
+            (GameRoot game, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip source = CreateRecoveryCarrier(game, fleet, "source", 1);
+            CapitalShip target = CreateRecoveryCarrier(game, fleet, "target", 1);
+            Starfighter fighter = CreateRecoverySquadron(game, source, "fighter");
+            fighter.IsEnabled = false;
+
+            movement.RecoverStarfighters(
+                planet,
+                new[]
+                {
+                    new FighterRecoveryResult { Fighter = fighter, Carrier = target },
+                }
+            );
+
+            Assert.IsFalse(fighter.IsEnabled);
+            Assert.AreSame(
+                fighter,
+                game.GetSceneNodeByInstanceID<Starfighter>(fighter.InstanceID, true)
+            );
+            CollectionAssert.AreEqual(
+                new[] { fighter },
+                target.GetChildren<Starfighter>(includeDisabled: true)
+            );
+            CollectionAssert.Contains(
+                game.GetFactionByOwnerInstanceID("empire").GetOwnedUnitsByType<Starfighter>(true),
+                fighter
+            );
+        }
+
+        [Test]
+        public void RecoverStarfighters_NullAssignments_RejectsInput()
+        {
+            (_, Planet planet, _, _, MovementCommands movement) = BuildScene();
+            Assert.Throws<ArgumentNullException>(() => movement.RecoverStarfighters(planet, null));
+        }
+
+        [Test]
+        public void RecoverStarfighters_FinalHostsApplied_ReportsEachAffectedPlanetAfterBatch()
+        {
+            (GameRoot game, Planet planet, Planet destination, _, MovementCommands movement) =
+                BuildScene();
+            Fleet fleet = new() { InstanceID = "recovery-fleet", OwnerInstanceID = "empire" };
+            game.AttachNode(fleet, planet);
+            CapitalShip firstHost = CreateRecoveryCarrier(game, fleet, "first-host", 1);
+            CapitalShip secondHost = CreateRecoveryCarrier(game, fleet, "second-host", 1);
+            Starfighter first = CreateRecoverySquadron(game, firstHost, "first-fighter");
+            Starfighter second = CreateRecoverySquadron(game, secondHost, "second-fighter");
+            List<(ISceneNode Unit, Planet Origin, Planet Destination)> changes = new();
+            game.UnitPresenceChanged += (unit, origin, target) =>
+            {
+                Assert.AreSame(destination, first.GetParent());
+                Assert.AreSame(firstHost, second.GetParent());
+                changes.Add((unit, origin, target));
+            };
+
+            movement.RecoverStarfighters(
+                destination,
+                new[]
+                {
+                    new FighterRecoveryResult { Fighter = first },
+                    new FighterRecoveryResult { Fighter = second, Carrier = firstHost },
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    ((ISceneNode)first, planet, destination),
+                    ((ISceneNode)second, planet, planet),
+                },
+                changes
+            );
+        }
+
+        [Test]
         public void RequestMove_DeterministicPeerGames_AssignsSameMovementGroupWithoutRandomDraws()
         {
             (
@@ -7014,6 +7301,57 @@ namespace Rebellion.Tests.Gameplay
             xml.Element(nameof(MovementState.NextLeg))?.Remove();
             xml.Attribute(nameof(MovementState.PreviousLocationInstanceID))?.Remove();
             return SerializationHelper.Deserialize<MovementState>(xml.ToString());
+        }
+
+        /// <summary>
+        /// Adds a carrier with the specified hangar capacity to the recovery fixture.
+        /// </summary>
+        /// <param name="game">The campaign holding the carrier.</param>
+        /// <param name="fleet">The carrier's fleet.</param>
+        /// <param name="id">The carrier's identity.</param>
+        /// <param name="capacity">The number of hangar slots.</param>
+        /// <returns>The registered carrier.</returns>
+        private static CapitalShip CreateRecoveryCarrier(
+            GameRoot game,
+            Fleet fleet,
+            string id,
+            int capacity
+        )
+        {
+            CapitalShip carrier = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = fleet.OwnerInstanceID,
+                StarfighterCapacity = capacity,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(carrier, fleet);
+            return carrier;
+        }
+
+        /// <summary>
+        /// Adds a surviving squadron to the given host.
+        /// </summary>
+        /// <param name="game">The campaign holding the squadron.</param>
+        /// <param name="host">The squadron's original planet or carrier.</param>
+        /// <param name="id">The squadron's identity.</param>
+        /// <returns>The registered squadron.</returns>
+        private static Starfighter CreateRecoverySquadron(
+            GameRoot game,
+            ContainerNode host,
+            string id
+        )
+        {
+            Starfighter squadron = new()
+            {
+                InstanceID = id,
+                OwnerInstanceID = host.OwnerInstanceID,
+                CurrentSquadronSize = 1,
+                MaxSquadronSize = 1,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            game.AttachNode(squadron, host);
+            return squadron;
         }
 
         /// <summary>

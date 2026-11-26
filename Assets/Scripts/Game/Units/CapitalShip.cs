@@ -704,10 +704,14 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Captures the current fighter roster for an admitted relationship transaction.
+        /// Checks whether the ship can receive squadrons after its planned departures.
         /// </summary>
-        /// <returns>A snapshot that can restore this roster if destination admission fails.</returns>
-        internal StarfighterRosterSnapshot CaptureStarfighterRoster() => new(_starfighters);
+        /// <param name="arrivals">The number of squadrons arriving.</param>
+        /// <param name="departures">The number of currently hosted squadrons leaving.</param>
+        /// <returns>Whether the ship can accept the new squadrons.</returns>
+        internal bool CanAcceptStarfighters(int arrivals, int departures = 0) =>
+            ManufacturingStatus == ManufacturingStatus.Complete
+            && arrivals <= GetExcessStarfighterCapacity() + departures;
 
         /// <summary>
         /// Adds a regiment to the capital ship.
@@ -766,7 +770,7 @@ namespace Rebellion.Game.Units
                 return false;
 
             if (child is Starfighter)
-                return GetExcessStarfighterCapacity() > 0;
+                return CanAcceptStarfighters(1);
             if (child is Regiment)
                 return GetExcessRegimentCapacity() > 0;
             if (child is Officer officer)
@@ -792,8 +796,9 @@ namespace Rebellion.Game.Units
 
             if (child is Starfighter)
             {
-                return plannedChildren.Count(candidate => candidate is Starfighter)
-                    < GetExcessStarfighterCapacity();
+                return CanAcceptStarfighters(
+                    1 + plannedChildren.Count(candidate => candidate is Starfighter)
+                );
             }
 
             if (child is Regiment)
