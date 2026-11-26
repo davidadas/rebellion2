@@ -1,9 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Tactical;
 
-namespace Rebellion.Tactical
+namespace Rebellion.UI
 {
     /// <summary>
     /// Presents arrival effects without changing a unit's simulation position.
@@ -83,7 +85,7 @@ namespace Rebellion.Tactical
     /// <summary>
     /// Applies the entering force's ordered fly-in and arrival sounds on presentation time.
     /// </summary>
-    public sealed class TacticalCombatArrival
+    public sealed class TacticalCombatArrival : ITacticalCombatEntry
     {
         private static readonly float[] _distances = { 400, 575, 650, 325 };
         private static readonly float[] _coefficients =
@@ -103,6 +105,46 @@ namespace Rebellion.Tactical
 
         public float ElapsedMilliseconds { get; private set; }
         public bool IsComplete { get; private set; }
+
+        /// <summary>
+        /// Creates the local fly-in from the battle's ordered display groups.
+        /// </summary>
+        public static TacticalCombatArrival CreateFor(
+            TacticalCombatSession session,
+            ITacticalCombatArrivalPresentation presentation
+        )
+        {
+            if (session == null)
+                throw new ArgumentNullException(nameof(session));
+
+            CombatSide playerSide = session.PlayerSide;
+            List<TacticalCombatArrivalMember> members = new();
+            foreach (TacticalCombatGroup group in session.Groups)
+            {
+                if (group.Side != playerSide)
+                    continue;
+                foreach (CombatUnit unit in group.Members)
+                    members.Add(
+                        new TacticalCombatArrivalMember(
+                            unit.Index,
+                            unit.PresentationIndex,
+                            unit.Side,
+                            unit.IsFighter,
+                            unit.Status == CombatUnitStatus.Docked,
+                            new Vector4(unit.Position, -1),
+                            new Vector4(unit.Heading, -1)
+                        )
+                    );
+            }
+
+            return new TacticalCombatArrival(
+                playerSide,
+                members,
+                session.GetSide(playerSide).Forward,
+                presentation,
+                messageID => session.Audio.EnqueueNotification(messageID)
+            );
+        }
 
         /// <summary>
         /// Captures an explicitly selected entering side and its ordered presentation members.

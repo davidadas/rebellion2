@@ -11,6 +11,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
+using Rebellion.UI;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -219,7 +220,9 @@ namespace Rebellion.Tests.Tactical
                 reads++;
                 return now;
             });
-            session.BeginArrival(new ArrivalPresentation());
+            session.BeginArrival(
+                TacticalCombatArrival.CreateFor(session, new ArrivalPresentation())
+            );
             for (int frame = 0; frame < 8; frame++)
             {
                 now += 500;
@@ -286,7 +289,7 @@ namespace Rebellion.Tests.Tactical
             if (replica)
                 session.ConfigureSynchronizedReplica();
             ArrivalPresentation presentation = new();
-            session.BeginArrival(presentation);
+            session.BeginArrival(TacticalCombatArrival.CreateFor(session, presentation));
 
             Action<float> advance = replica
                 ? milliseconds => session.AdvanceSynchronizedArrival(milliseconds)
@@ -306,7 +309,9 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             Vector3 before = session.Units[0].Position;
-            session.BeginArrival(new ArrivalPresentation());
+            session.BeginArrival(
+                TacticalCombatArrival.CreateFor(session, new ArrivalPresentation())
+            );
 
             for (int frame = 0; frame < 8; frame++)
                 session.Advance(500);
@@ -324,7 +329,7 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             ArrivalPresentation presentation = new();
-            session.BeginArrival(presentation);
+            session.BeginArrival(TacticalCombatArrival.CreateFor(session, presentation));
             Assert.IsFalse(session.IsDirectControlEnabled);
 
             for (int frame = 0; frame < 9; frame++)
@@ -343,7 +348,9 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0)
             );
             session.IsPaused = true;
-            session.BeginArrival(new ArrivalPresentation());
+            session.BeginArrival(
+                TacticalCombatArrival.CreateFor(session, new ArrivalPresentation())
+            );
 
             for (int frame = 0; frame < 9; frame++)
                 session.Advance(500);

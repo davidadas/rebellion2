@@ -57,7 +57,7 @@ namespace Rebellion.Tactical
         private readonly TacticalCombatBriefingSequence _briefing;
         private readonly TacticalCombatEnding _ending = new();
         private bool _completionStarted;
-        private TacticalCombatArrival _arrival;
+        private ITacticalCombatEntry _arrival;
         private bool _arrivalStarting;
         private bool _userPaused;
         private bool _directCommandsSuspended;

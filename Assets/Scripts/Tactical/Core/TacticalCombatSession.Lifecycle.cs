@@ -1,48 +1,30 @@
 using System;
-using System.Collections.Generic;
-using System.Numerics;
-using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
+    /// <summary>
+    /// Supplies the local view's entry timing to the encounter admission gate.
+    /// </summary>
+    public interface ITacticalCombatEntry
+    {
+        bool IsComplete { get; }
+        bool Advance(float elapsedMilliseconds);
+    }
+
     public sealed partial class TacticalCombatSession
     {
         /// <summary>
-        /// Starts the local player's arrival presentation before admitting battle commands or clocks.
+        /// Holds battle admission until the local arrival reports completion.
         /// </summary>
-        /// <param name="presentation">The renderer that owns arrival poses and the pause-control strobe.</param>
-        public void BeginArrival(ITacticalCombatArrivalPresentation presentation)
+        /// <param name="entry">The view sequence that releases battle admission.</param>
+        public void BeginArrival(ITacticalCombatEntry entry)
         {
             if (_arrival != null || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Arrival can only begin once before combat starts."
                 );
 
-            List<TacticalCombatArrivalMember> members = new();
-            foreach (TacticalCombatGroup group in _groups)
-            {
-                if (group.Side != PlayerSide)
-                    continue;
-                foreach (CombatUnit unit in group.Members)
-                    members.Add(
-                        new TacticalCombatArrivalMember(
-                            unit.Index,
-                            unit.PresentationIndex,
-                            unit.Side,
-                            unit.IsFighter,
-                            unit.Status == CombatUnitStatus.Docked,
-                            new Vector4(unit.Position, -1),
-                            new Vector4(unit.Heading, -1)
-                        )
-                    );
-            }
-            _arrival = new TacticalCombatArrival(
-                PlayerSide,
-                members,
-                GetSide(PlayerSide).Forward,
-                presentation,
-                messageID => Audio.EnqueueNotification(messageID)
-            );
+            _arrival = entry ?? throw new ArgumentNullException(nameof(entry));
             _arrivalStarting = true;
         }
 

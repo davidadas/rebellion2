@@ -4,10 +4,9 @@ using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Game.Results;
-using Rebellion.Gameplay;
-using Rebellion.Tactical;
+using Rebellion.UI;
 
-namespace Rebellion.Tests.Tactical
+namespace Rebellion.Tests.UI.SceneUI
 {
     [TestFixture]
     public sealed class TacticalCombatArrivalTests
