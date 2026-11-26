@@ -229,6 +229,11 @@ namespace Rebellion.Tactical.Rendering
             RenderUnits();
         }
 
+        /// <summary>
+        /// Finds the authored presentation definition for a participant.
+        /// </summary>
+        /// <param name="unit">The participant being rendered.</param>
+        /// <returns>The matching definition, or null when the type has no definition.</returns>
         private TacticalCombatUnitDefinition GetUnitDefinition(CombatUnit unit) =>
             _unitDefinitions.GetValueOrDefault(unit.TypeID);
 

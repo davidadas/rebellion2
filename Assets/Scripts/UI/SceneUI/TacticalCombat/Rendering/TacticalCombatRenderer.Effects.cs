@@ -9,12 +9,21 @@ namespace Rebellion.Tactical.Rendering
         : MonoBehaviour,
             ITacticalCombatArrivalPresentation
     {
+        /// <summary>
+        /// Updates the tractor lock effect for an ordinary capital ship.
+        /// </summary>
+        /// <param name="unit">The ship whose tractor sources changed.</param>
+        /// <param name="enabled">Whether the ship has an active tractor source.</param>
         private void HandleTractorSourcesChanged(CombatUnit unit, bool enabled)
         {
             if (_showPyro && !unit.IsBattleStation && !unit.IsFighter && !unit.HasGravityWell)
                 _impacts.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, enabled);
         }
 
+        /// <summary>
+        /// Starts the gravity well effect on the activating capital ship.
+        /// </summary>
+        /// <param name="unit">The capital ship supplying the gravity well.</param>
         private void HandleGravityWell(CombatUnit unit)
         {
             if (_showPyro && !unit.IsBattleStation && !unit.IsFighter && unit.HasGravityWell)
