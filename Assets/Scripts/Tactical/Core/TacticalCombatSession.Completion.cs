@@ -149,8 +149,8 @@ namespace Rebellion.Tactical
         {
             if (!IsComplete)
                 throw new InvalidOperationException("The tactical encounter has not completed.");
-            List<TacticalCombatShipOutcome> ships = new();
-            List<TacticalCombatFighterOutcome> fighters = new();
+            List<TacticalCombatOutcome.ShipOutcome> ships = new();
+            List<TacticalCombatOutcome.FighterOutcome> fighters = new();
             foreach (TacticalCombatUnit unit in _units)
             {
                 bool withdrawn = HasDeparted(unit);
@@ -163,7 +163,7 @@ namespace Rebellion.Tactical
                     );
                     unit.Combatant.ApplyCapitalShipState(hull, damage);
                     ships.Add(
-                        new TacticalCombatShipOutcome
+                        new TacticalCombatOutcome.ShipOutcome
                         {
                             UnitID = unit.InstanceID,
                             Hull = hull,
@@ -183,7 +183,7 @@ namespace Rebellion.Tactical
                     string carrierID = carrier?.IsFighter == false ? carrier.InstanceID : null;
                     unit.Combatant.ApplyStarfighterState(squadronSize, carrierID);
                     fighters.Add(
-                        new TacticalCombatFighterOutcome
+                        new TacticalCombatOutcome.FighterOutcome
                         {
                             UnitID = unit.InstanceID,
                             SquadronSize = squadronSize,

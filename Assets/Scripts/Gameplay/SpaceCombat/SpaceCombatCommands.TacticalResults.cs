@@ -27,11 +27,9 @@ namespace Rebellion.Gameplay
                 DefenderOutcome = outcome.DefenderOutcome,
                 IterationsCompleted = outcome.IterationsCompleted,
             };
-            Dictionary<string, TacticalCombatShipOutcome> ships = outcome.Ships.ToDictionary(
-                ship => ship.UnitID,
-                StringComparer.Ordinal
-            );
-            Dictionary<string, TacticalCombatFighterOutcome> fighters =
+            Dictionary<string, TacticalCombatOutcome.ShipOutcome> ships =
+                outcome.Ships.ToDictionary(ship => ship.UnitID, StringComparer.Ordinal);
+            Dictionary<string, TacticalCombatOutcome.FighterOutcome> fighters =
                 outcome.Fighters.ToDictionary(fighter => fighter.UnitID, StringComparer.Ordinal);
             foreach (TacticalCombatUnit unit in _tacticalCombat.Units)
             {
@@ -39,7 +37,7 @@ namespace Rebellion.Gameplay
                 bool withdrawn;
                 if (source is CapitalShip ship)
                 {
-                    TacticalCombatShipOutcome state = ships[unit.InstanceID];
+                    TacticalCombatOutcome.ShipOutcome state = ships[unit.InstanceID];
                     result.ShipDamage.Add(
                         new ShipDamageResult
                         {
@@ -53,7 +51,7 @@ namespace Rebellion.Gameplay
                 }
                 else
                 {
-                    TacticalCombatFighterOutcome state = fighters[unit.InstanceID];
+                    TacticalCombatOutcome.FighterOutcome state = fighters[unit.InstanceID];
                     Starfighter fighter = (Starfighter)source;
                     result.FighterLosses.Add(
                         new FighterLossResult

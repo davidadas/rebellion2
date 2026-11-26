@@ -1395,7 +1395,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession session = CreateCompletedExportSession();
             TacticalCombatUnit unit = session.GetUnit("exported");
             TacticalCombatOutcome outcome = session.CaptureOutcome();
-            TacticalCombatShipOutcome ship = outcome.Ships.Single(item =>
+            TacticalCombatOutcome.ShipOutcome ship = outcome.Ships.Single(item =>
                 item.UnitID == unit.InstanceID
             );
             uint previous = unit.Systems.GetDamage(TacticalShipSystem.Engines);

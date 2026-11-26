@@ -52,7 +52,7 @@ namespace Rebellion.Gameplay
                 IterationsCompleted = outcome.IterationsCompleted,
             };
             HashSet<string> imported = new(StringComparer.Ordinal);
-            foreach (TacticalCombatShipOutcome shipOutcome in outcome.Ships)
+            foreach (TacticalCombatOutcome.ShipOutcome shipOutcome in outcome.Ships)
             {
                 if (
                     shipOutcome == null
@@ -79,7 +79,7 @@ namespace Rebellion.Gameplay
                     result.WithdrawnUnits.Add(ship);
             }
 
-            foreach (TacticalCombatFighterOutcome fighterOutcome in outcome.Fighters)
+            foreach (TacticalCombatOutcome.FighterOutcome fighterOutcome in outcome.Fighters)
             {
                 if (
                     fighterOutcome == null

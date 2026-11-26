@@ -24,6 +24,16 @@ namespace Rebellion.Tests.Game.SpaceCombat
             string payload = writer.ToString();
             XmlDocument document = new();
             document.LoadXml(payload);
+            Assert.That(
+                document.SelectSingleNode("/TacticalCombatOutcome/Ships/TacticalCombatShipOutcome"),
+                Is.Not.Null
+            );
+            Assert.That(
+                document.SelectSingleNode(
+                    "/TacticalCombatOutcome/Fighters/TacticalCombatFighterOutcome"
+                ),
+                Is.Not.Null
+            );
             Assert.AreEqual(
                 0,
                 document
@@ -62,7 +72,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 TerminalFlags = new[] { true, false, true, false, true, false, false },
                 Ships = new[]
                 {
-                    new TacticalCombatShipOutcome
+                    new TacticalCombatOutcome.ShipOutcome
                     {
                         UnitID = "capital",
                         Hull = 57,
@@ -82,7 +92,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 },
                 Fighters = new[]
                 {
-                    new TacticalCombatFighterOutcome
+                    new TacticalCombatOutcome.FighterOutcome
                     {
                         UnitID = "fighter",
                         SquadronSize = 7,
