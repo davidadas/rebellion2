@@ -178,45 +178,23 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Captures the pending encounter without changing campaign units or clearing its pending decision.
-        /// </summary>
-        /// <param name="decision">The pending campaign encounter.</param>
-        /// <returns>The isolated deployed tactical session.</returns>
-        internal TacticalCombatSession Create(SpaceCombatDecision decision) =>
-            Create(Prepare(decision));
-
-        /// <summary>
-        /// Deploys an admitted roster for the selected local or network battle.
+        /// Deploys an admitted roster for local tactical combat.
         /// </summary>
         /// <param name="roster">The validated roster captured for this encounter.</param>
-        /// <returns>The isolated tactical session.</returns>
-        internal TacticalCombatSession Create(EncounterRoster roster) =>
-            CreateCore(roster, null, null, null);
+        /// <returns>The detached battle state and its tactical session.</returns>
+        internal (ActiveBattle Battle, TacticalCombatSession Session) Create(
+            EncounterRoster roster
+        ) => CreateCore(roster, null, null, null);
 
         /// <summary>
-        /// Captures a shared battle with explicit random inputs and the peer's independent local faction view.
-        /// </summary>
-        /// <param name="decision">The mutually admitted campaign encounter.</param>
-        /// <param name="seed">The authoritative battle random seed.</param>
-        /// <param name="scenerySeed">The captured scenery calendar seed.</param>
-        /// <param name="isReplica">Whether this peer receives passive authoritative frames.</param>
-        /// <returns>The configured authoritative encounter or passive local view.</returns>
-        internal TacticalCombatSession Create(
-            SpaceCombatDecision decision,
-            uint seed,
-            uint scenerySeed,
-            bool isReplica
-        ) => Create(Prepare(decision), seed, scenerySeed, isReplica);
-
-        /// <summary>
-        /// Deploys an admitted roster for the selected local or network battle.
+        /// Deploys an admitted roster for synchronized tactical combat.
         /// </summary>
         /// <param name="roster">The validated roster captured for this encounter.</param>
         /// <param name="seed">The authoritative simulation seed.</param>
         /// <param name="scenerySeed">The separately captured presentation seed.</param>
         /// <param name="isReplica">Whether the session is a passive view of the host battle.</param>
-        /// <returns>The isolated tactical session.</returns>
-        internal TacticalCombatSession Create(
+        /// <returns>The detached battle state and its configured tactical session.</returns>
+        internal (ActiveBattle Battle, TacticalCombatSession Session) Create(
             EncounterRoster roster,
             uint seed,
             uint scenerySeed,
@@ -227,7 +205,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException(
                     "Network combat requires an admitted local faction."
                 );
-            TacticalCombatSession session = CreateCore(
+            (ActiveBattle battle, TacticalCombatSession session) = CreateCore(
                 roster,
                 seed,
                 scenerySeed,
@@ -237,7 +215,7 @@ namespace Rebellion.Gameplay
                 session.ConfigureSynchronizedReplica();
             else
                 session.ConfigureSynchronizedAuthority();
-            return session;
+            return (battle, session);
         }
 
         /// <summary>
@@ -377,8 +355,8 @@ namespace Rebellion.Gameplay
         /// <param name="seed">The explicit simulation seed, when supplied.</param>
         /// <param name="scenerySeed">The explicit presentation seed, when supplied.</param>
         /// <param name="localFactionID">The peer's locally controlled faction, when supplied.</param>
-        /// <returns>The deployed encounter ready for its local view.</returns>
-        private TacticalCombatSession CreateCore(
+        /// <returns>The detached battle state and its initialized session.</returns>
+        private (ActiveBattle Battle, TacticalCombatSession Session) CreateCore(
             EncounterRoster roster,
             uint? seed,
             uint? scenerySeed,
@@ -509,8 +487,7 @@ namespace Rebellion.Gameplay
                 ),
                 personnelHostInstanceIDs: roster.PersonnelHostIDs
             );
-            _game.ActiveBattle = battle;
-            return session;
+            return (battle, session);
         }
 
         /// <summary>
