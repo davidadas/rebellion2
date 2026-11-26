@@ -111,9 +111,13 @@ namespace Rebellion.Gameplay
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _createTacticalAudio = createTacticalAudio ?? TacticalCombatAudio.Create;
             _canExecuteCommands = canExecuteCommands;
-            Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
+            Pipeline = new GameResultPipeline(
+                () => Results,
+                () => MessageObserver,
+                results => GetService<SpaceCombatAftermath>().HandleResults(results)
+            );
             Tick = new GameTickProcessor(
-                (results, processMessages) => Pipeline.ProcessResults(results, processMessages),
+                Pipeline.ProcessResults,
                 results => Pipeline.ProcessMessageReactions(results)
             );
             _commands = new SimulationCommandQueue(() =>

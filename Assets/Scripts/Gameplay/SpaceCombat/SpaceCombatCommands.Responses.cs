@@ -144,7 +144,7 @@ namespace Rebellion.Gameplay
                 return false;
             try
             {
-                _combatObserver?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
+                _aftermath?.ValidateBattle(_queries.ResolveCombatPlanet(_pendingDecision));
             }
             catch (InvalidOperationException)
             {

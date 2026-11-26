@@ -14,6 +14,7 @@ namespace Rebellion.Gameplay
         internal bool IsProcessing => _processingDepth > 0;
         private readonly Func<GameResultBus> _getResults;
         private readonly Func<MessageObserver> _getMessageObserver;
+        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _settleCombat;
 
         public event Action<IReadOnlyList<GameResult>> ResultsResolved;
         public event Action<IReadOnlyList<PlanetaryAssaultResult>> PlanetaryAssaultsResolved;
@@ -28,14 +29,17 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="getResults">Returns the current gameplay result bus.</param>
         /// <param name="getMessageObserver">Returns the current automatic-message observer.</param>
+        /// <param name="settleCombat">Applies campaign effects after combat loss reactions.</param>
         internal GameResultPipeline(
             Func<GameResultBus> getResults,
-            Func<MessageObserver> getMessageObserver
+            Func<MessageObserver> getMessageObserver,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> settleCombat = null
         )
         {
             _getResults = getResults ?? throw new ArgumentNullException(nameof(getResults));
             _getMessageObserver =
                 getMessageObserver ?? throw new ArgumentNullException(nameof(getMessageObserver));
+            _settleCombat = settleCombat;
         }
 
         /// <summary>
@@ -50,10 +54,19 @@ namespace Rebellion.Gameplay
             bool processMessages = true
         )
         {
+            return ProcessResults(results, processMessages, null);
+        }
+
+        internal List<GameResult> ProcessResults(
+            IEnumerable<GameResult> results,
+            bool processMessages,
+            Func<IReadOnlyList<GameResult>> collectPending
+        )
+        {
             _processingDepth++;
             try
             {
-                return ProcessResultsCore(results, processMessages);
+                return ProcessResultsCore(results, processMessages, collectPending);
             }
             finally
             {
@@ -66,13 +79,16 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="results">The completed facts.</param>
         /// <param name="processMessages">Whether to release message reactions.</param>
+        /// <param name="collectPending">Drains commands caused by the current combat encounter.</param>
         /// <returns>The settled results.</returns>
         private List<GameResult> ProcessResultsCore(
             IEnumerable<GameResult> results,
-            bool processMessages
+            bool processMessages,
+            Func<IReadOnlyList<GameResult>> collectPending
         )
         {
-            List<GameResult> resolvedResults = _getResults().Publish(results);
+            List<GameResult> resolvedResults = _getResults()
+                .Publish(results, collectPending, _settleCombat);
             if (resolvedResults.Count > 0)
                 ResultsResolved?.Invoke(resolvedResults);
             List<PlanetaryAssaultResult> assaultResults = resolvedResults
@@ -130,7 +146,8 @@ namespace Rebellion.Gameplay
                     .ProcessResults(pendingMessageResults);
                 if (deliveredResults.Count == 0)
                     return;
-                List<GameResult> deliveryReactions = _getResults().Publish(deliveredResults);
+                List<GameResult> deliveryReactions = _getResults()
+                    .Publish(deliveredResults, null, _settleCombat);
                 resolvedResults.AddRange(deliveryReactions);
                 pendingMessageResults = deliveryReactions;
             }

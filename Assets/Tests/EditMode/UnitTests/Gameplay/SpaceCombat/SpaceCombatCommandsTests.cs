@@ -5449,7 +5449,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 0,
-                SpaceCombatObserver
+                SpaceCombatAftermath
                     .CaptureLostMilitaryValues(result.Events, attacker.OwnerInstanceID, null)
                     .FirstSide
             );
@@ -5483,7 +5483,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 36,
-                SpaceCombatObserver
+                SpaceCombatAftermath
                     .CaptureLostMilitaryValues(result.Events, first.OwnerInstanceID, null)
                     .FirstSide
             );
@@ -5547,7 +5547,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 37,
-                SpaceCombatObserver
+                SpaceCombatAftermath
                     .CaptureLostMilitaryValues(result.Events, "empire", null)
                     .FirstSide
             );

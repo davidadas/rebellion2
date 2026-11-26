@@ -13,12 +13,11 @@ namespace Rebellion.Gameplay
     /// <summary>
     /// Applies manual battle loyalty and sector support after campaign loss reactions settle.
     /// </summary>
-    public sealed class SpaceCombatObserver : IResultObserver, IDisposable
+    public sealed class SpaceCombatAftermath
     {
         private readonly GameRoot _game;
         private readonly TacticalCombatDefinition _definition;
         private readonly PersonnelCommands _personnel;
-        private IDisposable _subscription;
 
         /// <summary>
         /// Creates the campaign aftermath owner for manually played space battles.
@@ -26,7 +25,7 @@ namespace Rebellion.Gameplay
         /// <param name="game">The campaign whose retained losses and current military values are read.</param>
         /// <param name="definition">The authored faction-index mapping.</param>
         /// <param name="personnel">The commands applying loyalty changes.</param>
-        public SpaceCombatObserver(
+        public SpaceCombatAftermath(
             GameRoot game,
             TacticalCombatDefinition definition,
             PersonnelCommands personnel
@@ -36,24 +35,6 @@ namespace Rebellion.Gameplay
             _definition = definition ?? throw new ArgumentNullException(nameof(definition));
             _personnel = personnel ?? throw new ArgumentNullException(nameof(personnel));
         }
-
-        /// <summary>
-        /// Registers battle aftermath after destruction, custody, and movement reactions settle.
-        /// </summary>
-        /// <param name="results">The session's ordered result bus.</param>
-        public void Connect(GameResultBus results)
-        {
-            if (results == null)
-                throw new ArgumentNullException(nameof(results));
-            if (_subscription != null)
-                throw new InvalidOperationException("Space combat observer is already connected.");
-            _subscription = results.SubscribeAfterReactions<SpaceCombatResult>(HandleResults);
-        }
-
-        /// <summary>
-        /// Detaches this campaign's battle aftermath subscription.
-        /// </summary>
-        public void Dispose() => _subscription?.Dispose();
 
         /// <summary>
         /// Requires complete authored inputs before the campaign admits a manual encounter.
@@ -90,12 +71,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="results">The settled encounter results.</param>
         /// <returns>The support requests admitted before their ownership reactions execute.</returns>
-        public List<GameResult> HandleResults(IReadOnlyList<SpaceCombatResult> results)
+        internal List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
-            List<GameResult> reactions = new();
-            foreach (SpaceCombatResult result in results ?? Array.Empty<SpaceCombatResult>())
+            List<GameResult> reactions = null;
+            foreach (GameResult item in results)
             {
-                if (result?.IsTacticalCombat != true)
+                if (item is not SpaceCombatResult { IsTacticalCombat: true } result)
                     continue;
                 if (result.RemainingSide is not CombatSide remaining)
                     continue;
@@ -160,7 +141,11 @@ namespace Rebellion.Gameplay
                     loyalty,
                     survivingSide == 1 ? second : first
                 );
-                reactions.AddRange(support);
+                if (support.Count > 0)
+                {
+                    reactions ??= new List<GameResult>();
+                    reactions.AddRange(support);
+                }
             }
             return reactions;
         }

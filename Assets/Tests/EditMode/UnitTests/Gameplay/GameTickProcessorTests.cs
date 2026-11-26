@@ -25,7 +25,12 @@ namespace Rebellion.Tests.Gameplay
         private GameRoot _game;
         private GameSession _session;
         private GameTickProcessor _tick;
-        private Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
+        private Func<
+            IEnumerable<GameResult>,
+            bool,
+            Func<IReadOnlyList<GameResult>>,
+            List<GameResult>
+        > _processResults;
 
         /// <summary>
         /// Creates a prepared game and the runtime dependencies used by tick scheduling.
@@ -36,7 +41,8 @@ namespace Rebellion.Tests.Gameplay
             _game = TestGame.Create(TestConfig.Create());
             _game.SetGameSpeed(TickSpeed.Fast);
             _session = new GameSession(_game, TestGameData.Create(_game.Config));
-            _processResults = (results, _) => _session.Results.Publish(results);
+            _processResults = (results, _, collectPending) =>
+                _session.Pipeline.ProcessResults(results, false, collectPending);
             _tick = CreateTickProcessor();
         }
 
@@ -216,7 +222,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_ResultDeliveryThrows_ReleasesBusyGuard()
         {
             InvalidOperationException expected = new("delivery failure");
-            _processResults = (_, _) => throw expected;
+            _processResults = (_, _, _) => throw expected;
             _tick = CreateTickProcessor();
 
             InvalidOperationException actual = Assert.Throws<InvalidOperationException>(
@@ -479,13 +485,12 @@ namespace Rebellion.Tests.Gameplay
                 results =>
                     created |= results.Any(result => ReferenceEquals(result.GameObject, order))
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(created);
-                    Assert.IsFalse(manufacturing.HasPendingResults);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(created);
+                Assert.IsFalse(manufacturing.HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -538,16 +543,14 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
                 results => commandObserved |= results.Any(result => result.Officer == officer)
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(commandObserved);
-                    Assert.AreSame(destination, officer.GetParent());
-                    Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
-                    Assert.IsFalse(_session.GetService<MovementCommands>().HasPendingResults);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(commandObserved);
+                Assert.AreSame(destination, officer.GetParent());
+                Assert.AreEqual(OfficerRank.None, officer.CurrentRank);
+                Assert.IsFalse(_session.GetService<MovementCommands>().HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -589,15 +592,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
                 results => blockades.AddRange(results.Where(result => result.Planet == origin))
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(departureObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                    Assert.IsEmpty(blockades);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(departureObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+                Assert.IsEmpty(blockades);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -657,15 +658,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable command = _session.Results.Subscribe<CommandKindChangedResult>(
                 results => commandObserved |= results.Any(result => result.Officer == officer)
             );
-            using IDisposable combat = _session.Results.SubscribeAfterReactions<SpaceCombatResult>(
-                _ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(blockadeEnded);
-                    Assert.IsTrue(commandObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                }
-            );
+            using IDisposable combat = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(blockadeEnded);
+                Assert.IsTrue(commandObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+            });
 
             _tick.ReconcileLoadedState();
 
@@ -682,13 +681,12 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable departure = _session.Results.Subscribe<GameObjectEnrouteActiveResult>(
                 _ => departureObserved = true
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(_ =>
-                {
-                    combatObserved = true;
-                    Assert.IsTrue(departureObserved);
-                    Assert.IsFalse(movement.HasPendingResults);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(_ =>
+            {
+                combatObserved = true;
+                Assert.IsTrue(departureObserved);
+                Assert.IsFalse(movement.HasPendingResults);
+            });
 
             SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
 
@@ -705,14 +703,13 @@ namespace Rebellion.Tests.Gameplay
             using IDisposable blockade = _session.Results.Subscribe<BlockadeChangedResult>(
                 results => blockades.AddRange(results)
             );
-            using IDisposable observation =
-                _session.Results.SubscribeAfterReactions<SpaceCombatResult>(results =>
-                {
-                    combatObserved = true;
-                    Assert.AreEqual(1, blockades.Count);
-                    Assert.AreSame(results.Single().Planet, blockades[0].Planet);
-                    Assert.IsTrue(blockades[0].Blockaded);
-                });
+            using IDisposable observation = _session.Results.Observe<SpaceCombatResult>(results =>
+            {
+                combatObserved = true;
+                Assert.AreEqual(1, blockades.Count);
+                Assert.AreSame(results.Single().Planet, blockades[0].Planet);
+                Assert.IsTrue(blockades[0].Blockaded);
+            });
 
             SpaceCombatResult result = _tick.ResolveCombatRetreat("FNALL1");
 

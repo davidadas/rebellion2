@@ -754,7 +754,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (7, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -778,7 +778,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -816,7 +816,7 @@ namespace Rebellion.Tests.Game
             );
             Assert.AreEqual(
                 (18, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -827,7 +827,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -848,7 +848,7 @@ namespace Rebellion.Tests.Game
             _game.AddSceneNodeByInstanceID(regiment);
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -860,7 +860,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (17, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -885,7 +885,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -915,7 +915,7 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (23, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     restored,
                     _faction1.InstanceID,
                     _faction2.InstanceID
@@ -923,7 +923,7 @@ namespace Rebellion.Tests.Game
             );
             Assert.AreEqual(
                 (17, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(
+                SpaceCombatAftermath.CaptureMilitaryValues(
                     _game,
                     _faction1.InstanceID,
                     _faction2.InstanceID

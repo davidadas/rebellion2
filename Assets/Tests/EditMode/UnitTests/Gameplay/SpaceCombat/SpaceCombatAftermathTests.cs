@@ -12,7 +12,7 @@ using Rebellion.Gameplay;
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public sealed class SpaceCombatObserverTests
+    public sealed class SpaceCombatAftermathTests
     {
         private const string _firstID = "FNALL1";
         private const string _secondID = "FNEMP1";

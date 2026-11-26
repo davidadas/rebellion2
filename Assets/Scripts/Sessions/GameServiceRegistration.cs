@@ -30,7 +30,6 @@ namespace Rebellion.Gameplay
             typeof(PlanetaryControlObserver),
             typeof(UprisingObserver),
             typeof(OfficerLoyaltyObserver),
-            typeof(SpaceCombatObserver),
             typeof(FogOfWarObserver),
             typeof(ManufacturingObserver),
             typeof(AdvisorAutomationObserver),
@@ -158,6 +157,11 @@ namespace Rebellion.Gameplay
                 TacticalCombatPlanner.Attach,
                 createTacticalAudio
             ));
+            services.AddSingleton<SpaceCombatAftermath>(locator => new SpaceCombatAftermath(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>().TacticalCombat,
+                locator.GetService<PersonnelCommands>()
+            ));
             services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<MovementCommands>(),
@@ -165,7 +169,7 @@ namespace Rebellion.Gameplay
                 locator.GetService<BlockadeTransitionResolver>(),
                 locator.GetService<TacticalCombatFactory>(),
                 locator.GetService<GameDataCatalog>().Starfighters,
-                locator.GetService<SpaceCombatObserver>()
+                locator.GetService<SpaceCombatAftermath>()
             ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();
@@ -189,14 +193,7 @@ namespace Rebellion.Gameplay
             ));
             services.AddSingleton<MessageObserver>();
             foreach (Type observerType in _resultObserverTypes)
-                if (observerType == typeof(SpaceCombatObserver))
-                    services.AddSingleton<SpaceCombatObserver>(locator => new SpaceCombatObserver(
-                        locator.GetService<GameRoot>(),
-                        locator.GetService<GameDataCatalog>().TacticalCombat,
-                        locator.GetService<PersonnelCommands>()
-                    ));
-                else
-                    services.AddSingleton(observerType);
+                services.AddSingleton(observerType);
             services.AddSingleton<GameActionCommands>(locator => new GameActionCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<IRandomNumberProvider>(),

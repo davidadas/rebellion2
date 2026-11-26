@@ -45,7 +45,7 @@ namespace Rebellion.Gameplay
         private readonly SpaceCombatWithdrawalResolver _withdrawalResolver;
         private SpaceCombatDecision _pendingDecision;
         private readonly TacticalCombatFactory _tacticalFactory;
-        private readonly SpaceCombatObserver _combatObserver;
+        private readonly SpaceCombatAftermath _aftermath;
         private TacticalCombatSession _tacticalCombat;
         private string _tacticalBattleID;
         private List<CombatUnitSnapshot> _tacticalAttackingUnits;
@@ -88,7 +88,7 @@ namespace Rebellion.Gameplay
                     "Tactical deployment is unavailable for this encounter."
                 );
             Planet planet = roster.Planet;
-            _combatObserver?.ValidateBattle(planet);
+            _aftermath?.ValidateBattle(planet);
             _tacticalCombat = _tacticalFactory.Create(roster);
             CaptureTacticalReport(roster);
             return _tacticalCombat;
@@ -125,7 +125,7 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException("The encounter cannot enter tactical combat.");
 
             Planet planet = roster.Planet;
-            _combatObserver?.ValidateBattle(planet);
+            _aftermath?.ValidateBattle(planet);
             _tacticalCombat = _tacticalFactory.Create(
                 roster,
                 seed,
@@ -622,7 +622,7 @@ namespace Rebellion.Gameplay
         /// <param name="blockadeTransitionResolver">Resolves blockade changes after combat mutations.</param>
         /// <param name="tacticalFactory">Captures interactive deployment from the selected content.</param>
         /// <param name="starfighterTypes">The available fighter designs used to build combat formations.</param>
-        /// <param name="combatObserver">The session's manual battle aftermath owner.</param>
+        /// <param name="aftermath">The session's manual battle aftermath owner.</param>
         public SpaceCombatCommands(
             GameRoot game,
             MovementCommands movement,
@@ -630,12 +630,12 @@ namespace Rebellion.Gameplay
             BlockadeTransitionResolver blockadeTransitionResolver = null,
             TacticalCombatFactory tacticalFactory = null,
             IReadOnlyList<Starfighter> starfighterTypes = null,
-            SpaceCombatObserver combatObserver = null
+            SpaceCombatAftermath aftermath = null
         )
         {
             _game = game ?? throw new ArgumentNullException(nameof(game));
             _tacticalFactory = tacticalFactory;
-            _combatObserver = combatObserver;
+            _aftermath = aftermath;
             _movement = movement ?? throw new ArgumentNullException(nameof(movement));
             _autoResolver = new SpaceCombatAutoResolver(
                 game.Config.Combat.SpaceCombat,

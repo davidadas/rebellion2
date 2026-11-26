@@ -93,7 +93,12 @@ namespace Rebellion.Gameplay
             }
         }
 
-        private readonly Func<IEnumerable<GameResult>, bool, List<GameResult>> _processResults;
+        private readonly Func<
+            IEnumerable<GameResult>,
+            bool,
+            Func<IReadOnlyList<GameResult>>,
+            List<GameResult>
+        > _processResults;
         private readonly Action<List<GameResult>> _processMessages;
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
@@ -115,7 +120,6 @@ namespace Rebellion.Gameplay
         private ITickProcessor _recovery;
         private ITickProcessor _research;
         private ITickProcessor _resourceProduction;
-        private GameResultBus _resultBus;
         private SpaceCombatCommands _spaceCombatCommands;
         private SpaceCombatTickProcessor _spaceCombat;
         private BlockadeTransitionResolver _blockadeTransitionResolver;
@@ -154,7 +158,12 @@ namespace Rebellion.Gameplay
         /// <param name="processResults">Resolves and presents one result batch at its existing release boundary.</param>
         /// <param name="processMessages">Releases the messages of an already resolved batch.</param>
         internal GameTickProcessor(
-            Func<IEnumerable<GameResult>, bool, List<GameResult>> processResults,
+            Func<
+                IEnumerable<GameResult>,
+                bool,
+                Func<IReadOnlyList<GameResult>>,
+                List<GameResult>
+            > processResults,
             Action<List<GameResult>> processMessages
         )
         {
@@ -174,7 +183,6 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(services));
 
             _game = services.GetService<GameRoot>();
-            _resultBus = services.GetService<GameResultBus>();
             ResearchTickProcessor research = new ResearchTickProcessor(
                 services.GetService<IRandomNumberProvider>()
             );
@@ -677,12 +685,14 @@ namespace Rebellion.Gameplay
             foreach (SpaceCombatResult combat in encounter.OfType<SpaceCombatResult>())
             {
                 results.AddRange(SettleCombatPlanetBlockade(combat.Planet, blockadeTransitions));
-                using (
-                    _resultBus.UsePendingResultSource(() =>
-                        CollectPendingCombatResults(combat.Planet, blockadeTransitions)
+                results.AddRange(
+                    ProcessResults(
+                        new[] { combat },
+                        processMessages: false,
+                        collectPending: () =>
+                            CollectPendingCombatResults(combat.Planet, blockadeTransitions)
                     )
-                )
-                    results.AddRange(ProcessResults(new[] { combat }, processMessages: false));
+                );
                 results.AddRange(ProcessPendingEncounterResults(blockadeTransitions));
                 results.AddRange(SettleCombatPlanetBlockade(combat.Planet, blockadeTransitions));
             }
@@ -922,13 +932,15 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="results">The results produced by one phase.</param>
         /// <param name="processMessages">Whether messages may be generated now.</param>
+        /// <param name="collectPending">Drains commands caused by the current combat encounter.</param>
         /// <returns>The batch extended with its reactions.</returns>
         private List<GameResult> ProcessResults(
             IEnumerable<GameResult> results,
-            bool processMessages = true
+            bool processMessages = true,
+            Func<IReadOnlyList<GameResult>> collectPending = null
         )
         {
-            return _processResults(results, processMessages);
+            return _processResults(results, processMessages, collectPending);
         }
     }
 }

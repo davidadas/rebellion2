@@ -68,7 +68,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (268, 13),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -109,7 +109,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -135,7 +135,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (expectedValue, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -153,7 +153,7 @@ namespace Rebellion.Tests.Gameplay
             Register(game, ship);
             Assert.AreEqual(
                 (7, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
 
             ship.OwnerInstanceID = "second";
@@ -161,7 +161,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 19),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -204,7 +204,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (7, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -226,7 +226,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -259,7 +259,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 19),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -290,7 +290,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (int.MinValue, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
         }
 
@@ -310,11 +310,11 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 (0, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second")
             );
             Assert.AreEqual(
                 (17, 0),
-                SpaceCombatObserver.CaptureMilitaryValues(game, null, "first")
+                SpaceCombatAftermath.CaptureMilitaryValues(game, null, "first")
             );
         }
 
@@ -333,12 +333,12 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
             for (int index = 0; index < 32; index++)
-                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second");
+                SpaceCombatAftermath.CaptureMilitaryValues(game, "first", "second");
             long before = GC.GetAllocatedBytesForCurrentThread();
             int total = 0;
 
             for (int index = 0; index < 1024; index++)
-                total += SpaceCombatObserver
+                total += SpaceCombatAftermath
                     .CaptureMilitaryValues(game, "first", "second")
                     .FirstSide;
 

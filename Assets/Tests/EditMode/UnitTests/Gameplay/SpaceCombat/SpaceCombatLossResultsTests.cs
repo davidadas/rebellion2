@@ -14,7 +14,7 @@ namespace Rebellion.Tests.Gameplay
             events.Add(SpaceCombatCommands.CreateCombatDestructionResult(unit, null, 0));
 
         private static int GetLostValue(List<GameResult> events, string owner) =>
-            SpaceCombatObserver.CaptureLostMilitaryValues(events, owner, null).FirstSide;
+            SpaceCombatAftermath.CaptureLostMilitaryValues(events, owner, null).FirstSide;
 
         [Test]
         public void GetLostValue_ChangedShipOwnerAndValue_ReadsRetainedUnitAtQueryTime()
