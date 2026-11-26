@@ -104,6 +104,12 @@ public sealed class RenderPipelineConfigurationTests
     {
         if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)
             Assert.Ignore("Reading rendered occlusion requires a graphics device.");
+        if (
+            SystemInfo.graphicsDeviceType
+            is GraphicsDeviceType.OpenGLCore
+                or GraphicsDeviceType.OpenGLES3
+        )
+            Assert.Ignore("The planet surface forward pass requires Direct3D, Metal, or Vulkan.");
         int originalQuality = QualitySettings.GetQualityLevel();
         int originalVSync = QualitySettings.vSyncCount;
         int originalFrameRate = Application.targetFrameRate;
@@ -242,20 +248,20 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     /// <summary>
-    /// Verifies shader support for the active backend without compiling URP code for OpenGL.
+    /// Verifies shader availability for the active graphics backend.
     /// </summary>
     /// <param name="shaderName">The shader name to resolve.</param>
-    /// <param name="requiresUrpBackend">Whether the shader uses URP-specific shader libraries.</param>
-    [TestCase("Custom/PlanetAtmosphere", true)]
-    [TestCase("Custom/LoadingShuttleExhaust", true)]
-    [TestCase("Custom/PlanetClouds", true)]
-    [TestCase("Custom/PlanetDayNightShade", true)]
+    /// <param name="hasOpenGlPass">Whether the shader includes a pass that supports OpenGL.</param>
+    [TestCase("Custom/PlanetAtmosphere", false)]
+    [TestCase("Custom/LoadingShuttleExhaust", false)]
+    [TestCase("Custom/PlanetClouds", false)]
+    [TestCase("Custom/PlanetDayNightShade", false)]
     [TestCase("Custom/PlanetSurface", true)]
-    [TestCase("Custom/PremultipliedTexture", false)]
-    [TestCase("UI/Crisp Sprite", false)]
+    [TestCase("Custom/PremultipliedTexture", true)]
+    [TestCase("UI/Crisp Sprite", true)]
     public void ProjectShader_ActiveBackend_HasExpectedSupport(
         string shaderName,
-        bool requiresUrpBackend
+        bool hasOpenGlPass
     )
     {
         Shader shader = Shader.Find(shaderName);
@@ -265,7 +271,7 @@ public sealed class RenderPipelineConfigurationTests
             SystemInfo.graphicsDeviceType
             is GraphicsDeviceType.OpenGLCore
                 or GraphicsDeviceType.OpenGLES3;
-        Assert.AreEqual(!requiresUrpBackend || !isOpenGl, shader.isSupported, shaderName);
+        Assert.AreEqual(!isOpenGl || hasOpenGlPass, shader.isSupported, shaderName);
         AssertShaderHasNoCompilerErrors(shaderName, shader);
     }
 

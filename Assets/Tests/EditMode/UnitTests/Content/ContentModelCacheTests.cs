@@ -31,15 +31,22 @@ namespace Rebellion.Tests.Content
         [TearDown]
         public void TearDown() => Directory.Delete(root, true);
 
-        [Test]
-        public async Task InstantiateAsync_OpaqueModel_EnablesMotionVectorsAsync()
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task InstantiateAsync_OpaqueModel_EnablesMotionVectorsAsync(
+            bool pipelineInitialized
+        )
         {
             WriteTriangle();
             using ContentAssets assets = new ContentAssets(new ContentFileResolver(root, root));
             using ContentModelCache models = new ContentModelCache(assets);
             GameObject parent = new GameObject("Model test");
+            string originalPipeline = Shader.globalRenderPipeline;
             try
             {
+                Shader.globalRenderPipeline = pipelineInitialized
+                    ? "UniversalPipeline"
+                    : string.Empty;
                 using ContentModelInstance model = await models.InstantiateAsync(
                     "Pack/triangle",
                     parent.transform,
@@ -48,12 +55,12 @@ namespace Rebellion.Tests.Content
                 Material material = model
                     .ModelRoot.GetComponentInChildren<Renderer>()
                     .sharedMaterial;
-                Assert.GreaterOrEqual(material.FindPass("MotionVectors"), 0);
                 Assert.IsTrue(material.GetShaderPassEnabled("MotionVectors"));
                 Assert.IsTrue(material.GetShaderPassEnabled("MOTIONVECTORS"));
             }
             finally
             {
+                Shader.globalRenderPipeline = originalPipeline;
                 UnityEngine.Object.DestroyImmediate(parent);
             }
         }

@@ -36,8 +36,9 @@ public static class ContentModelLoader
             for (int index = 0; index < gltf.MaterialCount; index++)
             {
                 Material material = gltf.GetMaterial(index);
-                if (material == null || material.FindPass("MotionVectors") < 0)
+                if (material == null)
                     continue;
+                // The active shader passes can change when the first camera initializes URP.
                 material.SetShaderPassEnabled("MotionVectors", true);
                 material.SetShaderPassEnabled("MOTIONVECTORS", true);
             }
