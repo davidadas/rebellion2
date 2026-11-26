@@ -5,6 +5,7 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
@@ -185,9 +186,94 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(900.5f, restored.Systems.Hull);
             Assert.AreEqual("ship", restored.InstanceID);
             Assert.AreEqual(
-                unit.Weapons.GetCharge(TacticalWeaponArc.Forward),
-                restored.Weapons.GetCharge(TacticalWeaponArc.Forward)
+                unit.GetBatteryCharge(TacticalWeaponArc.Forward),
+                restored.GetBatteryCharge(TacticalWeaponArc.Forward)
             );
+        }
+
+        [Test]
+        public void GameRootSerialization_AuthoredMounts_SharesArcChargeAcrossReload()
+        {
+            GameRoot game = new() { ActiveBattle = CreateBattle() };
+            CapitalShip source = new()
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "owner",
+                CurrentHullStrength = 100,
+                MaxHullStrength = 100,
+                Engine = new Engine { SublightSpeed = 10, Maneuverability = 3 },
+            };
+            HardpointGroup group = new() { Arc = TacticalWeaponArc.Starboard };
+            foreach (int damage in new[] { 7, 11 })
+                group
+                    .GetHardpoints()
+                    .Add(
+                        new Hardpoint
+                        {
+                            FiringArcDegrees = 25,
+                            Weapon = new WeaponData
+                            {
+                                WeaponType = HardpointWeaponType.LaserCannon,
+                                Damage = damage,
+                                Range = 200,
+                            },
+                        }
+                    );
+            source.HardpointGroups.Add(group);
+            CombatUnit unit = game.ActiveBattle.AddCombatant(source);
+            unit.InitializeTacticalState(CombatSide.Attacker, 1);
+            unit.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
+            unit.RechargeBatteries(1, 6);
+
+            string xml = SerializationHelper.Serialize(game);
+            Assert.That(xml, Does.Contain("<HardpointGroups>").And.Not.Contain("<PrimaryWeapons>"));
+            CombatUnit restored = SerializationHelper
+                .Deserialize<GameRoot>(xml)
+                .ActiveBattle.GetCombatant("ship");
+
+            Assert.AreEqual(
+                0,
+                restored.GetWeaponStrength(
+                    TacticalWeaponArc.Forward,
+                    TacticalWeaponType.LaserCannon
+                )
+            );
+            Assert.AreEqual(
+                18,
+                restored.GetWeaponStrength(
+                    TacticalWeaponArc.Starboard,
+                    TacticalWeaponType.LaserCannon
+                )
+            );
+            Assert.AreEqual(
+                200,
+                restored.GetWeaponRange(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon)
+            );
+            Assert.AreEqual(6, restored.GetBatteryCharge(TacticalWeaponArc.Starboard));
+            Assert.AreEqual(10, ((CapitalShip)restored.Unit).SublightSpeed);
+            restored.RechargeBatteries(1, 12);
+            Assert.IsTrue(restored.IsBatteryReady(TacticalWeaponArc.Starboard));
+            Assert.AreEqual(25, restored.Batteries[1].GetHardpoints()[0].FiringArcDegrees);
+            Assert.AreNotSame(group, unit.Batteries[1]);
+        }
+
+        [Test]
+        public void Deserialize_ActiveBattleWithLegacyWeapons_RestoresQueuedCharge()
+        {
+            const string xml =
+                @"<CombatUnit>
+                  <CapitalShip />
+                  <Weapons>
+                    <Charge><Single>1.5</Single><Single>0</Single><Single>0</Single><Single>0</Single></Charge>
+                    <Ready><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32></Ready>
+                    <RechargeOrder><Int32>0</Int32><Int32>-1</Int32><Int32>-1</Int32><Int32>-1</Int32></RechargeOrder>
+                    <RechargeCount>1</RechargeCount>
+                  </Weapons>
+                </CombatUnit>";
+
+            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
+            Assert.AreEqual(1.5f, restored.GetBatteryCharge(TacticalWeaponArc.Forward));
+            Assert.IsFalse(restored.IsBatteryReady(TacticalWeaponArc.Forward));
         }
 
         /// <summary>

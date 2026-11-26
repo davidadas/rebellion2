@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.ShipComponents;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -88,34 +90,83 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(DamageControl))]
         private int _damageControl;
 
-        [PersistableMember(Name = nameof(MaxShieldStrength))]
         private int _maxShieldStrength;
 
-        [PersistableMember(Name = nameof(ShieldRechargeRate))]
+        [PersistableMember(Name = nameof(MaxShieldStrength))]
+        private int? LegacyMaxShieldStrength
+        {
+            get => ShieldGenerator == null ? _maxShieldStrength : null;
+            set => _maxShieldStrength = value.GetValueOrDefault();
+        }
+
         private int _shieldRechargeRate;
 
+        [PersistableMember(Name = nameof(ShieldRechargeRate))]
+        private int? LegacyShieldRechargeRate
+        {
+            get => ShieldGenerator == null ? _shieldRechargeRate : null;
+            set => _shieldRechargeRate = value.GetValueOrDefault();
+        }
+
         // Movement Info.
-        [PersistableMember(Name = nameof(Hyperdrive))]
         private int _hyperdrive;
+
+        [PersistableMember(Name = nameof(Hyperdrive))]
+        private int? LegacyHyperdrive
+        {
+            get => PrimaryDrive == null ? _hyperdrive : null;
+            set => _hyperdrive = value.GetValueOrDefault();
+        }
 
         [PersistableMember(Name = nameof(HyperdriveCount))]
         private int? _hyperdriveCount;
 
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
         public CapitalShipGeometry PhysicalGeometry { get; set; }
+        public Engine Engine { get; set; }
+        public Hyperdrive PrimaryDrive { get; set; }
+        public Hyperdrive BackupDrive { get; set; }
+        public ShieldGenerator ShieldGenerator { get; set; }
+        public StarfighterBay StarfighterBay { get; set; }
+        public GravityWellGenerator GravityWellGenerator { get; set; }
+        public List<HardpointGroup> HardpointGroups { get; set; } = new();
 
-        [PersistableMember(Name = nameof(BackupHyperdrive))]
         private int? _backupHyperdrive;
 
-        [PersistableMember(Name = nameof(SublightSpeed))]
+        [PersistableMember(Name = nameof(BackupHyperdrive))]
+        private int? LegacyBackupHyperdrive
+        {
+            get => BackupDrive == null ? _backupHyperdrive : null;
+            set => _backupHyperdrive = value;
+        }
+
         private int _sublightSpeed;
 
-        [PersistableMember(Name = nameof(Maneuverability))]
+        [PersistableMember(Name = nameof(SublightSpeed))]
+        private int? LegacySublightSpeed
+        {
+            get => Engine == null ? _sublightSpeed : null;
+            set => _sublightSpeed = value.GetValueOrDefault();
+        }
+
         private int _maneuverability;
 
+        [PersistableMember(Name = nameof(Maneuverability))]
+        private int? LegacyManeuverability
+        {
+            get => Engine == null ? _maneuverability : null;
+            set => _maneuverability = value.GetValueOrDefault();
+        }
+
         // Capacity Info.
-        [PersistableMember(Name = nameof(StarfighterCapacity))]
         private int _starfighterCapacity;
+
+        [PersistableMember(Name = nameof(StarfighterCapacity))]
+        private int? LegacyStarfighterCapacity
+        {
+            get => StarfighterBay == null ? _starfighterCapacity : null;
+            set => _starfighterCapacity = value.GetValueOrDefault();
+        }
 
         [PersistableMember(Name = nameof(RegimentCapacity))]
         private int _regimentCapacity;
@@ -137,7 +188,6 @@ namespace Rebellion.Game.Units
         private List<Starfighter> _starfighters = new List<Starfighter>();
 
         // Weapon Info.
-        [PersistableMember(Name = nameof(PrimaryWeapons))]
         private Dictionary<PrimaryWeaponType, int[]> _primaryWeapons = new Dictionary<
             PrimaryWeaponType,
             int[]
@@ -147,6 +197,13 @@ namespace Rebellion.Game.Units
             { PrimaryWeaponType.IonCannon, new int[PrimaryWeaponRangeIndex + 1] },
             { PrimaryWeaponType.LaserCannon, new int[PrimaryWeaponRangeIndex + 1] },
         };
+
+        [PersistableMember(Name = nameof(PrimaryWeapons))]
+        private Dictionary<PrimaryWeaponType, int[]> LegacyPrimaryWeapons
+        {
+            get => HardpointGroups is { Count: > 0 } ? null : _primaryWeapons;
+            set => _primaryWeapons = value;
+        }
 
         [PersistableMember(Name = nameof(WeaponRecharge))]
         private int _weaponRecharge;
@@ -186,8 +243,14 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(TractorBeamnRange))]
         private int _tractorBeamRange;
 
-        [PersistableMember(Name = nameof(HasGravityWell))]
         private bool _hasGravityWell;
+
+        [PersistableMember(Name = nameof(HasGravityWell))]
+        private bool? LegacyHasGravityWell
+        {
+            get => GravityWellGenerator == null ? _hasGravityWell : null;
+            set => _hasGravityWell = value.GetValueOrDefault();
+        }
 
         private int? _sectorSuppression;
         private PlanetSector _suppressionSector;
@@ -251,33 +314,57 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public int MaxShieldStrength
         {
-            get => _maxShieldStrength;
-            set => _maxShieldStrength = value;
+            get => ShieldGenerator?.Capacity ?? _maxShieldStrength;
+            set
+            {
+                if (ShieldGenerator != null)
+                    ShieldGenerator.Capacity = value;
+                _maxShieldStrength = value;
+            }
         }
 
         [PersistableIgnore]
         public int ShieldRechargeRate
         {
-            get => _shieldRechargeRate;
-            set => _shieldRechargeRate = value;
+            get => ShieldGenerator?.RechargeRate ?? _shieldRechargeRate;
+            set
+            {
+                if (ShieldGenerator != null)
+                    ShieldGenerator.RechargeRate = value;
+                _shieldRechargeRate = value;
+            }
         }
 
         [PersistableIgnore]
         public int Hyperdrive
         {
-            get => _hyperdrive;
-            set => _hyperdrive = value;
+            get => PrimaryDrive?.Rating ?? _hyperdrive;
+            set
+            {
+                if (PrimaryDrive != null)
+                    PrimaryDrive.Rating = value;
+                _hyperdrive = value;
+            }
         }
 
         [PersistableIgnore]
         public int BackupHyperdrive
         {
-            get => _backupHyperdrive ?? 0;
-            set => _backupHyperdrive = value;
+            get => BackupDrive?.Rating ?? _backupHyperdrive ?? 0;
+            set
+            {
+                if (BackupDrive != null)
+                    BackupDrive.Rating = value;
+                _backupHyperdrive = value;
+            }
         }
 
         // Old content and saves omitted the rating and used the tactical definition.
-        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
+        internal void MigrateBackupHyperdrive(int rating)
+        {
+            if (BackupDrive == null && (rating != 0 || _backupHyperdrive.HasValue))
+                BackupDrive = new Hyperdrive { Rating = _backupHyperdrive ?? rating };
+        }
 
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
@@ -293,22 +380,37 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public int SublightSpeed
         {
-            get => _sublightSpeed;
-            set => _sublightSpeed = value;
+            get => Engine?.SublightSpeed ?? _sublightSpeed;
+            set
+            {
+                if (Engine != null)
+                    Engine.SublightSpeed = value;
+                _sublightSpeed = value;
+            }
         }
 
         [PersistableIgnore]
         public int Maneuverability
         {
-            get => _maneuverability;
-            set => _maneuverability = value;
+            get => Engine?.Maneuverability ?? _maneuverability;
+            set
+            {
+                if (Engine != null)
+                    Engine.Maneuverability = value;
+                _maneuverability = value;
+            }
         }
 
         [PersistableIgnore]
         public int StarfighterCapacity
         {
-            get => _starfighterCapacity;
-            set => _starfighterCapacity = value;
+            get => StarfighterBay?.Capacity ?? _starfighterCapacity;
+            set
+            {
+                if (StarfighterBay != null)
+                    StarfighterBay.Capacity = value;
+                _starfighterCapacity = value;
+            }
         }
 
         [PersistableIgnore]
@@ -328,8 +430,105 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons
         {
-            get => _primaryWeapons;
-            set => _primaryWeapons = value;
+            get => HardpointGroups is { Count: > 0 } ? CapturePrimaryWeapons() : _primaryWeapons;
+            set
+            {
+                _primaryWeapons = value;
+                HardpointGroups?.Clear();
+            }
+        }
+
+        internal static HardpointWeaponType GetHardpointWeaponType(PrimaryWeaponType weapon) =>
+            weapon switch
+            {
+                PrimaryWeaponType.LaserCannon => HardpointWeaponType.LaserCannon,
+                PrimaryWeaponType.IonCannon => HardpointWeaponType.IonCannon,
+                PrimaryWeaponType.Turbolaser => HardpointWeaponType.Turbolaser,
+                _ => throw new ArgumentOutOfRangeException(nameof(weapon)),
+            };
+
+        internal static TacticalWeaponArc GetBatteryArc(PrimaryWeaponArc arc) =>
+            arc switch
+            {
+                PrimaryWeaponArc.Fore => TacticalWeaponArc.Forward,
+                PrimaryWeaponArc.Starboard => TacticalWeaponArc.Starboard,
+                PrimaryWeaponArc.Aft => TacticalWeaponArc.Aft,
+                PrimaryWeaponArc.Port => TacticalWeaponArc.Port,
+                _ => throw new ArgumentOutOfRangeException(nameof(arc)),
+            };
+
+        internal void InstallLegacyEquipment()
+        {
+            Engine ??= new Engine
+            {
+                SublightSpeed = _sublightSpeed,
+                Maneuverability = _maneuverability,
+            };
+            PrimaryDrive ??= new Hyperdrive { Rating = _hyperdrive };
+            MigrateBackupHyperdrive(0);
+            ShieldGenerator ??= new ShieldGenerator
+            {
+                Capacity = _maxShieldStrength,
+                RechargeRate = _shieldRechargeRate,
+            };
+            StarfighterBay ??= new StarfighterBay { Capacity = _starfighterCapacity };
+            if (_hasGravityWell)
+                GravityWellGenerator ??= new GravityWellGenerator();
+            if (HardpointGroups is not { Count: > 0 })
+                HardpointGroups = CaptureLegacyHardpoints();
+        }
+
+        private List<HardpointGroup> CaptureLegacyHardpoints()
+        {
+            List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
+            foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
+            {
+                HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
+                foreach (KeyValuePair<PrimaryWeaponType, int[]> entry in _primaryWeapons)
+                {
+                    group
+                        .GetHardpoints()
+                        .Add(
+                            new Hardpoint
+                            {
+                                Weapon = new WeaponData
+                                {
+                                    WeaponType = GetHardpointWeaponType(entry.Key),
+                                    Damage = entry.Value[(int)arc],
+                                    Range = entry.Value[PrimaryWeaponRangeIndex],
+                                },
+                            }
+                        );
+                }
+                groups.Add(group);
+            }
+            return groups;
+        }
+
+        private Dictionary<PrimaryWeaponType, int[]> CapturePrimaryWeapons()
+        {
+            Dictionary<PrimaryWeaponType, int[]> weapons = new();
+            foreach (PrimaryWeaponType type in Enum.GetValues(typeof(PrimaryWeaponType)))
+            {
+                HardpointWeaponType weapon = GetHardpointWeaponType(type);
+                int[] values = new int[PrimaryWeaponRangeIndex + 1];
+                foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
+                {
+                    TacticalWeaponArc batteryArc = GetBatteryArc(arc);
+                    foreach (HardpointGroup group in HardpointGroups)
+                    {
+                        if (group.Arc != batteryArc)
+                            continue;
+                        values[(int)arc] += group.GetStrength(weapon);
+                        values[PrimaryWeaponRangeIndex] = Math.Max(
+                            values[PrimaryWeaponRangeIndex],
+                            (int)group.GetRange(weapon)
+                        );
+                    }
+                }
+                weapons.Add(type, values);
+            }
+            return weapons;
         }
 
         [PersistableIgnore]
@@ -363,8 +562,13 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public bool HasGravityWell
         {
-            get => _hasGravityWell;
-            set => _hasGravityWell = value;
+            get => GravityWellGenerator != null || _hasGravityWell;
+            set
+            {
+                if (!value)
+                    GravityWellGenerator = null;
+                _hasGravityWell = value;
+            }
         }
 
         [PersistableIgnore]
@@ -476,7 +680,7 @@ namespace Rebellion.Game.Units
             copy.StarfighterCapacity = StarfighterCapacity;
             copy.RegimentCapacity = RegimentCapacity;
             copy.Roles = new List<CapitalShipRole>(Roles);
-            copy.PrimaryWeapons = PrimaryWeapons.ToDictionary(
+            copy._primaryWeapons = _primaryWeapons.ToDictionary(
                 entry => entry.Key,
                 entry => entry.Value?.ToArray()
             );
@@ -496,6 +700,13 @@ namespace Rebellion.Game.Units
             copy.CanDestroyPlanets = CanDestroyPlanets;
             copy.SectorSuppression = SectorSuppression;
             copy.DetectionRating = DetectionRating;
+            copy.Engine = (Engine)Engine?.CreateCopy();
+            copy.PrimaryDrive = (Hyperdrive)PrimaryDrive?.CreateCopy();
+            copy.BackupDrive = (Hyperdrive)BackupDrive?.CreateCopy();
+            copy.ShieldGenerator = (ShieldGenerator)ShieldGenerator?.CreateCopy();
+            copy.StarfighterBay = (StarfighterBay)StarfighterBay?.CreateCopy();
+            copy.GravityWellGenerator = (GravityWellGenerator)GravityWellGenerator?.CreateCopy();
+            copy.HardpointGroups = HardpointGroups?.ConvertAll(group => group.CreateCopy());
             copy.InitialParentInstanceID = InitialParentInstanceID;
         }
 

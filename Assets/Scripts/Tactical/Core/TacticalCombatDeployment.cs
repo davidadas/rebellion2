@@ -31,11 +31,11 @@ namespace Rebellion.Tactical
                     1 => TacticalWeaponType.LaserCannon,
                     _ => TacticalWeaponType.Turbolaser,
                 };
-                if (unit.Weapons.GetStrength((TacticalWeaponArc)arc, weapon) == 0)
+                if (unit.GetWeaponStrength((TacticalWeaponArc)arc, weapon) == 0)
                     continue;
                 armed = true;
                 laser |= weapon == TacticalWeaponType.LaserCannon;
-                float range = unit.Weapons.GetRange(weapon);
+                float range = unit.GetWeaponRange((TacticalWeaponArc)arc, weapon);
                 if (maximum < range)
                     maximum = range;
             }

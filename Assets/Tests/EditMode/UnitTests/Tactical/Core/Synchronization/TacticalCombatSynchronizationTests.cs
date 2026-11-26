@@ -338,8 +338,8 @@ namespace Rebellion.Tests.Tactical
                 Assert.AreEqual(unit.Systems.Hull, projected.Systems.Hull);
                 Assert.AreEqual(unit.Systems.Shields, projected.Systems.Shields);
                 Assert.AreEqual(
-                    unit.Weapons.GetCharge(TacticalWeaponArc.Forward),
-                    projected.Weapons.GetCharge(TacticalWeaponArc.Forward)
+                    unit.GetBatteryCharge(TacticalWeaponArc.Forward),
+                    projected.GetBatteryCharge(TacticalWeaponArc.Forward)
                 );
             }
             Assert.Throws<ArgumentException>(() => replica.ApplySnapshot(state));

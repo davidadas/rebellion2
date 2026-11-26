@@ -126,9 +126,9 @@ namespace Rebellion.Tactical
             TacticalWeaponArc arc = selected.Value;
             uint total = unchecked(
                 (uint)(
-                    unit.Weapons.GetStrength(arc, TacticalWeaponType.LaserCannon)
-                    + unit.Weapons.GetStrength(arc, TacticalWeaponType.IonCannon)
-                    + unit.Weapons.GetStrength(arc, TacticalWeaponType.Turbolaser)
+                    unit.GetWeaponStrength(arc, TacticalWeaponType.LaserCannon)
+                    + unit.GetWeaponStrength(arc, TacticalWeaponType.IonCannon)
+                    + unit.GetWeaponStrength(arc, TacticalWeaponType.Turbolaser)
                 )
             );
             if (unit.IsFighter)
@@ -151,9 +151,9 @@ namespace Rebellion.Tactical
             for (int index = 0; index < _attackOrder.Length; index++)
             {
                 TacticalWeaponType weapon = _attackOrder[index];
-                if (unit.Weapons.GetStrength(arc, weapon) <= 0)
+                if (unit.GetWeaponStrength(arc, weapon) <= 0)
                     continue;
-                float value = unit.Weapons.GetTargetDamage(arc, weapon, fighter);
+                float value = TacticalCombatFireControl.GetTargetDamage(unit, arc, weapon, fighter);
                 if (fighter && weapon != TacticalWeaponType.IonCannon)
                     value = (float)((double)value * maneuverRatio);
                 double contribution = unit.IsFighter
@@ -198,14 +198,14 @@ namespace Rebellion.Tactical
             for (int index = 0; index < order.Length; index++)
             {
                 TacticalWeaponType weapon = order[index];
-                if (unit.Weapons.GetStrength(selected.Value, weapon) == 0)
+                if (unit.GetWeaponStrength(selected.Value, weapon) == 0)
                     continue;
-                float range = unit.Weapons.GetRange(weapon);
-                float scalar = unit.Weapons.GetRangeScalar(weapon, targetIsFighter);
+                float range = unit.GetWeaponRange(selected.Value, weapon);
+                float scalar = TacticalCombatFireControl.GetRangeScalar(weapon, targetIsFighter);
                 float score = (float)(
                     unit.Systems.GetWeaponRecharge()
                     * scalar
-                    * unit.Weapons.GetStrength(selected.Value, weapon)
+                    * unit.GetWeaponStrength(selected.Value, weapon)
                 );
                 _weapons.Add(new WeaponRange(range, subtract ? -score : score));
                 _boundaries.Add(range);

@@ -36,7 +36,7 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 30);
 
             Assert.GreaterOrEqual(shots, 2);
-            Assert.Greater(source.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward), 0);
+            Assert.Greater(source.GetBatteryCapacity(TacticalWeaponArc.Forward), 0);
         }
 
         [Test]
@@ -538,7 +538,7 @@ namespace Rebellion.Tests.Tactical
             foreach (TacticalWeaponArc arc in Enum.GetValues(typeof(TacticalWeaponArc)))
                 Assert.AreEqual(
                     (int)arc != dischargedArc,
-                    target.Weapons.IsReady(arc),
+                    target.IsBatteryReady(arc),
                     arc.ToString()
                 );
         }
@@ -2954,12 +2954,12 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = session.GetUnit("a");
             float[] initialCharge = new float[4];
             for (int arc = 0; arc < 4; arc++)
-                initialCharge[arc] = unit.Weapons.GetCharge((TacticalWeaponArc)arc);
+                initialCharge[arc] = unit.GetBatteryCharge((TacticalWeaponArc)arc);
             for (int frame = 0; frame < 1200; frame++)
             {
                 session.Advance(1000f / 60);
                 for (int arc = 0; arc < 4; arc++)
-                    if (unit.Weapons.GetCharge((TacticalWeaponArc)arc) < initialCharge[arc])
+                    if (unit.GetBatteryCharge((TacticalWeaponArc)arc) < initialCharge[arc])
                         return;
             }
             Assert.Fail("The designated battery did not queue a discharge.");

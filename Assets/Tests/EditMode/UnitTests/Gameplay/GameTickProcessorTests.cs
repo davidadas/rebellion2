@@ -1185,8 +1185,8 @@ namespace Rebellion.Tests.Gameplay
                     $"{unit.InstanceID} ({unit.TypeID}): state={unit.Status}, hull={unit.Systems.Hull}, "
                     + $"shields={unit.Systems.Shields}, position={unit.Position}, heading={unit.Heading}, "
                     + $"order={battle.GetGroup(unit)?.ActiveOrder}, target={battle.GetGroup(unit)?.PrimaryTarget?.InstanceID}, "
-                    + $"shots={shots[unit]}, forwardCharge={unit.Weapons.GetCharge(TacticalWeaponArc.Forward)}/"
-                    + $"{unit.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward)}, "
+                    + $"shots={shots[unit]}, forwardCharge={unit.GetBatteryCharge(TacticalWeaponArc.Forward)}/"
+                    + $"{unit.GetBatteryCapacity(TacticalWeaponArc.Forward)}, "
                     + $"weaponsDamage={unit.Systems.GetDamage(TacticalShipSystem.Weapons)}"
                 )
             );
@@ -1205,8 +1205,8 @@ namespace Rebellion.Tests.Gameplay
                 if (shot.Source == player)
                     playerShots++;
             };
-            Assert.IsTrue(player.Weapons.IsReady(TacticalWeaponArc.Forward));
-            Assert.Greater(player.Weapons.GetMaximumCharge(TacticalWeaponArc.Forward), 0);
+            Assert.IsTrue(player.IsBatteryReady(TacticalWeaponArc.Forward));
+            Assert.Greater(player.GetBatteryCapacity(TacticalWeaponArc.Forward), 0);
             battle.SetTarget(
                 battle.Groups.Single(group => group.Side == battle.PlayerSide),
                 opponent

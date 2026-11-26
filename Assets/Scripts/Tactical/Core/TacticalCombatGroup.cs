@@ -469,16 +469,16 @@ namespace Rebellion.Tactical
                 for (int arc = 0; arc < 4; arc++)
                 {
                     hasLaser |=
-                        primary.Weapons.GetStrength(
+                        primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
                             TacticalWeaponType.LaserCannon
                         ) != 0;
                     hasOther |=
-                        primary.Weapons.GetStrength(
+                        primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
                             TacticalWeaponType.IonCannon
                         ) != 0
-                        || primary.Weapons.GetStrength(
+                        || primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
                             TacticalWeaponType.Turbolaser
                         ) != 0;

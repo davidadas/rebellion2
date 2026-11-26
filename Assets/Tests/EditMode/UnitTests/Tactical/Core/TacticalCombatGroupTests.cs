@@ -169,7 +169,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 0, 100 });
             if (clearBattery)
-                member.Weapons.ClearBattery(TacticalWeaponArc.Starboard);
+                member.ClearBattery(TacticalWeaponArc.Starboard);
             TacticalCombatGroup group = CreateStationaryEngagement(member, new Vector3(3, 4, 0));
 
             Assert.AreEqual(Vector3.UnitX, group.GetMemberHeading(member));
@@ -179,7 +179,7 @@ namespace Rebellion.Tests.Tactical
         public void GetMemberHeading_ClearedStrongestBattery_RetainsAuthoredAlignment()
         {
             CombatUnit member = CreateCapital(1, new[] { 0, 0, 0, 1, 100 });
-            member.Weapons.ClearBattery(TacticalWeaponArc.Starboard);
+            member.ClearBattery(TacticalWeaponArc.Starboard);
             TacticalCombatGroup group = CreateStationaryEngagement(member, Vector3.UnitZ);
 
             Assert.AreEqual(

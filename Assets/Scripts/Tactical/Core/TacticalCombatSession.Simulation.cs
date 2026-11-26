@@ -142,7 +142,7 @@ namespace Rebellion.Tactical
                 if (!unit.IsTargetable)
                     continue;
                 unit.Systems.Advance(1000, _random);
-                unit.Weapons.Advance(1, unit.Systems.GetWeaponRecharge());
+                unit.RechargeBatteries(1, unit.Systems.GetWeaponRecharge());
                 if (_carriers.TryGetValue(unit.InstanceID, out TacticalCombatCarrier carrier))
                     carrier.Advance(SystemTime, _random);
                 TacticalCombatGroup group = GetGroup(unit);
@@ -676,7 +676,7 @@ namespace Rebellion.Tactical
                             );
                         for (int arc = 0; arc < 4; arc++)
                             if ((change.DischargedArcMask & (1 << arc)) != 0)
-                                source.Weapons.ClearBattery((TacticalWeaponArc)arc);
+                                source.ClearBattery((TacticalWeaponArc)arc);
                     }
                     else
                     {

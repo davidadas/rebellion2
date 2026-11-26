@@ -787,13 +787,14 @@ namespace Rebellion.Gameplay
             {
                 if (!ship.CanDestroyPlanets)
                 {
+                    Dictionary<PrimaryWeaponType, int[]> weapons = ship.PrimaryWeapons;
                     int bestScore = 0;
                     int bestStrength = 0;
                     for (int arc = 0; arc < 4; arc++)
                     {
-                        int turbo = ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][arc];
-                        int ion = ship.PrimaryWeapons[PrimaryWeaponType.IonCannon][arc];
-                        int laser = ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][arc];
+                        int turbo = weapons[PrimaryWeaponType.Turbolaser][arc];
+                        int ion = weapons[PrimaryWeaponType.IonCannon][arc];
+                        int laser = weapons[PrimaryWeaponType.LaserCannon][arc];
                         int score = (turbo + ion) * 100 + laser * 100 / 6;
                         if (score > bestScore)
                         {

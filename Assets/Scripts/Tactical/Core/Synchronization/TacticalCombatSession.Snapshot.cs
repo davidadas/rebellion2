@@ -216,7 +216,7 @@ namespace Rebellion.Tactical
                 state.ShieldRechargeSample,
                 state.ComponentDamage
             );
-            unit.Weapons.ApplyProjection(state.Charge, state.Ready);
+            unit.ApplyBatteryProjection(state.Charge, state.Ready);
             unit.HyperspaceMilliseconds = state.HyperspaceMilliseconds;
             unit.TractorRestraint = state.TractorRestraint;
             unit.ApplySnapshotTractorMembership(state.HasTractorSources);

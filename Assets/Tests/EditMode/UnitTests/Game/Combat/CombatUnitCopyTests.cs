@@ -42,9 +42,12 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(unit.HasPrimaryHyperdrive);
             Assert.AreEqual(
                 10,
-                unit.Weapons.GetStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
             );
-            Assert.AreEqual(50, unit.Weapons.GetRange(TacticalWeaponType.LaserCannon));
+            Assert.AreEqual(
+                50,
+                unit.GetWeaponRange(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+            );
         }
 
         [Test]
@@ -75,7 +78,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(24, unit.Systems.MaximumShields);
             Assert.AreEqual(
                 36,
-                unit.Weapons.GetStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
             );
         }
 

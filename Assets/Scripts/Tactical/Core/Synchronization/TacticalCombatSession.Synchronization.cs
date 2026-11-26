@@ -471,11 +471,11 @@ namespace Rebellion.Tactical
                     .ToArray(),
                 Charge = Enumerable
                     .Range(0, 4)
-                    .Select(index => unit.Weapons.GetCharge((TacticalWeaponArc)index))
+                    .Select(index => unit.GetBatteryCharge((TacticalWeaponArc)index))
                     .ToArray(),
                 Ready = Enumerable
                     .Range(0, 4)
-                    .Select(index => unit.Weapons.IsReady((TacticalWeaponArc)index))
+                    .Select(index => unit.IsBatteryReady((TacticalWeaponArc)index))
                     .ToArray(),
                 HyperspaceMilliseconds = unit.HyperspaceMilliseconds,
                 TractorRestraint = unit.TractorRestraint,
