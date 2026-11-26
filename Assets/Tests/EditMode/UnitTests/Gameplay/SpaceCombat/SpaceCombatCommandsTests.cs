@@ -6288,6 +6288,8 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("carrier")]
         [TestCase("withdrawal")]
         [TestCase("auto")]
+        [TestCase("station")]
+        [TestCase("repair")]
         public void ResolveCombat_SeededScenario_RecordsComparisonTrace(string scenario)
         {
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
@@ -6313,6 +6315,44 @@ namespace Rebellion.Tests.Gameplay
                 foreach (int[] battery in attacker.PrimaryWeapons.Values)
                     for (int arc = 0; arc < 4; arc++)
                         battery[arc] = 0;
+            }
+
+            const string stationID = "battle-station";
+            const string attackRunFighterID = "attack-run-squadron";
+            if (scenario is "station" or "repair")
+            {
+                CapitalShip enemy = planet
+                    .GetChildren<CapitalShip>(recursive: true)
+                    .Single(ship => ship != attacker);
+                enemy.MaxHullStrength = enemy.CurrentHullStrength = 2000;
+                foreach (int[] battery in attacker.PrimaryWeapons.Values)
+                    for (int arc = 0; arc < 4; arc++)
+                        battery[arc] = 0;
+                if (scenario == "station")
+                {
+                    CapitalShip station = TacticalTestData.CreateCapital(
+                        TacticalTestData.StationTypeID
+                    );
+                    station.InstanceID = stationID;
+                    station.OwnerInstanceID = attacker.OwnerInstanceID;
+                    station.MaxHullStrength = station.CurrentHullStrength = 4000;
+                    game.AttachNode(station, fleet);
+                    Starfighter fighter = TacticalTestData.CreateFighter();
+                    fighter.InstanceID = attackRunFighterID;
+                    fighter.OwnerInstanceID = enemy.OwnerInstanceID;
+                    fighter.Torpedoes = 100;
+                    enemy.StarfighterCapacity = 2;
+                    game.AttachNode(fighter, enemy);
+                }
+                else
+                {
+                    attacker.Hyperdrive = 2;
+                    attacker.BackupHyperdrive = 2;
+                    attacker.SystemDamage.Engines = 2;
+                    attacker.SystemDamage.PrimaryHyperdrive = 1;
+                    attacker.SystemDamage.BackupHyperdrive = 1;
+                    attacker.DamageControl = 100;
+                }
             }
 
             List<string> trace = new();
@@ -6349,13 +6389,57 @@ namespace Rebellion.Tests.Gameplay
                     );
                 if (scenario == "withdrawal")
                     Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
+
+                CombatUnit repairShip = null;
+                bool attackRunFinished = false;
+                if (scenario == "repair")
+                {
+                    repairShip = battle.GetUnit(attacker.InstanceID);
+                    Assert.AreEqual(2, repairShip.GetDamage(TacticalShipSystem.Engines));
+                    Assert.AreEqual(2, repairShip.GetDamage(TacticalShipSystem.Hyperdrive));
+                    Assert.IsFalse(repairShip.HasHyperdrive);
+                }
+                if (scenario == "station")
+                {
+                    CombatUnit fighter = battle.GetUnit(attackRunFighterID);
+                    Assert.AreEqual(stationID, battle.BattleStation.Unit.InstanceID);
+                    Assert.IsTrue(battle.CanAttackBattleStation(fighter.Side));
+                    battle.AttackRunMovieRequested += request =>
+                    {
+                        trace.Add(
+                            $"attack-run {frame} {battle.SystemTime} {request.AttackRun.State}"
+                        );
+                        attackRunFinished = true;
+                    };
+                    battle.SuperlaserFired += (source, target) =>
+                        trace.Add(
+                            $"superlaser {frame} {battle.SystemTime} {source.InstanceID} {target.InstanceID}"
+                        );
+                    CombatUnit target = battle.Units.Single(unit =>
+                        unit.Side == fighter.Side && !unit.IsFighter
+                    );
+                    battle.SetOrder(
+                        battle.GetGroup(fighter),
+                        TacticalCombatOrder.AttackBattleStation
+                    );
+                    Assert.IsTrue(battle.FireSuperlaser(target));
+                }
                 for (; frame < 6000 && !battle.IsComplete; frame++)
                 {
-                    if (frame == 1800 && scenario is "carrier" or "gunnery")
+                    if (frame == 1800 && scenario is "carrier" or "gunnery" or "repair")
                         battle.RequestImmediateResult();
                     battle.Advance(50);
+                    if (battle.PendingAttackRunMovie is TacticalCombatMovieRequest movie)
+                    {
+                        movie.Complete();
+                        battle.RequestImmediateResult();
+                    }
                     if (frame % 20 == 0 || battle.IsComplete)
                     {
+                        if (repairShip != null)
+                            trace.Add(
+                                $"components {frame} {battle.SystemTime} {repairShip.GetDamage(TacticalShipSystem.Engines)} {repairShip.GetDamage(TacticalShipSystem.Hyperdrive)} {repairShip.HasHyperdrive}"
+                            );
                         foreach (CombatUnit unit in battle.Units)
                             trace.Add(
                                 FormattableString.Invariant(
@@ -6365,7 +6449,30 @@ namespace Rebellion.Tests.Gameplay
                     }
                 }
                 Assert.IsTrue(battle.IsComplete, scenario);
+                if (scenario == "station")
+                {
+                    Assert.IsTrue(attackRunFinished, "The station attack should reach its movie.");
+                    Assert.IsTrue(
+                        trace.Any(item => item.StartsWith("superlaser ", StringComparison.Ordinal))
+                    );
+                }
+                if (repairShip != null)
+                {
+                    Assert.Less(
+                        repairShip.GetDamage(TacticalShipSystem.Engines)
+                            + repairShip.GetDamage(TacticalShipSystem.Hyperdrive),
+                        4
+                    );
+                    Assert.AreEqual(5, attacker.SystemDamage.Total);
+                }
                 results = commands.CompleteTacticalCombat(battle);
+                if (repairShip != null)
+                {
+                    Assert.Less(attacker.SystemDamage.Total, 5);
+                    trace.Add(
+                        $"campaign-components {attacker.SystemDamage.Engines} {attacker.SystemDamage.PrimaryHyperdrive} {attacker.SystemDamage.BackupHyperdrive}"
+                    );
+                }
             }
 
             SpaceCombatResult result = results.OfType<SpaceCombatResult>().Single();
