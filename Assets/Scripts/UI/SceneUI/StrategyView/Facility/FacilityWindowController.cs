@@ -226,17 +226,11 @@ public sealed class FacilityWindowController
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowLayer.CreatePlanetWindow(
+            windowManager,
             windowLayer.FacilityWindowPrefab,
-            windowLayer.GetWindowParent(false),
             $"FacilityWindow-{planet.Planet.GetDisplayName()}",
-            position.x,
-            position.y,
-            windowLayer.GetWindowSize(windowLayer.FacilityWindowPrefab),
-            false,
-            true,
-            true,
-            false,
+            position,
             out FacilityWindowView view
         );
         if (!TryInitializeWindow(view, window, planet))

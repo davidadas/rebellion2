@@ -222,6 +222,30 @@ Older anonymous message lists remain complete replacements, including their omis
 not automatically converted or rewritten. Explicitly reordering existing reports also retains a
 complete replacement because their lookup order affects which report is selected.
 
+### Main menu
+
+Open **Interfaces > Main Menu** to preview the default scenario's cockpit and launch controls.
+The preview starts paused. Select **Play** to see it animate. Drag a highlighted control to move
+it, or double-click its artwork to open the image or model field. The fields below the preview
+also let you edit background artwork. Replacement images for Load Game,
+Multiplayer, and Exit display as still artwork. Medallions use the selected faction's GLB.
+Galaxy size controls have separate fields for the monitor artwork and the selection icon.
+Drag a selection frame by its visible outline to position it independently of its icon.
+The **Advanced** tab lets you edit the layout XML. Zero offsets restore the generated positions.
+
+### Shared interfaces
+
+Open **Interfaces** to edit the **Planet Sector Window**, **Planet Window Header**, and
+**Confirmation Window**. Select an element in the preview to move it by dragging or nudge it with
+the arrow keys or WASD. Click an empty area to clear the selection. The planet window preview
+shows the header and its controls, including the **Header Text** position.
+
+### Cutscenes
+
+Open **Cutscenes** to edit the startup videos or a faction's videos. Each entry shows a still
+from the assigned video. Use **Replace** to choose a new video and the preview dropdown to play
+it fullscreen at a supported resolution. Click during playback to return to the editor.
+
 ### Faction and neutral themes
 
 In the Content Pack Editor, open a faction's **Colors** tab to set its primary
@@ -235,7 +259,7 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit the neutral theme.
 Double-click an outlined sector icon to open its image settings. Use
 **Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's

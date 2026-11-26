@@ -50,6 +50,19 @@ namespace Rebellion.Tests.UI.Runtime.Themes
         }
 
         [Test]
+        public void Deserialize_MainMenuMedallionModelPath_PreservesContentAddress()
+        {
+            using StringReader reader = new StringReader(
+                "<FactionTheme><MainMenuMedallionModelPath>Pack/Models/medallion</MainMenuMedallionModelPath></FactionTheme>"
+            );
+
+            FactionTheme theme = (FactionTheme)
+                new GameSerializer(typeof(FactionTheme)).Deserialize(reader);
+
+            Assert.AreEqual("Pack/Models/medallion", theme.MainMenuMedallionModelPath);
+        }
+
+        [Test]
         public void Deserialize_ArtworkDefaults_PreservesEveryUnitBackground()
         {
             const string xml =

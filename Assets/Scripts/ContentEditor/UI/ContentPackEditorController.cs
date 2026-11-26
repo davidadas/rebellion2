@@ -186,7 +186,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// </summary>
     /// <param name="field">The authored media field.</param>
     /// <param name="address">The selected content address or directory item.</param>
-    private async void PreviewMedia(ContentPackEditorField field, string address)
+    /// <param name="resolution">The chosen fullscreen video resolution, if applicable.</param>
+    private async void PreviewMedia(
+        ContentPackEditorField field,
+        string address,
+        Vector2Int? resolution
+    )
     {
         if (string.IsNullOrWhiteSpace(address))
             return;
@@ -203,6 +208,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         "Image could not be opened. Check the file or use Import."
                     );
                 view.ShowImagePreview(texture, address);
+            }
+            else if (field.MediaType == ContentPackEditorMediaType.Video && resolution is { } size)
+            {
+                view.ShowVideoPreview(assets.GetVideoUrl(address), size);
             }
             else if (field.MediaType == ContentPackEditorMediaType.Audio)
             {

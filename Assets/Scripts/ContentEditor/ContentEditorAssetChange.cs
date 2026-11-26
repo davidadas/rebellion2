@@ -63,7 +63,7 @@ internal sealed class ContentEditorAssetChange
     /// </summary>
     internal void Delete()
     {
-        File.Delete(Path);
+        RestoreRevision(null);
         after = null;
     }
 
@@ -114,7 +114,16 @@ internal sealed class ContentEditorAssetChange
     {
         ContentEditorPaths.VerifyWritePath(project, Path);
         if (snapshot == null)
-            File.Delete(Path);
+        {
+            try
+            {
+                File.Delete(Path);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                // The file is already absent when its parent directory is missing.
+            }
+        }
         else
             ContentPackEditorStorage.CopyFileAtomically(Path, snapshot);
     }

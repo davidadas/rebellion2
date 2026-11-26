@@ -13,6 +13,110 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void Render_ChangingSearch_ReusesTheCurrentNavigationTree()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(field => field.name == "Search");
+            search.SetTextWithoutNotify(officer.ID[..^1]);
+            search.onValueChanged.Invoke(search.text);
+            ContentEditorTreeNode entry = view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.Record?.Element == officer.Element)
+                .Node;
+
+            search.SetTextWithoutNotify(officer.ID);
+            search.onValueChanged.Invoke(search.text);
+
+            Assert.AreSame(
+                entry,
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Record?.Element == officer.Element)
+                    .Node
+            );
+        }
+
+        [Test]
+        public void Render_CutscenesTabOnPackSettings_ShowsBothStartupVideoSlots()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Pack settings"));
+            Button tab = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab");
+            tab.onClick.Invoke();
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(ContentPackDefinition.StartupIntroVideoPath),
+                    nameof(ContentPackDefinition.OpeningCrawlVideoPath),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Select(row => row.Field.MemberName)
+            );
+        }
+
+        [TestCase("Alliance")]
+        [TestCase("Empire")]
+        public void Render_CutscenesTabOnFaction_ShowsItsFourCampaignVideoSlots(string faction)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/" + faction);
+            ContentPackEditorRecord theme = page.RelatedRecords.Single(record =>
+                record.Kind == nameof(FactionTheme)
+            );
+            SelectPage(page);
+            Button tab = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab");
+            tab.onClick.Invoke();
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(FactionTheme.IntroCutscenePath),
+                    nameof(FactionTheme.VictoryCutscenePath),
+                    nameof(FactionTheme.DefeatCutscenePath),
+                    nameof(FactionTheme.HeadquartersDestroyedCutscenePath),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Where(row =>
+                        row.Field.Record.Key == theme.Key
+                        && row.Field.MediaType == ContentPackEditorMediaType.Video
+                    )
+                    .Select(row => row.Field.MemberName)
+            );
+        }
+
+        [Test]
+        public void Render_SelectingStartupPreviewResolution_RequestsTheBuiltInVideoAtThatSize()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Pack settings"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab")
+                .onClick.Invoke();
+            ContentEditorFieldView slot = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(row =>
+                    row.Field.MemberName == nameof(ContentPackDefinition.StartupIntroVideoPath)
+                );
+            (string Address, Vector2Int? Size) requested = default;
+            view.PreviewRequested += (_, address, size) => requested = (address, size);
+
+            TMP_Dropdown preview = slot.GetComponentInChildren<TMP_Dropdown>();
+            string chosen = preview.options[1].text;
+            preview.value = 1;
+
+            Assert.AreEqual(ContentPackDefinition.DefaultStartupIntroVideoPath, requested.Address);
+            Assert.IsTrue(requested.Size.HasValue);
+            Assert.AreEqual(chosen, $"{requested.Size.Value.x} × {requested.Size.Value.y}");
+        }
+
         [TestCase(EventModifiers.Control)]
         [TestCase(EventModifiers.Command)]
         public void HandleKeyboardShortcut_ValidatePackShortcut_RaisesValidateRequested(

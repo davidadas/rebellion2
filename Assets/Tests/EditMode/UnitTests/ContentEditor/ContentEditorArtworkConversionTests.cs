@@ -121,11 +121,9 @@ namespace Rebellion.Tests.ContentEditor
             using ContentPackEditorProject project = CreateLoadableProject();
             ContentPackEditorField field = GetField(project);
             const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
-            string inherited = Path.Combine(
-                contentRoot,
-                "Packs",
-                "BasePack",
-                preferred[5..] + "-2.png"
+            string inherited = Path.GetFullPath(
+                preferred[5..] + "-2.png",
+                Path.Combine(contentRoot, "Packs", "BasePack")
             );
             Directory.CreateDirectory(Path.GetDirectoryName(inherited));
             File.WriteAllBytes(inherited, new byte[] { 9 });
@@ -157,7 +155,7 @@ namespace Rebellion.Tests.ContentEditor
             const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
             const string reserved = "Pack/Shared/other.png";
             string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
-            string inherited = Path.Combine(inheritedRoot, reserved[5..]);
+            string inherited = Path.GetFullPath(reserved[5..], inheritedRoot);
             Directory.CreateDirectory(Path.GetDirectoryName(inherited));
             File.WriteAllBytes(inherited, new byte[] { 9 });
             File.WriteAllText(
@@ -195,7 +193,7 @@ namespace Rebellion.Tests.ContentEditor
             const string preferred = "Pack/Factions/Alliance/Units/Starfighters/SFAL01/display";
             const string reserved = "Pack/Shared/other.png";
             string inheritedRoot = Path.Combine(contentRoot, "Packs", "BasePack");
-            string inherited = Path.Combine(inheritedRoot, reserved[5..]);
+            string inherited = Path.GetFullPath(reserved[5..], inheritedRoot);
             Directory.CreateDirectory(Path.GetDirectoryName(inherited));
             File.WriteAllBytes(inherited, new byte[] { 9 });
             string aliasPath = Path.Combine(inheritedRoot, ContentArtworkAliases.FileName);

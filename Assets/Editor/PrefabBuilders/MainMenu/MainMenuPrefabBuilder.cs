@@ -37,6 +37,10 @@ public static class MainMenuPrefabBuilder
     // Faction identifiers bound to the two launch buttons.
     private const string _empireFactionId = "FNEMP1";
     private const string _rebelFactionId = "FNALL1";
+    private static readonly Vector2 _referenceResolution = new(
+        MainMenuLayout.ReferenceWidth,
+        MainMenuLayout.ReferenceHeight
+    );
 
     // Resource paths for the SFX cues authored on pointer event triggers.
     private const string _selectSfxPath = "Application/MainMenu/Audio/select";
@@ -222,12 +226,16 @@ public static class MainMenuPrefabBuilder
             HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
             HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _iconAmbientColor);
             HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(root.transform);
-            BuildBaseHierarchy(root);
+            RectTransform viewport = BuildBaseHierarchy(root);
             RebuildViewBindings(root);
-            InstallPlanet(root);
-            InstallSpinning3DIcons(root);
-            InstallHqCitadel(root);
+            InstallPlanet(root, viewport);
+            Dictionary<string, ContentModelBinding> models = InstallSpinning3DIcons(
+                root,
+                root.transform
+            );
+            models.Add("VictoryConditionControl", InstallHqCitadel(root));
             InstallIconAtlas(root);
+            ConfigureArtwork(viewport, models);
             PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
@@ -238,18 +246,198 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
+    /// Creates the authored main-menu visuals for the pack editor's layout surface.
+    /// </summary>
+    /// <returns>The built, inactive preview template with its launch slots bound.</returns>
+    internal static ContentEditorMainMenuPreview CreateMainMenuPreview()
+    {
+        GameObject root = new GameObject(
+            "MainMenuPreview",
+            typeof(RectTransform),
+            typeof(RawImage),
+            typeof(RectMask2D)
+        );
+        root.SetActive(false);
+        root.GetComponent<RawImage>().color = Color.clear;
+        GameObject world = new("MainMenuPreviewWorld");
+        world.transform.SetParent(root.transform, false);
+        HdrpRenderTargetBuilder.AddIsolatedVolume(world.transform);
+        HdrpRenderTargetBuilder.AddFlatAmbientVolume(world.transform, _iconAmbientColor);
+        HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(world.transform);
+        RectTransform viewport = BuildViewport(root.transform);
+        InstallPlanet(world, viewport);
+        Dictionary<string, ContentModelBinding> models = InstallSpinning3DIcons(
+            root,
+            world.transform
+        );
+        models.Add("VictoryConditionControl", InstallHqCitadel(root));
+        InstallIconAtlas(root);
+        ConfigureArtwork(viewport, models);
+        string[] slotNames = { _faces[0].ButtonName, _faces[1].ButtonName };
+        ContentEditorMainMenuPreview preview = root.AddComponent<ContentEditorMainMenuPreview>();
+        preview.Configure(
+            viewport,
+            world.transform,
+            _referenceResolution,
+            slotNames.Select(name => (RectTransform)FindDeep(viewport, name)).ToArray(),
+            slotNames.Select(name => models[name]).ToArray(),
+            root.GetComponent<ModelPreviewAtlas>()
+        );
+        return preview;
+    }
+
+    /// <summary>
+    /// Binds the visible controls and backgrounds to their shared gameplay and editor layout.
+    /// </summary>
+    /// <param name="viewport">The authored main-menu viewport.</param>
+    /// <param name="models">The generated model rig associated with each model-based button.</param>
+    private static void ConfigureArtwork(
+        RectTransform viewport,
+        IReadOnlyDictionary<string, ContentModelBinding> models
+    )
+    {
+        (string id, string caption, string artworkName, string selectionName)[] items =
+        {
+            ("Cockpit", "Cockpit", "Cockpit frame", null),
+            ("Starfield", "Starfield", "Starfield backdrop", null),
+            ("Planet", "Planet backdrop", "3D planet scene", null),
+            ("EasyDifficultyToggle", "Easy difficulty", "X-wing", "Selection frame"),
+            ("MediumDifficultyToggle", "Medium difficulty", "Star Destroyer", "Selection frame"),
+            ("HardDifficultyToggle", "Hard difficulty", "Death Star", "Selection frame"),
+            ("SmallGalaxyToggle", "Small galaxy", "Small galaxy map", "Selection brackets"),
+            ("MediumGalaxyToggle", "Medium galaxy", "Medium galaxy map", "Selection brackets"),
+            ("LargeGalaxyToggle", "Large galaxy", "Large galaxy map", "Selection brackets"),
+            ("LoadGameButton", "Load game", "Load game icon", null),
+            ("NewGameSettingsButton", "Custom game", "Holocron", null),
+            ("MultiplayerButton", "Multiplayer", "Multiplayer icon", null),
+            ("CreditsButton", "Credits", "Credits icon", null),
+            ("ExitButton", "Exit", "Exit icon", null),
+            ("VictoryConditionControl", "Victory condition", "Citadel", "Headquarters crosshair"),
+            ("VictoryConditionText", "Victory label", null, null),
+        };
+        MainMenuArtwork artwork = viewport.gameObject.AddComponent<MainMenuArtwork>();
+        artwork.Configure(
+            items
+                .Select(item =>
+                {
+                    RectTransform target = (RectTransform)FindDeep(viewport, item.id);
+                    models.TryGetValue(item.id, out ContentModelBinding model);
+                    Graphic graphic =
+                        model != null
+                            ? FindDeep(target, "Icon3D").GetComponent<RawImage>()
+                            : target.GetComponent<Image>()
+                                ?? (Graphic)target.GetComponent<RawImage>();
+                    Image backing = null;
+                    if (target.parent.name == "GalaxySizeGroup")
+                    {
+                        (RawImage galaxy, Image originalBacking) = CreateGalaxyArtwork(target);
+                        graphic = galaxy;
+                        backing = originalBacking;
+                    }
+                    Image selection =
+                        target.GetComponent<Toggle>()?.graphic as Image
+                        ?? FindDeep(target, "SelectionOverlay")?.GetComponent<Image>();
+                    if (selection != null)
+                        SeparateSelectionOverlay(target, selection);
+                    return new MainMenuArtwork.Control(
+                        target,
+                        graphic,
+                        model,
+                        item.caption,
+                        item.artworkName,
+                        item.selectionName,
+                        selection,
+                        backing
+                    );
+                })
+                .ToArray(),
+            FindDeep(viewport, "Cockpit").GetComponent<Image>()
+        );
+    }
+
+    /// <summary>
+    /// Moves a selection overlay beside its control while preserving its responsive bounds.
+    /// </summary>
+    /// <param name="target">The control that still owns the selection state.</param>
+    /// <param name="selection">The independently positioned overlay.</param>
+    private static void SeparateSelectionOverlay(RectTransform target, Image selection)
+    {
+        RectTransform rect = selection.rectTransform;
+        Transform parent = target.parent;
+        Vector2 minimum = rect.anchorMin;
+        Vector2 maximum = rect.anchorMax;
+        Vector2 leftBottom = rect.offsetMin;
+        Vector2 rightTop = rect.offsetMax;
+        for (
+            RectTransform layer = (RectTransform)rect.parent;
+            layer != parent;
+            layer = (RectTransform)layer.parent
+        )
+        {
+            Vector2 anchorSpan = layer.anchorMax - layer.anchorMin;
+            Vector2 pixelSpan = layer.offsetMax - layer.offsetMin;
+            leftBottom += layer.offsetMin + Vector2.Scale(pixelSpan, minimum);
+            rightTop += layer.offsetMin + Vector2.Scale(pixelSpan, maximum);
+            minimum = layer.anchorMin + Vector2.Scale(anchorSpan, minimum);
+            maximum = layer.anchorMin + Vector2.Scale(anchorSpan, maximum);
+        }
+        rect.SetParent(parent, false);
+        rect.SetSiblingIndex(target.GetSiblingIndex() + 1);
+        rect.anchorMin = minimum;
+        rect.anchorMax = maximum;
+        rect.offsetMin = leftBottom;
+        rect.offsetMax = rightTop;
+        selection.raycastTarget = false;
+    }
+
+    /// <summary>
+    /// Crops the galaxy monitor artwork from the exact cockpit region behind its control.
+    /// </summary>
+    /// <param name="target">The authored galaxy toggle bounds.</param>
+    /// <returns>The movable galaxy layer and the fixed monitor backing beneath it.</returns>
+    private static (RawImage Artwork, Image Backing) CreateGalaxyArtwork(RectTransform target)
+    {
+        RectTransform group = (RectTransform)target.parent;
+        Vector2 groupSize = group.anchorMax - group.anchorMin;
+        Vector2 minimum = group.anchorMin + Vector2.Scale(groupSize, target.anchorMin);
+        Vector2 maximum = group.anchorMin + Vector2.Scale(groupSize, target.anchorMax);
+        RawImage artwork = NewRawImage(target, "GalaxyArtwork", null);
+        FillParent(artwork.rectTransform);
+        artwork.rectTransform.SetAsFirstSibling();
+        artwork.uvRect = Rect.MinMaxRect(minimum.x, minimum.y, maximum.x, maximum.y);
+        artwork.raycastTarget = false;
+        artwork.enabled = false;
+
+        Image backing = NewChild(target.name + "Backing", group, typeof(Image))
+            .GetComponent<Image>();
+        SetAnchoredRect(
+            backing.rectTransform,
+            target.anchorMin,
+            target.anchorMax,
+            target.sizeDelta
+        );
+        backing.rectTransform.SetAsFirstSibling();
+        backing.color = Color.black;
+        backing.raycastTarget = false;
+        backing.enabled = false;
+        return (artwork, backing);
+    }
+
+    /// <summary>
     /// Authors the base MainMenuRoot hierarchy (services, controller, canvas, and every control)
     /// exactly as the prefab specifies, leaving the icon rigs and planet rig to their own phases.
     /// </summary>
     /// <param name="root">The freshly created prefab root.</param>
-    private static void BuildBaseHierarchy(GameObject root)
+    /// <returns>The cockpit viewport that receives the backdrop.</returns>
+    private static RectTransform BuildBaseHierarchy(GameObject root)
     {
         BuildMainCamera(root);
         BuildEventSystem(root);
         BuildServices(root);
         MainMenuController controller = BuildController(root);
-        BuildCanvas(root);
+        RectTransform viewport = BuildCanvas(root);
         PopulateViewBindings(root, controller.GetComponent<MainMenuView>());
+        return viewport;
     }
 
     /// <summary>
@@ -477,7 +665,8 @@ public static class MainMenuPrefabBuilder
     /// Authors the UI canvas subtree and every control below it.
     /// </summary>
     /// <param name="root">The prefab root.</param>
-    private static void BuildCanvas(GameObject root)
+    /// <returns>The cockpit viewport.</returns>
+    private static RectTransform BuildCanvas(GameObject root)
     {
         GameObject ui = NewChild("UI", root.transform);
 
@@ -507,14 +696,28 @@ public static class MainMenuPrefabBuilder
 
         CanvasScaler scaler = canvasObject.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(2560f, 1440f);
+        scaler.referenceResolution = _referenceResolution;
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.MatchWidthOrHeight;
         scaler.matchWidthOrHeight = 0f;
         scaler.referencePixelsPerUnit = 100f;
 
+        RectTransform viewport = BuildViewport(canvasObject.transform);
+        BuildOptionsOverlay(ui.transform);
+        BuildAnalyticsConsentOverlay(ui.transform);
+        MenuControlPrefabBuilder.CreateLegalDocumentsOverlay(ui.transform);
+        return viewport;
+    }
+
+    /// <summary>
+    /// Authors the main-menu cockpit, framing, and visible controls.
+    /// </summary>
+    /// <param name="parent">The parent of the fitted cockpit surface.</param>
+    /// <returns>The viewport used by the gameplay and editor layouts.</returns>
+    private static RectTransform BuildViewport(Transform parent)
+    {
         GameObject viewport = NewChild(
             "Viewport",
-            canvasObject.transform,
+            parent,
             typeof(RectTransform),
             typeof(AspectRatioFitter),
             typeof(CanvasRenderer),
@@ -531,9 +734,7 @@ public static class MainMenuPrefabBuilder
         cockpit.raycastTarget = false;
 
         BuildControls(viewport.transform);
-        BuildOptionsOverlay(ui.transform);
-        BuildAnalyticsConsentOverlay(ui.transform);
-        MenuControlPrefabBuilder.CreateLegalDocumentsOverlay(ui.transform);
+        return viewportRect;
     }
 
     /// <summary>
@@ -1100,7 +1301,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.043455794f, 0.10742572f),
             new Vector2(0.29431152f, 0.889017f),
             new Vector2(-0.0000019073486f, 0f),
-            true,
+            false,
             "Application/MainMenu/UI/ui_mainmenu_toggle_small_map_selected_icon",
             new Vector2(-0.21818379f, -0.23880222f),
             new Vector2(1.1548722f, 1.171793f),
@@ -1124,7 +1325,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(0.7119703f, 0.1378822f),
             new Vector2(0.96001405f, 0.8824111f),
             Vector2.zero,
-            false,
+            true,
             "Application/MainMenu/UI/ui_mainmenu_toggle_large_map_selected_icon",
             new Vector2(-0.2263274f, -0.3004693f),
             new Vector2(1.230318f, 1.2052346f),
@@ -1229,7 +1430,7 @@ public static class MainMenuPrefabBuilder
 
         Button button = buttonObject.GetComponent<Button>();
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite("Application/MainMenu/UI/ui_mainmenu_exit_01");
+        SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_exit_01");
         button.transition = Selectable.Transition.ColorTint;
         button.targetGraphic = image;
 
@@ -1312,7 +1513,7 @@ public static class MainMenuPrefabBuilder
         );
 
         Image image = buttonObject.GetComponent<Image>();
-        image.sprite = LoadSprite("Application/MainMenu/UI/ui_mainmenu_load_01");
+        SetBoundSprite(image, "Application/MainMenu/UI/ui_mainmenu_load_01");
 
         Button button = buttonObject.GetComponent<Button>();
         button.transition = Selectable.Transition.ColorTint;
@@ -1464,7 +1665,7 @@ public static class MainMenuPrefabBuilder
             new Vector2(356.4606f, 35.0948f)
         );
         TMP_Text victoryText = textObject.GetComponent<TextMeshProUGUI>();
-        victoryText.text = "Headquarters Victory";
+        victoryText.text = MainMenuView.GetVictoryConditionTitle(GameVictoryCondition.Conquest);
         victoryText.font = LoadRequiredAsset<TMP_FontAsset>(_victoryTextFontPath);
         victoryText.color = new Color(0f, 0.99607843f, 0f, 1f);
         victoryText.enableAutoSizing = true;
@@ -2400,7 +2601,8 @@ public static class MainMenuPrefabBuilder
     /// windshield.
     /// </summary>
     /// <param name="root">The prefab root.</param>
-    private static void InstallPlanet(GameObject root)
+    /// <param name="viewport">The shared menu viewport that receives the backdrop.</param>
+    private static void InstallPlanet(GameObject root, RectTransform viewport)
     {
         RenderTexture rt = LoadOrCreateRenderTexture();
 
@@ -2411,7 +2613,7 @@ public static class MainMenuPrefabBuilder
         // sort reliably behind it). So disable the root's own image and redraw the cockpit as a
         // CHILD image; the planet can then sit as an EARLIER sibling (behind the cockpit) in the
         // same canvas -- deterministic hierarchy order, no cross-canvas sorting.
-        Image rootImage = FindBackgroundImage(root);
+        Image rootImage = viewport.GetComponent<Image>();
         Transform canvasT = rootImage.transform;
         // The current root image is the alpha-windowed cockpit; reuse its sprite as-is.
         Sprite cockpit = rootImage.sprite;
@@ -2698,30 +2900,6 @@ public static class MainMenuPrefabBuilder
     }
 
     /// <summary>
-    /// Finds the full-screen cockpit background image in the prefab.
-    /// </summary>
-    /// <param name="root">The prefab root.</param>
-    /// <returns>The background image.</returns>
-    private static Image FindBackgroundImage(GameObject root)
-    {
-        Canvas rootCanvas = root.GetComponentInChildren<Canvas>(true);
-        Image onCanvas = rootCanvas != null ? rootCanvas.GetComponent<Image>() : null;
-        if (onCanvas != null)
-            return onCanvas;
-
-        Image[] images = root.GetComponentsInChildren<Image>(true);
-        Image byName = images.FirstOrDefault(image =>
-            image.sprite?.name.Contains("mainmenu_background") == true
-        );
-        if (byName != null)
-            return byName;
-        Image byObject = images.FirstOrDefault(image => image.gameObject.name == "Background");
-        if (byObject != null)
-            return byObject;
-        return images.OrderByDescending(image => image.rectTransform.rect.width).First();
-    }
-
-    /// <summary>
     /// Creates a RawImage child that does not block pointer input.
     /// </summary>
     /// <param name="parent">The parent transform.</param>
@@ -2856,10 +3034,16 @@ public static class MainMenuPrefabBuilder
     /// RenderTexture.
     /// </summary>
     /// <param name="root">The prefab root.</param>
-    private static void InstallSpinning3DIcons(GameObject root)
+    /// <param name="world">The unscaled scene hierarchy that owns the cameras and models.</param>
+    /// <returns>The launch medallion models, keyed by their button names.</returns>
+    private static Dictionary<string, ContentModelBinding> InstallSpinning3DIcons(
+        GameObject root,
+        Transform world
+    )
     {
         GameObject iconRigs = new GameObject(_iconRigsName);
-        iconRigs.transform.SetParent(root.transform, false);
+        iconRigs.transform.SetParent(world, false);
+        Dictionary<string, ContentModelBinding> factionMedallions = new(StringComparer.Ordinal);
 
         BuildSharedLighting(iconRigs);
 
@@ -2873,7 +3057,8 @@ public static class MainMenuPrefabBuilder
                 face.RtHeight
             );
 
-            BuildRig(iconRigs, renderTexture, face, i);
+            ContentModelBinding model = BuildRig(iconRigs, renderTexture, face, i);
+            factionMedallions.Add(face.ButtonName, model);
 
             Transform button = FindDeep(root.transform, face.ButtonName);
             if (button == null)
@@ -2895,14 +3080,49 @@ public static class MainMenuPrefabBuilder
             leftIconRect.offsetMax = new Vector2(9f, leftIconRect.offsetMax.y);
         }
 
-        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        MainMenuView view = root.GetComponentInChildren<MainMenuView>(true);
+        if (view == null)
+            return factionMedallions;
         SerializedObject serializedView = new SerializedObject(view);
+        WriteFactionMedallionBindings(
+            serializedView.FindProperty("factionLaunchBindings"),
+            factionMedallions
+        );
         serializedView.FindProperty("newGameSettingsSpinner").objectReferenceValue = FindDeep(
                 root.transform,
                 "IconRig_GameSetup"
             )
             .GetComponentInChildren<AutoRotate>(true);
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+        return factionMedallions;
+    }
+
+    /// <summary>
+    /// Associates each faction launch slot with the model rendered inside its authored medallion rig.
+    /// </summary>
+    /// <param name="bindings">The serialized faction launch bindings.</param>
+    /// <param name="modelsByButtonName">The medallion models keyed by their launch button names.</param>
+    private static void WriteFactionMedallionBindings(
+        SerializedProperty bindings,
+        IReadOnlyDictionary<string, ContentModelBinding> modelsByButtonName
+    )
+    {
+        for (int index = 0; index < bindings.arraySize; index++)
+        {
+            SerializedProperty binding = bindings.GetArrayElementAtIndex(index);
+            Button button = binding.FindPropertyRelative("button").objectReferenceValue as Button;
+            if (
+                button == null
+                || !modelsByButtonName.TryGetValue(button.name, out ContentModelBinding model)
+            )
+            {
+                throw new InvalidOperationException(
+                    $"Faction launch binding {index} has no authored medallion model."
+                );
+            }
+
+            binding.FindPropertyRelative("medallionModel").objectReferenceValue = model;
+        }
     }
 
     /// <summary>
@@ -2910,7 +3130,8 @@ public static class MainMenuPrefabBuilder
     /// overlay.
     /// </summary>
     /// <param name="root">The prefab root.</param>
-    private static void InstallHqCitadel(GameObject root)
+    /// <returns>The model displayed by the completed victory control.</returns>
+    private static ContentModelBinding InstallHqCitadel(GameObject root)
     {
         Transform iconRigs = FindDeep(root.transform, _iconRigsName);
         if (iconRigs == null)
@@ -2923,7 +3144,7 @@ public static class MainMenuPrefabBuilder
             256,
             256
         );
-        AutoRotate citadelSpinner = BuildCitadelRig(
+        (AutoRotate citadelSpinner, ContentModelBinding citadelModel) = BuildCitadelRig(
             iconRigs.gameObject,
             renderTexture,
             _faces.Length
@@ -2973,13 +3194,16 @@ public static class MainMenuPrefabBuilder
         selectionOverlay.SetActive(false);
 
         // Give the view the citadel spinner so it can pause the spin while the HQ-only crosshair shows.
-        MainMenuView view = FindRequiredComponent<MainMenuView>(root);
+        MainMenuView view = root.GetComponentInChildren<MainMenuView>(true);
+        if (view == null)
+            return citadelModel;
         SerializedObject serializedView = new SerializedObject(view);
         serializedView.FindProperty("victoryConditionSpinner").objectReferenceValue =
             citadelSpinner;
         serializedView.FindProperty("victoryConditionSelectionOverlay").objectReferenceValue =
             selectionOverlay;
         serializedView.ApplyModifiedPropertiesWithoutUndo();
+        return citadelModel;
     }
 
     /// <summary>
@@ -3033,9 +3257,10 @@ public static class MainMenuPrefabBuilder
         ModelPreviewAtlas renderer = root.AddComponent<ModelPreviewAtlas>();
         renderer.Configure(camera, previews);
 
-        SerializedObject controller = new SerializedObject(
-            FindRequiredComponent<MainMenuController>(root)
-        );
+        MainMenuController menu = root.GetComponentInChildren<MainMenuController>(true);
+        if (menu == null)
+            return;
+        SerializedObject controller = new SerializedObject(menu);
         controller.FindProperty("_iconPreviews").objectReferenceValue = renderer;
         controller.ApplyModifiedPropertiesWithoutUndo();
     }
@@ -3047,8 +3272,8 @@ public static class MainMenuPrefabBuilder
     /// <param name="parent">The rig container.</param>
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
     /// <param name="index">The rig slot index, offsetting it clear of the faction icon rigs.</param>
-    /// <returns>The rig's spin component so the view can pause it for the HQ-only state.</returns>
-    private static AutoRotate BuildCitadelRig(
+    /// <returns>The spinner and model binding for the icon.</returns>
+    private static (AutoRotate Spinner, ContentModelBinding Model) BuildCitadelRig(
         GameObject parent,
         RenderTexture renderTexture,
         int index
@@ -3070,17 +3295,16 @@ public static class MainMenuPrefabBuilder
         modelNode.transform.localPosition = new Vector3(0f, -0.4f, 0f);
         // The model's up axis is Z (bounding box: X~Y~1.6, Z~1.9); +90 X maps that to Unity's +Y,
         // dome up for the HQ icon.
-        modelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                _citadelModelAddress,
-                1f,
-                new Vector3(90f, 0f, 0f),
-                overwrite: true,
-                normalize: true,
-                center: true,
-                layer: -1
-            );
+        ContentModelBinding model = modelNode.AddComponent<ContentModelBinding>();
+        model.SetModel(
+            _citadelModelAddress,
+            1f,
+            new Vector3(90f, 0f, 0f),
+            overwrite: true,
+            normalize: true,
+            center: true,
+            layer: -1
+        );
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -3110,7 +3334,7 @@ public static class MainMenuPrefabBuilder
         underLight.color = Color.white;
         underLight.shadows = LightShadows.None;
 
-        return spinner;
+        return (spinner, model);
     }
 
     /// <summary>
@@ -3180,7 +3404,8 @@ public static class MainMenuPrefabBuilder
     /// <param name="renderTexture">The texture the rig camera renders into.</param>
     /// <param name="face">The face describing spin, scale, and tilt.</param>
     /// <param name="index">The slot index, used to offset the rig so cameras stay isolated.</param>
-    private static void BuildRig(
+    /// <returns>The model binding rendered by the completed rig.</returns>
+    private static ContentModelBinding BuildRig(
         GameObject parent,
         RenderTexture renderTexture,
         Face face,
@@ -3206,17 +3431,16 @@ public static class MainMenuPrefabBuilder
         // centering. Rig spacing isolates each camera, so no dedicated render layer is needed.
         GameObject modelNode = new GameObject("Model");
         modelNode.transform.SetParent(pivot.transform, false);
-        modelNode
-            .AddComponent<ContentModelBinding>()
-            .SetModel(
-                ToModelAddress(face.ModelPath),
-                face.ModelScale,
-                face.Tilt,
-                overwrite: true,
-                normalize: face.NormalizeModel,
-                center: true,
-                layer: -1
-            );
+        ContentModelBinding model = modelNode.AddComponent<ContentModelBinding>();
+        model.SetModel(
+            ToModelAddress(face.ModelPath),
+            face.ModelScale,
+            face.Tilt,
+            overwrite: true,
+            normalize: face.NormalizeModel,
+            center: true,
+            layer: -1
+        );
 
         GameObject cameraObject = new GameObject("Camera", typeof(Camera));
         cameraObject.transform.SetParent(rig.transform, false);
@@ -3255,6 +3479,8 @@ public static class MainMenuPrefabBuilder
                 new Color(0.9f, 0.94f, 1f)
             );
         }
+
+        return model;
     }
 
     /// <summary>

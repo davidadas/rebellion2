@@ -61,14 +61,21 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     public string PackRootPath { get; }
 
     /// <summary>
+    /// Gets the active pack manifest supplied by the application.
+    /// </summary>
+    internal ContentPackDefinition PackDefinition { get; }
+
+    /// <summary>
     /// Creates an asset store backed by a layered content resolver.
     /// </summary>
     /// <param name="resolver">The resolver that supplies base and modded content files.</param>
-    public ContentAssets(ContentFileResolver resolver)
+    /// <param name="packDefinition">The active pack manifest, when loading game content.</param>
+    public ContentAssets(ContentFileResolver resolver, ContentPackDefinition packDefinition = null)
     {
         fileResolver = resolver ?? throw new ArgumentNullException(nameof(resolver));
         ContentRootPath = fileResolver.ContentRootPath;
         PackRootPath = fileResolver.PackRootPath;
+        PackDefinition = packDefinition;
     }
 
     /// <summary>
@@ -584,7 +591,7 @@ public sealed class ContentAssets : IContentAssetSource, IDisposable
     public string GetVideoUrl(string path)
     {
         ThrowIfDisposed();
-        return new Uri(ResolveAssetFile(path, ".mp4")).AbsoluteUri;
+        return new Uri(ResolveAssetFile(path, ".mp4", ".webm")).AbsoluteUri;
     }
 
     /// <summary>
