@@ -2,7 +2,6 @@ using System;
 using System.IO;
 using System.Threading.Tasks;
 using Rebellion.Multiplayer;
-using Rebellion.Tactical;
 using UnityEngine;
 
 /// <summary>
@@ -221,8 +220,7 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack,
             getGameplaySettings: () => _userSettingsManager.Settings.Gameplay,
             analyticsSink: _analyticsManager,
-            presentSaveIndicator: PresentSaveIndicatorAsync,
-            createTacticalAudio: TacticalCombatAudio.Create
+            presentSaveIndicator: PresentSaveIndicatorAsync
         );
         _sessionManager.PersistenceFailed += HandlePersistenceFailure;
         if (inputController == null)

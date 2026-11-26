@@ -842,7 +842,6 @@ namespace Rebellion.Tests.Tactical
                     CombatSide.Attacker,
                     100,
                     Random,
-                    TacticalCombatAudio.Create,
                     TacticalCombatPlanner.Attach,
                     definition,
                     presentationClock: () => 0

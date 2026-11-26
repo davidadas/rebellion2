@@ -23,7 +23,6 @@ namespace Rebellion.Gameplay
         private readonly GameRoot _game;
         private readonly SpaceCombatQueries _queries;
         private readonly Action<TacticalCombatSession> _attachAutomation;
-        private readonly TacticalCombatAudioFactory _createAudio;
         private readonly Func<LinearCongruentialRandomProvider> _createRandom;
         private readonly Func<DateTimeOffset> _localClock;
         private readonly TacticalCombatDefinition _definition;
@@ -37,7 +36,6 @@ namespace Rebellion.Gameplay
         /// <param name="definition">The selected tactical combat definitions.</param>
         /// <param name="queries">The campaign encounter and departure queries.</param>
         /// <param name="attachAutomation">Attaches the configured tactical AI after the encounter is constructed.</param>
-        /// <param name="createAudio">Creates the presentation-owned tactical audio service.</param>
         /// <param name="createRandom">An optional replay stream factory; live battles capture the entry clock.</param>
         /// <param name="localClock">The platform's local clock, acquired only when scenery first needs a random position.</param>
         public TacticalCombatFactory(
@@ -45,7 +43,6 @@ namespace Rebellion.Gameplay
             TacticalCombatDefinition definition,
             SpaceCombatQueries queries,
             Action<TacticalCombatSession> attachAutomation,
-            TacticalCombatAudioFactory createAudio,
             Func<LinearCongruentialRandomProvider> createRandom = null,
             Func<DateTimeOffset> localClock = null
         )
@@ -53,7 +50,6 @@ namespace Rebellion.Gameplay
             this._game = game ?? throw new ArgumentNullException(nameof(game));
             _attachAutomation =
                 attachAutomation ?? throw new ArgumentNullException(nameof(attachAutomation));
-            _createAudio = createAudio ?? throw new ArgumentNullException(nameof(createAudio));
             _createRandom =
                 createRandom
                 ?? (
@@ -499,7 +495,6 @@ namespace Rebellion.Gameplay
                 playerSide,
                 depth,
                 random,
-                _createAudio,
                 _attachAutomation,
                 _definition,
                 _definition.Environments.FirstOrDefault(environment =>

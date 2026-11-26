@@ -11,7 +11,7 @@ namespace Rebellion.Tactical
     /// Variant selection uses the battle stream before each capacity check; playback activity,
     /// pending lifetimes, and simulation pause are resolved through their owning boundaries.
     /// </summary>
-    public sealed class TacticalCombatNotifications : ITacticalCombatNotificationQueue
+    internal sealed class TacticalCombatNotifications : IDisposable
     {
         private const int _messageCount = 317;
         private const int _maximumVariantCount = 4;
@@ -86,6 +86,13 @@ namespace Rebellion.Tactical
                 _definitions.Add(definition.MessageID, definition);
             }
         }
+
+        /// <summary>
+        /// Checks whether the selected faction's bank contains the addressed message.
+        /// </summary>
+        /// <param name="messageID">The authored message identifier.</param>
+        /// <returns>Whether the message can be enqueued from this bank.</returns>
+        internal bool HasMessage(int messageID) => _definitions.ContainsKey(messageID);
 
         /// <summary>
         /// Requests a message, retaining blocked one-shot requests and dropping blocked loops.

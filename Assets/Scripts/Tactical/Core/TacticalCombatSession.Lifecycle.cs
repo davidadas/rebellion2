@@ -65,7 +65,11 @@ namespace Rebellion.Tactical
                 );
             if (!AdvanceArrival(elapsedMilliseconds) || IsComplete)
                 return;
-            _briefing.Advance(elapsedMilliseconds, CaptureBriefingState());
+            _briefing.Advance(
+                elapsedMilliseconds,
+                CaptureBattleStationAttackReadiness(),
+                IsArriving
+            );
             AdvanceSynchronizedNotifications(elapsedMilliseconds);
             if (IsPaused)
             {

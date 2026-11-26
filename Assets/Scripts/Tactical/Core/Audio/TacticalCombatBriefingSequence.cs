@@ -3,77 +3,9 @@ using System;
 namespace Rebellion.Tactical
 {
     /// <summary>
-    /// Captures the battle facts used by station briefings and global attack-run admission.
-    /// Fighter counts describe the active tactical root, independently of selection and withdrawal.
-    /// </summary>
-    public readonly struct TacticalCombatBriefingState
-    {
-        public bool IsArriving { get; }
-        public bool StationExists { get; }
-        public bool StationOperational { get; }
-        public bool StationProtected { get; }
-        public bool AttackRunActive { get; }
-        public bool AllianceFighterChainPopulated { get; }
-        public bool EmpireFighterChainPopulated { get; }
-        public bool AllianceAttackRunOrdered { get; }
-        public int AllianceActiveFighters { get; }
-        public int EmpireActiveFighters { get; }
-        public int AllianceActiveFightersOutsideAttackRuns { get; }
-
-        public bool CanAttackBattleStation =>
-            TacticalCombatBattleStation.CanStartAttackRun(
-                StationExists && StationOperational && !StationProtected,
-                AttackRunActive || AllianceAttackRunOrdered,
-                AllianceActiveFighters,
-                EmpireActiveFighters
-            );
-
-        /// <summary>
-        /// Captures the explicit station, root membership, and group-order facts for one frame.
-        /// </summary>
-        /// <param name="isArriving">Whether the arrival lifecycle is active.</param>
-        /// <param name="stationExists">Whether a battle-station record exists.</param>
-        /// <param name="stationOperational">Whether that station is operational.</param>
-        /// <param name="stationProtected">Whether that station's protection gate is set.</param>
-        /// <param name="attackRunActive">Whether an attack-run helper currently exists.</param>
-        /// <param name="allianceFighterChainPopulated">Whether the Alliance fighter chain is nonempty.</param>
-        /// <param name="empireFighterChainPopulated">Whether the Empire fighter chain is nonempty.</param>
-        /// <param name="allianceAttackRunOrdered">Whether an Alliance group requests or performs an attack run.</param>
-        /// <param name="allianceActiveFighters">Every Alliance fighter in the active root.</param>
-        /// <param name="empireActiveFighters">Every Empire fighter in the active root.</param>
-        /// <param name="allianceActiveFightersOutsideAttackRuns">Alliance active fighters excluding attack-run members.</param>
-        public TacticalCombatBriefingState(
-            bool isArriving,
-            bool stationExists,
-            bool stationOperational,
-            bool stationProtected,
-            bool attackRunActive,
-            bool allianceFighterChainPopulated,
-            bool empireFighterChainPopulated,
-            bool allianceAttackRunOrdered,
-            int allianceActiveFighters,
-            int empireActiveFighters,
-            int allianceActiveFightersOutsideAttackRuns
-        )
-        {
-            IsArriving = isArriving;
-            StationExists = stationExists;
-            StationOperational = stationOperational;
-            StationProtected = stationProtected;
-            AttackRunActive = attackRunActive;
-            AllianceFighterChainPopulated = allianceFighterChainPopulated;
-            EmpireFighterChainPopulated = empireFighterChainPopulated;
-            AllianceAttackRunOrdered = allianceAttackRunOrdered;
-            AllianceActiveFighters = allianceActiveFighters;
-            EmpireActiveFighters = empireActiveFighters;
-            AllianceActiveFightersOutsideAttackRuns = allianceActiveFightersOutsideAttackRuns;
-        }
-    }
-
-    /// <summary>
     /// Sequences encounter briefings and observes attack-run admission edges on unscaled time.
     /// </summary>
-    public sealed class TacticalCombatBriefingSequence
+    internal sealed class TacticalCombatBriefingSequence
     {
         private const float _briefingIntervalMilliseconds = 6000;
         private const int _allianceOpeningMessage = 32;
@@ -111,7 +43,12 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="elapsedMilliseconds">The unscaled frame interval.</param>
         /// <param name="state">The station, active-root, chain, and order facts for this frame.</param>
-        public void Advance(float elapsedMilliseconds, TacticalCombatBriefingState state)
+        /// <param name="isArriving">Whether the arrival lifecycle still holds the opening briefing.</param>
+        public void Advance(
+            float elapsedMilliseconds,
+            TacticalCombatBattleStation.AttackReadiness state,
+            bool isArriving = false
+        )
         {
             if (_stage == BriefingStage.WaitingForAdmission)
             {
@@ -125,7 +62,7 @@ namespace Rebellion.Tactical
                 ObserveAdmission(state);
                 return;
             }
-            if (_stage == BriefingStage.Opening && state.IsArriving)
+            if (_stage == BriefingStage.Opening && isArriving)
                 return;
 
             _remainingMilliseconds -= elapsedMilliseconds;
@@ -184,7 +121,7 @@ namespace Rebellion.Tactical
         /// Records every admission edge, including edges whose additional cue gates reject playback.
         /// </summary>
         /// <param name="state">The current global admission and fighter-chain facts.</param>
-        private void ObserveAdmission(TacticalCombatBriefingState state)
+        private void ObserveAdmission(TacticalCombatBattleStation.AttackReadiness state)
         {
             bool admission = state.CanAttackBattleStation;
             if (_previousAdmission && !admission)

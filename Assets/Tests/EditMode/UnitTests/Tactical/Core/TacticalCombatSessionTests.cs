@@ -1136,7 +1136,6 @@ namespace Rebellion.Tests.Tactical
                 factionOneSide,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
 
@@ -3079,7 +3078,6 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
         }
@@ -3134,7 +3132,6 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach,
                 presentationClock: () => 0
             );
@@ -3301,7 +3298,6 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach,
                 definition,
                 presentationClock: () => 0,
@@ -3358,7 +3354,6 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach,
                 definition
             );
@@ -3551,7 +3546,6 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach,
                 definition
             );
