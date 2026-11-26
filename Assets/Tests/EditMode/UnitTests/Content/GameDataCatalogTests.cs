@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Content
@@ -308,6 +309,49 @@ namespace Rebellion.Tests.Content
             captured.SystemDamage.PrimaryHyperdrive = 1;
             Assert.Greater(captured.GetOperationalHyperdrive(), 0);
             Assert.AreSame(template, derived.CapitalShips[0]);
+        }
+
+        [Test]
+        public void Constructor_SharedLegacyTemplates_KeepsEachCatalogsEquipmentDefaults()
+        {
+            CapitalShip ship = TacticalTestData.CreateCapital("capital");
+            Starfighter fighter = TacticalTestData.CreateFighter("fighter");
+            CapitalShip[] ships = { ship };
+            Starfighter[] fighters = { fighter };
+
+            GameDataCatalog first = CreateCatalog(2, 3, 12);
+            GameDataCatalog second = CreateCatalog(4, 5, 24);
+
+            Assert.AreEqual(2, first.CapitalShips.Single().BackupHyperdrive);
+            Assert.AreEqual(4, second.CapitalShips.Single().BackupHyperdrive);
+            Assert.AreEqual(12, first.CapitalShips.Single().PhysicalGeometry.HullWidth);
+            Assert.AreEqual(24, second.CapitalShips.Single().PhysicalGeometry.HullWidth);
+            Assert.AreEqual(3, first.Starfighters.Single().BackupHyperdrive);
+            Assert.AreEqual(5, second.Starfighters.Single().BackupHyperdrive);
+            Assert.AreSame(ship, ships.Single());
+            Assert.AreSame(fighter, fighters.Single());
+            Assert.IsNull(ship.BackupDrive);
+            Assert.IsNull(ship.PhysicalGeometry);
+            Assert.Zero(fighter.BackupHyperdrive);
+
+            GameDataCatalog CreateCatalog(int shipDrive, int fighterDrive, float hullWidth) =>
+                TestGameData.Create(
+                    capitalShips: ships,
+                    starfighters: fighters,
+                    tacticalCombat: new TacticalCombatDefinition
+                    {
+                        Units =
+                        {
+                            new()
+                            {
+                                UnitTypeID = ship.TypeID,
+                                BackupHyperdrive = shipDrive,
+                                HullWidth = hullWidth,
+                            },
+                            new() { UnitTypeID = fighter.TypeID, BackupHyperdrive = fighterDrive },
+                        },
+                    }
+                );
         }
 
         /// <summary>
