@@ -42,16 +42,31 @@ public sealed class ContentPackEditorProject : IDisposable
     internal IEnumerable<string> RemovedDocumentPaths =>
         documents.Where(document => document.IsRemoved).Select(document => document.TargetPath);
 
-    public bool IsDirty => documents.Any(document => document.IsDirty);
+    public bool IsDirty => history.HasUnsavedAssets || documents.Any(document => document.IsDirty);
     public bool CanUndo => history.CanUndo;
     public bool CanRedo => history.CanRedo;
     public string UndoDescription => history.UndoDescription;
     public string RedoDescription => history.RedoDescription;
 
     /// <summary>
-    /// Releases temporary undo revisions without changing authored documents or artwork.
+    /// Restores unsaved asset edits before releasing this project's temporary undo revisions.
     /// </summary>
     public void Dispose() => history.Dispose();
+
+    /// <summary>
+    /// Restores settings and artwork to their last successful save.
+    /// </summary>
+    public void DiscardChanges()
+    {
+        history.DiscardChanges();
+        catalogs = null;
+        RefreshDefinition();
+    }
+
+    /// <summary>
+    /// Refuses to save referencing documents over externally changed artwork.
+    /// </summary>
+    internal void VerifyAssets() => history.VerifyAssets();
 
     /// <summary>
     /// Groups a continuous gesture or multi-field operation into one undoable edit.
@@ -69,6 +84,13 @@ public sealed class ContentPackEditorProject : IDisposable
     /// <param name="path">The destination inside this project.</param>
     /// <param name="bytes">The complete replacement contents.</param>
     internal void WriteAsset(string path, byte[] bytes) => history.WriteFile(this, path, bytes);
+
+    /// <summary>
+    /// Copies imported media without buffering its full contents while preserving undo revisions.
+    /// </summary>
+    /// <param name="path">The destination inside this project.</param>
+    /// <param name="source">The selected source file.</param>
+    internal void CopyAsset(string path, string source) => history.CopyFile(this, path, source);
 
     /// <summary>
     /// Restores the preceding edit and rebuilds catalog wrappers from the restored documents.
@@ -1644,6 +1666,7 @@ public sealed class ContentPackEditorProject : IDisposable
         IReadOnlyList<ContentPackEditorDocument> refreshedDocuments
     )
     {
+        history.AcceptSave();
         Definition = definition;
         if (refreshedDocuments == null)
             return;

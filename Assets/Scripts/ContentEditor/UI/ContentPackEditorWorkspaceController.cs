@@ -93,6 +93,15 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Ends continuous gestures before restoring the project's last saved settings and artwork.
+    /// </summary>
+    public void DiscardChanges()
+    {
+        session.EndMapEdit();
+        Project?.DiscardChanges();
+    }
+
+    /// <summary>
     /// Computes an integer layout off-thread and commits only a complete result as one undoable edit.
     /// </summary>
     /// <param name="layout">The captured record positions and rendered footprints.</param>

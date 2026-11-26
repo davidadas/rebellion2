@@ -821,16 +821,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Captures template files with the generated draft so its geometry survives pack edits.
-    /// </summary>
-    /// <param name="path">The resolved location of the pattern or hull.</param>
-    /// <returns>The portable address of the copy stored in the pack.</returns>
-    private string StoreTravelPatternSource(string path) =>
-        string.IsNullOrEmpty(path)
-            ? null
-            : ContentPackEditorStorage.StoreArtworkLayerSource(project, path);
-
-    /// <summary>
     /// Begins a repeatable preview of the applicable gameplay images for one unit.
     /// </summary>
     /// <param name="selectedField">The state image selected on the artwork page.</param>
@@ -1576,13 +1566,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         continue;
                     var output = outputs[index];
                     if (draft.UsesExisting && !draft.HasStoredSources && output.Existing != null)
-                        draft.ExistingSources = new[]
-                        {
-                            ContentPackEditorStorage.StoreArtworkLayerSource(
-                                project,
-                                output.Existing
-                            ),
-                        };
+                    {
+                        string address = ContentPackEditorStorage.StageArtworkLayerSource(
+                            output.Existing,
+                            pendingLayerSources
+                        );
+                        layerSourcesToSave.Add(address);
+                        draft.ExistingSources = new[] { address };
+                    }
                     if (
                         effect == ContentEditorArtworkEffect.Travel
                         && draft.RenderVersion >= 5
@@ -1591,8 +1582,20 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     )
                     {
                         var pattern = GetTravelPattern(draft, index);
-                        draft.TravelPatterns = new[] { StoreTravelPatternSource(pattern.Image) };
-                        draft.TravelSubjects = new[] { StoreTravelPatternSource(pattern.Subject) };
+                        string imageAddress = ContentPackEditorStorage.StageArtworkLayerSource(
+                            pattern.Image,
+                            pendingLayerSources
+                        );
+                        string subjectAddress = ContentPackEditorStorage.StageArtworkLayerSource(
+                            pattern.Subject,
+                            pendingLayerSources
+                        );
+                        draft.TravelPatterns = new[] { imageAddress };
+                        draft.TravelSubjects = new[] { subjectAddress };
+                        if (imageAddress != null)
+                            layerSourcesToSave.Add(imageAddress);
+                        if (subjectAddress != null)
+                            layerSourcesToSave.Add(subjectAddress);
                     }
                     byte[] png = frames[index].Bake(draft.Layers);
                     draft.UpgradeImageLayerVersion();
@@ -1605,17 +1608,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             layerSourcesToSave.Add(layer.ImageSource);
                 }
 
-                foreach (string address in layerSourcesToSave)
-                    ContentPackEditorStorage.StoreArtworkLayerSource(
-                        project,
-                        address,
-                        pendingLayerSources[address]
-                    );
                 bool persist = !project.IsDirty;
                 ApplyGeneratedArtwork(
                     $"Save {effect.ToString().ToLowerInvariant()} artwork",
                     images,
-                    persist
+                    persist,
+                    layerSourcesToSave.ToDictionary(
+                        address => address,
+                        address => pendingLayerSources[address]
+                    )
                 );
                 string saved = generate
                     ? $"Generated {images.Count} travel {(images.Count == 1 ? "image" : "images")}."
@@ -1849,14 +1850,23 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="description">The description of the operation in the undo history.</param>
     /// <param name="images">The previewed images and their destination fields.</param>
     /// <param name="persist">Whether the current project can be saved with this change.</param>
+    /// <param name="layerSources">New source images owned by the same artwork edit.</param>
     private void ApplyGeneratedArtwork(
         string description,
         IReadOnlyList<(ContentPackEditorField Field, byte[] Png, string Layers)> images,
-        bool persist
+        bool persist,
+        IReadOnlyDictionary<string, byte[]> layerSources = null
     )
     {
         using (project.BeginEdit(description))
         {
+            if (layerSources != null)
+                foreach (var source in layerSources)
+                    ContentPackEditorStorage.StoreArtworkLayerSource(
+                        project,
+                        source.Key,
+                        source.Value
+                    );
             foreach (var image in images)
             {
                 string value = ContentPackEditorStorage.WriteGeneratedPng(
@@ -2077,7 +2087,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
         {
             if (!view.CommitFields())
             {
-                view.ConfirmDiscard(() => RunOperation(next));
+                view.ConfirmDiscard(() =>
+                    RunOperation(() =>
+                    {
+                        DiscardCurrentProject();
+                        next();
+                    })
+                );
                 return;
             }
             if (project?.IsDirty == true)
@@ -2088,11 +2104,27 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             SaveCurrentProject();
                             next();
                         }),
-                    () => RunOperation(next)
+                    () =>
+                        RunOperation(() =>
+                        {
+                            DiscardCurrentProject();
+                            next();
+                        })
                 );
             else
                 next();
         });
+    }
+
+    /// <summary>
+    /// Restores saved files before allowing a discard transition to release their undo revisions.
+    /// </summary>
+    private void DiscardCurrentProject()
+    {
+        if (project == null)
+            return;
+        workspace.DiscardChanges();
+        OpenProject(project);
     }
 
     /// <summary>
@@ -2122,10 +2154,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
         if (!view.CommitFields())
         {
             view.ConfirmDiscard(() =>
-            {
-                quitApproved = true;
-                Application.Quit();
-            });
+                RunOperation(() =>
+                {
+                    DiscardCurrentProject();
+                    quitApproved = true;
+                    Application.Quit();
+                })
+            );
             return false;
         }
         if (project?.IsDirty != true)
@@ -2139,10 +2174,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     Application.Quit();
                 }),
             () =>
-            {
-                quitApproved = true;
-                Application.Quit();
-            }
+                RunOperation(() =>
+                {
+                    DiscardCurrentProject();
+                    quitApproved = true;
+                    Application.Quit();
+                })
         );
         return false;
     }

@@ -192,6 +192,11 @@ It clears the overrides shown in the active tab and uses the inherited or built-
 Resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
 snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
+Artwork edits count as unsaved changes. Saving the pack commits its current files; discarding
+changes restores the files and settings from the last successful save. Undoing an image change
+after saving marks the pack as unsaved again. If another application changes a file, discard
+stops without overwriting it, and closing retains the recovery files if restoration fails.
+
 Artwork undo and redo belong to the open editing session. Temporary revisions are stored in a
 separate `.rebellion2-editor/History/<session>` directory for each open project and are removed
 when that project closes, is replaced, or the editor exits normally. Ordinary saves and refreshing

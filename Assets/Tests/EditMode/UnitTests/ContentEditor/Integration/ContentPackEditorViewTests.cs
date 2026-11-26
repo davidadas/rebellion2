@@ -24,9 +24,48 @@ namespace Rebellion.Tests.ContentEditor.Integration
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
         [Test]
+        public void DiscardChanges_GalaxyDragInProgress_RestoresSavedCoordinatesBeforeClosing()
+        {
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(input => input.name == "Search");
+            search.text = "Galaxy";
+            view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node.Key == "galaxy")
+                .OnPointerDown(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+            Canvas.ForceUpdateCanvases();
+            ContentEditorMapMarker marker = view.GetComponentsInChildren<ContentEditorMapMarker>()
+                .First();
+            ContentPackEditorDocument document = marker.Record.Catalog.Document;
+            string saved = document.Text;
+            PointerEventData pointer = new(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(null, marker.transform.position),
+            };
+            marker.OnBeginDrag(pointer);
+            pointer.position += new Vector2(20, 10);
+            marker.OnDrag(pointer);
+            Assert.AreNotEqual(saved, document.Text);
+
+            workspace.DiscardChanges();
+
+            Assert.AreEqual(saved, document.Text);
+            Assert.IsFalse(project.CanUndo);
+            Assert.IsFalse(project.IsDirty);
+            workspace.ClearProject();
+            Assert.IsNull(workspace.Project);
+        }
+
+        [Test]
         public void ClearProject_ArtworkUndoHistory_ReleasesSnapshotsAndPreservesArtwork()
         {
             string image = AddArtworkHistory();
+            ContentPackEditorStorage.Save(project);
             string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
             byte[] expected = File.ReadAllBytes(image);
             Assert.IsNotEmpty(Directory.GetDirectories(history));
@@ -42,6 +81,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         public void Dispose_ArtworkUndoHistory_ReleasesSnapshotsAndPreservesArtwork()
         {
             string image = AddArtworkHistory();
+            ContentPackEditorStorage.Save(project);
             string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
             byte[] expected = File.ReadAllBytes(image);
 
@@ -72,6 +112,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         public void RenderProject_DifferentProject_ReleasesPreviousArtworkSnapshots()
         {
             string image = AddArtworkHistory();
+            ContentPackEditorStorage.Save(project);
             string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
             ContentPackEditorProject next = CreateProject(Path.Combine(folder, "next"));
 
