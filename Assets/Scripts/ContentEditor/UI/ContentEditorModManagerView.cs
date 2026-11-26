@@ -56,6 +56,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI detailText;
 
     [SerializeField]
+    private TextMeshProUGUI releaseMetadata;
+
+    [SerializeField]
     private TextMeshProUGUI heading;
 
     [SerializeField]
@@ -65,7 +68,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private RawImage icon;
 
     [SerializeField]
-    private TMP_Dropdown category;
+    private ContentEditorModFiltersView filters;
 
     [SerializeField]
     private TextMeshProUGUI pageTitle;
@@ -99,9 +102,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private TextMeshProUGUI emptyDetails;
-
-    [SerializeField]
-    private TMP_Dropdown installation;
 
     [SerializeField]
     private TMP_Dropdown sorting;
@@ -141,6 +141,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private GameObject defaultPackControls;
+
+    [SerializeField]
+    private RectTransform defaultPackDescription;
+
+    private float contentZoom = 1;
+    private int inlineFilterHeight;
     private string[] activePackIDs = Array.Empty<string>();
     private bool library;
     private readonly List<ContentEditorModCardView> rows = new();
@@ -173,11 +179,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal bool IsOpen => gameObject.activeSelf;
     internal bool IsChangingFiles => browseLocked;
     internal string Search => search.text;
-    internal string Category =>
-        category.value == 0 ? null
-        : category.value == 1 ? string.Empty
-        : category.options[category.value].text;
-    internal ContentEditorModFilter Filter => (ContentEditorModFilter)installation.value;
+    internal ContentEditorModFiltersView Filters => filters;
     internal ContentEditorModSort Sort => (ContentEditorModSort)sorting.value;
 
     /// <summary>
@@ -208,6 +210,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || rowTemplate == null
             || details == null
             || detailText == null
+            || releaseMetadata == null
             || heading == null
             || status == null
             || icon == null
@@ -224,8 +227,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || detailStatus == null
             || requirement == null
             || installInset == null
-            || category == null
-            || installation == null
+            || filters == null
             || sorting == null
             || clearSearchButton == null
             || resetButton == null
@@ -252,8 +254,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         folderButton.onClick.AddListener(Folder);
         search.onValueChanged.AddListener(Find);
         versions.onValueChanged.AddListener(SelectVersion);
-        category.onValueChanged.AddListener(ChangeCriteria);
-        installation.onValueChanged.AddListener(ChangeCriteria);
+        filters.Changed += ChangeFilters;
         sorting.onValueChanged.AddListener(ChangeCriteria);
         clearSearchButton.onClick.AddListener(ClearSearch);
         resetButton.onClick.AddListener(ResetFilters);
@@ -277,23 +278,82 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Fits the complete manager within the workspace when its aspect ratio changes.
+    /// Applies the shared content scale without changing the active page or filter choices.
+    /// </summary>
+    /// <param name="zoom">The application content scale.</param>
+    internal void SetContentZoom(float zoom)
+    {
+        contentZoom = zoom;
+        OnRectTransformDimensionsChange();
+    }
+
+    /// <summary>
+    /// Reflows browsing controls and cards within the window at the selected content scale.
     /// </summary>
     private void OnRectTransformDimensionsChange()
     {
         if (panel == null || !bound || !gameObject.activeInHierarchy)
             return;
         Rect available = ((RectTransform)transform).rect;
-        panel.sizeDelta = new Vector2(1120, Mathf.Max(720, available.height - 64));
-        foreach (RectTransform target in new[] { panel, detailPanel })
-            if (target != null)
-                target.localScale =
-                    Vector3.one
-                    * Mathf.Min(
-                        1,
-                        Mathf.Max(1, available.width - 40) / target.rect.width,
-                        Mathf.Max(1, available.height - 40) / target.rect.height
-                    );
+        Vector2 size = new(
+            Mathf.Min(1120, Mathf.Max(1, available.width - 40) / contentZoom),
+            Mathf.Max(1, available.height - 64) / contentZoom
+        );
+        if (panel.sizeDelta != size || !Mathf.Approximately(panel.localScale.x, contentZoom))
+        {
+            filters.TryCancel();
+            foreach (TMP_Dropdown dropdown in new[] { sorting, activePack, versions })
+                if (dropdown.IsExpanded)
+                    dropdown.Hide();
+        }
+        panel.localScale = Vector3.one * contentZoom;
+        panel.sizeDelta = size;
+        int width = Mathf.FloorToInt(size.x);
+        int sortWidth = Mathf.Min(304, Mathf.FloorToInt(width * 0.3f));
+        int searchWidth = width - sortWidth - 144;
+        UILayout.SetSourceRect((RectTransform)search.transform, 0, 112, searchWidth, 44);
+        UILayout.SetSourceRect(
+            (RectTransform)clearSearchButton.transform,
+            searchWidth - 48,
+            112,
+            44,
+            44
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)filterButton.transform,
+            searchWidth + 16,
+            112,
+            112,
+            44
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)sorting.transform,
+            width - sortWidth,
+            112,
+            sortWidth,
+            44
+        );
+        UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, 176);
+        filters.SetWidth(width);
+        int packWidth = Mathf.Min(440, Mathf.FloorToInt(width * 0.45f));
+        UILayout.SetSourceRect((RectTransform)defaultPackControls.transform, 0, 112, width, 72);
+        UILayout.SetSourceRect(defaultPackDescription, 0, 0, width - packWidth - 24, 72);
+        UILayout.SetSourceRect(
+            (RectTransform)activePack.transform,
+            width - packWidth,
+            0,
+            packWidth,
+            44
+        );
+        resultCount.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+        emptyResults.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
+        detailPanel.localScale =
+            Vector3.one
+            * Mathf.Min(
+                contentZoom,
+                Mathf.Max(1, available.width - 40) / detailPanel.rect.width,
+                Mathf.Max(1, available.height - 40) / detailPanel.rect.height
+            );
         LayoutResults(rows.Count(row => row.gameObject.activeSelf));
     }
 
@@ -337,15 +397,6 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             if (i == rows.Count)
                 rows.Add(Instantiate(rowTemplate, packages.ScrollArea.ContentRoot));
             ContentEditorModCardView row = rows[i];
-            RectTransform rect = (RectTransform)row.transform;
-            float width = (packages.ScrollArea.ViewportWidth - 16 * (_columns - 1)) / _columns;
-            rect.anchorMin = rect.anchorMax = Vector2.up;
-            rect.pivot = Vector2.up;
-            rect.sizeDelta = new Vector2(width, _cardHeight - 16);
-            rect.anchoredPosition = new Vector2(
-                i % _columns * (width + 16),
-                -(i / _columns) * _cardHeight
-            );
             row.Render(
                 items[i],
                 !browseLocked,
@@ -387,7 +438,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <param name="resetScroll">Whether to return the results to the top.</param>
     private void LayoutResults(int count, bool resetScroll = false)
     {
-        int contentTop = library ? 248 : filterPanel.activeSelf ? 328 : 216;
+        bool hasFilters = !library && filterPanel.activeSelf;
+        int expandedTop =
+            176 + Mathf.CeilToInt(((RectTransform)filterPanel.transform).rect.height) + 56;
+        int contentTop =
+            library ? 248
+            : hasFilters ? expandedTop
+            : 216;
         bool hasStatus = !string.IsNullOrEmpty(status.text);
         status.gameObject.SetActive(hasStatus);
         float statusHeight = hasStatus
@@ -398,12 +455,56 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             )
             : 0;
         status.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, statusHeight);
+        // Keep filters in the scrolling area when zoom leaves too little space for a card.
+        inlineFilterHeight =
+            hasFilters && panel.rect.height - contentTop - statusHeight < _cardHeight
+                ? Mathf.CeilToInt(((RectTransform)filterPanel.transform).rect.height) + 16
+                : 0;
+        if (inlineFilterHeight > 0)
+            contentTop = 216;
+        Transform filterParent = inlineFilterHeight > 0 ? packages.ScrollArea.ContentRoot : panel;
+        if (filterPanel.transform.parent != filterParent)
+            filterPanel.transform.SetParent(filterParent, false);
+        UILayout.SetSourceRect(
+            (RectTransform)filterPanel.transform,
+            0,
+            inlineFilterHeight > 0 ? 0 : 176,
+            Mathf.FloorToInt(panel.rect.width),
+            176
+        );
         RectTransform viewport = (RectTransform)packages.transform;
         viewport.offsetMin = new Vector2(viewport.offsetMin.x, hasStatus ? statusHeight + 16 : 0);
         viewport.offsetMax = new Vector2(viewport.offsetMax.x, -contentTop);
         resultCount.rectTransform.anchoredPosition = new Vector2(0, -(contentTop - 40));
-        emptyResults.rectTransform.anchoredPosition = new Vector2(0, -(contentTop + 48));
-        packages.SetContentHeight(Mathf.Max(0, count * _cardHeight - 16), resetScroll);
+        if (emptyResults.transform.parent != filterParent)
+            emptyResults.transform.SetParent(filterParent, false);
+        UILayout.SetSourceRect(
+            emptyResults.rectTransform,
+            0,
+            (inlineFilterHeight > 0 ? inlineFilterHeight : contentTop) + 48,
+            Mathf.FloorToInt(panel.rect.width),
+            160
+        );
+        packages.SetContentHeight(
+            inlineFilterHeight
+                + (
+                    inlineFilterHeight > 0 && count == 0
+                        ? 208
+                        : Mathf.Max(0, count * _cardHeight - 16)
+                ),
+            resetScroll
+        );
+        for (int index = 0; index < rows.Count; index++)
+        {
+            RectTransform rect = (RectTransform)rows[index].transform;
+            float width = (packages.ScrollArea.ViewportWidth - 16 * (_columns - 1)) / _columns;
+            rect.anchorMin = rect.anchorMax = rect.pivot = Vector2.up;
+            rect.sizeDelta = new Vector2(width, _cardHeight - 16);
+            rect.anchoredPosition = new Vector2(
+                index % _columns * (width + 16),
+                -inlineFilterHeight - (index / _columns) * _cardHeight
+            );
+        }
     }
 
     /// <summary>
@@ -415,9 +516,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         activePackIDs = packs.Select(pack => pack.ID).ToArray();
         activePack.ClearOptions();
-        activePack.AddOptions(packs.Count == 0
-            ? new List<string> { "No content packs installed" }
-            : packs.Select(pack => pack.DisplayName).ToList());
+        activePack.AddOptions(
+            packs.Count == 0
+                ? new List<string> { "No content packs installed" }
+                : packs.Select(pack => pack.DisplayName).ToList()
+        );
         activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
         activePack.RefreshShownValue();
         activePack.interactable = !busy && packs.Count > 0;
@@ -434,32 +537,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Refreshes real community categories while retaining a still-available selection.
-    /// </summary>
-    /// <param name="values">The categories present in the public catalog.</param>
-    internal void SetCategories(IEnumerable<string> values)
-    {
-        string previous = category.options.ElementAtOrDefault(category.value)?.text;
-        List<string> options = new List<string> { "All categories", "Uncategorized" };
-        options.AddRange(
-            values
-                .Where(value => !string.IsNullOrWhiteSpace(value) && value != "Uncategorized")
-                .Distinct(StringComparer.OrdinalIgnoreCase)
-                .OrderBy(value => value, StringComparer.OrdinalIgnoreCase)
-        );
-        category.ClearOptions();
-        category.AddOptions(options);
-        category.SetValueWithoutNotify(Mathf.Max(0, options.IndexOf(previous)));
-        category.RefreshShownValue();
-    }
-
-    /// <summary>
     /// Renders one package with independently selected distribution versions.
     /// </summary>
     /// <param name="entry">The selected package and its public metadata, or null for an empty result.</param>
     /// <param name="stateText">The current availability, activation, or compatibility state.</param>
     /// <param name="compatibilityIssue">The installation requirement preventing use, or an empty string.</param>
     /// <param name="text">The description, native identities, and dependencies.</param>
+    /// <param name="metadata">The installed release and download summary.</param>
     /// <param name="releases">Available distribution versions.</param>
     /// <param name="selectedVersion">The selected release index.</param>
     /// <param name="installLabel">The install, update, or reinstall action label.</param>
@@ -473,6 +557,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         string stateText,
         string compatibilityIssue,
         string text,
+        string metadata,
         List<string> releases,
         int selectedVersion,
         string installLabel,
@@ -516,6 +601,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         icon.enabled = icon.texture != null;
         iconInitials.gameObject.SetActive(!icon.enabled);
         detailText.text = text;
+        releaseMetadata.text = metadata;
         details.SetContentHeight(detailText.rectTransform.rect.height);
         float width = Mathf.Max(1, details.ScrollArea.ViewportWidth);
         float height = Mathf.Ceil(
@@ -582,6 +668,29 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             descriptionHeight
         );
         float contentBottom = descriptionTop + descriptionHeight;
+        bool hasMetadata = !string.IsNullOrEmpty(releaseMetadata.text);
+        releaseMetadata.gameObject.SetActive(hasMetadata);
+        if (hasMetadata)
+        {
+            float metadataHeight = Mathf.Max(
+                24,
+                Mathf.Ceil(
+                    releaseMetadata
+                        .GetPreferredValues(
+                            releaseMetadata.text,
+                            releaseMetadata.rectTransform.rect.width,
+                            float.PositiveInfinity
+                        )
+                        .y
+                )
+            );
+            releaseMetadata.rectTransform.anchoredPosition = new Vector2(32, -(contentBottom + 16));
+            releaseMetadata.rectTransform.SetSizeWithCurrentAnchors(
+                RectTransform.Axis.Vertical,
+                metadataHeight
+            );
+            contentBottom += metadataHeight + 16;
+        }
         if (requirement.gameObject.activeSelf)
         {
             float requirementHeight = Mathf.Max(
@@ -603,11 +712,14 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         }
         bool installed = activateButton.gameObject.activeSelf;
         bool canInstall = installButton.gameObject.activeSelf;
-        float primaryTop = contentBottom + (installed ? 24 : 40);
-        float releaseTop = installed ? primaryTop + 76 : primaryTop;
-        ((RectTransform)activateButton.transform).anchoredPosition = new Vector2(32, -primaryTop);
+        float releaseTop = contentBottom + (canInstall ? 52 : 24);
+        ((RectTransform)activateButton.transform).anchoredPosition = new Vector2(448, -releaseTop);
         ((RectTransform)versions.transform).anchoredPosition = new Vector2(32, -releaseTop);
         ((RectTransform)installButton.transform).anchoredPosition = new Vector2(232, -releaseTop);
+        ((RectTransform)installButton.transform).SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Horizontal,
+            installed ? 200 : 496
+        );
         installInset.gameObject.SetActive(installed);
         installButton
             .GetComponent<ContentEditorColorBinding>()
@@ -616,14 +728,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             .GetComponentInChildren<TMP_Text>()
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(installed ? ContentEditorColorRole.Text : ContentEditorColorRole.Background);
-        float bottom =
-            canInstall ? releaseTop + 44
-            : installed ? primaryTop + 44
-            : contentBottom;
-        float linksTop = bottom + 16;
+        float bottom = canInstall || installed ? releaseTop + 44 : contentBottom;
+        float linksTop = bottom + 24;
         ((RectTransform)listingButton.transform).anchoredPosition = new Vector2(32, -linksTop);
         ((RectTransform)folderButton.transform).anchoredPosition = new Vector2(
-            listingButton.gameObject.activeSelf ? 256 : 32,
+            listingButton.gameObject.activeSelf ? 232 : 32,
             -linksTop
         );
         ((RectTransform)uninstallButton.transform).anchoredPosition = new Vector2(628, -linksTop);
@@ -694,19 +803,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             button.interactable = !value;
         foreach (ContentEditorModCardView row in rows)
             row.SetInteractable(!browseLocked, !value);
-        foreach (
-            Button button in new[]
-            {
-                clearSearchButton,
-                resetButton,
-                filterButton,
-            }
-        )
+        foreach (Button button in new[] { clearSearchButton, resetButton, filterButton })
             button.interactable = !browseLocked;
         clearSearchButton.interactable = !browseLocked && search.text.Length > 0;
         search.interactable = !browseLocked;
-        category.interactable = !browseLocked;
-        installation.interactable = !browseLocked;
+        filters.SetInteractable(!browseLocked);
         sorting.interactable = !browseLocked;
         versions.interactable = !browseLocked;
         activePack.interactable = !value && activePackIDs.Length > 0;
@@ -786,8 +887,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         return rows.Where(
                 (row, index) =>
                     row.gameObject.activeSelf
-                    && index / _columns * _cardHeight < bottom
-                    && (index / _columns + 1) * _cardHeight > top
+                    && inlineFilterHeight + index / _columns * _cardHeight < bottom
+                    && inlineFilterHeight + (index / _columns + 1) * _cardHeight > top
             )
             .Select(row => row.Entry?.IconUrl)
             .Append(detailOverlay.activeSelf ? selectedIconUrl : null)
@@ -863,7 +964,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void ToggleFilters()
     {
         filterPanel.SetActive(!filterPanel.activeSelf);
-        LayoutResults(rows.Count(row => row.gameObject.activeSelf));
+        LayoutResults(rows.Count(row => row.gameObject.activeSelf), true);
     }
 
     /// <summary>
@@ -880,15 +981,17 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// </summary>
     private void UpdateClearControls()
     {
-        int activeFilters =
-            (Category != null ? 1 : 0) + (Filter != ContentEditorModFilter.All ? 1 : 0);
+        int activeFilters = filters.ActiveCount;
         filterButton.GetComponentInChildren<TMP_Text>().text =
             activeFilters == 0 ? "Filters" : "Filters (" + activeFilters + ")";
         clearSearchButton.gameObject.SetActive(!library && search.text.Length > 0);
-        resetButton.gameObject.SetActive(
-            search.text.Length > 0 || Category != null || Filter != ContentEditorModFilter.All
-        );
+        resetButton.gameObject.SetActive(search.text.Length > 0 || filters.ActiveCount > 0);
     }
+
+    /// <summary>
+    /// Applies combined community filter changes to the current catalogue.
+    /// </summary>
+    private void ChangeFilters() => ChangeCriteria(0);
 
     /// <summary>
     /// Applies a filter or sort selection immediately.
@@ -916,10 +1019,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private void ResetFilters()
     {
         search.SetTextWithoutNotify(string.Empty);
-        category.SetValueWithoutNotify(0);
-        installation.SetValueWithoutNotify(0);
-        UpdateClearControls();
-        CriteriaChanged?.Invoke();
+        filters.Clear();
     }
 
     /// <summary>
@@ -958,7 +1058,9 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         if (!IsOpen)
             return false;
-        foreach (TMP_Dropdown dropdown in new[] { category, installation, sorting, versions })
+        if (filters.TryCancel())
+            return true;
+        foreach (TMP_Dropdown dropdown in new[] { sorting, versions })
             if (dropdown.IsExpanded)
             {
                 dropdown.Hide();
@@ -1015,8 +1117,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             folderButton.onClick.RemoveListener(Folder);
             search.onValueChanged.RemoveListener(Find);
             versions.onValueChanged.RemoveListener(SelectVersion);
-            category.onValueChanged.RemoveListener(ChangeCriteria);
-            installation.onValueChanged.RemoveListener(ChangeCriteria);
+            filters.Changed -= ChangeFilters;
             sorting.onValueChanged.RemoveListener(ChangeCriteria);
             clearSearchButton.onClick.RemoveListener(ClearSearch);
             resetButton.onClick.RemoveListener(ResetFilters);

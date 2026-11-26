@@ -66,6 +66,22 @@ internal static class ContentEditorPublishingStorage
     }
 
     /// <summary>
+    /// Stores a confirmed icon without changing its imported source or the listing fields.
+    /// </summary>
+    /// <param name="project">The editable project receiving the icon.</param>
+    /// <param name="bytes">The confirmed 256 by 256 PNG.</param>
+    /// <returns>The project-owned icon path.</returns>
+    internal static string SaveIcon(ContentPackEditorProject project, byte[] bytes)
+    {
+        ValidateIcon(bytes);
+        string path = Path.Combine(project.PackRootPath, DirectoryName, "icon.png");
+        ContentEditorPaths.VerifyWritePath(project, path);
+        Directory.CreateDirectory(Path.GetDirectoryName(path));
+        WriteAtomically(path, bytes);
+        return path;
+    }
+
+    /// <summary>
     /// Reads and checks the exact icon bytes that will be included in a release.
     /// </summary>
     /// <param name="path">The icon selected by the author.</param>
@@ -73,6 +89,16 @@ internal static class ContentEditorPublishingStorage
     internal static byte[] ReadIcon(string path)
     {
         byte[] bytes = File.ReadAllBytes(path);
+        ValidateIcon(bytes);
+        return bytes;
+    }
+
+    /// <summary>
+    /// Checks encoded icon data before writing a draft or creating a release.
+    /// </summary>
+    /// <param name="bytes">The complete candidate PNG.</param>
+    private static void ValidateIcon(byte[] bytes)
+    {
         byte[] signature = { 137, 80, 78, 71, 13, 10, 26, 10 };
         if (bytes.Length < signature.Length)
             throw new InvalidDataException("The package icon must be a PNG image.");
@@ -98,7 +124,6 @@ internal static class ContentEditorPublishingStorage
             else
                 UnityEngine.Object.DestroyImmediate(texture);
         }
-        return bytes;
     }
 
     /// <summary>

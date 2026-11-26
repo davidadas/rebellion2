@@ -17,15 +17,24 @@ internal sealed class ThunderstorePublisher : IDisposable
 {
     private const string _apiRoot = "https://thunderstore.io/api/experimental/";
     private readonly HttpClient client;
+    private readonly ContentEditorCredentialStore credentials;
     private string token;
+    private bool disposed;
     internal string[] Teams { get; private set; } = Array.Empty<string>();
 
     /// <summary>
     /// Creates an owned HTTP transport that does not forward credentials through redirects.
     /// </summary>
     /// <param name="handler">An optional transport supplied by the host.</param>
-    internal ThunderstorePublisher(HttpMessageHandler handler = null)
+    /// <param name="credentialStore">The system credential store, when supplied by the host.</param>
+    internal ThunderstorePublisher(
+        HttpMessageHandler handler = null,
+        ContentEditorCredentialStore credentialStore = null
+    )
     {
+        credentials =
+            credentialStore
+            ?? ContentEditorCredentialStore.Create("com.adasgames.rebellion2.toolkit.thunderstore");
         client = new HttpClient(handler ?? new HttpClientHandler { AllowAutoRedirect = false })
         {
             Timeout = TimeSpan.FromMinutes(30),
@@ -34,14 +43,70 @@ internal sealed class ThunderstorePublisher : IDisposable
     }
 
     /// <summary>
-    /// Validates a token and retains only the authenticated session and its active teams.
+    /// Validates and securely saves a token before marking the connection as established.
     /// </summary>
     /// <param name="credential">The team service-account token.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The completion of authentication.</returns>
+    /// <returns>The completion of authentication and protected storage.</returns>
     internal async Task ConnectAsync(string credential, CancellationToken cancellationToken)
     {
         credential = credential?.Trim();
+        string[] teams = await AuthenticateAsync(credential, cancellationToken);
+        await Task.Run(() => credentials.Write(credential, cancellationToken), cancellationToken);
+        if (disposed)
+            return;
+        token = credential;
+        Teams = teams;
+    }
+
+    /// <summary>
+    /// Restores a saved connection and checks its current team permissions without rewriting the token.
+    /// </summary>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>Whether a usable saved or current connection exists.</returns>
+    internal async Task<bool> RestoreAsync(CancellationToken cancellationToken)
+    {
+        if (token != null)
+            return true;
+        string credential = await Task.Run(
+            () => credentials.Read(cancellationToken),
+            cancellationToken
+        );
+        if (credential == null)
+            return false;
+        string[] teams = await AuthenticateAsync(credential, cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+        if (disposed)
+            return false;
+        token = credential;
+        Teams = teams;
+        return true;
+    }
+
+    /// <summary>
+    /// Removes the protected credential before clearing the live publishing connection.
+    /// </summary>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of removal from the system store.</returns>
+    internal async Task DisconnectAsync(CancellationToken cancellationToken)
+    {
+        await Task.Run(() => credentials.Delete(cancellationToken), cancellationToken);
+        ClearSession();
+    }
+
+    /// <summary>
+    /// Checks token syntax and the active publishing teams before accepting a connection.
+    /// </summary>
+    /// <param name="credential">The candidate token.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The authenticated publishing teams.</returns>
+    private async Task<string[]> AuthenticateAsync(
+        string credential,
+        CancellationToken cancellationToken
+    )
+    {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(ThunderstorePublisher));
         if (
             string.IsNullOrEmpty(credential)
             || credential.Length > 4096
@@ -63,14 +128,13 @@ internal sealed class ThunderstorePublisher : IDisposable
             throw new InvalidOperationException(
                 "This token has no active publishing team. Create a service account under your Thunderstore team."
             );
-        token = credential;
-        Teams = teams;
+        return teams;
     }
 
     /// <summary>
-    /// Releases the in-memory connection without changing any project or remote account.
+    /// Drops in-memory credentials without changing the device's saved connection.
     /// </summary>
-    internal void Disconnect()
+    private void ClearSession()
     {
         token = null;
         Teams = Array.Empty<string>();
@@ -388,11 +452,12 @@ internal sealed class ThunderstorePublisher : IDisposable
     }
 
     /// <summary>
-    /// Releases the session credential and its owned HTTP transport.
+    /// Releases memory and transport resources while preserving the saved connection.
     /// </summary>
     public void Dispose()
     {
-        Disconnect();
+        disposed = true;
+        ClearSession();
         client.Dispose();
     }
 

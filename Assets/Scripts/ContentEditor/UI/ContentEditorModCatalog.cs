@@ -21,7 +21,10 @@ internal sealed class ContentEditorModEntry
     internal string Description =>
         Listing?.Latest.description ?? Installation?.Description ?? "Installed content pack.";
     internal string Version =>
-        Installation?.Version ?? Listing?.Latest.version_number ?? IncludedPack?.Version ?? "Unknown version";
+        Installation?.Version
+        ?? Listing?.Latest.version_number
+        ?? IncludedPack?.Version
+        ?? "Unknown version";
     internal string IconUrl => Listing?.Latest.icon;
     internal string[] Categories => Listing?.categories ?? Array.Empty<string>();
     internal long Downloads => Listing?.versions.Sum(version => version.downloads) ?? 0;
@@ -102,8 +105,7 @@ internal static class ContentEditorModCatalog
     /// <param name="installed">The installed package records.</param>
     /// <param name="installedOnly">Whether to show only installed entries.</param>
     /// <param name="query">Words matched across names, authors, descriptions, and categories.</param>
-    /// <param name="category">The selected community category, or null for all categories.</param>
-    /// <param name="filter">The requested installation state.</param>
+    /// <param name="filters">The combined community and installation filters.</param>
     /// <param name="sort">The requested result ordering.</param>
     /// <returns>The ordered, matching packages.</returns>
     internal static IReadOnlyList<ContentEditorModEntry> Find(
@@ -111,8 +113,7 @@ internal static class ContentEditorModCatalog
         IReadOnlyList<InstalledModPackage> installed,
         bool installedOnly,
         string query,
-        string category,
-        ContentEditorModFilter filter,
+        ContentEditorModFilterOptions filters,
         ContentEditorModSort sort
     )
     {
@@ -143,16 +144,7 @@ internal static class ContentEditorModCatalog
             .Where(term => term.Length > 0)
             .ToArray();
         var matches = entries
-            .Where(entry =>
-                (
-                    category == null
-                    || category.Length == 0 && entry.Categories.Length == 0
-                    || entry.Categories.Contains(
-                        category.Length == 0 ? "Uncategorized" : category,
-                        StringComparer.OrdinalIgnoreCase
-                    )
-                ) && MatchesFilter(entry, filter)
-            )
+            .Where(entry => installedOnly || MatchesFilters(entry, filters))
             .Select(entry => (Entry: entry, Score: Score(entry, terms)))
             .Where(item => item.Score >= 0);
         var ordered = sort switch
@@ -191,9 +183,39 @@ internal static class ContentEditorModCatalog
             ContentEditorModFilter.Installed => entry.Installation != null,
             ContentEditorModFilter.Updates => entry.HasUpdate,
             ContentEditorModFilter.Local => entry.Installation?.Local == true,
-            ContentEditorModFilter.Deprecated => entry.IsDeprecated,
             _ => true,
         };
+
+    /// <summary>
+    /// Combines category choices, section membership, visibility, and installation state.
+    /// </summary>
+    /// <param name="entry">The package to inspect.</param>
+    /// <param name="filters">The current browsing criteria.</param>
+    /// <returns>Whether every active filter admits the package.</returns>
+    private static bool MatchesFilters(
+        ContentEditorModEntry entry,
+        ContentEditorModFilterOptions filters
+    ) =>
+        (filters.ShowDeprecated || !entry.IsDeprecated)
+        && (filters.ShowNsfw || entry.Listing?.has_nsfw_content != true)
+        && filters.SectionPackages?.Contains(entry.ID) != false
+        && (
+            filters.IncludedCategories.Length == 0
+            || filters.IncludedCategories.Any(category => MatchesCategory(entry, category))
+        )
+        && !filters.ExcludedCategories.Any(category => MatchesCategory(entry, category))
+        && MatchesFilter(entry, filters.Installation);
+
+    /// <summary>
+    /// Matches a named category or the explicit uncategorized choice.
+    /// </summary>
+    /// <param name="entry">The package to inspect.</param>
+    /// <param name="category">The category name, or an empty string for uncategorized packages.</param>
+    /// <returns>Whether the package belongs to the category.</returns>
+    private static bool MatchesCategory(ContentEditorModEntry entry, string category) =>
+        category.Length == 0
+            ? entry.Categories.Length == 0
+            : entry.Categories.Contains(category, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Ranks name and author matches above descriptive matches while requiring every search word.
@@ -253,7 +275,19 @@ internal enum ContentEditorModFilter
     Installed,
     Updates,
     Local,
-    Deprecated,
+}
+
+/// <summary>
+/// Captures independent browsing criteria without changing installed-package visibility.
+/// </summary>
+internal sealed class ContentEditorModFilterOptions
+{
+    internal string[] IncludedCategories { get; set; } = Array.Empty<string>();
+    internal string[] ExcludedCategories { get; set; } = Array.Empty<string>();
+    internal IReadOnlyCollection<string> SectionPackages { get; set; }
+    internal ContentEditorModFilter Installation { get; set; }
+    internal bool ShowDeprecated { get; set; }
+    internal bool ShowNsfw { get; set; }
 }
 
 internal enum ContentEditorModSort

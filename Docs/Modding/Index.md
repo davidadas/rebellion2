@@ -264,12 +264,32 @@ local edits or content used by the open editor project. Uninstalling retains rem
 also live under `.mod-manager`. The manager keeps distribution versions separate from the
 versions authored in `pack.xml` or `mod.xml`; saves still require their recorded content versions.
 
+### Managing your projects
+
+**Projects** automatically finds existing working packs in `Mods`, independently of your Thunderstore
+connection. Managed downloads and ZIP imports remain in Library. Other folders you create or open
+are remembered across restarts. Use **Open project…** to add a working folder stored elsewhere.
+Choose **Edit** to resume the current editor, or **Open** to switch folders; pending edits are protected.
+Each available local project also has a **Publish…** action.
+
+After connecting, **Published packages** shows the connected team's Rebellion 2 uploads. Deprecated
+packages are hidden unless you select **Show deprecated**. **View page** opens the package on
+Thunderstore. When a local project's saved publishing draft identifies that team and package,
+an **Edit** action opens its working copy.
+**Refresh** reloads the online list without accessing stored credentials. Disconnecting clears the
+team's listings while keeping your local projects available.
+
 ### Exporting a content pack for Thunderstore
 
 Open an editable project, then choose **Publish…** in the shared toolbar or **File > Publish...**. Enter a package name, short description,
-readme, and an optional website. Choose a 256 × 256 PNG icon. The **Release** page uses the pack's
-version and accepts release notes and Thunderstore dependencies, one `Team-Package-1.2.0` reference
-per line. The required base content pack is still declared in `pack.xml`; it is not automatically
+readme, and an optional website. Choose a PNG or JPEG, then position the crop box to create a
+256 × 256 PNG icon. The **Release** page uses the pack's
+version and accepts release notes. Under **Dependencies (optional)**, choose **Choose packages…**
+to search and select required Thunderstore packages. Each selected package has a published-version
+selector and a **Remove** button. Saved version choices stay pinned when the catalogue refreshes.
+Required listing fields and the icon must be valid before continuing to Release, and release
+details must be valid before continuing to Review. Step headings enforce the same requirements.
+The required base content pack is still declared in `pack.xml`; it is not automatically
 distributed as a Thunderstore dependency.
 
 Select **Review release**, then **Export ZIP…**. The editor validates the current project
@@ -281,10 +301,22 @@ an existing archive. Exporting does not save pending game-definition edits to th
 the publishing dialog also saves the draft. Publishing drafts are excluded from ordinary pack
 exports, Thunderstore packages, and editor test-game snapshots.
 
-To publish directly, choose **Connect Thunderstore…** in the publishing dialog. Open **Get a token**,
+The shared header shows whether Thunderstore is connected, disconnected, or could not be verified.
+Startup shows **Thunderstore (click to connect)** without accessing the credential store. Click the header
+status or **Connect Thunderstore…** to check the saved token before opening setup. A valid saved token
+connects immediately; setup opens only when no token is saved or the check needs attention.
+The shared connection dialog does not require an open project. Once connected, it shows a compact
+team summary and **Disconnect**; token instructions appear only when setting up a connection.
+
+To publish directly, choose **Connect Thunderstore…** in the publishing dialog. Select **Open team settings**,
 choose your Thunderstore team, and create a service account. Paste its token into the masked field
-and select **Connect**. The connection is kept for the current toolkit session; the token is never
-saved in the project or included in an export.
+and select **Connect**. After validation, the toolkit automatically saves the token in macOS Keychain,
+Windows Credential Manager, or Linux Secret Service. After restarting, click the header status to
+restore that connection. **Disconnect** removes the saved token from this device.
+
+The token is never saved in the project or included in an export. If secure storage cannot be accessed,
+Connect reports the failure and retains the entered token for retry; it does not silently
+fall back to a temporary connection. Linux requires libsecret and an active Secret Service provider.
 
 On **Review**, choose the publishing team and select **Publish release**. The toolkit validates the
 snapshot, uploads the archive with progress, and submits the release to the Rebellion 2 community.

@@ -5,10 +5,68 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Creates deterministic centered PNG cuts from one high-resolution unit image.
+/// Creates sized PNG artwork from centered or explicitly framed source images.
 /// </summary>
 internal static class ContentEditorArtworkCutGenerator
 {
+    /// <summary>
+    /// Encodes an explicitly framed source region at the requested output resolution.
+    /// </summary>
+    /// <param name="source">The readable source, including mipmaps for smooth reduction.</param>
+    /// <param name="crop">The normalized source rectangle entirely inside the image.</param>
+    /// <param name="size">The exact output dimensions.</param>
+    /// <returns>The cropped PNG bytes.</returns>
+    internal static byte[] GeneratePngCrop(Texture2D source, Rect crop, Vector2Int size)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+        if (
+            size.x <= 0
+            || size.y <= 0
+            || crop.width <= 0
+            || crop.height <= 0
+            || crop.xMin < 0
+            || crop.yMin < 0
+            || crop.xMax > 1
+            || crop.yMax > 1
+        )
+            throw new ArgumentException("Choose a crop inside the source image.");
+        Texture2D output = new(size.x, size.y, TextureFormat.RGBA32, false);
+        try
+        {
+            float reduction = Mathf.Max(
+                source.width * crop.width / size.x,
+                source.height * crop.height / size.y
+            );
+            float level = Mathf.Clamp(
+                Mathf.Log(Mathf.Max(1, reduction), 2),
+                0,
+                source.mipmapCount - 1
+            );
+            int lower = Mathf.FloorToInt(level);
+            int upper = Mathf.Min(lower + 1, source.mipmapCount - 1);
+            Color[] pixels = new Color[size.x * size.y];
+            for (int y = 0; y < size.y; y++)
+            for (int x = 0; x < size.x; x++)
+            {
+                float u = crop.x + (x + 0.5f) * crop.width / size.x;
+                float v = crop.y + (y + 0.5f) * crop.height / size.y;
+                pixels[y * size.x + x] = Color.Lerp(
+                    source.GetPixelBilinear(u, v, lower),
+                    source.GetPixelBilinear(u, v, upper),
+                    level - lower
+                );
+            }
+            output.SetPixels(pixels);
+            output.Apply(false, false);
+            return ImageConversion.EncodeToPNG(output);
+        }
+        finally
+        {
+            DestroyTexture(output);
+        }
+    }
+
     /// <summary>
     /// Checks whether the output fits within the source resolution on both axes.
     /// </summary>

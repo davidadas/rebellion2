@@ -40,22 +40,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private RectTransform projectHub;
 
     [SerializeField]
-    private GameObject currentProjectCard;
-
-    [SerializeField]
-    private TextMeshProUGUI currentProjectName;
-
-    [SerializeField]
-    private TextMeshProUGUI currentProjectSummary;
-
-    [SerializeField]
-    private TextMeshProUGUI emptyProjects;
-
-    [SerializeField]
-    private Button editProjectButton;
-
-    [SerializeField]
-    private Button publishProjectButton;
+    private ContentEditorProjectsView projects;
 
     [SerializeField]
     private TextMeshProUGUI packageStatus;
@@ -76,6 +61,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private TextMeshProUGUI projectLabel;
+
+    [SerializeField]
+    private TextMeshProUGUI thunderstoreStatus;
+
+    [SerializeField]
+    private Button thunderstoreConnectionButton;
+
+    [SerializeField]
+    private ContentEditorThunderstoreConnectionView connection;
 
     [SerializeField]
     private Button editButton;
@@ -295,6 +289,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action RedoRequested;
     public event Action ExportRequested;
     internal event Action PublishingRequested;
+    internal event Action ProjectsRequested;
+    internal ContentEditorProjectsView Projects => projects;
+    internal bool CanUseProjects => !packageOperationActive;
+    internal event Action ThunderstoreConnectionRequested;
+    internal ContentEditorThunderstoreConnectionView Connection => connection;
     internal event Action<bool> ModManagerRequested;
     internal event Action CancelPackageOperationRequested;
     internal ContentEditorModManagerView ModManager => modManager;
@@ -448,18 +447,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || libraryButton == null
             || navigationIndicator == null
             || projectHub == null
-            || currentProjectCard == null
-            || currentProjectName == null
-            || currentProjectSummary == null
-            || emptyProjects == null
-            || editProjectButton == null
-            || publishProjectButton == null
+            || projects == null
             || packageStatus == null
             || packageProgressTrack == null
             || packageProgress == null
             || cancelPackageButton == null
             || projectInteraction == null
             || projectLabel == null
+            || thunderstoreStatus == null
+            || thunderstoreConnectionButton == null
+            || connection == null
             || editButton == null
             || projectWorkspace == null
             || welcomePane == null
@@ -528,11 +525,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         fileButton.onClick.AddListener(ShowFileMenu);
         browseButton.onClick.AddListener(RequestBrowse);
         libraryButton.onClick.AddListener(RequestLibrary);
-        projectsButton.onClick.AddListener(EditCurrentProject);
-        editProjectButton.onClick.AddListener(EditCurrentProject);
-        publishProjectButton.onClick.AddListener(RequestPublishing);
+        projectsButton.onClick.AddListener(ShowProjectHub);
         cancelPackageButton.onClick.AddListener(CancelPackageOperation);
         publishButton.onClick.AddListener(RequestPublishing);
+        thunderstoreConnectionButton.onClick.AddListener(RequestThunderstoreConnection);
         editButton.onClick.AddListener(ShowEditMenu);
         viewButton.onClick.AddListener(ShowViewMenu);
         testButton.onClick.AddListener(ShowTestMenu);
@@ -682,11 +678,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             menu.CommandSelected -= HandleMenuSelection;
             browseButton.onClick.RemoveListener(RequestBrowse);
             libraryButton.onClick.RemoveListener(RequestLibrary);
-            projectsButton.onClick.RemoveListener(EditCurrentProject);
-            editProjectButton.onClick.RemoveListener(EditCurrentProject);
-            publishProjectButton.onClick.RemoveListener(RequestPublishing);
+            projectsButton.onClick.RemoveListener(ShowProjectHub);
             cancelPackageButton.onClick.RemoveListener(CancelPackageOperation);
             publishButton.onClick.RemoveListener(RequestPublishing);
+            thunderstoreConnectionButton.onClick.RemoveListener(RequestThunderstoreConnection);
             map.BackRequested -= ReturnToGalaxy;
             map.ArrangeRequested -= ArrangeMap;
             map.Selected -= SelectMapRecord;
@@ -756,7 +751,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether an editor popup consumed the cancellation.</returns>
     public bool TryCancel()
     {
-        if (selectionDialog.TryCancel())
+        if (connection.TryCancel() || selectionDialog.TryCancel())
             return true;
         if (
             packDialog.HasOpenChoice
@@ -998,6 +993,11 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="isError">Whether the operation failed.</param>
     public void RenderStatus(string message, bool isError)
     {
+        if (connection.IsOpen)
+        {
+            connection.ShowStatus(message, isError);
+            return;
+        }
         if (publishing.IsOpen)
         {
             publishing.ShowStatus(message, isError);
@@ -1025,6 +1025,45 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             .SetRole(isError ? ContentEditorColorRole.Error : ContentEditorColorRole.Success);
         notice.SetActive(true);
     }
+
+    /// <summary>
+    /// Requests an explicit check or setup of the shared Thunderstore connection.
+    /// </summary>
+    private void RequestThunderstoreConnection() => ThunderstoreConnectionRequested?.Invoke();
+
+    /// <summary>
+    /// Displays the verified connection state in the shared application header.
+    /// </summary>
+    /// <param name="message">The connection state, without credentials or project details.</param>
+    /// <param name="connected">Whether the current credential has been accepted.</param>
+    /// <param name="isError">Whether verification or a connection operation failed.</param>
+    internal void RenderThunderstoreConnection(
+        string message,
+        bool connected = false,
+        bool isError = false
+    )
+    {
+        thunderstoreStatus.text = "Thunderstore (" + message + ")";
+        thunderstoreStatus
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(
+                isError ? ContentEditorColorRole.Error
+                : connected ? ContentEditorColorRole.Success
+                : ContentEditorColorRole.Accent
+            );
+    }
+
+    /// <summary>
+    /// Reuses the application selection dialog for published package dependencies.
+    /// </summary>
+    /// <param name="choices">The available package names.</param>
+    /// <param name="current">The selected package identities.</param>
+    /// <param name="accepted">The confirmed dependency selection.</param>
+    internal void ShowDependencyChoices(
+        IReadOnlyDictionary<string, string> choices,
+        IReadOnlyDictionary<string, int> current,
+        Action<IReadOnlyDictionary<string, int>> accepted
+    ) => selectionDialog.Show("Choose dependencies", choices, current, accepted);
 
     /// <summary>
     /// Presents a pack-wide validation failure with navigation to its authored field.
@@ -1231,8 +1270,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projectLabel.gameObject.SetActive(false);
         publishButton.gameObject.SetActive(false);
         testButton.interactable = false;
-        currentProjectCard.SetActive(false);
-        emptyProjects.gameObject.SetActive(true);
+        projects.SetCurrentProject(null);
         editButton.interactable = false;
         publishButton.interactable = false;
         catalogs = Array.Empty<ContentPackEditorCatalog>();
@@ -1434,13 +1472,19 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         SetColorMode(settings.ColorMode);
         workbenchLayout.SetZoom(settings.Zoom);
         workbenchLayout.SetSplit(settings.Split);
+        modManager.SetContentZoom(workbenchLayout.Zoom);
+        OnRectTransformDimensionsChange();
     }
 
     /// <summary>
     /// Publishes explicit layout edits without treating a window resize as a preference change.
     /// </summary>
-    private void HandleWorkbenchChanged() =>
+    private void HandleWorkbenchChanged()
+    {
+        modManager.SetContentZoom(workbenchLayout.Zoom);
+        OnRectTransformDimensionsChange();
         LayoutChanged?.Invoke(workbenchLayout.Zoom, workbenchLayout.Split);
+    }
 
     /// <summary>
     /// Opens the installed library through the application controller.
@@ -1501,20 +1545,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         SetWorkspaceNavigation(null);
         projectWorkspace.SetActive(false);
         welcomePane.SetActive(true);
-        currentProjectCard.SetActive(project != null);
-        emptyProjects.gameObject.SetActive(project == null);
-        if (project != null)
-        {
-            currentProjectName.text = project.Definition.DisplayName;
-            currentProjectSummary.text = "Working project · " + project.Definition.Version;
-        }
+        projects.SetCurrentProject(project);
+        ProjectsRequested?.Invoke();
         OnRectTransformDimensionsChange();
     }
 
     /// <summary>
     /// Returns to the current project's existing editor without recreating its controls.
     /// </summary>
-    private void EditCurrentProject()
+    internal void EditCurrentProject()
     {
         if (project == null)
         {
@@ -1542,20 +1581,25 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Keeps the projects overview within the desktop workspace after a resize.
+    /// Reflows the projects overview within the available space at the shared content zoom.
     /// </summary>
     private void OnRectTransformDimensionsChange()
     {
-        if (projectHub == null)
+        if (
+            projectHub == null
+            || welcomePane == null
+            || workbenchLayout == null
+            || projects == null
+        )
             return;
-        Rect available = ((RectTransform)transform).rect;
-        projectHub.localScale =
-            Vector3.one
-            * Mathf.Min(
-                1,
-                Mathf.Max(1, available.width - 40) / 1120,
-                Mathf.Max(1, available.height - 100) / 720
-            );
+        Rect available = ((RectTransform)welcomePane.transform).rect;
+        float zoom = workbenchLayout.Zoom;
+        projectHub.localScale = Vector3.one * zoom;
+        projectHub.sizeDelta = new Vector2(
+            Mathf.Min(1120, Mathf.Max(1, available.width - 40) / zoom),
+            Mathf.Max(1, available.height - 64) / zoom
+        );
+        projects.SetViewport(projectHub.sizeDelta);
     }
 
     /// <summary>
@@ -1577,6 +1621,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal void RenderPackageOperation(string message, float progress, bool active)
     {
         packageOperationActive = active;
+        projects.SetEditingEnabled(!active);
         packageStatus.text = message;
         packageProgress.fillAmount = Mathf.Clamp01(progress);
         packageProgressTrack.SetActive(active);
@@ -1586,7 +1631,6 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         newPackButton.interactable = !active;
         openPackButton.interactable = !active;
         publishButton.interactable = !active && project != null;
-        publishProjectButton.interactable = !active && project != null;
     }
 
     /// <summary>
@@ -1714,6 +1758,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !workbench.interactable
             || packDialog.IsOpen
             || publishing.IsOpen
+            || connection.IsOpen
             || selectionDialog.IsOpen
             || confirmation.gameObject.activeSelf
             || imagePreview.gameObject.activeSelf
@@ -1743,7 +1788,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         };
         if (action == null)
             return false;
-        if (TryUseProjects())
+        bool applicationCommand =
+            key.keyCode
+            is KeyCode.Equals
+                or KeyCode.Plus
+                or KeyCode.KeypadPlus
+                or KeyCode.Minus
+                or KeyCode.KeypadMinus
+                or KeyCode.Alpha0
+                or KeyCode.Keypad0;
+        if (applicationCommand || TryUseProjects())
             action();
         key.Use();
         return true;
@@ -1763,17 +1817,20 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                     new ContentEditorMenuCommand(
                         "Zoom in",
                         () => ZoomContent(0.1f),
-                        shortcut: ShortcutModifier + "+Plus"
+                        shortcut: ShortcutModifier + "+Plus",
+                        isApplicationCommand: true
                     ),
                     new ContentEditorMenuCommand(
                         "Zoom out",
                         () => ZoomContent(-0.1f),
-                        shortcut: ShortcutModifier + "+Minus"
+                        shortcut: ShortcutModifier + "+Minus",
+                        isApplicationCommand: true
                     ),
                     new ContentEditorMenuCommand(
                         "Actual size (100%)",
                         () => ZoomContent(1 - workbenchLayout.Zoom),
-                        shortcut: ShortcutModifier + "+0"
+                        shortcut: ShortcutModifier + "+0",
+                        isApplicationCommand: true
                     ),
                 }
             ),

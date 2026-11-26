@@ -44,6 +44,28 @@ internal static class ContentEditorControlBuilder
     }
 
     /// <summary>
+    /// Keeps visible page actions grouped against their content's right edge.
+    /// </summary>
+    /// <param name="parent">The owning content area.</param>
+    /// <param name="top">The row's top offset.</param>
+    /// <param name="height">The row's height.</param>
+    /// <returns>The action container, which excludes hidden controls from its layout.</returns>
+    internal static RectTransform ActionRow(Transform parent, int top, int height)
+    {
+        RectTransform row = Layer("PageActions", parent);
+        row.anchorMin = row.pivot = Vector2.up;
+        row.anchorMax = Vector2.one;
+        row.anchoredPosition = new Vector2(0, -top);
+        row.sizeDelta = new Vector2(0, height);
+        HorizontalLayoutGroup layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 16;
+        layout.childAlignment = TextAnchor.MiddleRight;
+        layout.childControlWidth = layout.childControlHeight = false;
+        layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+        return row;
+    }
+
+    /// <summary>
     /// Creates a plain authoring surface.
     /// </summary>
     /// <param name="name">The object name.</param>
@@ -282,8 +304,38 @@ internal static class ContentEditorControlBuilder
         }
         BindColor(item.targetGraphic, ContentEditorColorRole.Panel, item);
         dropdown.transition = Selectable.Transition.ColorTint;
-        BindColor(dropdown.targetGraphic, ContentEditorColorRole.Panel, dropdown);
+        Outline outline = dropdown.targetGraphic.gameObject.AddComponent<Outline>();
+        outline.effectDistance = new Vector2(1, -1);
+        outline.useGraphicAlpha = false;
+        BindColor(dropdown.targetGraphic, ContentEditorColorRole.Input, dropdown);
+        Stretch(dropdown.captionText.rectTransform, 12, 0, 40, 0);
+        Object.DestroyImmediate(dropdown.transform.Find("Arrow").gameObject);
+        AddDropdownArrow(dropdown.transform);
         return dropdown;
+    }
+
+    /// <summary>
+    /// Adds the shared dropdown chevron to a single-choice or checkbox selection field.
+    /// </summary>
+    /// <param name="parent">The field receiving the chevron.</param>
+    internal static void AddDropdownArrow(Transform parent)
+    {
+        RectTransform arrow = Layer("Arrow", parent);
+        arrow.anchorMin = Vector2.right;
+        arrow.anchorMax = Vector2.one;
+        arrow.offsetMin = new Vector2(-32, 0);
+        arrow.offsetMax = new Vector2(-12, 0);
+        for (int index = 0; index < 2; index++)
+        {
+            Image stroke = Surface("ChevronStroke", arrow, ContentEditorColorRole.Text);
+            stroke.rectTransform.anchorMin = stroke.rectTransform.anchorMax = new Vector2(
+                0.5f,
+                0.5f
+            );
+            stroke.rectTransform.sizeDelta = new Vector2(8, 2);
+            stroke.rectTransform.anchoredPosition = new Vector2(index == 0 ? -2.5f : 2.5f, 0);
+            stroke.rectTransform.localRotation = Quaternion.Euler(0, 0, index == 0 ? -45 : 45);
+        }
     }
 
     /// <summary>
@@ -291,8 +343,15 @@ internal static class ContentEditorControlBuilder
     /// </summary>
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owning transform.</param>
+    /// <param name="scrollbarWidth">The scrollbar track width.</param>
+    /// <param name="scrollbarGap">The gap between content and its scrollbar.</param>
     /// <returns>The responsive scroll wrapper.</returns>
-    internal static ScrollAreaLayout Scroll(string name, Transform parent)
+    internal static ScrollAreaLayout Scroll(
+        string name,
+        Transform parent,
+        int scrollbarWidth = 18,
+        int scrollbarGap = 6
+    )
     {
         ScrollAreaView scroll = CommonUIPrefabBuilder.CreateScrollAreaView(
             MenuPrefabBuilder.FlatScrollAreaPath,
@@ -316,6 +375,10 @@ internal static class ContentEditorControlBuilder
         foreach (Scrollbar bar in scroll.GetComponentsInChildren<Scrollbar>(true))
             StyleScrollbar(bar);
         ScrollAreaLayout layout = scroll.gameObject.AddComponent<ScrollAreaLayout>();
+        SerializedObject settings = new(layout);
+        settings.FindProperty("scrollbarWidth").floatValue = scrollbarWidth;
+        settings.FindProperty("scrollbarGap").floatValue = scrollbarGap;
+        settings.ApplyModifiedPropertiesWithoutUndo();
         layout.Configure(scroll);
         return layout;
     }

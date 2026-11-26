@@ -98,6 +98,23 @@ public static class ContentPackEditorPrefabBuilder
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
+        Button connection = PlainButton(
+            "ThunderstoreStatus",
+            menuStrip.transform,
+            "Thunderstore (click to connect)"
+        );
+        RectTransform connectionRect = (RectTransform)connection.transform;
+        connectionRect.anchorMin = connectionRect.anchorMax = connectionRect.pivot = Vector2.one;
+        connectionRect.anchoredPosition = new Vector2(-12, 0);
+        connectionRect.sizeDelta = new Vector2(440, 28);
+        TMP_Text connectionLabel = connection.GetComponentInChildren<TMP_Text>();
+        connectionLabel.fontSize = 13;
+        connectionLabel.alignment = TextAlignmentOptions.MidlineRight;
+        connectionLabel.overflowMode = TextOverflowModes.Ellipsis;
+        connectionLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        connectionLabel.richText = false;
+        Assign(view, "thunderstoreStatus", connectionLabel);
+        Assign(view, "thunderstoreConnectionButton", connection);
         Image navigation = Surface("Navigation", canvasRoot, ContentEditorColorRole.Panel);
         Stretch(navigation.rectTransform);
         navigation.rectTransform.anchorMin = Vector2.up;
@@ -645,6 +662,7 @@ public static class ContentPackEditorPrefabBuilder
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
         Assign(view, "publishing", ContentEditorPublishingBuilder.Build(canvasRoot));
+        Assign(view, "connection", ContentEditorThunderstoreConnectionBuilder.Build(canvasRoot));
         Assign(view, "modManager", ContentEditorModManagerBuilder.Build(canvasRoot));
         BuildSelectionDialog(canvasRoot, view);
         Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
@@ -1252,37 +1270,15 @@ public static class ContentPackEditorPrefabBuilder
             16,
             true
         );
-        Rect(explanation.rectTransform, 0, 88, 1120, 30);
-        Button create = Button("NewPack", actions, "New project");
-        Rect((RectTransform)create.transform, 768, 32, 160, 44);
-        Button open = Button("OpenPack", actions, "Open project…");
-        Rect((RectTransform)open.transform, 944, 32, 176, 44);
-        Image current = Surface("CurrentProject", actions, ContentEditorColorRole.Panel);
-        Rect(current.rectTransform, 0, 152, 1120, 144);
-        TextMeshProUGUI name = Label("Name", current.transform, string.Empty, 22);
-        Rect(name.rectTransform, 24, 24, 670, 34);
-        name.fontStyle = FontStyles.Bold;
-        TextMeshProUGUI summary = Label("Summary", current.transform, string.Empty, 15, true);
-        Rect(summary.rectTransform, 24, 68, 670, 44);
-        Button edit = Button("EditProject", current.transform, "Edit");
-        Rect((RectTransform)edit.transform, 768, 48, 144, 44);
-        Button publish = Button("PublishProject", current.transform, "Publish…");
-        Rect((RectTransform)publish.transform, 928, 48, 168, 44);
-        Assign(view, "currentProjectCard", current.gameObject);
-        Assign(view, "currentProjectName", name);
-        Assign(view, "currentProjectSummary", summary);
-        Assign(view, "editProjectButton", edit);
-        Assign(view, "publishProjectButton", publish);
-        current.gameObject.SetActive(false);
-        TextMeshProUGUI empty = Label(
-            "NoProject",
-            actions,
-            "Create a project or open one to begin editing.",
-            18,
-            true
-        );
-        Rect(empty.rectTransform, 0, 160, 1120, 48);
-        Assign(view, "emptyProjects", empty);
+        Rect(explanation.rectTransform, 0, 96, 1120, 24);
+        explanation.rectTransform.anchorMax = Vector2.one;
+        explanation.rectTransform.offsetMax = new Vector2(0, -96);
+        RectTransform pageActions = ActionRow(actions, 32, 48);
+        Button create = Button("NewPack", pageActions, "New project");
+        Rect((RectTransform)create.transform, 0, 0, 160, 44);
+        Button open = Button("OpenPack", pageActions, "Open project…");
+        Rect((RectTransform)open.transform, 0, 0, 176, 44);
+        Assign(view, "projects", ContentEditorProjectsBuilder.Build(actions));
         Assign(view, "welcomePane", welcome.gameObject);
         Assign(view, "newPackButton", create);
         Assign(view, "openPackButton", open);

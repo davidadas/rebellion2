@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using TMPro;
-using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
 using static ContentEditorControlBuilder;
@@ -26,29 +25,33 @@ internal static class ContentEditorModManagerBuilder
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(1120, 816);
         Assign(view, "panel", rect);
+        TextMeshProUGUI title = Caption(rect, "Title", "Library", 0, 32, 640, 48, 36);
+        title.fontStyle = FontStyles.Bold;
+        Assign(view, "pageTitle", title);
+        RectTransform actions = ActionRow(rect, 32, 48);
+        ActionButton(view, actions, "refreshButton", "Refresh", 0, 0, 128, true);
+        StyleSecondary(
+            ActionButton(view, actions, "importButton", "Install from file…", 0, 0, 208)
+        );
         Button cancel = ActionButton(
             view,
-            rect,
+            actions,
             "closeButton",
             "Cancel operation",
-            912,
-            32,
+            0,
+            0,
             208,
             true
         );
         cancel.gameObject.SetActive(false);
-        TextMeshProUGUI title = Caption(rect, "Title", "Library", 0, 32, 640, 48, 36);
-        title.fontStyle = FontStyles.Bold;
-        Assign(view, "pageTitle", title);
-        ActionButton(view, rect, "refreshButton", "Refresh", 768, 32, 128, true);
-        StyleSecondary(
-            ActionButton(view, rect, "importButton", "Install from file…", 912, 32, 208)
-        );
         RectTransform defaults = Layer("DefaultPack", rect);
         Rect(defaults, 0, 112, 1120, 72);
-        Caption(defaults, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
+        RectTransform description = Layer("Description", defaults);
+        Rect(description, 0, 0, 600, 72);
+        Assign(view, "defaultPackDescription", description);
+        Caption(description, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
         Caption(
-            defaults,
+            description,
             "DefaultHelp",
             "Used when starting the game.",
             0,
@@ -58,6 +61,11 @@ internal static class ContentEditorModManagerBuilder
             14,
             ContentEditorColorRole.Muted
         );
+        foreach (TMP_Text label in description.GetComponentsInChildren<TMP_Text>())
+        {
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMax = new Vector2(0, label.rectTransform.offsetMax.y);
+        }
         Selector(view, defaults, "activePack", 680, 0, 440, new[] { "No content packs installed" });
         Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(
@@ -106,8 +114,7 @@ internal static class ContentEditorModManagerBuilder
                 ContentEditorColorRole.Muted
             )
         );
-        ScrollAreaLayout packages = Scroll("Packages", rect);
-        ConfigureScrollbar(packages);
+        ScrollAreaLayout packages = Scroll("Packages", rect, 8, 8);
         Stretch((RectTransform)packages.transform, 0, 248, -16, 0);
         Assign(view, "packages", packages);
         Assign(view, "rowTemplate", BuildCard(packages.ScrollArea.ContentRoot));
@@ -159,58 +166,166 @@ internal static class ContentEditorModManagerBuilder
     private static void BuildFilters(Transform parent, ContentEditorModManagerView view)
     {
         Image strip = Surface("FilterPanel", parent, ContentEditorColorRole.Panel);
-        Rect(strip.rectTransform, 0, 184, 1120, 104);
+        Rect(strip.rectTransform, 0, 176, 1120, 176);
         Assign(view, "filterPanel", strip.gameObject);
-        Caption(
-            strip.transform,
-            "CategoryLabel",
-            "Category",
-            16,
-            12,
-            400,
-            20,
-            13,
-            ContentEditorColorRole.Muted
-        );
-        Caption(
-            strip.transform,
-            "InstallationLabel",
-            "Installation",
-            432,
-            12,
-            400,
-            20,
-            13,
-            ContentEditorColorRole.Muted
-        );
+        ContentEditorModFiltersView filters =
+            strip.gameObject.AddComponent<ContentEditorModFiltersView>();
+        Assign(view, "filters", filters);
+        List<TMP_Text> headings = new();
+        foreach (
+            (string, int, int) column in new[]
+            {
+                ("Section", 16, 240),
+                ("Installation", 272, 240),
+                ("Include categories", 528, 280),
+                ("Exclude categories", 824, 280),
+            }
+        )
+            headings.Add(
+                Caption(
+                    strip.transform,
+                    column.Item1 + "Label",
+                    column.Item1,
+                    column.Item2,
+                    16,
+                    column.Item3,
+                    20,
+                    13,
+                    ContentEditorColorRole.Muted
+                )
+            );
+        Assign(filters, "headings", headings.ToArray());
+        Selector(filters, strip.transform, "section", 16, 44, 240, new[] { "All sections" });
         Selector(
-            view,
-            strip.transform,
-            "category",
-            16,
-            40,
-            400,
-            new[] { "All categories", "Uncategorized" }
-        );
-        Selector(
-            view,
+            filters,
             strip.transform,
             "installation",
-            432,
-            40,
-            400,
-            new[]
-            {
-                "All mods",
-                "Not installed",
-                "Installed",
-                "Updates available",
-                "Local content",
-                "Deprecated",
-            }
+            272,
+            44,
+            240,
+            new[] { "All mods", "Not installed", "Installed", "Updates available", "Local content" }
         );
-        ActionButton(view, strip.transform, "resetButton", "Clear filters", 848, 40, 256, true);
+        Assign(
+            filters,
+            "includeCategories",
+            CategoryPicker(strip.transform, "IncludeCategories", "Any category", 528)
+        );
+        Assign(
+            filters,
+            "excludeCategories",
+            CategoryPicker(strip.transform, "ExcludeCategories", "No exclusions", 824)
+        );
+        TMP_Text help = Caption(
+            strip.transform,
+            "CategoryHelp",
+            "Match any included category; exclusions take precedence.",
+            528,
+            100,
+            576,
+            20,
+            12,
+            ContentEditorColorRole.Muted
+        );
+        help.textWrappingMode = TextWrappingModes.NoWrap;
+        Assign(filters, "categoryHelp", help);
+        foreach (
+            (string, string, int) toggle in new[]
+            {
+                ("showDeprecated", "Show deprecated", 16),
+                ("showNsfw", "Show NSFW", 272),
+            }
+        )
+        {
+            UICheckboxView checkbox = Checkbox(strip.transform);
+            checkbox.name = toggle.Item1;
+            Rect((RectTransform)checkbox.transform, toggle.Item3, 128, 224, 24);
+            TMP_Text label = checkbox.GetComponentInChildren<TMP_Text>(true);
+            label.text = toggle.Item2;
+            label.fontSize = 14;
+            Rect(label.rectTransform, 32, 0, 192, 24);
+            checkbox.SetIsCheckedWithoutNotify(false);
+            Assign(filters, toggle.Item1, checkbox);
+        }
+        Button clear = ActionButton(
+            view,
+            strip.transform,
+            "resetButton",
+            "Clear filters",
+            928,
+            118,
+            176,
+            true
+        );
+        UILayout.SetTopRightRect((RectTransform)clear.transform, 16, 118, 176, 44);
+        TMP_Text clearLabel = clear.GetComponentInChildren<TMP_Text>();
+        clearLabel.alignment = TextAlignmentOptions.MidlineRight;
+        Stretch(clearLabel.rectTransform);
         strip.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Authors an attached multi-select dropdown using compact checkbox rows.
+    /// </summary>
+    /// <param name="parent">The filter strip.</param>
+    /// <param name="name">The control identity.</param>
+    /// <param name="caption">The empty-selection label.</param>
+    /// <param name="left">The field's left position.</param>
+    /// <returns>The checkbox dropdown.</returns>
+    private static ContentEditorMultiSelectDropdown CategoryPicker(
+        Transform parent,
+        string name,
+        string caption,
+        int left
+    )
+    {
+        Button picker = Button(name, parent, caption);
+        Rect((RectTransform)picker.transform, left, 44, 280, 44);
+        Outline outline = picker.gameObject.AddComponent<Outline>();
+        outline.effectDistance = new Vector2(1, -1);
+        outline.useGraphicAlpha = false;
+        BindColor(picker.targetGraphic, ContentEditorColorRole.Input, picker);
+        TMP_Text label = picker.GetComponentInChildren<TMP_Text>();
+        BindColor(label, ContentEditorColorRole.Text);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        Stretch(label.rectTransform, 12, 0, 40, 0);
+        AddDropdownArrow(picker.transform);
+        ContentEditorMultiSelectDropdown dropdown =
+            picker.gameObject.AddComponent<ContentEditorMultiSelectDropdown>();
+        Image popup = Surface("CategoryOptions", picker.transform, ContentEditorColorRole.Border);
+        Rect(popup.rectTransform, 0, 48, 280, 304);
+        popup.raycastTarget = true;
+        Canvas canvas = popup.gameObject.AddComponent<Canvas>();
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 30000;
+        popup.gameObject.AddComponent<GraphicRaycaster>();
+        Image interior = Surface("Interior", popup.transform, ContentEditorColorRole.Panel);
+        Stretch(interior.rectTransform, 1, 1, 1, 1);
+        ScrollAreaLayout scroll = Scroll("Choices", popup.transform, 8, 8);
+        Rect((RectTransform)scroll.transform, 8, 8, 264, 256);
+        UICheckboxView row = Checkbox(scroll.ScrollArea.ContentRoot);
+        row.name = "CategoryTemplate";
+        Rect((RectTransform)row.transform, 0, 0, 248, 32);
+        Rect((RectTransform)row.transform.Find("Frame"), 0, 5, 22, 22);
+        TMP_Text rowLabel = row.GetComponentInChildren<TMP_Text>(true);
+        rowLabel.fontSize = 14;
+        rowLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        rowLabel.overflowMode = TextOverflowModes.Ellipsis;
+        row.gameObject.SetActive(false);
+        Button clear = PlainButton("ClearSelection", popup.transform, "Clear selection");
+        Rect((RectTransform)clear.transform, 8, 268, 264, 28);
+        TMP_Text clearLabel = clear.GetComponentInChildren<TMP_Text>();
+        clearLabel.fontSize = 13;
+        clearLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        Assign(dropdown, "control", picker);
+        Assign(dropdown, "caption", label);
+        Assign(dropdown, "popup", popup.rectTransform);
+        Assign(dropdown, "scroll", scroll);
+        Assign(dropdown, "rowTemplate", row);
+        Assign(dropdown, "clear", clear);
+        popup.gameObject.SetActive(false);
+        return dropdown;
     }
 
     /// <summary>
@@ -232,7 +347,10 @@ internal static class ContentEditorModManagerBuilder
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(760, 640);
         Assign(view, "detailPanel", rect);
-        ActionButton(view, rect, "detailCloseButton", "Close", 640, 24, 88, true);
+        Button close = ActionButton(view, rect, "detailCloseButton", "Close", 640, 28, 88, true);
+        TMP_Text closeLabel = close.GetComponentInChildren<TMP_Text>();
+        closeLabel.alignment = TextAlignmentOptions.MidlineRight;
+        Stretch(closeLabel.rectTransform);
         TextMeshProUGUI empty = Caption(
             rect,
             "EmptyDetails",
@@ -289,7 +407,7 @@ internal static class ContentEditorModManagerBuilder
                 "Creator",
                 string.Empty,
                 152,
-                80,
+                72,
                 464,
                 24,
                 14,
@@ -304,7 +422,7 @@ internal static class ContentEditorModManagerBuilder
                 "PackageState",
                 string.Empty,
                 152,
-                112,
+                104,
                 464,
                 24,
                 13,
@@ -326,21 +444,19 @@ internal static class ContentEditorModManagerBuilder
                 ContentEditorColorRole.Muted
             )
         );
-        Assign(
-            view,
-            "updated",
-            Caption(
-                content,
-                "Updated",
-                string.Empty,
-                488,
-                144,
-                240,
-                24,
-                13,
-                ContentEditorColorRole.Muted
-            )
+        TextMeshProUGUI updated = Caption(
+            content,
+            "Updated",
+            string.Empty,
+            488,
+            144,
+            240,
+            24,
+            13,
+            ContentEditorColorRole.Muted
         );
+        updated.alignment = TextAlignmentOptions.MidlineRight;
+        Assign(view, "updated", updated);
         Assign(
             view,
             "categories",
@@ -356,8 +472,7 @@ internal static class ContentEditorModManagerBuilder
                 ContentEditorColorRole.Muted
             )
         );
-        ScrollAreaLayout details = Scroll("PackageDetails", content);
-        ConfigureScrollbar(details);
+        ScrollAreaLayout details = Scroll("PackageDetails", content, 8, 8);
         Rect((RectTransform)details.transform, 32, 208, 712, 112);
         TextMeshProUGUI description = Caption(
             details.ScrollArea.ContentRoot,
@@ -374,6 +489,19 @@ internal static class ContentEditorModManagerBuilder
         description.overflowMode = TextOverflowModes.Overflow;
         Assign(view, "details", details);
         Assign(view, "detailText", description);
+        TextMeshProUGUI metadata = Caption(
+            content,
+            "ReleaseMetadata",
+            string.Empty,
+            32,
+            336,
+            696,
+            24,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        metadata.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "releaseMetadata", metadata);
         TextMeshProUGUI requirement = Caption(
             content,
             "Requirement",
@@ -402,7 +530,7 @@ internal static class ContentEditorModManagerBuilder
             "VersionLabel",
             "Version",
             0,
-            -24,
+            -28,
             184,
             20,
             13,
@@ -420,10 +548,10 @@ internal static class ContentEditorModManagerBuilder
             view,
             content,
             "activateButton",
-            "Set as active pack",
+            "Set as default",
             32,
             376,
-            696
+            280
         );
         BindColor(activate.GetComponent<Image>(), ContentEditorColorRole.Accent, activate);
         BindColor(activate.GetComponentInChildren<TMP_Text>(), ContentEditorColorRole.Background);
@@ -444,7 +572,7 @@ internal static class ContentEditorModManagerBuilder
             "Thunderstore page",
             32,
             512,
-            208,
+            184,
             true
         );
         Button folder = ActionButton(
@@ -452,9 +580,9 @@ internal static class ContentEditorModManagerBuilder
             content,
             "folderButton",
             "Open folder",
-            256,
+            232,
             512,
-            208,
+            200,
             true
         );
         foreach (Button secondary in new[] { uninstall, listing, folder })
@@ -463,6 +591,7 @@ internal static class ContentEditorModManagerBuilder
             label.alignment = TextAlignmentOptions.MidlineLeft;
             Stretch(label.rectTransform);
         }
+        uninstall.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.MidlineRight;
         BindColor(
             uninstall.GetComponentInChildren<TMP_Text>(),
             ContentEditorColorRole.Error,
@@ -640,7 +769,7 @@ internal static class ContentEditorModManagerBuilder
     /// <param name="options">The visible choices in enum order.</param>
     /// <returns>The authored selector.</returns>
     private static TMP_Dropdown Selector(
-        ContentEditorModManagerView view,
+        Object view,
         Transform parent,
         string field,
         int left,
@@ -653,29 +782,11 @@ internal static class ContentEditorModManagerBuilder
         dropdown.ClearOptions();
         dropdown.AddOptions(new List<string>(options));
         Rect((RectTransform)dropdown.transform, left, top, width, 44);
-        Stretch(dropdown.captionText.rectTransform, 12, 0, 40, 0);
         dropdown.captionText.alignment = TextAlignmentOptions.MidlineLeft;
-        RectTransform arrow = (RectTransform)dropdown.transform.Find("Arrow");
-        arrow.anchorMin = Vector2.right;
-        arrow.anchorMax = Vector2.one;
-        arrow.offsetMin = new Vector2(-32, 0);
-        arrow.offsetMax = new Vector2(-12, 0);
         dropdown.template.anchoredPosition = Vector2.zero;
         BindColor(dropdown.template.GetComponent<Image>(), ContentEditorColorRole.Border);
         Assign(view, field, dropdown);
         return dropdown;
-    }
-
-    /// <summary>
-    /// Keeps scrolling available without giving its track the weight of an action button.
-    /// </summary>
-    /// <param name="area">The manager pane to configure.</param>
-    private static void ConfigureScrollbar(ScrollAreaLayout area)
-    {
-        SerializedObject settings = new SerializedObject(area);
-        settings.FindProperty("scrollbarWidth").floatValue = 8f;
-        settings.FindProperty("scrollbarGap").floatValue = 8f;
-        settings.ApplyModifiedPropertiesWithoutUndo();
     }
 
     /// <summary>

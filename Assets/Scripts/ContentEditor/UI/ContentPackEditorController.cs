@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml;
@@ -19,6 +20,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private ContentPackEditorProject project;
     private ContentPackEditorWorkspaceController workspace;
     private ContentEditorModManagerController modManager;
+    private ContentEditorProjectsController projects;
+    private ModPackageStore packageStore;
     private ThunderstorePublisher publisher;
     private string publishedPackageUrl;
     private ContentAssets assets;
@@ -52,12 +55,15 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.ArtworkEffectRequested += PreviewArtworkEffect;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
+        packageStore = new ModPackageStore(contentRootPath, new ThunderstoreClient());
         modManager = new ContentEditorModManagerController(
             view.ModManager,
             contentRootPath,
             GetProtectedContentIDs,
             view.ConfirmModRemoval,
-            () => view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath)
+            () =>
+                view.Initialize(ContentPackLoader.DiscoverPacks(contentRootPath), contentRootPath),
+            packageStore
         );
         view.ModManagerRequested += ShowModManager;
         modManager.OperationChanged += view.RenderPackageOperation;
@@ -66,12 +72,16 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.Publishing.SaveRequested += SavePublishing;
         view.Publishing.CloseRequested += ClosePublishing;
         view.Publishing.BrowseIconRequested += BrowsePublishingIcon;
+        view.Publishing.DependenciesRequested += ChoosePublishingDependencies;
         view.Publishing.ExportRequested += ExportThunderstorePackage;
         view.Publishing.CommunityRequested += OpenThunderstore;
         view.Publishing.PublishRequested += PublishThunderstorePackage;
-        view.Publishing.ConnectRequested += ConnectThunderstore;
-        view.Publishing.DisconnectRequested += DisconnectThunderstore;
-        view.Publishing.TokenHelpRequested += OpenThunderstoreTeams;
+        view.ThunderstoreConnectionRequested += ShowThunderstoreConnection;
+        view.Publishing.ConnectionRequested += ShowThunderstoreConnection;
+        view.Connection.ConnectRequested += ConnectThunderstore;
+        view.Connection.DisconnectRequested += DisconnectThunderstore;
+        view.Connection.TokenHelpRequested += OpenThunderstoreTeams;
+        view.Connection.CancelRequested += CancelPublishingOperation;
         view.Publishing.CancelRequested += CancelPublishingOperation;
         view.ValidateRequested += ValidatePack;
         view.MapLayoutRequested += ArrangeMap;
@@ -101,6 +111,18 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     AlphaNoticeAcknowledged = PlayerPrefs.GetInt(_alphaNoticePreference, 0) == 1,
                 }
             );
+            projects = new ContentEditorProjectsController(
+                view.Projects,
+                settingsManager,
+                packageStore,
+                () => project,
+                () => publisher.Teams,
+                OpenRecentProject,
+                PublishRecentProject,
+                ShowThunderstoreConnection
+            );
+            view.ProjectsRequested += projects.Show;
+            projects.RefreshLocal();
             ContentEditorSettings settings = settingsManager.Load();
             view.ApplySettings(settings);
             view.ColorModeChanged += RememberColorMode;
@@ -179,6 +201,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         fileDrops?.Dispose();
         operationCancellation?.Cancel();
+        if (projects != null)
+        {
+            view.ProjectsRequested -= projects.Show;
+            projects.Dispose();
+        }
         modManager?.Dispose();
         publisher?.Dispose();
         Application.wantsToQuit -= CanQuit;
@@ -200,12 +227,16 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.Publishing.SaveRequested -= SavePublishing;
             view.Publishing.CloseRequested -= ClosePublishing;
             view.Publishing.BrowseIconRequested -= BrowsePublishingIcon;
+            view.Publishing.DependenciesRequested -= ChoosePublishingDependencies;
             view.Publishing.ExportRequested -= ExportThunderstorePackage;
             view.Publishing.CommunityRequested -= OpenThunderstore;
             view.Publishing.PublishRequested -= PublishThunderstorePackage;
-            view.Publishing.ConnectRequested -= ConnectThunderstore;
-            view.Publishing.DisconnectRequested -= DisconnectThunderstore;
-            view.Publishing.TokenHelpRequested -= OpenThunderstoreTeams;
+            view.ThunderstoreConnectionRequested -= ShowThunderstoreConnection;
+            view.Publishing.ConnectionRequested -= ShowThunderstoreConnection;
+            view.Connection.ConnectRequested -= ConnectThunderstore;
+            view.Connection.DisconnectRequested -= DisconnectThunderstore;
+            view.Connection.TokenHelpRequested -= OpenThunderstoreTeams;
+            view.Connection.CancelRequested -= CancelPublishingOperation;
             view.Publishing.CancelRequested -= CancelPublishingOperation;
             view.ValidateRequested -= ValidatePack;
             view.MapLayoutRequested -= ArrangeMap;
@@ -392,6 +423,40 @@ public sealed class ContentPackEditorController : MonoBehaviour
         ContinueAfterChanges(() =>
             OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder))
         );
+    }
+
+    /// <summary>
+    /// Resumes an open editor without rebuilding its draft, or opens another remembered folder safely.
+    /// </summary>
+    /// <param name="folder">The selected local working folder.</param>
+    private void OpenRecentProject(string folder)
+    {
+        if (!view.CanUseProjects)
+            return;
+        if (project?.PackRootPath == folder)
+            view.EditCurrentProject();
+        else
+            OpenFolder(folder);
+    }
+
+    /// <summary>
+    /// Opens publishing for a local project after resolving any pending edits in another project.
+    /// </summary>
+    /// <param name="folder">The selected working folder.</param>
+    private void PublishRecentProject(string folder)
+    {
+        if (!view.CanUseProjects)
+            return;
+        if (project?.PackRootPath == folder)
+        {
+            ShowPublishing();
+            return;
+        }
+        ContinueAfterChanges(() =>
+        {
+            OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder));
+            ShowPublishing();
+        });
     }
 
     /// <summary>
@@ -1923,6 +1988,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="value">The project to open.</param>
     private void OpenProject(ContentPackEditorProject value)
     {
+        bool differentProject = project?.PackRootPath != value.PackRootPath;
         ContentAssets replacement = ContentPackEditorStorage.CreateAssets(value);
         ContentAssets previous = assets;
         try
@@ -1950,6 +2016,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
         project = value;
         assets = replacement;
         previous?.Dispose();
+        if (differentProject)
+            projects?.Remember(value);
     }
 
     /// <summary>
@@ -2080,11 +2148,82 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             ContentEditorPublishingSettings settings = ContentEditorPublishingStorage.Load(project);
             view.Publishing.Show(project.Definition, settings);
+            view.Publishing.Dependencies.SetCatalog(packageStore.ReadCatalog());
             view.Publishing.RenderConnection(publisher.Teams);
             publishedPackageUrl = null;
             view.Publishing.SetPublished(false);
             RenderPublishingIcon(settings.IconPath);
         });
+    }
+
+    /// <summary>
+    /// Opens shared account controls and checks saved credentials only after an explicit user request.
+    /// </summary>
+    private async void ShowThunderstoreConnection()
+    {
+        if (operationCancellation != null)
+            return;
+        if (publisher.Teams.Length > 0)
+        {
+            view.Connection.Show();
+            view.Connection.RenderConnection(publisher.Teams);
+            return;
+        }
+        await RunOperationAsync(
+            async cancellationToken =>
+            {
+                view.RenderThunderstoreConnection("checking connection…");
+                try
+                {
+                    bool connected = await publisher.RestoreAsync(cancellationToken);
+                    if (this == null)
+                        return;
+                    view.Publishing.RenderConnection(publisher.Teams);
+                    RenderThunderstoreConnection();
+                    if (!connected)
+                    {
+                        view.Connection.Show();
+                        view.Connection.RenderConnection(publisher.Teams);
+                        view.Connection.ShowStatus("Paste a token to connect this device.");
+                    }
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    if (this != null)
+                        RenderThunderstoreConnection();
+                    throw;
+                }
+                catch (Exception exception)
+                    when (IsConnectionError(exception) || exception is OperationCanceledException)
+                {
+                    if (this == null)
+                        return;
+                    view.RenderThunderstoreConnection("couldn’t verify connection", isError: true);
+                    view.Connection.Show();
+                    view.Connection.RenderConnection(publisher.Teams, true);
+                    view.Connection.ShowStatus(
+                        "The saved connection could not be verified. Close this window and click the connection status to retry; its token has not been removed. "
+                            + exception.Message,
+                        true
+                    );
+                }
+            },
+            connecting: true
+        );
+    }
+
+    /// <summary>
+    /// Shows the current authenticated team names without exposing its token.
+    /// </summary>
+    private void RenderThunderstoreConnection()
+    {
+        view.RenderThunderstoreConnection(
+            publisher.Teams.Length > 0
+                ? "connected as " + string.Join(", ", publisher.Teams)
+                : "click to connect",
+            connected: publisher.Teams.Length > 0
+        );
+        projects?.ConnectionChanged();
     }
 
     /// <summary>
@@ -2130,8 +2269,49 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
         ContentEditorPublishingStorage.Save(project, settings);
+        projects?.RefreshLocal();
         RenderPublishingIcon(settings.IconPath);
         return settings;
+    }
+
+    /// <summary>
+    /// Opens searchable package choices backed by the same catalogue as community browsing.
+    /// </summary>
+    private async void ChoosePublishingDependencies()
+    {
+        await RunOperationAsync(
+            async cancellationToken =>
+            {
+                ThunderstorePackage[] catalog;
+                try
+                {
+                    view.Publishing.ShowStatus("Loading Thunderstore packages…");
+                    catalog = await packageStore.RefreshCatalogAsync(cancellationToken);
+                }
+                catch (IOException)
+                {
+                    catalog = packageStore.ReadCatalog();
+                    if (catalog.Length == 0)
+                    {
+                        view.Publishing.ShowStatus(
+                            "Packages could not be loaded. Check your connection and choose packages again to retry.",
+                            true
+                        );
+                        return;
+                    }
+                }
+                if (this == null)
+                    return;
+                view.Publishing.Dependencies.SetCatalog(catalog);
+                view.Publishing.ShowStatus(string.Empty);
+                view.ShowDependencyChoices(
+                    view.Publishing.Dependencies.GetChoices(),
+                    view.Publishing.Dependencies.GetSelection(),
+                    selected => view.Publishing.Dependencies.ApplySelection(selected.Keys)
+                );
+            },
+            publishing: true
+        );
     }
 
     /// <summary>
@@ -2141,12 +2321,21 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         RunOperation(() =>
         {
-            string path = ContentEditorFileDialog.OpenFile(project.PackRootPath, new[] { ".png" });
+            string path = ContentEditorFileDialog.OpenFile(
+                GetImageImportDirectory(),
+                new[] { ".png", ".jpg", ".jpeg" }
+            );
             if (!string.IsNullOrEmpty(path))
-            {
-                RenderPublishingIcon(path);
-                view.Publishing.ShowStatus(string.Empty);
-            }
+                view.Publishing.ShowIconCrop(
+                    path,
+                    bytes =>
+                    {
+                        string iconPath = ContentEditorPublishingStorage.SaveIcon(project, bytes);
+                        view.Publishing.SetIcon(iconPath, bytes);
+                        view.Publishing.ShowStatus(string.Empty);
+                        RememberImageImportDirectory(path);
+                    }
+                );
         });
     }
 
@@ -2171,29 +2360,88 @@ public sealed class ContentPackEditorController : MonoBehaviour
         await RunOperationAsync(
             async cancellationToken =>
             {
-                view.Publishing.ShowStatus("Connecting to Thunderstore…");
-                await publisher.ConnectAsync(token, cancellationToken);
-                if (this != null)
+                view.Connection.ShowStatus("Connecting to Thunderstore…");
+                view.RenderThunderstoreConnection("connecting…");
+                try
                 {
-                    view.Publishing.RenderConnection(publisher.Teams);
-                    view.Publishing.ShowStatus(
-                        "Connected. Choose a publishing team on the review page."
-                    );
+                    await publisher.ConnectAsync(token, cancellationToken);
+                    if (this != null)
+                    {
+                        view.Publishing.RenderConnection(publisher.Teams);
+                        view.Connection.RenderConnection(publisher.Teams);
+                        view.Connection.Hide();
+                        RenderThunderstoreConnection();
+                    }
+                }
+                catch (Exception exception) when (IsConnectionError(exception))
+                {
+                    if (this != null)
+                    {
+                        if (publisher.Teams.Length > 0)
+                            RenderThunderstoreConnection();
+                        else
+                            view.RenderThunderstoreConnection("connection failed", isError: true);
+                        view.Connection.ShowStatus(exception.Message, true);
+                    }
+                }
+                catch (OperationCanceledException)
+                {
+                    if (this != null)
+                        RenderThunderstoreConnection();
+                    throw;
                 }
             },
-            publishing: true
+            connecting: true
         );
     }
 
     /// <summary>
-    /// Clears the publishing session while retaining the release draft.
+    /// Forgets the saved credential and clears the live connection while retaining the release draft.
     /// </summary>
-    private void DisconnectThunderstore()
+    private async void DisconnectThunderstore()
     {
-        publisher.Disconnect();
-        view.Publishing.RenderConnection(publisher.Teams);
-        view.Publishing.ShowStatus("Disconnected from Thunderstore.");
+        await RunOperationAsync(
+            async cancellationToken =>
+            {
+                try
+                {
+                    await publisher.DisconnectAsync(cancellationToken);
+                    if (this != null)
+                    {
+                        view.Publishing.RenderConnection(publisher.Teams);
+                        view.Connection.RenderConnection(publisher.Teams);
+                        RenderThunderstoreConnection();
+                        view.Connection.ShowStatus(
+                            "Disconnected. The saved token was removed from this device."
+                        );
+                    }
+                }
+                catch (Exception exception) when (IsConnectionError(exception))
+                {
+                    if (this != null)
+                        view.Connection.ShowStatus(
+                            "The saved connection could not be removed. " + exception.Message,
+                            true
+                        );
+                }
+            },
+            connecting: true
+        );
     }
+
+    /// <summary>
+    /// Keeps expected connection failures in their dialog while preserving unexpected error reporting.
+    /// </summary>
+    /// <param name="exception">The failed connection operation.</param>
+    /// <returns>Whether the author can resolve the failure by correcting input or device access.</returns>
+    private static bool IsConnectionError(Exception exception) =>
+        exception
+            is ArgumentException
+                or InvalidOperationException
+                or IOException
+                or HttpRequestException
+                or TimeoutException
+                or PlatformNotSupportedException;
 
     /// <summary>
     /// Opens team settings for creating a publishing service account.
@@ -2382,6 +2630,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         {
             workspace.ClearProject();
             project = null;
+            projects?.RefreshLocal();
             assets?.Dispose();
             assets = null;
             ContentBindings.Apply(view.gameObject, applicationAssets);
@@ -2505,17 +2754,21 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// </summary>
     /// <param name="operation">The operation receiving its cancellation token.</param>
     /// <param name="publishing">Whether the publishing dialog owns its input and cancel controls.</param>
+    /// <param name="connecting">Whether the shared connection dialog owns its input and cancel controls.</param>
     /// <returns>The completion of execution and workspace cleanup.</returns>
     private async Task RunOperationAsync(
         Func<CancellationToken, Task> operation,
-        bool publishing = false
+        bool publishing = false,
+        bool connecting = false
     )
     {
         if (operationCancellation != null)
             return;
         using CancellationTokenSource cancellation = new CancellationTokenSource();
         operationCancellation = cancellation;
-        if (publishing)
+        if (connecting)
+            view.Connection.SetBusy(true);
+        else if (publishing)
             view.Publishing.SetBusy(true);
         else
             view.SetBusy(true);
@@ -2538,7 +2791,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
             operationCancellation = null;
             if (this != null)
             {
-                if (publishing)
+                if (connecting)
+                    view.Connection.SetBusy(false);
+                else if (publishing)
                     view.Publishing.SetBusy(false);
                 else
                     view.SetBusy(false);

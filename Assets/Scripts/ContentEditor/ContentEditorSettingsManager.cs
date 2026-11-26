@@ -1,6 +1,7 @@
 using System;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using Rebellion.Util.Logging;
 using UnityEngine;
@@ -133,6 +134,27 @@ public sealed class ContentEditorSettingsManager
     }
 
     /// <summary>
+    /// Remembers a successfully opened working folder without storing its project contents.
+    /// </summary>
+    /// <param name="folder">The local folder containing pack.xml.</param>
+    public void RememberProject(string folder)
+    {
+        string path = Path.GetFullPath(folder);
+        Update(settings =>
+            settings.ProjectFolders = new[] { path }
+                .Concat(settings.ProjectFolders)
+                .Distinct(
+                    System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                        System.Runtime.InteropServices.OSPlatform.Windows
+                    )
+                        ? StringComparer.OrdinalIgnoreCase
+                        : StringComparer.Ordinal
+                )
+                .ToArray()
+        );
+    }
+
+    /// <summary>
     /// Serializes updates from separate editor processes without leaving ownership after a crash.
     /// </summary>
     /// <param name="ownership">The shared settings lock file, released when its handle closes.</param>
@@ -166,12 +188,17 @@ public sealed class ContentEditorSettings
     public float Split = 0.205f;
     public bool AlphaNoticeAcknowledged;
     public string ImageImportDirectory;
+    public string[] ProjectFolders = Array.Empty<string>();
 
     /// <summary>
     /// Keeps persisted values within the same limits used by the workbench.
     /// </summary>
     public void Normalize()
     {
+        ProjectFolders = (ProjectFolders ?? Array.Empty<string>())
+            .Where(folder => !string.IsNullOrWhiteSpace(folder))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         if (!Enum.IsDefined(typeof(ContentEditorColorMode), ColorMode))
             ColorMode = ContentEditorColorMode.Dark;
         Zoom = float.IsNaN(Zoom) || float.IsInfinity(Zoom) ? 1 : Mathf.Clamp(Zoom, 0.65f, 1.75f);

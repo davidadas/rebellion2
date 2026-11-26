@@ -31,6 +31,261 @@ public sealed class ThunderstoreClient
     }
 
     /// <summary>
+    /// Reads community filter choices and resolves section membership for offline filtering.
+    /// </summary>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The community filters and their cacheable document.</returns>
+    public async Task<(ThunderstoreCommunityFilters Filters, string Json)> GetCommunityFiltersAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        using UnityWebRequest request = UnityWebRequest.Get(
+            "https://thunderstore.io/api/cyberstorm/community/rebellion-2/filters/"
+        );
+        await SendAsync(request, cancellationToken);
+        ThunderstoreCommunityFilters filters = ParseCommunityFilters(request.downloadHandler.text);
+        for (int offset = 0; offset < filters.sections.Length; offset += 4)
+            await Task.WhenAll(
+                filters
+                    .sections.Skip(offset)
+                    .Take(4)
+                    .Select(section => ReadSectionPackagesAsync(section, cancellationToken))
+            );
+        return (filters, JsonUtility.ToJson(filters));
+    }
+
+    /// <summary>
+    /// Validates cached or downloaded community filter metadata.
+    /// </summary>
+    /// <param name="json">The community filter document.</param>
+    /// <returns>The validated filter choices.</returns>
+    public static ThunderstoreCommunityFilters ParseCommunityFilters(string json)
+    {
+        if (
+            string.IsNullOrWhiteSpace(json)
+            || !json.TrimStart().StartsWith("{", StringComparison.Ordinal)
+        )
+            throw new InvalidDataException("Thunderstore did not return community filters.");
+        ThunderstoreCommunityFilters result = JsonUtility.FromJson<ThunderstoreCommunityFilters>(
+            json
+        );
+        if (result?.package_categories == null || result.sections == null)
+            throw new InvalidDataException("Thunderstore returned incomplete community filters.");
+        if (
+            result.package_categories.Any(category =>
+                category == null
+                || !int.TryParse(category.id, out int id)
+                || id <= 0
+                || string.IsNullOrWhiteSpace(category.name)
+            )
+            || result.sections.Any(section =>
+                section == null
+                || !Guid.TryParse(section.uuid, out _)
+                || string.IsNullOrWhiteSpace(section.name)
+            )
+            || result.package_categories.Select(category => category.id).Distinct().Count()
+                != result.package_categories.Length
+            || result.sections.Select(section => section.uuid).Distinct().Count()
+                != result.sections.Length
+        )
+            throw new InvalidDataException(
+                "Thunderstore returned invalid community filter choices."
+            );
+        foreach (ThunderstorePackageSection section in result.sections)
+            section.packages ??= Array.Empty<string>();
+        return result;
+    }
+
+    /// <summary>
+    /// Resolves a section through its public listing query without assuming category rules.
+    /// </summary>
+    /// <param name="section">The community section to populate.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The completion of the section query.</returns>
+    private static async Task ReadSectionPackagesAsync(
+        ThunderstorePackageSection section,
+        CancellationToken cancellationToken
+    )
+    {
+        System.Collections.Generic.HashSet<string> packages = new(StringComparer.Ordinal);
+        for (int page = 1; ; page++)
+        {
+            using UnityWebRequest request = UnityWebRequest.Get(
+                "https://thunderstore.io/api/cyberstorm/listing/rebellion-2/?deprecated=true&nsfw=true&section="
+                    + Uri.EscapeDataString(section.uuid)
+                    + "&page="
+                    + page
+            );
+            await SendAsync(request, cancellationToken);
+            TeamPackagePage result = JsonUtility.FromJson<TeamPackagePage>(
+                request.downloadHandler.text
+            );
+            if (
+                result?.results == null
+                || result.results.Length == 0 && !string.IsNullOrEmpty(result.next)
+            )
+                throw new InvalidDataException(
+                    "Thunderstore returned an incomplete section listing."
+                );
+            foreach (TeamPackageReference package in result.results)
+            {
+                ModPackageStore.ValidateSegment(package.@namespace, "package author");
+                ModPackageStore.ValidateSegment(package.name, "package name");
+                if (!packages.Add(package.@namespace + "-" + package.name))
+                    throw new InvalidDataException(
+                        "Thunderstore returned duplicate section packages."
+                    );
+            }
+            if (string.IsNullOrEmpty(result.next))
+                break;
+        }
+        section.packages = packages.OrderBy(package => package, StringComparer.Ordinal).ToArray();
+    }
+
+    /// <summary>
+    /// Reads a team's community listings, including deprecated releases omitted from the browsing catalogue.
+    /// </summary>
+    /// <param name="team">The connected publishing namespace.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The team's published packages with their latest release metadata.</returns>
+    public async Task<ThunderstorePackage[]> GetTeamPackagesAsync(
+        string team,
+        CancellationToken cancellationToken
+    )
+    {
+        ModPackageStore.ValidateSegment(team, "publishing team");
+        System.Collections.Generic.List<ThunderstorePackage> packages = new();
+        System.Collections.Generic.HashSet<string> seen = new(StringComparer.Ordinal);
+        for (int page = 1; ; page++)
+        {
+            string url =
+                "https://thunderstore.io/api/cyberstorm/listing/rebellion-2/"
+                + Uri.EscapeDataString(team)
+                + "/?deprecated=true&nsfw=true&page="
+                + page;
+            using UnityWebRequest listing = UnityWebRequest.Get(url);
+            try
+            {
+                await SendAsync(listing, cancellationToken);
+            }
+            catch (IOException) when (listing.responseCode == 404 && page == 1)
+            {
+                return Array.Empty<ThunderstorePackage>();
+            }
+            TeamPackagePage result = JsonUtility.FromJson<TeamPackagePage>(
+                listing.downloadHandler.text
+            );
+            if (result?.results == null)
+                throw new InvalidDataException("Thunderstore did not return this team's packages.");
+            if (result.results.Length == 0 && !string.IsNullOrEmpty(result.next))
+                throw new InvalidDataException("Thunderstore returned an incomplete package page.");
+            foreach (TeamPackageReference item in result.results)
+            {
+                ModPackageStore.ValidateSegment(item.name, "package name");
+                if (item.@namespace != team || !seen.Add(team + "-" + item.name))
+                    throw new InvalidDataException(
+                        "Thunderstore returned an unexpected team package."
+                    );
+            }
+            for (int offset = 0; offset < result.results.Length; offset += 4)
+                packages.AddRange(
+                    await Task.WhenAll(
+                        result
+                            .results.Skip(offset)
+                            .Take(4)
+                            .Select(item =>
+                                ReadTeamPackageAsync(team, item.name, cancellationToken)
+                            )
+                    )
+                );
+            if (string.IsNullOrEmpty(result.next))
+                return packages.ToArray();
+        }
+    }
+
+    /// <summary>
+    /// Loads canonical release metadata without deriving versions from artwork or download filenames.
+    /// </summary>
+    /// <param name="team">The publishing namespace.</param>
+    /// <param name="name">The published package name.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The validated package's latest release.</returns>
+    private static async Task<ThunderstorePackage> ReadTeamPackageAsync(
+        string team,
+        string name,
+        CancellationToken cancellationToken
+    )
+    {
+        using UnityWebRequest request = UnityWebRequest.Get(
+            "https://thunderstore.io/api/experimental/package/"
+                + Uri.EscapeDataString(team)
+                + "/"
+                + Uri.EscapeDataString(name)
+                + "/"
+        );
+        await SendAsync(request, cancellationToken);
+        TeamPackage detail = JsonUtility.FromJson<TeamPackage>(request.downloadHandler.text);
+        if (
+            detail == null
+            || detail.@namespace != team
+            || detail.name != name
+            || detail.latest == null
+        )
+            throw new InvalidDataException(
+                "Thunderstore returned incomplete published-package details."
+            );
+        ModPackageStore.ValidateVersion(detail.latest.version_number);
+        ValidateUrl(detail.latest.download_url);
+        return new ThunderstorePackage
+        {
+            name = name,
+            owner = team,
+            full_name = team + "-" + name,
+            package_url =
+                CommunityUrl
+                + "p/"
+                + Uri.EscapeDataString(team)
+                + "/"
+                + Uri.EscapeDataString(name)
+                + "/",
+            is_deprecated = detail.is_deprecated,
+            versions = new[] { detail.latest },
+        };
+    }
+
+    /// <summary>
+    /// Defines the community's paginated namespace listing response.
+    /// </summary>
+    [Serializable]
+    private sealed class TeamPackagePage
+    {
+        public string next;
+        public TeamPackageReference[] results;
+    }
+
+    /// <summary>
+    /// Identifies one namespace-scoped community listing.
+    /// </summary>
+    [Serializable]
+    private sealed class TeamPackageReference
+    {
+        public string @namespace;
+        public string name;
+    }
+
+    /// <summary>
+    /// Defines the latest-release metadata returned for one published package.
+    /// </summary>
+    [Serializable]
+    private sealed class TeamPackage
+    {
+        public string @namespace;
+        public string name;
+        public bool is_deprecated;
+        public ThunderstorePackageVersion latest;
+    }
+
+    /// <summary>
     /// Reads a cached catalog using the same response model as a live request.
     /// </summary>
     /// <param name="json">The catalog's JSON array.</param>

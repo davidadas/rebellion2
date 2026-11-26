@@ -20,7 +20,10 @@ public sealed class ModPackageStore
     private readonly string _modsRoot;
     private readonly string _stateRoot;
     private readonly ThunderstoreClient _client;
+    private ThunderstorePackage[] _catalog;
+    private ThunderstoreCommunityFilters _communityFilters;
     private string RegistryPath => Path.Combine(_stateRoot, "installed.json");
+    private string CommunityFiltersPath => Path.Combine(_stateRoot, "community-filters.json");
 
     /// <summary>
     /// Gets the cached catalog path used for offline browsing.
@@ -46,6 +49,30 @@ public sealed class ModPackageStore
     public void RecoverInterruptedInstallations()
     {
         using FileStream lease = AcquireLease();
+    }
+
+    /// <summary>
+    /// Finds native pack folders in Mods that are not owned by an installation receipt.
+    /// </summary>
+    /// <returns>The existing pack folders not owned by an installation receipt.</returns>
+    public string[] GetUnmanagedPackFolders()
+    {
+        HashSet<string> managed = new(
+            ReadRegistry()
+                .Packages.SelectMany(package => package.Content)
+                .Select(content => content.Folder),
+            StringComparer.OrdinalIgnoreCase
+        );
+        return Directory.Exists(_modsRoot)
+            ? Directory
+                .EnumerateDirectories(_modsRoot)
+                .Where(folder =>
+                    !managed.Contains(Path.GetFileName(folder))
+                    && File.Exists(Path.Combine(folder, "pack.xml"))
+                )
+                .OrderBy(folder => folder, StringComparer.Ordinal)
+                .ToArray()
+            : Array.Empty<string>();
     }
 
     /// <summary>
@@ -174,10 +201,86 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
+    /// Reads the shared catalogue snapshot without requiring a network connection.
+    /// </summary>
+    /// <returns>The last usable package catalogue, or an empty snapshot.</returns>
+    public ThunderstorePackage[] ReadCatalog()
+    {
+        if (_catalog != null)
+            return _catalog;
+        try
+        {
+            _catalog = File.Exists(CatalogPath)
+                ? ThunderstoreClient.ParseCatalog(File.ReadAllText(CatalogPath))
+                : Array.Empty<ThunderstorePackage>();
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException)
+        {
+            _catalog = Array.Empty<ThunderstorePackage>();
+        }
+        return _catalog;
+    }
+
+    /// <summary>
+    /// Refreshes the public catalogue used by browsing and package dependency selection.
+    /// </summary>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The refreshed package snapshot.</returns>
+    public async Task<ThunderstorePackage[]> RefreshCatalogAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _client.GetCatalogAsync(cancellationToken);
+        SaveCatalog(result.Json);
+        _catalog = result.Packages;
+        return _catalog;
+    }
+
+    /// <summary>
     /// Saves the last successful public catalog for offline browsing.
     /// </summary>
     /// <param name="json">The validated response document.</param>
-    public void SaveCatalog(string json) => AtomicTextFile.WriteAllText(CatalogPath, json);
+    public void SaveCatalog(string json)
+    {
+        AtomicTextFile.WriteAllText(CatalogPath, json);
+        _catalog = null;
+    }
+
+    /// <summary>
+    /// Reads the last successful community filters without requiring a network connection.
+    /// </summary>
+    /// <returns>The cached choices, or empty choices when no usable snapshot exists.</returns>
+    public ThunderstoreCommunityFilters ReadCommunityFilters()
+    {
+        if (_communityFilters != null)
+            return _communityFilters;
+        try
+        {
+            _communityFilters = File.Exists(CommunityFiltersPath)
+                ? ThunderstoreClient.ParseCommunityFilters(File.ReadAllText(CommunityFiltersPath))
+                : new ThunderstoreCommunityFilters();
+        }
+        catch (Exception exception) when (exception is IOException or ArgumentException)
+        {
+            _communityFilters = new ThunderstoreCommunityFilters();
+        }
+        return _communityFilters;
+    }
+
+    /// <summary>
+    /// Refreshes community filter metadata while retaining the last usable offline snapshot.
+    /// </summary>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The refreshed community choices and section membership.</returns>
+    public async Task<ThunderstoreCommunityFilters> RefreshCommunityFiltersAsync(
+        CancellationToken cancellationToken
+    )
+    {
+        var result = await _client.GetCommunityFiltersAsync(cancellationToken);
+        AtomicTextFile.WriteAllText(CommunityFiltersPath, result.Json);
+        _communityFilters = result.Filters;
+        return _communityFilters;
+    }
 
     /// <summary>
     /// Installs a release and its exact dependencies only after every payload has been staged.

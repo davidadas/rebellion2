@@ -115,12 +115,23 @@ public static class ContentPackEditorPreview
             }
             view.SetColorMode(ContentEditorColorMode.Dark);
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager.png");
+            RenderPageZoom(preview, root, view, "Browse");
             view.ModManager.GetComponentsInChildren<Button>(true)
                 .First(button =>
                     button.name == "PackageCard(Clone)" && button.gameObject.activeSelf
                 )
                 .onClick.Invoke();
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-details.png");
+            foreach (ContentEditorColorMode mode in Enum.GetValues(typeof(ContentEditorColorMode)))
+            {
+                view.SetColorMode(mode);
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Mod-manager-details-" + mode + ".png"
+                );
+            }
+            view.SetColorMode(ContentEditorColorMode.Dark);
             TMP_Dropdown releaseVersions = view
                 .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
                 .Single(dropdown => dropdown.name == "versions");
@@ -166,19 +177,84 @@ public static class ContentPackEditorPreview
                 .Single(button => button.name == "filterButton")
                 .onClick.Invoke();
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-filters.png");
-            TMP_Dropdown category = view
-                .ModManager.GetComponentsInChildren<TMP_Dropdown>(true)
-                .Single(dropdown => dropdown.name == "category");
-            category.value = 1;
+            foreach (ContentEditorColorMode mode in Enum.GetValues(typeof(ContentEditorColorMode)))
+            {
+                view.SetColorMode(mode);
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Mod-manager-filters-" + mode + ".png"
+                );
+            }
+            view.SetColorMode(ContentEditorColorMode.Dark);
+            ContentEditorMultiSelectDropdown included = view
+                .ModManager.Filters.GetComponentsInChildren<ContentEditorMultiSelectDropdown>(true)
+                .Single(dropdown => dropdown.name == "IncludeCategories");
+            included.GetComponent<Button>().onClick.Invoke();
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-category-picker.png"
+            );
+            foreach (UICheckboxView option in included.GetComponentsInChildren<UICheckboxView>())
+                if (
+                    option
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text is "Audio" or "Mods")
+                )
+                    option.GetComponent<Toggle>().isOn = true;
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-category-selected.png"
+            );
+            included.TryCancel();
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-category.png");
-            category.value = 0;
+            ContentEditorMultiSelectDropdown excluded = view
+                .ModManager.Filters.GetComponentsInChildren<ContentEditorMultiSelectDropdown>(true)
+                .Single(dropdown => dropdown.name == "ExcludeCategories");
+            excluded.GetComponent<Button>().onClick.Invoke();
+            foreach (UICheckboxView option in excluded.GetComponentsInChildren<UICheckboxView>())
+                if (
+                    option
+                        .GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == "AI Generated")
+                )
+                    option.GetComponent<Toggle>().isOn = true;
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-category-excluded-open.png"
+            );
+            excluded.TryCancel();
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/Mod-manager-category-excluded.png"
+            );
+            TMP_Dropdown section = view
+                .ModManager.Filters.GetComponentsInChildren<TMP_Dropdown>(true)
+                .Single(dropdown => dropdown.name == "section");
+            for (int index = 1; index < section.options.Count; index++)
+            {
+                section.value = index;
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Mod-manager-section-" + index + ".png"
+                );
+            }
+            view.ModManager.Filters.Clear();
             view.ModManager.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "filterButton")
                 .onClick.Invoke();
             view.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == "Library")
                 .onClick.Invoke();
+            while (manager.IsBusy)
+                await Task.Yield();
             SavePreview(preview, root, "_screenshots/ContentEditor/Mod-manager-installed.png");
+            RenderPageZoom(preview, root, view, "Library");
             Button manage = view
                 .ModManager.GetComponentsInChildren<Button>()
                 .FirstOrDefault(button =>
@@ -240,6 +316,7 @@ public static class ContentPackEditorPreview
                 view.GetComponentsInChildren<Button>(true)
                     .Single(button => button.name == "Projects")
                     .onClick.Invoke();
+                view.EditCurrentProject();
                 if (
                     view.ModManager.IsOpen
                     || !xml.gameObject.activeInHierarchy
@@ -277,6 +354,30 @@ public static class ContentPackEditorPreview
             Debug.Log(
                 "Shared navigation returned to the project and requested publishing successfully."
             );
+            view.GetComponentsInChildren<Button>(true)
+                .Single(button => button.name == "Projects")
+                .onClick.Invoke();
+            view.Projects.RenderLocal(
+                new ModPackageStore(contentRoot, new ThunderstoreClient())
+                    .GetUnmanagedPackFolders()
+                    .Select(ContentEditorLocalProject.Read)
+                    .ToArray()
+            );
+            ThunderstorePackage[] published = await new ThunderstoreClient().GetTeamPackagesAsync(
+                "AdasGames",
+                CancellationToken.None
+            );
+            view.Projects.RenderPublished(published, true);
+            view.RenderThunderstoreConnection("connected as AdasGames", connected: true);
+            SavePreview(preview, root, "_screenshots/ContentEditor/Projects.png");
+            RenderPageZoom(preview, root, view, "Projects");
+            UICheckboxView deprecated = view.Projects.GetComponentInChildren<UICheckboxView>(true);
+            deprecated.SetIsCheckedWithoutNotify(true);
+            view.Projects.RenderPublished(published, true);
+            SavePreview(preview, root, "_screenshots/ContentEditor/Projects-deprecated.png");
+            deprecated.SetIsCheckedWithoutNotify(false);
+            view.Projects.RenderPublished(published, true);
+            view.EditCurrentProject();
             RenderPublishing(preview, root, view, project);
 
             Debug.Log(
@@ -414,24 +515,158 @@ public static class ContentPackEditorPreview
                 Changelog = "Added regional objectives and revised starting fleets.",
             }
         );
+        TMP_InputField description = view
+            .Publishing.GetComponentsInChildren<TMP_InputField>(true)
+            .Single(input => input.name == "PublishingDescription");
+        string originalDescription = description.text;
+        description.SetTextWithoutNotify(string.Empty);
+        view.Publishing.GetComponentsInChildren<Button>(true)
+            .Single(button => button.name == "ContinuePublishing")
+            .onClick.Invoke();
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-RequiredDescription.png");
+        description.SetTextWithoutNotify(originalDescription);
+        view.Publishing.GetComponentsInChildren<Button>(true)
+            .Single(button => button.name == "ReviewStep")
+            .onClick.Invoke();
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-RequiredIcon.png");
+        Vector2Int iconSize = new(256, 256);
+        byte[] iconBytes = ContentEditorArtworkCutGenerator.GeneratePngCuts(
+            Path.Combine(
+                Application.dataPath,
+                "Content",
+                "Application",
+                "MainMenu",
+                "UI",
+                "ui_mainmenu_background.png"
+            ),
+            new[] { iconSize }
+        )[iconSize];
+        view.Publishing.SetIcon(
+            ContentEditorPublishingStorage.SaveIcon(project, iconBytes),
+            iconBytes
+        );
         foreach (string stage in new[] { "Listing", "Release", "Review" })
         {
             view.Publishing.GetComponentsInChildren<Button>(true)
                 .Single(button => button.name == stage + "Step")
                 .onClick.Invoke();
             SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-" + stage + ".png");
+            if (stage == "Release")
+            {
+                ContentEditorDependenciesView dependencies = view.Publishing.Dependencies;
+                dependencies.Show(new[] { "invalid dependency" });
+                view.Publishing.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ContinuePublishing")
+                    .onClick.Invoke();
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Publishing-RequiredDependency.png"
+                );
+                view.Publishing.ShowStatus(string.Empty);
+                dependencies.Show(Array.Empty<string>());
+                ThunderstorePackage[] catalog = new ModPackageStore(
+                    ContentPackLoader.ResolveContentRootPath(),
+                    new ThunderstoreClient()
+                ).ReadCatalog();
+                dependencies.SetCatalog(catalog);
+                dependencies.ApplySelection(catalog.Take(2).Select(package => package.full_name));
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Publishing-Dependencies.png"
+                );
+                view.ShowDependencyChoices(
+                    dependencies.GetChoices(),
+                    dependencies.GetSelection(),
+                    selected => dependencies.ApplySelection(selected.Keys)
+                );
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Publishing-DependencyPicker.png"
+                );
+                view.TryCancel();
+            }
         }
-        view.Publishing.GetComponentsInChildren<Button>(true)
-            .Single(button => button.name == "ThunderstoreConnection")
-            .onClick.Invoke();
+        view.Connection.Show();
+        view.Connection.RenderConnection(Array.Empty<string>());
         SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Connection.png");
+        view.Connection.RenderConnection(new[] { "ExampleTeam" });
         view.Publishing.RenderConnection(new[] { "ExampleTeam" });
+        view.RenderThunderstoreConnection("connected as ExampleTeam", connected: true);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Thunderstore-Account.png");
+        view.Connection.ShowStatus("Couldn’t remove the saved token. Please retry.", true);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Thunderstore-Account-error.png");
+        view.Connection.RenderConnection(
+            new[] { "ExampleTeamWithALongerName", "AnotherPublishingTeam" }
+        );
+        SavePreview(preview, root, "_screenshots/ContentEditor/Thunderstore-Account-teams.png");
+        view.Connection.RenderConnection(Array.Empty<string>());
+        view.Publishing.RenderConnection(Array.Empty<string>());
+        view.RenderThunderstoreConnection("click to connect");
+        SavePreview(preview, root, "_screenshots/ContentEditor/Thunderstore-SetupRestored.png");
+        view.Connection.Hide();
+        view.Publishing.RenderConnection(new[] { "ExampleTeam" });
+        view.RenderThunderstoreConnection("connected as ExampleTeam", connected: true);
         SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Connected.png");
         view.Publishing.SetBusy(true);
         view.Publishing.ShowProgress("Uploading package… 60%", 0.54f);
         SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Uploading.png");
         view.Publishing.SetBusy(false);
         view.Publishing.RenderConnection(Array.Empty<string>());
+        view.RenderThunderstoreConnection("click to connect");
+        view.Publishing.ShowStatus(string.Empty);
+        view.Publishing.ShowIconCrop(
+            Path.Combine(
+                Application.dataPath,
+                "Content",
+                "Application",
+                "MainMenu",
+                "UI",
+                "ui_mainmenu_background.png"
+            ),
+            bytes =>
+                view.Publishing.SetIcon(
+                    ContentEditorPublishingStorage.SaveIcon(project, bytes),
+                    bytes
+                )
+        );
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Crop.png");
+        ContentEditorImageCropView crop =
+            view.Publishing.GetComponentInChildren<ContentEditorImageCropView>();
+        RectTransform selection = (RectTransform)
+            crop.transform.Find("Panel/CropFrame/Artwork/Selection");
+        PointerEventData pointer = new(EventSystem.current)
+        {
+            button = PointerEventData.InputButton.Left,
+            pointerPressRaycast = new RaycastResult
+            {
+                module = root.GetComponent<GraphicRaycaster>(),
+            },
+        };
+        pointer.position = pointer.pressPosition = RectTransformUtility.WorldToScreenPoint(
+            preview.camera,
+            selection.TransformPoint(selection.rect.center)
+        );
+        crop.OnBeginDrag(pointer);
+        pointer.position += new Vector2(60, 0);
+        crop.OnDrag(pointer);
+        crop.OnEndDrag(pointer);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Crop-Moved.png");
+        pointer.position = pointer.pressPosition = RectTransformUtility.WorldToScreenPoint(
+            preview.camera,
+            selection.TransformPoint(selection.rect.max)
+        );
+        crop.OnBeginDrag(pointer);
+        pointer.position -= new Vector2(70, 70);
+        crop.OnDrag(pointer);
+        crop.OnEndDrag(pointer);
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-Crop-Resized.png");
+        view.Publishing.GetComponentsInChildren<Button>(true)
+            .Single(button => button.name == "ApplyCrop")
+            .onClick.Invoke();
+        SavePreview(preview, root, "_screenshots/ContentEditor/Publishing-CroppedIcon.png");
         view.Publishing.Hide();
     }
 
@@ -832,6 +1067,97 @@ public static class ContentPackEditorPreview
                     button = PointerEventData.InputButton.Left,
                 }
             );
+    }
+
+    /// <summary>
+    /// Captures page resizing through the visible zoom menu and native shortcuts.
+    /// </summary>
+    /// <param name="preview">The active rendering context.</param>
+    /// <param name="root">The live workspace canvas.</param>
+    /// <param name="view">The workspace receiving application commands.</param>
+    /// <param name="page">The page represented by the capture.</param>
+    private static void RenderPageZoom(
+        PreviewRenderUtility preview,
+        GameObject root,
+        ContentPackEditorView view,
+        string page
+    )
+    {
+        view.GetComponentsInChildren<Button>()
+            .Single(button => button.name == "View")
+            .onClick.Invoke();
+        view.GetComponentsInChildren<ContextMenuCommandView>()
+            .Single(command =>
+                command.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Zoom")
+            )
+            .OnPointerEnter(new PointerEventData(EventSystem.current));
+        view.GetComponentInChildren<ContextMenuView>(true).RenderCurrent();
+        view.GetComponentsInChildren<ContextMenuCommandView>()
+            .Single(command =>
+                command.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "Zoom out")
+            )
+            .OnPointerClick(new PointerEventData(EventSystem.current));
+        SavePreview(preview, root, "_screenshots/ContentEditor/" + page + "-menu-zoom.png");
+        foreach (KeyCode key in new[] { KeyCode.Minus, KeyCode.Plus })
+        {
+            view.HandleKeyboardShortcut(
+                new Event
+                {
+                    type = EventType.KeyDown,
+                    keyCode = KeyCode.Alpha0,
+                    control = true,
+                }
+            );
+            for (int index = 0; index < 8; index++)
+                view.HandleKeyboardShortcut(
+                    new Event
+                    {
+                        type = EventType.KeyDown,
+                        keyCode = key,
+                        command = true,
+                    }
+                );
+            SavePreview(
+                preview,
+                root,
+                "_screenshots/ContentEditor/" + page + "-zoom-" + key + ".png"
+            );
+            if (page == "Browse")
+            {
+                Button filters = view
+                    .ModManager.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "filterButton");
+                filters.onClick.Invoke();
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Browse-filters-zoom-" + key + ".png"
+                );
+                view.ModManager.GetComponentInChildren<ScrollRect>().verticalNormalizedPosition = 0;
+                SavePreview(
+                    preview,
+                    root,
+                    "_screenshots/ContentEditor/Browse-filter-results-zoom-" + key + ".png"
+                );
+                filters.onClick.Invoke();
+            }
+            Debug.Log(
+                "Zoom preview "
+                    + page
+                    + ": manager="
+                    + view.ModManager.IsOpen
+                    + ", projects="
+                    + view.Projects.gameObject.activeInHierarchy
+            );
+        }
+        view.HandleKeyboardShortcut(
+            new Event
+            {
+                type = EventType.KeyDown,
+                keyCode = KeyCode.Alpha0,
+                command = true,
+            }
+        );
     }
 
     /// <summary>

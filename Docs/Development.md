@@ -54,6 +54,27 @@ and `BUILD_PLAYER_PATH` are set:
 BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.sh build
 ```
 
+## Local macOS signing
+
+To retain Keychain access across toolkit rebuilds, sign each build with the same certificate and
+bundle identifier. Ad-hoc signatures change with the binary, so macOS can ask for access again.
+Install an Apple Development or Developer ID Application identity, including its private key, in
+your login Keychain. Find its SHA-1 fingerprint with `security find-identity -v -p codesigning`,
+then configure it once:
+
+```bash
+"$UNITY" -batchmode -quit -projectPath "$PWD" -buildTarget StandaloneOSX \
+  -executeMethod MacPlayerSigning.Configure -macSigningIdentity YOUR_CERTIFICATE_SHA1
+```
+
+The fingerprint is stored in Unity's local editor preferences; no private key is stored in the
+project. Subsequent content-pack editor builds, including the companion embedded in a game build,
+reuse that identity and fail if signing fails. A build can override it with `-macSigningIdentity`.
+Configure `-` to return to ad-hoc signing. Machines without a configured identity continue using
+Unity's ad-hoc signing. Self-signed certificates do not solve this: Keychain's partition checks still
+identify those binaries by their individual code hashes. Switching from an older ad-hoc build can
+require one more Keychain approval. Signing alone does not notarize the app for distribution.
+
 ## Windows on Arm
 
 Windows x64 and ARM64 players share Unity's `StandaloneWindows64` build target and differ only in

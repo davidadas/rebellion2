@@ -24,12 +24,41 @@ internal sealed class ContentEditorPublishingSettings
     /// <param name="definition">The pack whose version and identity are being released.</param>
     internal void Validate(ContentPackDefinition definition)
     {
+        ValidateListing();
+        ValidateRelease(definition);
+    }
+
+    /// <summary>
+    /// Checks the required listing fields before advancing to release details.
+    /// </summary>
+    internal void ValidateListing()
+    {
         if (!Regex.IsMatch(PackageName ?? string.Empty, "^[A-Za-z0-9_]{1,128}$"))
             throw new ArgumentException(
                 "Package name must contain 1–128 letters, numbers, or underscores."
             );
         if (string.IsNullOrWhiteSpace(Description) || Description.Length > 250)
             throw new ArgumentException("Enter a description of 1–250 characters.");
+        if (string.IsNullOrWhiteSpace(Readme))
+            throw new ArgumentException("Add a readme describing your content pack.");
+        if (
+            !string.IsNullOrWhiteSpace(WebsiteUrl)
+            && (
+                !Uri.TryCreate(WebsiteUrl, UriKind.Absolute, out Uri website)
+                || website.Scheme is not ("https" or "http")
+            )
+        )
+            throw new ArgumentException("Website must be an http or https address, or left empty.");
+        if (string.IsNullOrWhiteSpace(IconPath) || !File.Exists(IconPath))
+            throw new ArgumentException("Choose a 256 × 256 PNG package icon.");
+    }
+
+    /// <summary>
+    /// Checks the canonical identity and dependency syntax before opening release review.
+    /// </summary>
+    /// <param name="definition">The pack whose identity and version will be published.</param>
+    internal void ValidateRelease(ContentPackDefinition definition)
+    {
         if (
             !Regex.IsMatch(
                 definition.Version ?? string.Empty,
@@ -46,16 +75,6 @@ internal sealed class ContentEditorPublishingSettings
             throw new ArgumentException(
                 "The pack ID must contain only letters, numbers, underscores, or hyphens."
             );
-        if (string.IsNullOrWhiteSpace(Readme))
-            throw new ArgumentException("Add a readme describing your content pack.");
-        if (
-            !string.IsNullOrWhiteSpace(WebsiteUrl)
-            && (
-                !Uri.TryCreate(WebsiteUrl, UriKind.Absolute, out Uri website)
-                || website.Scheme is not ("https" or "http")
-            )
-        )
-            throw new ArgumentException("Website must be an http or https address, or left empty.");
         if (
             GetDependencies()
                 .Any(dependency =>
@@ -66,10 +85,8 @@ internal sealed class ContentEditorPublishingSettings
                 )
         )
             throw new ArgumentException(
-                "Each dependency must use Team-Package-1.2.0 format, one per line."
+                "A saved dependency is invalid. Remove it and choose the package again."
             );
-        if (string.IsNullOrWhiteSpace(IconPath) || !File.Exists(IconPath))
-            throw new ArgumentException("Choose a 256 × 256 PNG package icon.");
     }
 
     /// <summary>
