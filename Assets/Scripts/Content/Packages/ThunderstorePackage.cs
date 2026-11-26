@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Text.RegularExpressions;
 
 /// <summary>
 /// Describes a published community package using Thunderstore's catalog field names.
@@ -20,6 +22,31 @@ public sealed class ThunderstorePackage
     public ThunderstorePackageVersion[] versions;
 
     public ThunderstorePackageVersion Latest => versions?.FirstOrDefault();
+
+    /// <summary>
+    /// Validates a public package path segment before accepting catalog data.
+    /// </summary>
+    /// <param name="value">The author or package segment.</param>
+    /// <param name="label">The field being checked.</param>
+    public static void ValidateName(string value, string label)
+    {
+        if (string.IsNullOrWhiteSpace(value) || !Regex.IsMatch(value, "^[A-Za-z0-9_-]+$"))
+            throw new InvalidDataException("The listing contains an invalid " + label + ".");
+    }
+
+    /// <summary>
+    /// Checks the numeric distribution version used by Thunderstore.
+    /// </summary>
+    /// <param name="version">The distribution release version.</param>
+    public static void ValidateVersion(string version)
+    {
+        if (
+            !System.Version.TryParse(version, out System.Version parsed)
+            || parsed.Build < 0
+            || parsed.Revision >= 0
+        )
+            throw new InvalidDataException("The listing contains an invalid package version.");
+    }
 }
 
 /// <summary>

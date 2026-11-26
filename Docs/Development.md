@@ -56,31 +56,21 @@ BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.
 
 ## Toolkit launch pages
 
-The patcher offers **Open mod manager** for the installed Library and **Open mod editor** for
-Projects. Both open the same toolkit. Direct launches default to Library; pass
-`-startPage Projects` or `-startPage Browse` to choose another page. An explicit `-packPath`
-opens that working project instead. Switching pages preserves the open project's draft.
+The launcher opens **Library** for mod management and **Projects** for editing.
+Direct launches default to Library. Use `-startPage Projects`, `-startPage Browse`,
+or `-packPath <folder>` to open another workspace.
 
 ## Local macOS signing
 
-To retain Keychain access across toolkit rebuilds, sign each build with the same certificate and
-bundle identifier. Ad-hoc signatures change with the binary, so macOS can ask for access again.
-Install an Apple Development or Developer ID Application identity, including its private key, in
-your login Keychain. Find its SHA-1 fingerprint with `security find-identity -v -p codesigning`,
-then configure it once:
+Use the same Apple signing identity across rebuilds to retain Keychain access. Find its fingerprint
+with `security find-identity -v -p codesigning`, then configure it once:
 
 ```bash
 "$UNITY" -batchmode -quit -projectPath "$PWD" -buildTarget StandaloneOSX \
   -executeMethod MacPlayerSigning.Configure -macSigningIdentity YOUR_CERTIFICATE_SHA1
 ```
 
-The fingerprint is stored in Unity's local editor preferences; no private key is stored in the
-project. Subsequent content-pack editor builds, including the companion embedded in a game build,
-reuse that identity and fail if signing fails. A build can override it with `-macSigningIdentity`.
-Configure `-` to return to ad-hoc signing. Machines without a configured identity continue using
-Unity's ad-hoc signing. Self-signed certificates do not solve this: Keychain's partition checks still
-identify those binaries by their individual code hashes. Switching from an older ad-hoc build can
-require one more Keychain approval. Signing alone does not notarize the app for distribution.
+Builds reuse that identity. Without one, builds use ad-hoc signing and may prompt for Keychain access again.
 
 ## Windows on Arm
 

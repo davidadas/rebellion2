@@ -98,9 +98,9 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 ReadInstalled();
             }
             if (catalog.Length == 0)
-                catalog = store.ReadCatalog();
+                catalog = store.Catalog.Read();
             view.Filters.SetOptions(
-                store.ReadCommunityFilters(),
+                store.Catalog.ReadFilters(),
                 catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
             );
             RenderRows(true);
@@ -123,18 +123,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             {
                 view.SetStatus("Checking Thunderstore…");
                 string selectedRelease = SelectedVersion?.version_number;
-                catalog = await store.RefreshCatalogAsync(token);
-                view.Filters.SetOptions(
-                    store.ReadCommunityFilters(),
-                    catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
-                );
-                ThunderstoreCommunityFilters filters = await store.RefreshCommunityFiltersAsync(
-                    token
-                );
-                view.Filters.SetOptions(
-                    filters,
-                    catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
-                );
+                catalog = await store.Catalog.RefreshAsync(token);
                 if (selectedRelease != null && SelectedListing != null)
                     versionIndex = Mathf.Max(
                         0,
@@ -143,6 +132,17 @@ internal sealed class ContentEditorModManagerController : IDisposable
                             version => version.version_number == selectedRelease
                         )
                     );
+                view.Filters.SetOptions(
+                    store.Catalog.ReadFilters(),
+                    catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
+                );
+                ThunderstoreCommunityFilters filters = await store.Catalog.RefreshFiltersAsync(
+                    token
+                );
+                view.Filters.SetOptions(
+                    filters,
+                    catalog.SelectMany(package => package.categories ?? Array.Empty<string>())
+                );
                 view.SetStatus(string.Empty);
             },
             false

@@ -50,6 +50,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private RectTransform projectHub;
 
     [SerializeField]
+    private ScrollAreaLayout projectsPage;
+
+    [SerializeField]
     private ContentEditorProjectsView projects;
 
     [SerializeField]
@@ -457,6 +460,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             || libraryButton == null
             || navigationIndicator == null
             || projectHub == null
+            || projectsPage == null
             || projects == null
             || packageStatus == null
             || packageProgressTrack == null
@@ -1558,6 +1562,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         projects.SetCurrentProject(project);
         ProjectsRequested?.Invoke();
         OnRectTransformDimensionsChange();
+        projectsPage.SetContentHeight(projectHub.sizeDelta.y, true);
     }
 
     /// <summary>
@@ -1604,11 +1609,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return;
         Rect available = ((RectTransform)welcomePane.transform).rect;
         float zoom = workbenchLayout.Zoom;
-        projectHub.localScale = Vector3.one * zoom;
-        projectHub.sizeDelta = new Vector2(
-            Mathf.Min(1120, Mathf.Max(1, available.width - 40) / zoom),
-            Mathf.Max(1, available.height - 64) / zoom
-        );
+        if (projectsPage == null)
+            return;
+        float width = Mathf.Min(1120, Mathf.Max(1, available.width - 56) / zoom);
+        float height = Mathf.Max(1, available.height - 64) / zoom;
+        RectTransform page = (RectTransform)projectsPage.transform;
+        page.localScale = Vector3.one * zoom;
+        page.sizeDelta = new Vector2(width + 16, height);
+        projectHub.sizeDelta = new Vector2(width, Mathf.Max(480, height));
+        projectsPage.SetContentHeight(projectHub.sizeDelta.y);
         projects.SetViewport(projectHub.sizeDelta);
     }
 
@@ -1748,6 +1757,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <returns>Whether the editor consumed the shortcut.</returns>
     public bool HandleKeyboardShortcut(Event key)
     {
+        if (
+            publishing.IsOpen
+            && workbench.interactable
+            && publishing.ImageCrop.HandleKeyboardShortcut(key)
+        )
+            return true;
         if (
             key?.type == EventType.KeyDown
             && key.keyCode == KeyCode.Escape

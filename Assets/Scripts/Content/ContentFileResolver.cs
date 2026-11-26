@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using Rebellion.Util.Logging;
+using Rebellion.Util.Serialization;
 
 /// <summary>
 /// Resolves logical content addresses through enabled mods and the selected base pack.
@@ -160,7 +161,7 @@ public sealed class ContentFileResolver
             ContentModDefinition definition = null;
             try
             {
-                definition = DeserializeDefinition(definitionPath);
+                definition = ReadModDefinition(definitionPath);
                 if (string.IsNullOrWhiteSpace(definition.BasePackID))
                     ValidateDefinition(definition);
                 if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
@@ -516,9 +517,17 @@ public sealed class ContentFileResolver
     /// </summary>
     /// <param name="definitionPath">The absolute mod-definition path.</param>
     /// <returns>The deserialized definition.</returns>
-    private static ContentModDefinition DeserializeDefinition(string definitionPath)
+    public static ContentModDefinition ReadModDefinition(string definitionPath)
     {
-        return ContentModDefinitionReader.Read(definitionPath);
+        GameSerializer serializer = new(
+            typeof(ContentModDefinition),
+            new GameSerializerSettings { RootName = nameof(ContentModDefinition) }
+        );
+        using FileStream stream = File.OpenRead(definitionPath);
+        return serializer.Deserialize(stream) as ContentModDefinition
+            ?? throw new InvalidDataException(
+                "Failed to deserialize content mod: " + definitionPath
+            );
     }
 
     /// <summary>

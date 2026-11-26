@@ -1,8 +1,7 @@
 using System;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Threading;
+using Rebellion.Util.IO;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -11,7 +10,6 @@ using UnityEngine;
 /// </summary>
 public sealed class ContentEditorSettingsManager
 {
-    private static readonly object updateGate = new();
     private readonly string path;
     private readonly ContentEditorSettings defaults;
 
@@ -40,14 +38,7 @@ public sealed class ContentEditorSettingsManager
         {
             if (File.Exists(path))
             {
-                using FileStream input = new(
-                    path,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read | FileShare.Delete
-                );
-                using StreamReader reader = new(input);
-                JsonUtility.FromJsonOverwrite(reader.ReadToEnd(), settings);
+                JsonUtility.FromJsonOverwrite(AtomicTextFile.ReadAllText(path), settings);
             }
             else
                 JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(defaults), settings);
@@ -101,36 +92,16 @@ public sealed class ContentEditorSettingsManager
     /// <param name="change">The preference update.</param>
     private void Update(Action<ContentEditorSettings> change)
     {
-        // File locks can be process-scoped, so threads must also share one gate.
-        lock (updateGate)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            // Retain this file: replacing or deleting it would split locks across different files.
-            using FileStream ownership = new(
-                path + ".lock",
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.ReadWrite
-            );
-            AcquireLock(ownership);
-            ContentEditorSettings settings = Load();
-            change(settings);
-            settings.Normalize();
-            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
             {
-                File.WriteAllText(temporary, JsonUtility.ToJson(settings, true));
-                if (File.Exists(path))
-                    File.Replace(temporary, path, null);
-                else
-                    File.Move(temporary, path);
+                ContentEditorSettings settings = Load();
+                change(settings);
+                settings.Normalize();
+                return JsonUtility.ToJson(settings, true);
             }
-            finally
-            {
-                if (File.Exists(temporary))
-                    File.Delete(temporary);
-            }
-        }
+        );
     }
 
     /// <summary>
@@ -152,28 +123,6 @@ public sealed class ContentEditorSettingsManager
                 )
                 .ToArray()
         );
-    }
-
-    /// <summary>
-    /// Serializes updates from separate editor processes without leaving ownership after a crash.
-    /// </summary>
-    /// <param name="ownership">The shared settings lock file, released when its handle closes.</param>
-    private static void AcquireLock(FileStream ownership)
-    {
-        Stopwatch waiting = Stopwatch.StartNew();
-        while (true)
-        {
-            try
-            {
-                ownership.Lock(0, 1);
-                return;
-            }
-            catch (IOException exception)
-                when ((exception.HResult & 0xffff) == 33 && waiting.ElapsedMilliseconds < 5000)
-            {
-                Thread.Sleep(10);
-            }
-        }
     }
 }
 

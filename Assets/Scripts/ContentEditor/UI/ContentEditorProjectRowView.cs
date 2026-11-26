@@ -26,6 +26,8 @@ public sealed class ContentEditorProjectRowView : MonoBehaviour
     [SerializeField]
     private Button secondary;
 
+    private TMP_Text primaryCaption;
+    private TMP_Text secondaryCaption;
     private Action primaryAction;
     private Action secondaryAction;
     private bool bound;
@@ -52,6 +54,8 @@ public sealed class ContentEditorProjectRowView : MonoBehaviour
     {
         if (!bound)
         {
+            primaryCaption = primary.GetComponentInChildren<TMP_Text>(true);
+            secondaryCaption = secondary.GetComponentInChildren<TMP_Text>(true);
             primary.onClick.AddListener(InvokePrimary);
             secondary.onClick.AddListener(InvokeSecondary);
             bound = true;
@@ -59,11 +63,12 @@ public sealed class ContentEditorProjectRowView : MonoBehaviour
         title.text = name;
         summary.text = status;
         detail.text = location;
-        primary.GetComponentInChildren<TMP_Text>().text = primaryLabel;
-        secondary.GetComponentInChildren<TMP_Text>().text = secondaryLabel ?? string.Empty;
+        primaryCaption.text = primaryLabel;
+        secondaryCaption.text = secondaryLabel ?? string.Empty;
         primaryAction = onPrimary;
         secondaryAction = onSecondary;
         primary.interactable = onPrimary != null;
+        secondary.interactable = onSecondary != null;
         secondary.gameObject.SetActive(onSecondary != null);
         gameObject.SetActive(true);
     }

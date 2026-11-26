@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Util.IO;
 using Rebellion.Util.Logging;
 using UnityEngine;
@@ -17,6 +19,7 @@ public sealed class UserSettingsManager
     private readonly InputManager _inputManager;
     private readonly IAnalyticsConsentRuntime _analyticsConsentRuntime;
     private readonly string _settingsFilePathOverride;
+    private UserContentSettings _savedContent = new();
 
     /// <summary>
     /// Gets the active user settings.
@@ -153,7 +156,7 @@ public sealed class UserSettingsManager
         disabledModIDs = Array.Empty<string>();
         try
         {
-            string path = Path.Combine(UserDataPaths.Root, _settingsFileName);
+            string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
             if (!File.Exists(path))
                 return false;
 
@@ -188,16 +191,12 @@ public sealed class UserSettingsManager
         bool enabled
     )
     {
-        string path = Path.Combine(UserDataPaths.Root, _settingsFileName);
+        string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
         AtomicTextFile.UpdateAllText(
             path,
             () =>
             {
-                UserSettings settings = File.Exists(path)
-                    ? DeserializeSettings(AtomicTextFile.ReadAllText(path))
-                        ?? throw new InvalidDataException("The user settings could not be read.")
-                    : CreateDefaults();
-                settings.Normalize();
+                UserSettings settings = ReadSettingsForUpdate(path);
                 if (packID != null)
                 {
                     settings.Content.ActivePackID = packID;
@@ -218,7 +217,7 @@ public sealed class UserSettingsManager
     /// <returns>The absolute user settings file path.</returns>
     public string GetSettingsFilePath()
     {
-        return _settingsFilePathOverride ?? Path.Combine(UserDataPaths.Root, _settingsFileName);
+        return _settingsFilePathOverride ?? Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
     }
 
     /// <summary>
@@ -228,6 +227,7 @@ public sealed class UserSettingsManager
     public UserSettings Load()
     {
         Settings = LoadFromDisk();
+        RememberContentSelection(Settings.Content);
         Apply();
         return Settings;
     }
@@ -334,26 +334,88 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Writes user settings while preserving acceptance recorded by another running instance.
+    /// Saves runtime settings without reverting another application's content selection.
     /// </summary>
-    /// <param name="settings">The settings to write.</param>
-    /// <param name="acceptedAgreementVersion">A version explicitly accepted now, or null to retain the saved acceptance.</param>
+    /// <param name="settings">The runtime settings.</param>
+    /// <param name="acceptedAgreementVersion">An explicitly accepted agreement, if any.</param>
     private void SaveToDisk(UserSettings settings, string acceptedAgreementVersion = null)
     {
         settings ??= CreateDefaults();
         settings.Normalize();
-
         string path = GetSettingsFilePath();
+        UserSettings persisted = null;
         AtomicTextFile.UpdateAllText(
             path,
             () =>
             {
-                settings.AcceptedAgreementVersion =
-                    acceptedAgreementVersion ?? LoadFromDisk().AcceptedAgreementVersion;
-                return JsonUtility.ToJson(settings, true);
+                UserSettings latest = ReadSettingsForUpdate(path);
+                persisted = JsonUtility.FromJson<UserSettings>(JsonUtility.ToJson(settings));
+                persisted.AcceptedAgreementVersion =
+                    acceptedAgreementVersion ?? latest.AcceptedAgreementVersion;
+                persisted.Content = MergeContentSelection(settings.Content, latest.Content);
+                return JsonUtility.ToJson(persisted, true);
             }
         );
+        settings.AcceptedAgreementVersion = persisted.AcceptedAgreementVersion;
+        settings.Content = persisted.Content;
+        RememberContentSelection(settings.Content);
     }
+
+    /// <summary>
+    /// Reads authoritative settings for a write; invalid files block the update.
+    /// </summary>
+    /// <param name="path">The shared settings file.</param>
+    /// <returns>The normalized settings.</returns>
+    private static UserSettings ReadSettingsForUpdate(string path)
+    {
+        UserSettings settings = File.Exists(path)
+            ? DeserializeSettings(AtomicTextFile.ReadAllText(path))
+                ?? throw new InvalidDataException("The user settings could not be read.")
+            : CreateDefaults();
+        settings.Normalize();
+        return settings;
+    }
+
+    /// <summary>
+    /// Applies local selection changes over the latest saved content preferences.
+    /// </summary>
+    /// <param name="current">This instance's pending selection.</param>
+    /// <param name="latest">The selection currently on disk.</param>
+    /// <returns>The merged next-startup selection.</returns>
+    private UserContentSettings MergeContentSelection(
+        UserContentSettings current,
+        UserContentSettings latest
+    )
+    {
+        bool changedPack =
+            current.ActivePackID != _savedContent.ActivePackID
+            || current.ActiveScenarioID != _savedContent.ActiveScenarioID;
+        HashSet<string> disabled = new(latest.DisabledModIDs, StringComparer.Ordinal);
+        disabled.ExceptWith(
+            _savedContent.DisabledModIDs.Except(current.DisabledModIDs, StringComparer.Ordinal)
+        );
+        disabled.UnionWith(
+            current.DisabledModIDs.Except(_savedContent.DisabledModIDs, StringComparer.Ordinal)
+        );
+        return new UserContentSettings
+        {
+            ActivePackID = changedPack ? current.ActivePackID : latest.ActivePackID,
+            ActiveScenarioID = changedPack ? current.ActiveScenarioID : latest.ActiveScenarioID,
+            DisabledModIDs = disabled.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+        };
+    }
+
+    /// <summary>
+    /// Records the last observed selection independently of subsequent UI edits.
+    /// </summary>
+    /// <param name="content">The successfully loaded or saved selection.</param>
+    private void RememberContentSelection(UserContentSettings content) =>
+        _savedContent = new UserContentSettings
+        {
+            ActivePackID = content.ActivePackID,
+            ActiveScenarioID = content.ActiveScenarioID,
+            DisabledModIDs = content.DisabledModIDs.ToArray(),
+        };
 
     /// <summary>
     /// Captures runtime settings into the active user settings object.

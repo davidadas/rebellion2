@@ -198,7 +198,7 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(primary ? ContentEditorColorRole.Accent : ContentEditorColorRole.Button);
         button
-            .GetComponentInChildren<TMPro.TMP_Text>()
+            .GetComponentInChildren<TMPro.TMP_Text>(true)
             .GetComponent<ContentEditorColorBinding>()
             .SetRole(
                 primary ? ContentEditorColorRole.Background : ContentEditorColorRole.ButtonText

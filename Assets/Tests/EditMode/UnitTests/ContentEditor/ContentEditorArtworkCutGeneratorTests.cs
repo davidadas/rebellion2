@@ -34,6 +34,42 @@ namespace Rebellion.Tests.ContentEditor
                 Directory.Delete(folder, true);
         }
 
+        [TestCase(2)]
+        [TestCase(16)]
+        public void GeneratePngCrop_TransparentRedBesideOpaqueBlue_KeepsBlueWithoutColoredFringe(
+            int width
+        )
+        {
+            Texture2D source = new(width, 2, TextureFormat.RGBA32, true);
+            Texture2D output = null;
+            try
+            {
+                Color[] pixels = new Color[width * 2];
+                for (int index = 0; index < pixels.Length; index++)
+                    pixels[index] = index % width < width / 2 ? Color.blue : new Color(1, 0, 0, 0);
+                source.SetPixels(pixels);
+                source.Apply();
+                output = Decode(
+                    ContentEditorArtworkCutGenerator.GeneratePngCrop(
+                        source,
+                        new Rect(0, 0, 1, 1),
+                        Vector2Int.one
+                    )
+                );
+                Color pixel = output.GetPixel(0, 0);
+                Assert.That(pixel.r, Is.LessThan(0.01f));
+                Assert.That(pixel.b, Is.GreaterThan(0.99f));
+                Assert.That(pixel.a, Is.EqualTo(0.5f).Within(0.02f));
+                CollectionAssert.AreEqual(pixels, source.GetPixels());
+            }
+            finally
+            {
+                if (output != null)
+                    UnityEngine.Object.DestroyImmediate(output);
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+        }
+
         [Test]
         public void GenerateFramedPngCut_SmallerSource_KeepsNativePixelDimensions()
         {

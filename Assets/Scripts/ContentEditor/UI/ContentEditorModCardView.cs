@@ -70,7 +70,7 @@ public sealed class ContentEditorModCardView : SelectableListRowView
         requiresInstallation =
             entry.Listing != null && (entry.Installation == null || entry.HasUpdate);
         ContentEditorAppearance.SetActionStyle(primaryAction, requiresInstallation);
-        primaryAction.GetComponentInChildren<TMP_Text>().text =
+        primaryAction.GetComponentInChildren<TMP_Text>(true).text =
             entry.HasUpdate ? "Update"
             : requiresInstallation ? "Install"
             : "Manage";

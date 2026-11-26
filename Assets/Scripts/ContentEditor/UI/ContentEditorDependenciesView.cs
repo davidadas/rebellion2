@@ -24,7 +24,7 @@ public sealed class ContentEditorDependenciesView : MonoBehaviour
 
     private ThunderstorePackage[] catalog = Array.Empty<ThunderstorePackage>();
     private readonly List<string> references = new();
-    private readonly List<ContentEditorDependencyRowView> rows = new();
+    private ListView<ContentEditorDependencyRowView> list;
     private bool bound;
     private bool busy;
     internal event Action ChooseRequested;
@@ -133,7 +133,7 @@ public sealed class ContentEditorDependenciesView : MonoBehaviour
     {
         busy = value;
         choose.interactable = !busy;
-        foreach (ContentEditorDependencyRowView row in rows)
+        foreach (ContentEditorDependencyRowView row in list.Rows)
         foreach (Selectable control in row.GetComponentsInChildren<Selectable>(true))
             control.interactable = !busy;
         if (!busy)
@@ -149,6 +149,11 @@ public sealed class ContentEditorDependenciesView : MonoBehaviour
             return;
         if (choose == null || scroll == null || rowTemplate == null || empty == null)
             throw new MissingReferenceException(name + " has incomplete dependency controls.");
+        list = new ListView<ContentEditorDependencyRowView>(
+            scroll.ScrollArea,
+            rowTemplate,
+            "Dependency"
+        );
         choose.onClick.AddListener(RequestChoices);
         scroll.WidthChanged += Render;
         bound = true;
@@ -167,29 +172,27 @@ public sealed class ContentEditorDependenciesView : MonoBehaviour
         if (!bound)
             return;
         int width = Mathf.Max(360, Mathf.FloorToInt(scroll.ScrollArea.ViewportWidth));
-        for (int index = 0; index < references.Count; index++)
-        {
-            if (rows.Count <= index)
-                rows.Add(Instantiate(rowTemplate, scroll.ScrollArea.ContentRoot));
-            string reference = references[index];
-            rows[index].SetLayout(index * 58, width);
-            rows[index]
-                .Render(
+        list.Render(
+            references,
+            references.Count * 58,
+            38,
+            false,
+            58,
+            (row, reference, index) =>
+            {
+                row.SetLayout(index * 58, width);
+                row.Render(
                     reference,
                     catalog.FirstOrDefault(package => package.full_name == GetPackageID(reference)),
                     Change,
                     Remove
                 );
-            if (busy)
-                foreach (
-                    Selectable control in rows[index].GetComponentsInChildren<Selectable>(true)
-                )
-                    control.interactable = false;
-        }
-        for (int index = references.Count; index < rows.Count; index++)
-            rows[index].gameObject.SetActive(false);
+                if (busy)
+                    foreach (Selectable control in row.GetComponentsInChildren<Selectable>(true))
+                        control.interactable = false;
+            }
+        );
         empty.gameObject.SetActive(references.Count == 0);
-        scroll.SetContentHeight(references.Count * 58);
     }
 
     /// <summary>
@@ -227,6 +230,7 @@ public sealed class ContentEditorDependenciesView : MonoBehaviour
     {
         if (!bound)
             return;
+        list.Clear();
         choose.onClick.RemoveListener(RequestChoices);
         scroll.WidthChanged -= Render;
     }

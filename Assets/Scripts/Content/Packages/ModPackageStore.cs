@@ -23,15 +23,9 @@ public sealed class ModPackageStore
     private readonly string _modsRoot;
     private readonly string _stateRoot;
     private readonly ThunderstoreClient _client;
-    private ThunderstorePackage[] _catalog;
-    private ThunderstoreCommunityFilters _communityFilters;
     private string RegistryPath => Path.Combine(_stateRoot, "installed.json");
-    private string CommunityFiltersPath => Path.Combine(_stateRoot, "community-filters.json");
 
-    /// <summary>
-    /// Gets the cached catalog path used for offline browsing.
-    /// </summary>
-    public string CatalogPath => Path.Combine(_stateRoot, "catalog.json");
+    public ThunderstoreCatalog Catalog { get; }
 
     /// <summary>
     /// Binds package management to the same external content root used by the game.
@@ -44,6 +38,7 @@ public sealed class ModPackageStore
         _modsRoot = ContentFileResolver.ResolveModsRootPath(contentRoot);
         _stateRoot = Path.Combine(Directory.GetParent(_modsRoot).FullName, ".mod-manager");
         _client = client ?? throw new ArgumentNullException(nameof(client));
+        Catalog = new ThunderstoreCatalog(_stateRoot, _client);
     }
 
     /// <summary>
@@ -205,88 +200,6 @@ public sealed class ModPackageStore
             }
         }
         return string.Empty;
-    }
-
-    /// <summary>
-    /// Reads the shared catalogue snapshot without requiring a network connection.
-    /// </summary>
-    /// <returns>The last usable package catalogue, or an empty snapshot.</returns>
-    public ThunderstorePackage[] ReadCatalog()
-    {
-        if (_catalog != null)
-            return _catalog;
-        try
-        {
-            _catalog = File.Exists(CatalogPath)
-                ? ThunderstoreClient.ParseCatalog(File.ReadAllText(CatalogPath))
-                : Array.Empty<ThunderstorePackage>();
-        }
-        catch (Exception exception) when (exception is IOException or ArgumentException)
-        {
-            _catalog = Array.Empty<ThunderstorePackage>();
-        }
-        return _catalog;
-    }
-
-    /// <summary>
-    /// Refreshes the public catalogue used by browsing and package dependency selection.
-    /// </summary>
-    /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The refreshed package snapshot.</returns>
-    public async Task<ThunderstorePackage[]> RefreshCatalogAsync(
-        CancellationToken cancellationToken
-    )
-    {
-        var result = await _client.GetCatalogAsync(cancellationToken);
-        SaveCatalog(result.Json);
-        _catalog = result.Packages;
-        return _catalog;
-    }
-
-    /// <summary>
-    /// Saves the last successful public catalog for offline browsing.
-    /// </summary>
-    /// <param name="json">The validated response document.</param>
-    public void SaveCatalog(string json)
-    {
-        AtomicTextFile.WriteAllText(CatalogPath, json);
-        _catalog = null;
-    }
-
-    /// <summary>
-    /// Reads the last successful community filters without requiring a network connection.
-    /// </summary>
-    /// <returns>The cached choices, or empty choices when no usable snapshot exists.</returns>
-    public ThunderstoreCommunityFilters ReadCommunityFilters()
-    {
-        if (_communityFilters != null)
-            return _communityFilters;
-        try
-        {
-            _communityFilters = File.Exists(CommunityFiltersPath)
-                ? ThunderstoreClient.ParseCommunityFilters(File.ReadAllText(CommunityFiltersPath))
-                : new ThunderstoreCommunityFilters();
-        }
-        catch (Exception exception) when (exception is IOException or ArgumentException)
-        {
-            _communityFilters = new ThunderstoreCommunityFilters();
-        }
-        return _communityFilters;
-    }
-
-    /// <summary>
-    /// Refreshes community filter metadata while retaining the last usable offline snapshot.
-    /// </summary>
-    /// <param name="cancellationToken">The requested cancellation.</param>
-    /// <returns>The refreshed community choices and section membership.</returns>
-    public async Task<ThunderstoreCommunityFilters> RefreshCommunityFiltersAsync(
-        CancellationToken cancellationToken
-    )
-    {
-        var result = await _client.GetCommunityFiltersAsync(cancellationToken);
-        AtomicTextFile.WriteAllText(CommunityFiltersPath, result.Json);
-        _communityFilters = result.Filters;
-        return _communityFilters;
     }
 
     /// <summary>
@@ -1012,6 +925,8 @@ public sealed class ModPackageStore
         var changes = folders.ToArray();
         Directory.CreateDirectory(_modsRoot);
         Directory.CreateDirectory(Path.Combine(transaction, "previous"));
+        // A repair needs a distinct commit identity even when package metadata is unchanged.
+        replacement.Revision = Guid.NewGuid().ToString("N");
         InstallJournal journal = new InstallJournal
         {
             PreviousRegistry = File.Exists(RegistryPath)
@@ -1083,7 +998,7 @@ public sealed class ModPackageStore
         string current = File.Exists(RegistryPath)
             ? AtomicTextFile.ReadAllText(RegistryPath)
             : string.Empty;
-        if (current != journal.NextRegistry)
+        if (current != journal.NextRegistry || journal.NextRegistry == journal.PreviousRegistry)
         {
             if (current != journal.PreviousRegistry)
                 throw new InvalidDataException(
@@ -1230,7 +1145,7 @@ public sealed class ModPackageStore
         }
         else
         {
-            ContentModDefinition mod = ContentModDefinitionReader.Read(
+            ContentModDefinition mod = ContentFileResolver.ReadModDefinition(
                 Path.Combine(folder, "mod.xml")
             );
             content = new InstalledModContent
@@ -1482,31 +1397,6 @@ public sealed class ModPackageStore
         Path.Combine(_stateRoot, "archives", HashText(packageID + "\0" + version) + ".zip");
 
     /// <summary>
-    /// Validates a public package path segment before accepting catalog data.
-    /// </summary>
-    /// <param name="value">The author or package segment.</param>
-    /// <param name="label">The field being checked.</param>
-    public static void ValidateSegment(string value, string label)
-    {
-        if (string.IsNullOrWhiteSpace(value) || !Regex.IsMatch(value, "^[A-Za-z0-9_-]+$"))
-            throw new InvalidDataException("The listing contains an invalid " + label + ".");
-    }
-
-    /// <summary>
-    /// Checks the numeric distribution version used by Thunderstore.
-    /// </summary>
-    /// <param name="version">The distribution release version.</param>
-    public static void ValidateVersion(string version)
-    {
-        if (
-            !System.Version.TryParse(version, out System.Version parsed)
-            || parsed.Build < 0
-            || parsed.Revision >= 0
-        )
-            throw new InvalidDataException("The listing contains an invalid package version.");
-    }
-
-    /// <summary>
     /// Validates a direct, portable Mods child directory name.
     /// </summary>
     /// <param name="name">The content folder name.</param>
@@ -1585,6 +1475,7 @@ public sealed class ModPackageStore
     [Serializable]
     private sealed class Registry
     {
+        public string Revision = string.Empty;
         public InstalledModPackage[] Packages = Array.Empty<InstalledModPackage>();
     }
 

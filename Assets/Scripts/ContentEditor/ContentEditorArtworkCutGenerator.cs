@@ -12,7 +12,7 @@ internal static class ContentEditorArtworkCutGenerator
     /// <summary>
     /// Encodes an explicitly framed source region at the requested output resolution.
     /// </summary>
-    /// <param name="source">The readable source, including mipmaps for smooth reduction.</param>
+    /// <param name="source">The readable source image.</param>
     /// <param name="crop">The normalized source rectangle entirely inside the image.</param>
     /// <param name="size">The exact output dimensions.</param>
     /// <returns>The cropped PNG bytes.</returns>
@@ -31,9 +31,15 @@ internal static class ContentEditorArtworkCutGenerator
             || crop.yMax > 1
         )
             throw new ArgumentException("Choose a crop inside the source image.");
+        Texture2D filteredSource = new(source.width, source.height, TextureFormat.RGBAFloat, true)
+        {
+            wrapMode = TextureWrapMode.Clamp,
+        };
         Texture2D output = new(size.x, size.y, TextureFormat.RGBA32, false);
         try
         {
+            filteredSource.SetPixels(Array.ConvertAll(source.GetPixels(), Premultiply));
+            filteredSource.Apply(true, false);
             float reduction = Mathf.Max(
                 source.width * crop.width / size.x,
                 source.height * crop.height / size.y
@@ -41,20 +47,22 @@ internal static class ContentEditorArtworkCutGenerator
             float level = Mathf.Clamp(
                 Mathf.Log(Mathf.Max(1, reduction), 2),
                 0,
-                source.mipmapCount - 1
+                filteredSource.mipmapCount - 1
             );
             int lower = Mathf.FloorToInt(level);
-            int upper = Mathf.Min(lower + 1, source.mipmapCount - 1);
+            int upper = Mathf.Min(lower + 1, filteredSource.mipmapCount - 1);
             Color[] pixels = new Color[size.x * size.y];
             for (int y = 0; y < size.y; y++)
             for (int x = 0; x < size.x; x++)
             {
                 float u = crop.x + (x + 0.5f) * crop.width / size.x;
                 float v = crop.y + (y + 0.5f) * crop.height / size.y;
-                pixels[y * size.x + x] = Color.Lerp(
-                    source.GetPixelBilinear(u, v, lower),
-                    source.GetPixelBilinear(u, v, upper),
-                    level - lower
+                pixels[y * size.x + x] = Unpremultiply(
+                    Color.Lerp(
+                        filteredSource.GetPixelBilinear(u, v, lower),
+                        filteredSource.GetPixelBilinear(u, v, upper),
+                        level - lower
+                    )
                 );
             }
             output.SetPixels(pixels);
@@ -64,6 +72,7 @@ internal static class ContentEditorArtworkCutGenerator
         finally
         {
             DestroyTexture(output);
+            DestroyTexture(filteredSource);
         }
     }
 
@@ -431,14 +440,7 @@ internal static class ContentEditorArtworkCutGenerator
             horizontalMix
         );
         Color filtered = Color.LerpUnclamped(lower, upper, y - bottom / width);
-        return filtered.a > 0
-            ? new Color(
-                filtered.r / filtered.a,
-                filtered.g / filtered.a,
-                filtered.b / filtered.a,
-                filtered.a
-            )
-            : Color.clear;
+        return Unpremultiply(filtered);
     }
 
     /// <summary>
@@ -448,6 +450,16 @@ internal static class ContentEditorArtworkCutGenerator
     /// <returns>The corresponding premultiplied pixel.</returns>
     private static Color Premultiply(Color pixel) =>
         new(pixel.r * pixel.a, pixel.g * pixel.a, pixel.b * pixel.a, pixel.a);
+
+    /// <summary>
+    /// Returns straight-alpha color after filtering weighted pixel contributions.
+    /// </summary>
+    /// <param name="pixel">The filtered premultiplied pixel.</param>
+    /// <returns>The color ready for PNG encoding.</returns>
+    private static Color Unpremultiply(Color pixel) =>
+        pixel.a > 0
+            ? new Color(pixel.r / pixel.a, pixel.g / pixel.a, pixel.b / pixel.a, pixel.a)
+            : Color.clear;
 
     /// <summary>
     /// Finds the smallest source rectangle containing pixels that contribute visible alpha.

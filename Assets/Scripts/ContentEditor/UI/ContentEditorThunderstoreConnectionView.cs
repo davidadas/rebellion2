@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -53,6 +54,16 @@ public sealed class ContentEditorThunderstoreConnectionView : MonoBehaviour, ICa
     /// Connects the authored controls when the dialog first becomes active.
     /// </summary>
     private void Awake() => Bind();
+
+    /// <summary>
+    /// Keeps account controls inside a resized window.
+    /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
+    private void OnRectTransformDimensionsChange()
+    {
+        if (_panel != null)
+            UILayout.FitPanel(_panel);
+    }
 
     /// <summary>
     /// Connects authored controls once for runtime and preview presentation.
@@ -141,6 +152,7 @@ public sealed class ContentEditorThunderstoreConnectionView : MonoBehaviour, ICa
         }
 
         _panel.sizeDelta = new Vector2(1040, 740);
+        UILayout.FitPanel(_panel);
         UILayout.SetSourceRect(_heading.rectTransform, 28, 20, 984, 36);
         UILayout.SetSourceRect(_connectionStatus.rectTransform, 28, 656, 680, 60);
         UILayout.SetSourceRect((RectTransform)_connectionCloseButton.transform, 744, 680, 120, 36);
@@ -184,6 +196,7 @@ public sealed class ContentEditorThunderstoreConnectionView : MonoBehaviour, ICa
             footerTop += statusHeight + 12;
         }
         _panel.sizeDelta = new Vector2(480, footerTop + 60);
+        UILayout.FitPanel(_panel);
         UILayout.SetSourceRect(
             (RectTransform)_connectionCloseButton.transform,
             336,
@@ -219,7 +232,9 @@ public sealed class ContentEditorThunderstoreConnectionView : MonoBehaviour, ICa
         _connectButton.interactable = !busy;
         _disconnectButton.interactable = !busy;
         _token.interactable = !busy;
-        _connectionCloseButton.GetComponentInChildren<TMP_Text>().text = busy ? "Cancel" : "Close";
+        _connectionCloseButton.GetComponentInChildren<TMP_Text>(true).text = busy
+            ? "Cancel"
+            : "Close";
     }
 
     /// <summary>

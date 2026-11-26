@@ -1,5 +1,4 @@
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -46,8 +45,8 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
     [SerializeField]
     private UICheckboxView showDeprecated;
 
-    private readonly List<ContentEditorProjectRowView> localRows = new();
-    private readonly List<ContentEditorProjectRowView> publishedRows = new();
+    private ListView<ContentEditorProjectRowView> localRows;
+    private ListView<ContentEditorProjectRowView> publishedRows;
     private ContentEditorLocalProject[] local = Array.Empty<ContentEditorLocalProject>();
     private ThunderstorePackage[] published = Array.Empty<ThunderstorePackage>();
     private ContentPackEditorProject current;
@@ -87,6 +86,16 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
             || showDeprecated == null
         )
             throw new MissingReferenceException(name + " has incomplete project lists.");
+        localRows = new ListView<ContentEditorProjectRowView>(
+            localScroll.ScrollArea,
+            localTemplate,
+            "LocalProject"
+        );
+        publishedRows = new ListView<ContentEditorProjectRowView>(
+            publishedScroll.ScrollArea,
+            publishedTemplate,
+            "PublishedProject"
+        );
         localScroll.WidthChanged += Render;
         publishedScroll.WidthChanged += Render;
         refresh.onClick.AddListener(RequestRefresh);
@@ -137,14 +146,6 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
             listTop,
             columnWidth + 16,
             Mathf.Max(1, height - listTop)
-        );
-        localScroll.SetContentHeight(
-            localRows.Count(row => row.gameObject.activeSelf)
-                * (ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap)
-        );
-        publishedScroll.SetContentHeight(
-            publishedRows.Count(row => row.gameObject.activeSelf)
-                * (ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap)
         );
         Render();
     }
@@ -260,30 +261,35 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
                     ? "Projects you create or open appear here."
                     : "Working folders on this device."
             );
-        for (int index = 0; index < projects.Length; index++)
-        {
-            ContentEditorLocalProject item = projects[index];
-            ContentEditorProjectRowView row = GetRow(localRows, localTemplate, localScroll, index);
-            bool active = current?.PackRootPath == item.Folder;
-            row.Render(
-                item.Name,
-                item.Error ?? (active ? "Open now · " : "Version ") + item.Version,
-                item.Folder,
-                active ? "Edit" : "Open",
-                item.Error == null && editingEnabled
-                    ? () => OpenRequested?.Invoke(item.Folder)
-                    : null,
-                "Publish…",
-                item.Error == null && editingEnabled
-                    ? () => PublishRequested?.Invoke(item.Folder)
-                    : null
-            );
-            row.SetLayout(
-                index * (ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap),
-                Mathf.Max(1, Mathf.FloorToInt(localScroll.ScrollArea.ViewportWidth))
-            );
-        }
-        FinishRows(localRows, localScroll, projects.Length);
+        int pitch = ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap;
+        localRows.Render(
+            projects,
+            Mathf.Max(0, projects.Length * pitch - ContentEditorProjectRowView.Gap),
+            38,
+            false,
+            pitch,
+            (row, item, index) =>
+            {
+                bool active = current?.PackRootPath == item.Folder;
+                row.Render(
+                    item.Name,
+                    item.Error ?? (active ? "Open now · " : "Version ") + item.Version,
+                    item.Folder,
+                    active ? "Edit" : "Open",
+                    item.Error == null && editingEnabled
+                        ? () => OpenRequested?.Invoke(item.Folder)
+                        : null,
+                    "Publish…",
+                    item.Error == null && editingEnabled
+                        ? () => PublishRequested?.Invoke(item.Folder)
+                        : null
+                );
+                row.SetLayout(
+                    index * pitch,
+                    Mathf.Max(1, Mathf.FloorToInt(localScroll.ScrollArea.ViewportWidth))
+                );
+            }
+        );
         ThunderstorePackage[] visible = published
             .Where(item => showDeprecated.IsChecked || !item.is_deprecated)
             .ToArray();
@@ -297,80 +303,36 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
                     : "No published packages for this team.",
                 false
             );
-        for (int index = 0; index < visible.Length; index++)
-        {
-            ThunderstorePackage item = visible[index];
-            ContentEditorLocalProject linked = projects.FirstOrDefault(project =>
-                project.PackageID == item.full_name && project.Error == null
-            );
-            ContentEditorProjectRowView row = GetRow(
-                publishedRows,
-                publishedTemplate,
-                publishedScroll,
-                index
-            );
-            row.Render(
-                item.name.Replace('_', ' '),
-                item.owner
-                    + " · "
-                    + item.Latest.version_number
-                    + (item.is_deprecated ? " · Deprecated" : string.Empty),
-                linked?.Folder ?? "No local working copy linked",
-                "View page",
-                () => PackagePageRequested?.Invoke(item.package_url),
-                "Edit",
-                linked == null || !editingEnabled
-                    ? null
-                    : () => OpenRequested?.Invoke(linked.Folder)
-            );
-            row.SetLayout(
-                index * (ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap),
-                Mathf.Max(1, Mathf.FloorToInt(publishedScroll.ScrollArea.ViewportWidth))
-            );
-        }
-        FinishRows(publishedRows, publishedScroll, visible.Length);
-    }
-
-    /// <summary>
-    /// Allocates a row only when a list grows beyond its existing pool.
-    /// </summary>
-    /// <param name="rows">The owning row pool.</param>
-    /// <param name="template">The authored row template.</param>
-    /// <param name="scroll">The owning list viewport.</param>
-    /// <param name="index">The required row index.</param>
-    /// <returns>The reusable row.</returns>
-    private static ContentEditorProjectRowView GetRow(
-        List<ContentEditorProjectRowView> rows,
-        ContentEditorProjectRowView template,
-        ScrollAreaLayout scroll,
-        int index
-    )
-    {
-        if (rows.Count <= index)
-            rows.Add(Instantiate(template, scroll.ScrollArea.ContentRoot));
-        return rows[index];
-    }
-
-    /// <summary>
-    /// Hides unused rows and updates the scroll extent.
-    /// </summary>
-    /// <param name="rows">The owning row pool.</param>
-    /// <param name="scroll">The list viewport.</param>
-    /// <param name="count">The displayed row count.</param>
-    private static void FinishRows(
-        List<ContentEditorProjectRowView> rows,
-        ScrollAreaLayout scroll,
-        int count
-    )
-    {
-        for (int index = count; index < rows.Count; index++)
-            rows[index].gameObject.SetActive(false);
-        scroll.SetContentHeight(
-            Mathf.Max(
-                0,
-                count * (ContentEditorProjectRowView.Height + ContentEditorProjectRowView.Gap)
-                    - ContentEditorProjectRowView.Gap
-            )
+        publishedRows.Render(
+            visible,
+            Mathf.Max(0, visible.Length * pitch - ContentEditorProjectRowView.Gap),
+            38,
+            false,
+            pitch,
+            (row, item, index) =>
+            {
+                ContentEditorLocalProject linked = projects.FirstOrDefault(project =>
+                    project.PackageID == item.full_name && project.Error == null
+                );
+                row.Render(
+                    item.name.Replace('_', ' '),
+                    item.owner
+                        + " · "
+                        + item.Latest.version_number
+                        + (item.is_deprecated ? " · Deprecated" : string.Empty),
+                    linked?.Folder ?? "No local working copy linked",
+                    "View page",
+                    () => PackagePageRequested?.Invoke(item.package_url),
+                    "Edit",
+                    linked == null || !editingEnabled
+                        ? null
+                        : () => OpenRequested?.Invoke(linked.Folder)
+                );
+                row.SetLayout(
+                    index * pitch,
+                    Mathf.Max(1, Mathf.FloorToInt(publishedScroll.ScrollArea.ViewportWidth))
+                );
+            }
         );
     }
 
@@ -411,6 +373,8 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
     {
         if (!bound)
             return;
+        localRows.Clear();
+        publishedRows.Clear();
         localScroll.WidthChanged -= Render;
         publishedScroll.WidthChanged -= Render;
         refresh.onClick.RemoveListener(RequestRefresh);

@@ -1,7 +1,6 @@
 using System;
 using System.IO;
 using System.Xml;
-using UnityEngine;
 
 /// <summary>
 /// Describes one known local working folder without loading its inherited game content.
@@ -54,7 +53,7 @@ internal sealed class ContentEditorLocalProject
                 folder,
                 definition.DisplayName,
                 definition.Version,
-                ReadPackageID(folder)
+                ContentEditorPublishingStorage.ReadPackageID(folder)
             );
         }
         catch (Exception exception)
@@ -88,41 +87,6 @@ internal sealed class ContentEditorLocalProject
             project.PackRootPath,
             project.Definition.DisplayName,
             project.Definition.Version,
-            ReadPackageID(project.PackRootPath)
+            ContentEditorPublishingStorage.ReadPackageID(project.PackRootPath)
         );
-
-    /// <summary>
-    /// Reads the local publishing association without treating an invalid draft as a broken project.
-    /// </summary>
-    /// <param name="folder">The authored project folder.</param>
-    /// <returns>The saved team and package identity, or null when no usable association exists.</returns>
-    private static string ReadPackageID(string folder)
-    {
-        string path = Path.Combine(
-            folder,
-            ContentEditorPublishingStorage.DirectoryName,
-            "settings.json"
-        );
-        if (!File.Exists(path))
-            return null;
-        try
-        {
-            ContentEditorPublishingSettings settings =
-                JsonUtility.FromJson<ContentEditorPublishingSettings>(File.ReadAllText(path));
-            if (
-                settings == null
-                || string.IsNullOrWhiteSpace(settings.TeamName)
-                || string.IsNullOrWhiteSpace(settings.PackageName)
-            )
-                return null;
-            ModPackageStore.ValidateSegment(settings.TeamName, "publishing team");
-            ModPackageStore.ValidateSegment(settings.PackageName, "package name");
-            return settings.TeamName + "-" + settings.PackageName;
-        }
-        catch (Exception exception)
-            when (exception is IOException or UnauthorizedAccessException or ArgumentException)
-        {
-            return null;
-        }
-    }
 }

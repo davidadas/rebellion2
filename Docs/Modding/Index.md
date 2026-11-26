@@ -263,97 +263,26 @@ also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a l
 
 ## Sharing a mod
 
-### Managing community mods
+### Community mods
 
-Open **Mods** in the content pack editor's menu bar. A project does not need to be open.
-The shared menu bar stays available; choose **Editor** to return to the current project.
-Use **Browse** to search the Rebellion 2 Thunderstore community. **Install** on a listing installs
-its latest release and declared package dependencies. Open its details to choose another version. The release selector also allows installing an older
-published version. **Install from file…** installs a mod ZIP from your computer.
+Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
+choose the default pack or enable add-ons for the next game startup. **Install from file…**
+accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
 
-Search matches every entered word across names, creators, descriptions, and categories, ignoring
-spacing, punctuation, and accents. Use **Ctrl+F** (**Command+F** on Mac) to focus search. Filter by
-category or installation status under **Filters**, and sort by relevance, downloads, likes, update
-date, creation date, or name. Cards show community likes and total downloads across all releases.
-**Clear filters** resets the query and filters while retaining your chosen sorting.
+### Publishing a content pack
 
-**Installed** includes downloaded packages and manually installed content. Select a content pack
-with **Set as active pack**, or enable and disable add-ons. The active pack is the default when
-starting the game. Close the game before changing installed
-files. Missing base packs and incompatible base versions appear in the package details. Official
-content packs remain managed by the launcher.
+Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
+description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
+base pack, under **Dependencies**.
+**Save draft** retains unfinished work; **Export ZIP…** creates a package for manual upload.
 
-Downloads go into the existing `Mods` directory beside `Content`. Updates refuse to overwrite
-local edits or content used by the open editor project. Uninstalling retains removed files under
-`.mod-manager/removed`, beside `Mods`. Package records, cached listings, and downloaded archives
-also live under `.mod-manager`. The manager keeps distribution versions separate from the
-versions authored in `pack.xml` or `mod.xml`; saves still require their recorded content versions.
+For direct publishing, click the Thunderstore connection link. Create a service account in
+[your team's settings](https://thunderstore.io/settings/teams/) and paste its token. The token is
+stored in the operating system's credential store, never in the project or export. Linux requires
+libsecret and a running Secret Service. Click the connection link after restarting to reconnect.
 
-### Managing your projects
-
-**Projects** automatically finds existing working packs in `Mods`, independently of your Thunderstore
-connection. Managed downloads and ZIP imports remain in Library. Other folders you create or open
-are remembered across restarts. Use **Open project…** to add a working folder stored elsewhere.
-Choose **Edit** to resume the current editor, or **Open** to switch folders; pending edits are protected.
-Each available local project also has a **Publish…** action.
-
-After connecting, **Published packages** shows the connected team's Rebellion 2 uploads. Deprecated
-packages are hidden unless you select **Show deprecated**. **View page** opens the package on
-Thunderstore. When a local project's saved publishing draft identifies that team and package,
-an **Edit** action opens its working copy.
-**Refresh** reloads the online list without accessing stored credentials. Disconnecting clears the
-team's listings while keeping your local projects available.
-
-### Exporting a content pack for Thunderstore
-
-Open an editable project, then choose **Publish…** in the shared toolbar or **File > Publish...**. Enter a package name, short description,
-readme, and an optional website. Choose a PNG or JPEG, then position the crop box to create a
-256 × 256 PNG icon. The **Release** page uses the pack's
-version and accepts release notes. Under **Dependencies (optional)**, choose **Choose packages…**
-to search and select required Thunderstore packages. Each selected package has a published-version
-selector and a **Remove** button. Saved version choices stay pinned when the catalogue refreshes.
-Required listing fields and the icon must be valid before continuing to Release, and release
-details must be valid before continuing to Review. Step headings enforce the same requirements.
-The required base content pack is still declared in `pack.xml`; it is not automatically
-distributed as a Thunderstore dependency.
-
-Select **Review release**, then **Export ZIP…**. The editor validates the current project
-snapshot and writes the Thunderstore metadata alongside `Mods/<pack ID>/pack.xml` and the pack's
-local files. Unedited inherited content is excluded. Validation failure or cancellation preserves
-an existing archive. Exporting does not save pending game-definition edits to the working project.
-
-**Save draft** retains the listing and icon in the working project's `.publishing` folder. Closing
-the publishing dialog also saves the draft. Publishing drafts are excluded from ordinary pack
-exports, Thunderstore packages, and editor test-game snapshots.
-
-The shared header shows whether Thunderstore is connected, disconnected, or could not be verified.
-Startup shows **Thunderstore (click to connect)** without accessing the credential store. Click the header
-status or **Connect Thunderstore…** to check the saved token before opening setup. A valid saved token
-connects immediately; setup opens only when no token is saved or the check needs attention.
-The shared connection dialog does not require an open project. Once connected, it shows a compact
-team summary and **Disconnect**; token instructions appear only when setting up a connection.
-
-To publish directly, choose **Connect Thunderstore…** in the publishing dialog. Select **Open team settings**,
-choose your Thunderstore team, and create a service account. Paste its token into the masked field
-and select **Connect**. After validation, the toolkit automatically saves the token in macOS Keychain,
-Windows Credential Manager, or Linux Secret Service. After restarting, click the header status to
-restore that connection. **Disconnect** removes the saved token from this device.
-
-The token is never saved in the project or included in an export. If secure storage cannot be accessed,
-Connect reports the failure and retains the entered token for retry; it does not silently
-fall back to a temporary connection. Linux requires libsecret and an active Secret Service provider.
-
-On **Review**, choose the publishing team and select **Publish release**. The toolkit validates the
-snapshot, uploads the archive with progress, and submits the release to the Rebellion 2 community.
-Use **Cancel** or Escape to stop an operation. If a connection fails after submission, publication
-may still complete; check **View package page** before trying again. An already-published version
-cannot be overwritten: increment the content pack version to publish another release.
-
-**Export ZIP…** remains available for uploading manually at
-[the Rebellion 2 Thunderstore community](https://thunderstore.io/c/rebellion-2/).
-For manual installation, extract its `Mods` folder beside the installed `Content` folder. This
-workflow exports selectable content packs; add-on mods still use the separate `mod.xml` format
-described above. The editor does not upload releases or install community packages automatically.
+Select **Review release**, then **Publish release**. Every update needs a new content-pack version.
+If submission times out, check the package's Thunderstore page before retrying.
 
 ### Sharing an add-on mod
 

@@ -73,6 +73,9 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "appearance", appearance);
         ContentPackEditorController controller = root.AddComponent<ContentPackEditorController>();
         Assign(controller, "view", view);
+        SerializedObject controllerSettings = new(controller);
+        controllerSettings.FindProperty("gameProductName").stringValue = PlayerSettings.productName;
+        controllerSettings.ApplyModifiedPropertiesWithoutUndo();
 
         AudioSource previewAudio = canvasRoot.gameObject.AddComponent<AudioSource>();
         previewAudio.playOnAwake = false;
@@ -1257,9 +1260,14 @@ public static class ContentPackEditorPrefabBuilder
     {
         RectTransform welcome = Layer("Welcome", parent);
         Stretch(welcome, 0, 76, 0, 40);
-        RectTransform actions = Layer("Projects", welcome);
-        actions.anchorMin = actions.anchorMax = actions.pivot = new Vector2(0.5f, 0.5f);
-        actions.sizeDelta = new Vector2(1120, 720);
+        ScrollAreaLayout pageScroll = Scroll("ProjectsPage", welcome, 8, 8);
+        RectTransform page = (RectTransform)pageScroll.transform;
+        page.anchorMin = page.anchorMax = page.pivot = new Vector2(0.5f, 0.5f);
+        page.sizeDelta = new Vector2(1136, 720);
+        page.anchoredPosition = new Vector2(8, 0);
+        Assign(view, "projectsPage", pageScroll);
+        RectTransform actions = Layer("Projects", pageScroll.ScrollArea.ContentRoot);
+        Rect(actions, 0, 0, 1120, 720);
         Assign(view, "projectHub", actions);
         TextMeshProUGUI title = Label("Title", actions, "Projects", 36);
         Rect(title.rectTransform, 0, 32, 640, 48);
@@ -1680,6 +1688,7 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform rect = panel.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(920, 712);
+        Assign(view, "panel", rect);
         Rect(Label("Heading", rect, "Crop image", 24).rectTransform, 28, 20, 864, 36);
         TextMeshProUGUI description = Label("Description", rect, string.Empty, 14, true);
         Rect(description.rectTransform, 28, 64, 864, 28);
@@ -1722,7 +1731,7 @@ public static class ContentPackEditorPrefabBuilder
             Label(
                 "Instructions",
                 rect,
-                "Move the box. Drag a corner to resize.",
+                "Move the box or use arrow keys. Drag a corner to resize.",
                 14,
                 true
             ).rectTransform,
@@ -1894,21 +1903,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "search", search);
         ActionButton(view, rect, "clearSearchButton", "×", 0, 0, 44, true);
         ActionButton(view, rect, "filterButton", "Filters", 0, 0, 112);
-        Selector(
-            view,
-            rect,
-            "sorting",
-            304,
-            new[]
-            {
-                "Best match",
-                "Most downloaded",
-                "Recently updated",
-                "Newest",
-                "Name (A–Z)",
-                "Most liked",
-            }
-        );
+        Assign(view, "sorting", Dropdown("sorting", rect));
         Assign(
             view,
             "resultCount",
@@ -1980,21 +1975,22 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorModFiltersView filters =
             strip.gameObject.AddComponent<ContentEditorModFiltersView>();
         Assign(view, "filters", filters);
-        Assign(
-            filters,
-            "headings",
-            new[] { "Section", "Installation", "Include categories", "Exclude categories" }
-                .Select(text => Label(text + "Label", strip.transform, text, 13, true))
-                .ToArray()
-        );
+        foreach (
+            (string Field, string Label) heading in new[]
+            {
+                (Field: "sectionHeading", Label: "Section"),
+                (Field: "installationHeading", Label: "Installation"),
+                (Field: "includedHeading", Label: "Include categories"),
+                (Field: "excludedHeading", Label: "Exclude categories"),
+            }
+        )
+            Assign(
+                filters,
+                heading.Field,
+                Label(heading.Field, strip.transform, heading.Label, 13, true)
+            );
         Selector(filters, strip.transform, "section", 240, new[] { "All sections" });
-        Selector(
-            filters,
-            strip.transform,
-            "installation",
-            240,
-            new[] { "All mods", "Not installed", "Installed", "Updates available", "Local content" }
-        );
+        Assign(filters, "installation", Dropdown("installation", strip.transform));
         Assign(
             filters,
             "includeCategories",
@@ -2008,7 +2004,7 @@ public static class ContentPackEditorPrefabBuilder
         TMP_Text help = Label(
             "CategoryHelp",
             strip.transform,
-            "Match any included category; exclusions take precedence.",
+            "Match any included category.",
             12,
             true
         );
@@ -2042,6 +2038,7 @@ public static class ContentPackEditorPrefabBuilder
             true
         );
         clear.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.MidlineRight;
+        Assign(filters, "clearButton", clear);
         filters.SetWidth(1120);
         strip.gameObject.SetActive(false);
     }
@@ -2354,6 +2351,7 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform rect = panel.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(1040, 730);
+        Assign(view, "_panel", rect);
         Rect(
             Label("Heading", rect, "Prepare a Thunderstore release", 24).rectTransform,
             28,

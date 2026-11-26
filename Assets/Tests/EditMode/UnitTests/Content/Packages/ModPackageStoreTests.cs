@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using NUnit.Framework;
+using UnityEngine;
 
 namespace Rebellion.Tests.Content.Packages
 {
@@ -39,6 +40,79 @@ namespace Rebellion.Tests.Content.Packages
         {
             if (Directory.Exists(folder))
                 Directory.Delete(folder, true);
+        }
+
+        [Test]
+        public async Task RecoverInterruptedInstallations_UnchangedReceiptDuringDependencyRepair_RestoresPreviousFilesAsync()
+        {
+            await InstallDependencyPairAsync();
+            string state = Path.GetDirectoryName(store.Catalog.CachePath);
+            string registry = File.ReadAllText(Path.Combine(state, "installed.json"));
+            string transaction = Path.Combine(state, "transactions", "interrupted-repair");
+            string backup = new string('A', 64);
+            Directory.CreateDirectory(Path.Combine(transaction, "previous"));
+            Directory.Move(
+                Path.GetDirectoryName(PayloadPath("Dependency")),
+                Path.Combine(transaction, "previous", backup)
+            );
+            var journal = new RecoveryJournal
+            {
+                PreviousRegistry = registry,
+                NextRegistry = registry,
+                RetainPrevious = false,
+                Changes = new[]
+                {
+                    new RecoveryChange
+                    {
+                        Folder = "Dependency",
+                        Backup = backup,
+                        HadPrevious = true,
+                    },
+                    new RecoveryChange
+                    {
+                        Folder = "Parent",
+                        Backup = new string('B', 64),
+                        HadPrevious = true,
+                    },
+                },
+            };
+            File.WriteAllText(
+                Path.Combine(transaction, "pending.json"),
+                JsonUtility.ToJson(journal)
+            );
+
+            store.RecoverInterruptedInstallations();
+
+            Assert.That(
+                File.ReadAllText(PayloadPath("Dependency")),
+                Is.EqualTo("Original payload")
+            );
+            Assert.That(File.ReadAllText(PayloadPath("Parent")), Is.EqualTo("Original payload"));
+            Assert.That(store.GetInstalled().Count, Is.EqualTo(2));
+            Assert.That(Directory.Exists(transaction), Is.False);
+        }
+
+        [Test]
+        public async Task InstallAsync_RepairLeavesPackageMetadataUnchanged_PublishesDistinctCommitIdentityAsync()
+        {
+            ThunderstorePackage package = await ImportAsync("Root");
+            File.Delete(PayloadPath("Root"));
+            await InstallAsync(package);
+            string path = Path.Combine(
+                Path.GetDirectoryName(store.Catalog.CachePath),
+                "installed.json"
+            );
+            string previous = File.ReadAllText(path);
+            File.Delete(PayloadPath("Root"));
+
+            await InstallAsync(package);
+
+            Assert.That(File.ReadAllText(PayloadPath("Root")), Is.EqualTo("Original payload"));
+            Assert.That(
+                File.ReadAllText(path),
+                Is.Not.EqualTo(previous),
+                "Recovery must distinguish a completed repair from its initial state."
+            );
         }
 
         [Test]
@@ -115,7 +189,7 @@ namespace Rebellion.Tests.Content.Packages
             ThunderstorePackage package = await ImportAsync("Sample");
             string cache = Directory
                 .GetFiles(
-                    Path.GetDirectoryName(store.CatalogPath),
+                    Path.GetDirectoryName(store.Catalog.CachePath),
                     "*.zip",
                     SearchOption.AllDirectories
                 )
@@ -135,7 +209,7 @@ namespace Rebellion.Tests.Content.Packages
             ThunderstorePackage package = await ImportAsync("Sample");
             string cache = Directory
                 .GetFiles(
-                    Path.GetDirectoryName(store.CatalogPath),
+                    Path.GetDirectoryName(store.Catalog.CachePath),
                     "*.zip",
                     SearchOption.AllDirectories
                 )
@@ -363,5 +437,22 @@ namespace Rebellion.Tests.Content.Packages
         /// <returns>The installed payload path.</returns>
         private string PayloadPath(string name) =>
             Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRoot), name, "payload.txt");
+
+        [Serializable]
+        private sealed class RecoveryJournal
+        {
+            public string PreviousRegistry;
+            public string NextRegistry;
+            public RecoveryChange[] Changes;
+            public bool RetainPrevious;
+        }
+
+        [Serializable]
+        private sealed class RecoveryChange
+        {
+            public string Folder;
+            public string Backup;
+            public bool HadPrevious;
+        }
     }
 }

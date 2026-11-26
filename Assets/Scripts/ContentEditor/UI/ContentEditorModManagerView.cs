@@ -180,7 +180,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     internal bool IsChangingFiles => browseLocked;
     internal string Search => search.text;
     internal ContentEditorModFiltersView Filters => filters;
-    internal ContentEditorModSort Sort => (ContentEditorModSort)sorting.value;
+    internal ContentEditorModSort Sort =>
+        ((DropdownOption<ContentEditorModSort>)sorting.options[sorting.value]).Value;
 
     /// <summary>
     /// Connects the authored controls once.
@@ -254,6 +255,22 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         search.onValueChanged.AddListener(Find);
         versions.onValueChanged.AddListener(SelectVersion);
         filters.Changed += ChangeFilters;
+        sorting.options = new List<TMP_Dropdown.OptionData>
+        {
+            new DropdownOption<ContentEditorModSort>(ContentEditorModSort.Relevance, "Best match"),
+            new DropdownOption<ContentEditorModSort>(
+                ContentEditorModSort.Downloads,
+                "Most downloaded"
+            ),
+            new DropdownOption<ContentEditorModSort>(
+                ContentEditorModSort.Updated,
+                "Recently updated"
+            ),
+            new DropdownOption<ContentEditorModSort>(ContentEditorModSort.Newest, "Newest"),
+            new DropdownOption<ContentEditorModSort>(ContentEditorModSort.Name, "Name (A–Z)"),
+            new DropdownOption<ContentEditorModSort>(ContentEditorModSort.Likes, "Most liked"),
+        };
+        sorting.RefreshShownValue();
         sorting.onValueChanged.AddListener(ChangeCriteria);
         clearSearchButton.onClick.AddListener(ClearSearch);
         resetButton.onClick.AddListener(ResetFilters);
@@ -346,9 +363,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             sortWidth,
             44
         );
-        UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, 176);
         filters.SetWidth(width);
-        UILayout.SetTopRightRect((RectTransform)resetButton.transform, 16, 118, 176, 44);
+        UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, filters.Height);
         int packWidth = Mathf.Min(440, Mathf.FloorToInt(width * 0.45f));
         UILayout.SetSourceRect((RectTransform)defaultPackControls.transform, 0, 112, width, 72);
         UILayout.SetSourceRect(defaultPackDescription, 0, 0, width - packWidth - 24, 72);
@@ -486,7 +502,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             0,
             inlineFilterHeight > 0 ? 0 : 176,
             Mathf.FloorToInt(panel.rect.width),
-            176
+            filters.Height
         );
         RectTransform viewport = (RectTransform)packages.transform;
         viewport.offsetMin = new Vector2(viewport.offsetMin.x, hasStatus ? statusHeight + 16 : 0);

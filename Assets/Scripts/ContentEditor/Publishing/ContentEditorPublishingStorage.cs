@@ -1,5 +1,7 @@
+using System;
 using System.IO;
 using System.Text.RegularExpressions;
+using Rebellion.Util.IO;
 using UnityEngine;
 
 /// <summary>
@@ -18,7 +20,9 @@ internal static class ContentEditorPublishingStorage
     {
         string path = Path.Combine(project.PackRootPath, DirectoryName, "settings.json");
         ContentEditorPublishingSettings settings = File.Exists(path)
-            ? JsonUtility.FromJson<ContentEditorPublishingSettings>(File.ReadAllText(path))
+            ? JsonUtility.FromJson<ContentEditorPublishingSettings>(
+                AtomicTextFile.ReadAllText(path)
+            )
             : new ContentEditorPublishingSettings
             {
                 PackageName = Regex.Replace(project.Definition.ID, "[^A-Za-z0-9_]", "_"),
@@ -125,6 +129,44 @@ internal static class ContentEditorPublishingStorage
                 UnityEngine.Object.Destroy(texture);
             else
                 UnityEngine.Object.DestroyImmediate(texture);
+        }
+    }
+
+    /// <summary>
+    /// Reads the local publishing association without treating an invalid draft as a broken project.
+    /// </summary>
+    /// <param name="folder">The authored project folder.</param>
+    /// <returns>The saved team and package identity, or null when no usable association exists.</returns>
+    internal static string ReadPackageID(string folder)
+    {
+        string path = Path.Combine(folder, DirectoryName, "settings.json");
+        if (!File.Exists(path))
+            return null;
+        try
+        {
+            ContentEditorPublishingSettings settings =
+                JsonUtility.FromJson<ContentEditorPublishingSettings>(
+                    AtomicTextFile.ReadAllText(path)
+                );
+            if (
+                settings == null
+                || string.IsNullOrWhiteSpace(settings.TeamName)
+                || string.IsNullOrWhiteSpace(settings.PackageName)
+            )
+                return null;
+            ThunderstorePackage.ValidateName(settings.TeamName, "publishing team");
+            ThunderstorePackage.ValidateName(settings.PackageName, "package name");
+            return settings.TeamName + "-" + settings.PackageName;
+        }
+        catch (Exception exception)
+            when (exception
+                    is IOException
+                        or InvalidDataException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+            )
+        {
+            return null;
         }
     }
 }

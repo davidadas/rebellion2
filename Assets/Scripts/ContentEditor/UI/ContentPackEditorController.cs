@@ -16,6 +16,9 @@ public sealed class ContentPackEditorController : MonoBehaviour
 {
     [SerializeField]
     private ContentPackEditorView view;
+
+    [SerializeField]
+    private string gameProductName;
     private string contentRootPath;
     private ContentPackEditorProject project;
     private ContentPackEditorWorkspaceController workspace;
@@ -41,6 +44,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// </summary>
     private void Awake()
     {
+        UserDataPaths.ConfigureGameProfile(gameProductName);
         if (view == null)
             throw new MissingReferenceException("ContentPackEditorController has no view.");
         workspace = new ContentPackEditorWorkspaceController(view);
@@ -2177,7 +2181,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             ContentEditorPublishingSettings settings = ContentEditorPublishingStorage.Load(project);
             view.Publishing.Show(project.Definition, settings);
-            view.Publishing.Dependencies.SetCatalog(packageStore.ReadCatalog());
+            view.Publishing.Dependencies.SetCatalog(packageStore.Catalog.Read());
             view.Publishing.RenderConnection(publisher.Teams);
             publishedPackageUrl = null;
             view.Publishing.SetPublished(false);
@@ -2322,11 +2326,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 try
                 {
                     view.Publishing.ShowStatus("Loading Thunderstore packages…");
-                    catalog = await packageStore.RefreshCatalogAsync(cancellationToken);
+                    catalog = await packageStore.Catalog.RefreshAsync(cancellationToken);
                 }
                 catch (IOException)
                 {
-                    catalog = packageStore.ReadCatalog();
+                    catalog = packageStore.Catalog.Read();
                     if (catalog.Length == 0)
                     {
                         view.Publishing.ShowStatus(

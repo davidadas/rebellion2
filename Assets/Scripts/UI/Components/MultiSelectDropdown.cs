@@ -33,14 +33,19 @@ public sealed class MultiSelectDropdown : MonoBehaviour
     [SerializeField]
     private Button clear;
 
-    private readonly List<UICheckboxView> rows = new();
-    private readonly List<UnityAction<bool>> handlers = new();
+    private ListView<UICheckboxView> list;
+    private readonly Dictionary<
+        UICheckboxView,
+        (UnityAction<bool> Changed, Action Selected)
+    > handlers = new();
+    private IReadOnlyList<UICheckboxView> Rows => list.Rows;
     private readonly HashSet<string> selected = new(StringComparer.OrdinalIgnoreCase);
     private KeyValuePair<string, string>[] options = Array.Empty<KeyValuePair<string, string>>();
     private string emptyCaption;
     private GameObject blocker;
     private bool bound;
-    public event Action<string[]> Changed;
+    public event Action Changed;
+    public IReadOnlyCollection<string> SelectedValues => selected;
     public bool IsExpanded => popup && popup.gameObject.activeSelf;
 
     /// <summary>
@@ -66,30 +71,56 @@ public sealed class MultiSelectDropdown : MonoBehaviour
             throw new MissingReferenceException(
                 name + " has incomplete multi-select dropdown references."
             );
+        list = new ListView<UICheckboxView>(
+            scroll.ScrollArea,
+            rowTemplate,
+            "Option",
+            BindRow,
+            UnbindRow
+        );
         control.onClick.AddListener(TogglePopup);
         clear.onClick.AddListener(ClearSelection);
         bound = true;
     }
 
     /// <summary>
-    /// Replaces option metadata and checked values without raising a selection event.
+    /// Replaces option metadata while retaining the control’s selected values.
     /// </summary>
     /// <param name="choices">The available option keys and display names.</param>
-    /// <param name="values">The selected keys.</param>
     /// <param name="empty">The caption for an empty selection.</param>
-    public void Render(
-        IReadOnlyDictionary<string, string> choices,
-        IEnumerable<string> values,
-        string empty
-    )
+    public void SetOptions(IReadOnlyDictionary<string, string> choices, string empty)
     {
         Bind();
         options = choices
             .OrderBy(option => option.Value, StringComparer.OrdinalIgnoreCase)
             .ToArray();
-        selected.Clear();
-        selected.UnionWith(values);
         emptyCaption = empty;
+        RenderCaption();
+        if (IsExpanded)
+            RenderRows();
+    }
+
+    /// <summary>
+    /// Removes values excluded by a related selector without emitting another user action.
+    /// </summary>
+    /// <param name="values">The values that may no longer be selected.</param>
+    public void DeselectWithoutNotify(IEnumerable<string> values)
+    {
+        int count = selected.Count;
+        selected.ExceptWith(values);
+        if (count == selected.Count)
+            return;
+        RenderCaption();
+        if (IsExpanded)
+            RenderRows();
+    }
+
+    /// <summary>
+    /// Resets the selection as part of a containing form's single clear action.
+    /// </summary>
+    public void ClearWithoutNotify()
+    {
+        selected.Clear();
         RenderCaption();
         if (IsExpanded)
             RenderRows();
@@ -137,8 +168,8 @@ public sealed class MultiSelectDropdown : MonoBehaviour
         RenderRows();
         scroll.SetContentHeight(options.Length * _rowHeight, true);
         CreateBlocker(root, popupCanvas.sortingOrder - 1);
-        if (rows.Count > 0 && EventSystem.current != null)
-            EventSystem.current.SetSelectedGameObject(rows[0].gameObject);
+        if (Rows.Count > 0 && EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(Rows[0].gameObject);
     }
 
     /// <summary>
@@ -159,52 +190,72 @@ public sealed class MultiSelectDropdown : MonoBehaviour
         UILayout.SetSourceRect((RectTransform)clear.transform, 8, height - 36, width - 16, 28);
         scroll.SetContentHeight(options.Length * _rowHeight);
         int rowWidth = Mathf.RoundToInt(scroll.ScrollArea.ViewportWidth);
-        for (int index = 0; index < options.Length; index++)
-        {
-            if (rows.Count <= index)
+        list.Render(
+            options,
+            options.Length * _rowHeight,
+            _rowHeight,
+            false,
+            _rowHeight,
+            (row, option, index) =>
             {
-                int rowIndex = index;
-                UICheckboxView checkbox = Instantiate(rowTemplate, scroll.ScrollArea.ContentRoot);
-                UnityAction<bool> handler = value => ChangeOption(rowIndex, value);
-                checkbox.GetComponent<Toggle>().onValueChanged.AddListener(handler);
-                rows.Add(checkbox);
-                handlers.Add(handler);
+                UILayout.SetSourceRect(
+                    (RectTransform)row.transform,
+                    0,
+                    index * _rowHeight,
+                    rowWidth,
+                    _rowHeight
+                );
+                TMP_Text label = row.GetComponentInChildren<TMP_Text>(true);
+                label.text = option.Value;
+                UILayout.SetSourceRect(label.rectTransform, 32, 0, rowWidth - 36, _rowHeight);
+                row.SetIsCheckedWithoutNotify(selected.Contains(option.Key));
+                Navigation navigation = new()
+                {
+                    mode = Navigation.Mode.Explicit,
+                    selectOnUp = index == 0 ? control : Rows[index - 1].GetComponent<Toggle>(),
+                    selectOnDown = clear,
+                };
+                row.GetComponent<Toggle>().navigation = navigation;
+                if (index > 0)
+                {
+                    Toggle previous = Rows[index - 1].GetComponent<Toggle>();
+                    navigation = previous.navigation;
+                    navigation.selectOnDown = row.GetComponent<Toggle>();
+                    previous.navigation = navigation;
+                }
             }
-            UICheckboxView row = rows[index];
-            row.gameObject.SetActive(true);
-            UILayout.SetSourceRect(
-                (RectTransform)row.transform,
-                0,
-                index * _rowHeight,
-                rowWidth,
-                _rowHeight
-            );
-            TMP_Text label = row.GetComponentInChildren<TMP_Text>(true);
-            label.text = options[index].Value;
-            UILayout.SetSourceRect(label.rectTransform, 32, 0, rowWidth - 36, _rowHeight);
-            row.SetIsCheckedWithoutNotify(selected.Contains(options[index].Key));
-            Navigation navigation = new()
-            {
-                mode = Navigation.Mode.Explicit,
-                selectOnUp = index == 0 ? control : rows[index - 1].GetComponent<Toggle>(),
-                selectOnDown = clear,
-            };
-            row.GetComponent<Toggle>().navigation = navigation;
-            if (index > 0)
-            {
-                Toggle previous = rows[index - 1].GetComponent<Toggle>();
-                navigation = previous.navigation;
-                navigation.selectOnDown = row.GetComponent<Toggle>();
-                previous.navigation = navigation;
-            }
-        }
-        for (int index = options.Length; index < rows.Count; index++)
-            rows[index].gameObject.SetActive(false);
+        );
         clear.interactable = selected.Count > 0;
         RectTransform canvas = (RectTransform)GetComponentInParent<Canvas>().rootCanvas.transform;
         Vector3 bottom = canvas.InverseTransformPoint(popup.TransformPoint(popup.rect.min));
         if (bottom.y < canvas.rect.yMin + 8)
             UILayout.SetSourceRect(popup, 0, -height - 4, width, height);
+    }
+
+    /// <summary>
+    /// Binds an option row to its current list position.
+    /// </summary>
+    /// <param name="row">The new checkbox row.</param>
+    /// <param name="index">Its option position.</param>
+    private void BindRow(UICheckboxView row, int index)
+    {
+        UnityAction<bool> changed = value => ChangeOption(index, value);
+        Action selectedRow = () =>
+            scroll.ScrollArea.RevealContentRect(index * _rowHeight, _rowHeight);
+        handlers.Add(row, (changed, selectedRow));
+        row.GetComponent<Toggle>().onValueChanged.AddListener(changed);
+        row.Selected += selectedRow;
+    }
+
+    /// <summary>
+    /// Releases a removed checkbox row's event handler.
+    /// </summary>
+    /// <param name="row">The removed checkbox row.</param>
+    private void UnbindRow(UICheckboxView row)
+    {
+        row.GetComponent<Toggle>().onValueChanged.RemoveListener(handlers[row].Changed);
+        row.Selected -= handlers[row].Selected;
+        handlers.Remove(row);
     }
 
     /// <summary>
@@ -222,7 +273,7 @@ public sealed class MultiSelectDropdown : MonoBehaviour
             selected.Remove(options[index].Key);
         RenderCaption();
         clear.interactable = selected.Count > 0;
-        Changed?.Invoke(selected.ToArray());
+        Changed?.Invoke();
     }
 
     /// <summary>
@@ -233,7 +284,7 @@ public sealed class MultiSelectDropdown : MonoBehaviour
         selected.Clear();
         RenderCaption();
         RenderRows();
-        Changed?.Invoke(Array.Empty<string>());
+        Changed?.Invoke();
     }
 
     /// <summary>
@@ -292,6 +343,7 @@ public sealed class MultiSelectDropdown : MonoBehaviour
     /// </summary>
     private void Hide()
     {
+        bool expanded = IsExpanded;
         if (popup != null)
             popup.gameObject.SetActive(false);
         if (blocker != null)
@@ -302,7 +354,13 @@ public sealed class MultiSelectDropdown : MonoBehaviour
                 DestroyImmediate(blocker);
             blocker = null;
         }
-        if (control && control.IsActive() && EventSystem.current != null)
+        if (
+            expanded
+            && control
+            && control.interactable
+            && control.IsActive()
+            && EventSystem.current != null
+        )
             EventSystem.current.SetSelectedGameObject(control.gameObject);
     }
 
@@ -321,8 +379,6 @@ public sealed class MultiSelectDropdown : MonoBehaviour
             return;
         control.onClick.RemoveListener(TogglePopup);
         clear.onClick.RemoveListener(ClearSelection);
-        for (int index = 0; index < rows.Count; index++)
-            if (rows[index] != null)
-                rows[index].GetComponent<Toggle>().onValueChanged.RemoveListener(handlers[index]);
+        list.Clear();
     }
 }

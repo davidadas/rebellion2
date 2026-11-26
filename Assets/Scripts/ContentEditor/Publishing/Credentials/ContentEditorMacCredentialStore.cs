@@ -83,7 +83,10 @@ internal sealed class ContentEditorMacCredentialStore : ContentEditorCredentialS
             query.SetText("kSecAttrLabel", _label);
             status = SecItemAdd(query.Handle, IntPtr.Zero);
             if (status == -25299)
-                status = SecItemUpdate(query.Handle, changes.Handle);
+            {
+                using MacDictionary match = CreateQuery();
+                status = SecItemUpdate(match.Handle, changes.Handle);
+            }
         }
         if (status != 0)
             throw Failure("save", status);

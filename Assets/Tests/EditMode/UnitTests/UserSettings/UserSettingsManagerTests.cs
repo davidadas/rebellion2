@@ -15,6 +15,88 @@ namespace Rebellion.Tests.Managers
     [TestFixture]
     public sealed class UserSettingsManagerTests
     {
+        [Test]
+        public void Save_AnotherInstanceChangedContent_PreservesPackAndAddOnsAcrossRepeatedSaves()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "shared-content-settings-" + Guid.NewGuid().ToString("N")
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                var game = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                game.Load();
+                game.Settings.Content.ActivePackID = "Original";
+                game.Settings.Content.ActiveScenarioID = "OriginalScenario";
+                game.Settings.Content.DisabledModIDs = new[] { "EnableMe", "KeepDisabled" };
+                game.Save();
+                var toolkit = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                toolkit.Load();
+                toolkit.Settings.Content.ActivePackID = "NewPack";
+                toolkit.Settings.Content.ActiveScenarioID = "NewScenario";
+                toolkit.Settings.Content.DisabledModIDs = new[] { "KeepDisabled", "NewDisabled" };
+                toolkit.Save();
+
+                game.Settings.Gameplay.ShowMissionOdds = false;
+                game.Save();
+                game.Settings.Gameplay.ShowMissionOdds = true;
+                game.Save();
+                var restarted = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                restarted.Load();
+
+                Assert.That(restarted.Settings.Content.ActivePackID, Is.EqualTo("NewPack"));
+                Assert.That(restarted.Settings.Content.ActiveScenarioID, Is.EqualTo("NewScenario"));
+                CollectionAssert.AreEquivalent(
+                    new[] { "KeepDisabled", "NewDisabled" },
+                    restarted.Settings.Content.DisabledModIDs
+                );
+                Assert.That(restarted.Settings.Gameplay.ShowMissionOdds, Is.True);
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void Save_BothInstancesChangeDifferentAddOns_MergesTheirChanges()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "shared-content-settings-" + Guid.NewGuid().ToString("N")
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                var first = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                first.Load();
+                first.Settings.Content.ActivePackID = "Pack";
+                first.Settings.Content.DisabledModIDs = new[] { "EnableMe" };
+                first.Save();
+                var second = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                second.Load();
+                second.Settings.Content.DisabledModIDs = new[] { "EnableMe", "DisableMe" };
+                second.Save();
+
+                first.Settings.Content.DisabledModIDs = Array.Empty<string>();
+                first.Save();
+
+                var restarted = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                restarted.Load();
+                CollectionAssert.AreEqual(
+                    new[] { "DisableMe" },
+                    restarted.Settings.Content.DisabledModIDs
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void Save_UnrecoverableRebind_PreservesSavedBindings(bool reapply)

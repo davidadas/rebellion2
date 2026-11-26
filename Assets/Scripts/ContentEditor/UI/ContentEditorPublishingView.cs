@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -10,6 +11,9 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
 {
+    [SerializeField]
+    private RectTransform _panel;
+
     [SerializeField]
     private TMP_InputField _packageName;
 
@@ -108,6 +112,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     internal event Action CommunityRequested;
     internal bool IsOpen => gameObject.activeSelf;
     internal ContentEditorDependenciesView Dependencies => _dependencies;
+    internal ContentEditorImageCropView ImageCrop => _imageCrop;
     private IEnumerable<TMP_InputField> Fields =>
         new[] { _packageName, _description, _website, _readme, _changelog };
 
@@ -117,6 +122,16 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     private void Awake() => BindControls();
 
     /// <summary>
+    /// Keeps publishing fields and actions inside a resized window.
+    /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
+    private void OnRectTransformDimensionsChange()
+    {
+        if (_panel != null)
+            UILayout.FitPanel(_panel);
+    }
+
+    /// <summary>
     /// Connects the dialog's controls once, retaining ownership of the matching cleanup.
     /// </summary>
     private void BindControls()
@@ -124,7 +139,8 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         if (_bound)
             return;
         if (
-            _packageName == null
+            _panel == null
+            || _packageName == null
             || _description == null
             || _website == null
             || _readme == null
@@ -219,6 +235,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         ShowStatus(string.Empty);
         SetStep(0);
         gameObject.SetActive(true);
+        UILayout.FitPanel(_panel);
         transform.SetAsLastSibling();
     }
 

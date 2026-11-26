@@ -129,8 +129,8 @@ public sealed class ThunderstoreClient
                 );
             foreach (TeamPackageReference package in result.results)
             {
-                ModPackageStore.ValidateSegment(package.@namespace, "package author");
-                ModPackageStore.ValidateSegment(package.name, "package name");
+                ThunderstorePackage.ValidateName(package.@namespace, "package author");
+                ThunderstorePackage.ValidateName(package.name, "package name");
                 if (!packages.Add(package.@namespace + "-" + package.name))
                     throw new InvalidDataException(
                         "Thunderstore returned duplicate section packages."
@@ -153,7 +153,7 @@ public sealed class ThunderstoreClient
         CancellationToken cancellationToken
     )
     {
-        ModPackageStore.ValidateSegment(team, "publishing team");
+        ThunderstorePackage.ValidateName(team, "publishing team");
         System.Collections.Generic.List<ThunderstorePackage> packages = new();
         System.Collections.Generic.HashSet<string> seen = new(StringComparer.Ordinal);
         for (int page = 1; ; page++)
@@ -181,7 +181,7 @@ public sealed class ThunderstoreClient
                 throw new InvalidDataException("Thunderstore returned an incomplete package page.");
             foreach (TeamPackageReference item in result.results)
             {
-                ModPackageStore.ValidateSegment(item.name, "package name");
+                ThunderstorePackage.ValidateName(item.name, "package name");
                 if (item.@namespace != team || !seen.Add(team + "-" + item.name))
                     throw new InvalidDataException(
                         "Thunderstore returned an unexpected team package."
@@ -234,7 +234,7 @@ public sealed class ThunderstoreClient
             throw new InvalidDataException(
                 "Thunderstore returned incomplete published-package details."
             );
-        ModPackageStore.ValidateVersion(detail.latest.version_number);
+        ThunderstorePackage.ValidateVersion(detail.latest.version_number);
         ValidateUrl(detail.latest.download_url);
         return new ThunderstorePackage
         {
@@ -303,8 +303,10 @@ public sealed class ThunderstoreClient
             ?? throw new InvalidDataException("The Thunderstore catalog could not be read.");
         foreach (ThunderstorePackage package in packages)
         {
-            ModPackageStore.ValidateSegment(package.owner, "package author");
-            ModPackageStore.ValidateSegment(package.name, "package name");
+            if (package == null)
+                throw new InvalidDataException("Thunderstore returned an empty package listing.");
+            ThunderstorePackage.ValidateName(package.owner, "package author");
+            ThunderstorePackage.ValidateName(package.name, "package name");
             if (
                 package.full_name != package.owner + "-" + package.name
                 || package.versions == null
@@ -315,11 +317,22 @@ public sealed class ThunderstoreClient
                 );
             foreach (ThunderstorePackageVersion version in package.versions)
             {
-                ModPackageStore.ValidateVersion(version.version_number);
+                if (version == null)
+                    throw new InvalidDataException(
+                        "Thunderstore returned an empty package release."
+                    );
+                ThunderstorePackage.ValidateVersion(version.version_number);
                 ValidateUrl(version.download_url);
                 version.dependencies ??= Array.Empty<string>();
             }
+            if (
+                package.versions.Select(version => version.version_number).Distinct().Count()
+                != package.versions.Length
+            )
+                throw new InvalidDataException("Thunderstore returned duplicate package releases.");
         }
+        if (packages.Select(package => package.full_name).Distinct().Count() != packages.Length)
+            throw new InvalidDataException("Thunderstore returned duplicate package listings.");
         return packages.OrderBy(package => package.full_name, StringComparer.Ordinal).ToArray();
     }
 

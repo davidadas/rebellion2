@@ -11,10 +11,8 @@ using UnityEngine.EventSystems;
 public sealed class SelectableListView<TRowView, TRowData>
     where TRowView : SelectableListRowView
 {
-    private readonly List<TRowView> rowViews = new List<TRowView>();
+    private readonly ListView<TRowView> list;
     private readonly ScrollAreaView scrollArea;
-    private readonly TRowView rowTemplate;
-    private readonly string rowNamePrefix;
     private readonly Action<TRowView, PointerEventData> rowSelected;
     private readonly Action<TRowView, PointerEventData> rowActivated;
     private readonly Action<TRowView, PointerEventData> rowContextRequested;
@@ -24,7 +22,7 @@ public sealed class SelectableListView<TRowView, TRowData>
     /// <summary>
     /// Gets the pooled row views for artwork updates and feature-specific row sizing.
     /// </summary>
-    public IReadOnlyList<TRowView> Rows => rowViews;
+    public IReadOnlyList<TRowView> Rows => list.Rows;
 
     /// <summary>
     /// Creates a reusable list renderer around an authored scroll area and row template.
@@ -49,15 +47,12 @@ public sealed class SelectableListView<TRowView, TRowData>
     )
     {
         this.scrollArea = scrollArea ?? throw new ArgumentNullException(nameof(scrollArea));
-        this.rowTemplate = rowTemplate ?? throw new ArgumentNullException(nameof(rowTemplate));
-        this.rowNamePrefix = string.IsNullOrEmpty(rowNamePrefix)
-            ? typeof(TRowView).Name
-            : rowNamePrefix;
         this.rowSelected = rowSelected;
         this.rowActivated = rowActivated;
         this.rowContextRequested = rowContextRequested;
         this.canNavigate = canNavigate;
         this.navigationScope = navigationScope;
+        list = new ListView<TRowView>(scrollArea, rowTemplate, rowNamePrefix, BindRow, UnbindRow);
     }
 
     /// <summary>
@@ -81,86 +76,42 @@ public sealed class SelectableListView<TRowView, TRowData>
     )
     {
         IReadOnlyList<TRowData> safeRows = rows ?? Array.Empty<TRowData>();
-        scrollArea.gameObject.SetActive(true);
-        scrollArea.SetContentHeight(contentHeight, scrollStep, resetScroll);
-
-        for (int i = 0; i < safeRows.Count; i++)
-        {
-            TRowView rowView = GetRowView(i);
-            SetTopLeftRect(
-                rowView.transform as RectTransform,
-                0,
-                i * rowPitch,
-                Mathf.RoundToInt(scrollArea.ViewportWidth),
-                rowPitch
-            );
-            renderRow(rowView, safeRows[i], i);
-        }
-
-        HideRowsFrom(safeRows.Count);
+        list.Render(safeRows, contentHeight, scrollStep, resetScroll, rowPitch, renderRow);
         RevealAndFocusSelectedRow(safeRows, rowPitch, isSelected);
     }
 
     /// <summary>
     /// Hides all instantiated rows without releasing them.
     /// </summary>
-    public void Hide()
+    public void Hide() => list.Hide();
+
+    /// <summary>
+    /// Releases the list's rows and selection handlers.
+    /// </summary>
+    public void Clear() => list.Clear();
+
+    /// <summary>
+    /// Binds selection behavior to a newly allocated row.
+    /// </summary>
+    /// <param name="row">The new row.</param>
+    /// <param name="index">Its pooled position.</param>
+    private void BindRow(TRowView row, int index)
     {
-        HideRowsFrom(0);
+        row.Selected += HandleRowSelected;
+        row.Activated += HandleRowActivated;
+        row.ContextRequested += HandleRowContextRequested;
+        row.SetNavigationGate(CanNavigate);
     }
 
     /// <summary>
-    /// Unbinds and destroys all instantiated rows.
+    /// Releases selection handlers before a row is destroyed.
     /// </summary>
-    public void Clear()
+    /// <param name="row">The removed row.</param>
+    private void UnbindRow(TRowView row)
     {
-        for (int i = 0; i < rowViews.Count; i++)
-        {
-            TRowView row = rowViews[i];
-            if (row == null)
-                continue;
-
-            row.Selected -= HandleRowSelected;
-            row.Activated -= HandleRowActivated;
-            row.ContextRequested -= HandleRowContextRequested;
-            if (Application.isPlaying)
-                UnityEngine.Object.Destroy(row.gameObject);
-            else
-                UnityEngine.Object.DestroyImmediate(row.gameObject);
-        }
-
-        rowViews.Clear();
-    }
-
-    /// <summary>
-    /// Gets or creates the row view at a display index.
-    /// </summary>
-    /// <param name="index">The zero-based display index.</param>
-    /// <returns>The reusable row view.</returns>
-    private TRowView GetRowView(int index)
-    {
-        while (rowViews.Count <= index)
-        {
-            TRowView row = UnityEngine.Object.Instantiate(rowTemplate, scrollArea.ContentRoot);
-            row.name = $"{rowNamePrefix}{rowViews.Count}";
-            row.Selected += HandleRowSelected;
-            row.Activated += HandleRowActivated;
-            row.ContextRequested += HandleRowContextRequested;
-            row.SetNavigationGate(CanNavigate);
-            rowViews.Add(row);
-        }
-
-        return rowViews[index];
-    }
-
-    /// <summary>
-    /// Hides every instantiated row at or after an index.
-    /// </summary>
-    /// <param name="index">The first row to hide.</param>
-    private void HideRowsFrom(int index)
-    {
-        for (int i = index; i < rowViews.Count; i++)
-            rowViews[i].gameObject.SetActive(false);
+        row.Selected -= HandleRowSelected;
+        row.Activated -= HandleRowActivated;
+        row.ContextRequested -= HandleRowContextRequested;
     }
 
     /// <summary>
@@ -214,13 +165,13 @@ public sealed class SelectableListView<TRowView, TRowData>
         if (!CanNavigate())
             return;
 
-        int count = Math.Min(rows.Count, rowViews.Count);
+        int count = Math.Min(rows.Count, Rows.Count);
         for (int i = 0; i < count; i++)
         {
             if (!isSelected(rows[i], i))
                 continue;
 
-            TRowView row = rowViews[i];
+            TRowView row = Rows[i];
             if (row.gameObject.activeInHierarchy)
             {
                 scrollArea.RevealContentRect(i * rowPitch, rowPitch);
@@ -237,32 +188,5 @@ public sealed class SelectableListView<TRowView, TRowData>
     private bool CanNavigate()
     {
         return canNavigate?.Invoke() != false;
-    }
-
-    /// <summary>
-    /// Applies fixed top-left row geometry inside the content root.
-    /// </summary>
-    /// <param name="rectTransform">The row transform.</param>
-    /// <param name="x">The left coordinate.</param>
-    /// <param name="y">The top coordinate.</param>
-    /// <param name="width">The row width.</param>
-    /// <param name="height">The row height.</param>
-    private static void SetTopLeftRect(
-        RectTransform rectTransform,
-        int x,
-        int y,
-        int width,
-        int height
-    )
-    {
-        if (rectTransform == null)
-            return;
-
-        rectTransform.anchorMin = new Vector2(0f, 1f);
-        rectTransform.anchorMax = new Vector2(0f, 1f);
-        rectTransform.pivot = new Vector2(0f, 1f);
-        rectTransform.anchoredPosition = new Vector2(x, -y);
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
-        rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, height);
     }
 }

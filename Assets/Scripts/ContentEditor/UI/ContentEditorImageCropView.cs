@@ -1,4 +1,5 @@
 using System;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using TMPro;
 using UnityEngine;
@@ -15,6 +16,9 @@ public sealed class ContentEditorImageCropView
         IEndDragHandler,
         IScrollHandler
 {
+    [SerializeField]
+    private RectTransform panel;
+
     [SerializeField]
     private RawImage artwork;
 
@@ -108,6 +112,47 @@ public sealed class ContentEditorImageCropView
         error.text = string.Empty;
         ResetCrop();
         gameObject.SetActive(true);
+        UILayout.FitPanel(panel);
+    }
+
+    /// <summary>
+    /// Keeps crop confirmation actions inside a resized window.
+    /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
+    private void OnRectTransformDimensionsChange()
+    {
+        if (panel != null)
+            UILayout.FitPanel(panel);
+    }
+
+    /// <summary>
+    /// Moves the crop using arrow keys while leaving slider navigation available.
+    /// </summary>
+    /// <param name="key">The native key event.</param>
+    /// <returns>Whether the crop handled the event.</returns>
+    internal bool HandleKeyboardShortcut(Event key)
+    {
+        if (
+            !IsOpen
+            || source == null
+            || key?.type != EventType.KeyDown
+            || EventSystem.current?.currentSelectedGameObject?.GetComponent<Slider>() != null
+        )
+            return false;
+        Vector2 movement = key.keyCode switch
+        {
+            KeyCode.LeftArrow => Vector2.left,
+            KeyCode.RightArrow => Vector2.right,
+            KeyCode.UpArrow => Vector2.up,
+            KeyCode.DownArrow => Vector2.down,
+            _ => Vector2.zero,
+        };
+        if (movement == Vector2.zero)
+            return false;
+        center += movement * (key.shift ? 0.1f : 0.01f);
+        RenderCrop();
+        key.Use();
+        return true;
     }
 
     /// <summary>
@@ -118,7 +163,8 @@ public sealed class ContentEditorImageCropView
         if (bound)
             return;
         if (
-            artwork == null
+            panel == null
+            || artwork == null
             || preview == null
             || cropSize == null
             || cropSizeValue == null

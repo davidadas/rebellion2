@@ -13,6 +13,23 @@ public static class UILayout
     public const float HdPixelsPerSourceUnit = 4.5f;
 
     /// <summary>
+    /// Fits a centered dialog and its controls inside the available window.
+    /// </summary>
+    /// <param name="panel">The dialog panel with its authored logical dimensions.</param>
+    /// <param name="margin">The minimum space on each side of the panel.</param>
+    public static void FitPanel(RectTransform panel, float margin = 24)
+    {
+        Rect available = ((RectTransform)panel.parent).rect;
+        panel.localScale =
+            Vector3.one
+            * Mathf.Min(
+                1,
+                Mathf.Max(1, available.width - 2 * margin) / panel.rect.width,
+                Mathf.Max(1, available.height - 2 * margin) / panel.rect.height
+            );
+    }
+
+    /// <summary>
     /// Places controls at their preferred widths, wrapping complete controls onto further rows.
     /// </summary>
     /// <param name="items">The ordered controls and their preferred widths.</param>

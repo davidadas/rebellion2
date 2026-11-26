@@ -23,7 +23,6 @@ public sealed class ContentEditorDependencyRowView : MonoBehaviour
     private Button remove;
 
     private string reference;
-    private string[] versions;
     private Action<string, string> changed;
     private Action<string> removed;
     private bool bound;
@@ -59,17 +58,24 @@ public sealed class ContentEditorDependencyRowView : MonoBehaviour
             ' '
         );
         author.text = listing?.owner ?? (separator < 0 ? "Unavailable package" : id[..separator]);
-        versions = (
+        string[] versions = (
             listing?.versions.Select(item => item.version_number) ?? Enumerable.Empty<string>()
         )
             .Prepend(current)
             .Where(item => !string.IsNullOrEmpty(item))
             .Distinct(StringComparer.Ordinal)
             .ToArray();
-        version.ClearOptions();
-        version.AddOptions(
-            versions.Length > 0 ? versions.ToList() : new List<string> { "Unavailable" }
-        );
+        version.options =
+            versions.Length > 0
+                ? versions
+                    .Select(value =>
+                        (TMP_Dropdown.OptionData)new DropdownOption<string>(value, value)
+                    )
+                    .ToList()
+                : new List<TMP_Dropdown.OptionData>
+                {
+                    new DropdownOption<string>(null, "Unavailable"),
+                };
         version.SetValueWithoutNotify(0);
         version.RefreshShownValue();
         version.interactable = listing != null && versions.Length > 1;
@@ -96,10 +102,14 @@ public sealed class ContentEditorDependencyRowView : MonoBehaviour
     /// <param name="index">The chosen version index.</param>
     private void ChangeVersion(int index)
     {
-        if (index >= 0 && index < versions.Length)
+        if (
+            index >= 0
+            && index < version.options.Count
+            && version.options[index] is DropdownOption<string> { Value: not null } option
+        )
             changed?.Invoke(
                 reference,
-                ContentEditorDependenciesView.GetPackageID(reference) + "-" + versions[index]
+                ContentEditorDependenciesView.GetPackageID(reference) + "-" + option.Value
             );
     }
 

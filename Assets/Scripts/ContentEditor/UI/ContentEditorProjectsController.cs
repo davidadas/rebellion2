@@ -57,7 +57,7 @@ internal sealed class ContentEditorProjectsController : IDisposable
         view.OpenRequested += open;
         view.PublishRequested += publish;
         view.ConnectRequested += connect;
-        view.PackagePageRequested += OpenPackagePage;
+        view.PackagePageRequested += Application.OpenURL;
         view.RefreshRequested += Show;
         view.RenderPublished(packages, false);
     }
@@ -97,7 +97,12 @@ internal sealed class ContentEditorProjectsController : IDisposable
             discovered = store.GetUnmanagedPackFolders();
         }
         catch (Exception exception)
-            when (exception is IOException or UnauthorizedAccessException or ArgumentException)
+            when (exception
+                    is IOException
+                        or InvalidDataException
+                        or UnauthorizedAccessException
+                        or ArgumentException
+            )
         {
             discovered = Array.Empty<string>();
             view.ShowLocalStatus(
@@ -175,7 +180,12 @@ internal sealed class ContentEditorProjectsController : IDisposable
             // A replacement query or account change owns the next visible result.
         }
         catch (Exception exception)
-            when (exception is IOException or ArgumentException or InvalidOperationException)
+            when (exception
+                    is IOException
+                        or InvalidDataException
+                        or ArgumentException
+                        or InvalidOperationException
+            )
         {
             if (!disposed && !cancellation.IsCancellationRequested)
                 view.ShowPublishedStatus(
@@ -195,12 +205,6 @@ internal sealed class ContentEditorProjectsController : IDisposable
     }
 
     /// <summary>
-    /// Opens a validated package listing without changing any remote package.
-    /// </summary>
-    /// <param name="url">The package page constructed by the catalogue client.</param>
-    private void OpenPackagePage(string url) => Application.OpenURL(url);
-
-    /// <summary>
     /// Cancels outstanding metadata reads and releases the overview's subscriptions.
     /// </summary>
     public void Dispose()
@@ -210,7 +214,7 @@ internal sealed class ContentEditorProjectsController : IDisposable
         view.OpenRequested -= open;
         view.PublishRequested -= publish;
         view.ConnectRequested -= connect;
-        view.PackagePageRequested -= OpenPackagePage;
+        view.PackagePageRequested -= Application.OpenURL;
         view.RefreshRequested -= Show;
     }
 }
