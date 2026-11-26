@@ -918,6 +918,69 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_DestroyedCarrierWithKilledOfficer_DoesNotRecoverPersonnel()
+        {
+            var scene = BuildRemovedCarrierScene();
+            AddFriendlyCarrier(scene.game, scene.origin, "surviving-carrier", 1);
+            Officer officer = EntityFactory.CreateOfficer("killed-officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            PersonnelCommands personnel = new(scene.game, new PersonnelQueries(scene.game));
+            personnel.KillOfficer(officer);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, officer.GetParent());
+            Assert.IsTrue(officer.IsKilled);
+            Assert.IsFalse(officer.IsEnabled);
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCarrierWithKilledOfficer_DoesNotChangeCustody()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.fallback.OwnerInstanceID = "rebels";
+            Officer officer = EntityFactory.CreateOfficer("killed-officer", "empire");
+            officer.CanEscape = false;
+            scene.game.AttachNode(officer, scene.carrier);
+            PersonnelCommands personnel = new(scene.game, new PersonnelQueries(scene.game));
+            personnel.KillOfficer(officer);
+            scene.game.DeleteNode(scene.carrier);
+            long draws = scene.game.RandomIndex;
+            int escapeTick = officer.NextEscapeAttemptTick;
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(escapeTick, officer.NextEscapeAttemptTick);
+            Assert.AreEqual(draws, scene.game.RandomIndex);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+        }
+
+        [Test]
         public void HandleResults_DestroyedCarrierWithInactiveOfficer_RelocatesWithoutActivating()
         {
             var scene = BuildRemovedCarrierScene();

@@ -93,6 +93,7 @@ namespace Rebellion.Gameplay
 
                 if (
                     officer.IsCaptured != true
+                    || officer.IsKilled
                     || string.IsNullOrEmpty(officer.CaptorInstanceID)
                     || !handledOfficerIds.Add(officer.InstanceID)
                 )

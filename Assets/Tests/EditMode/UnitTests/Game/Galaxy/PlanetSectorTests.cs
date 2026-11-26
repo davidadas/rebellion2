@@ -4,6 +4,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Galaxy
@@ -32,6 +33,53 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet1 = new Planet { InstanceID = "PLANET1", OwnerInstanceID = "FACTION1" };
 
             _planet2 = new Planet { InstanceID = "PLANET2", OwnerInstanceID = "FACTION1" };
+        }
+
+        [TestCase(null)]
+        [TestCase("FACTION1")]
+        [TestCase("FACTION2")]
+        public void GetSectorSuppressionDivisor_OperationalSource_IgnoresSourceOwnership(
+            string ownerID
+        )
+        {
+            _planet1.SetParent(_planetSector);
+            Fleet fleet = new() { OwnerInstanceID = ownerID };
+            fleet.SetParent(_planet1);
+            CapitalShip ship = new()
+            {
+                OwnerInstanceID = ownerID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                SectorSuppression = 2,
+            };
+            ship.SetParent(fleet);
+
+            Assert.AreEqual(2, _planetSector.GetSectorSuppressionDivisor());
+        }
+
+        [TestCase(ManufacturingStatus.Building, false)]
+        [TestCase(ManufacturingStatus.Delivering, false)]
+        [TestCase(ManufacturingStatus.Complete, true)]
+        public void GetSectorSuppressionDivisor_SourceAvailability_RequiresOperationalPresence(
+            ManufacturingStatus status,
+            bool moving
+        )
+        {
+            _planet1.SetParent(_planetSector);
+            Fleet fleet = new()
+            {
+                OwnerInstanceID = "FACTION2",
+                Movement = moving ? new MovementState() : null,
+            };
+            fleet.SetParent(_planet1);
+            CapitalShip ship = new()
+            {
+                OwnerInstanceID = "FACTION2",
+                ManufacturingStatus = status,
+                SectorSuppression = 2,
+            };
+            ship.SetParent(fleet);
+
+            Assert.AreEqual(1, _planetSector.GetSectorSuppressionDivisor());
         }
 
         [Test]
