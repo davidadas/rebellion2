@@ -88,23 +88,6 @@ namespace Rebellion.Tests.Multiplayer
             );
         }
 
-        [TestCase(null, false)]
-        [TestCase(null, true)]
-        [TestCase(false, true)]
-        public void Compute_PlanetSectorSupportEligibility_DetectsChangedRetainedState(
-            bool? firstState,
-            bool? secondState
-        )
-        {
-            Planet first = CreatePlanetWithSectorSupportEligibility(firstState);
-            Planet second = CreatePlanetWithSectorSupportEligibility(secondState);
-
-            Assert.AreNotEqual(
-                MultiplayerStateFingerprint.Compute(first),
-                MultiplayerStateFingerprint.Compute(second)
-            );
-        }
-
         [Test]
         public void ComputeSimulation_DifferentLivePlayerName_DetectsDifference()
         {
@@ -362,21 +345,6 @@ namespace Rebellion.Tests.Multiplayer
                 },
                 planet
             );
-        }
-
-        /// <summary>
-        /// Restores a planet whose only selected difference is retained sector support eligibility.
-        /// </summary>
-        /// <param name="state">The retained eligibility, or null for a save without that field.</param>
-        /// <returns>The independently restored planet.</returns>
-        private static Planet CreatePlanetWithSectorSupportEligibility(bool? state)
-        {
-            string element = state.HasValue
-                ? "<IsSectorSupportEligible>"
-                    + state.Value.ToString().ToLowerInvariant()
-                    + "</IsSectorSupportEligible>"
-                : string.Empty;
-            return SerializationHelper.Deserialize<Planet>("<Planet>" + element + "</Planet>");
         }
 
         /// <summary>

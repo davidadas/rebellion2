@@ -75,7 +75,6 @@ namespace Rebellion.Generation
             SetStartingFactionIDs(ctx);
             RunSeeders(ctx);
             AssembleGame(ctx);
-            InitializeSectorSupportEligibility(ctx);
             new FogOfWarSeeder().Seed(ctx);
 
             return ctx.Game;
@@ -238,27 +237,6 @@ namespace Rebellion.Generation
             new UnitSeeder().Seed(ctx);
             new OfficerSeeder().Seed(ctx);
             new BalanceSeeder().Seed(ctx);
-        }
-
-        /// <summary>
-        /// Initializes retained sector support eligibility on a newly assembled campaign.
-        /// </summary>
-        /// <param name="ctx">The completed new-world generation context.</param>
-        private static void InitializeSectorSupportEligibility(GenerationContext ctx)
-        {
-            foreach (PlanetSector sector in ctx.Sectors)
-            {
-                bool isEligible = sector.SectorType switch
-                {
-                    PlanetSectorType.Core => true,
-                    PlanetSectorType.OuterRim => false,
-                    _ => throw new InvalidOperationException(
-                        $"Unsupported planet sector type '{sector.SectorType}'."
-                    ),
-                };
-                foreach (Planet planet in sector.GetChildren<Planet>(includeDisabled: true))
-                    planet.InitializeSectorSupportEligibility(isEligible);
-            }
         }
 
         /// <summary>

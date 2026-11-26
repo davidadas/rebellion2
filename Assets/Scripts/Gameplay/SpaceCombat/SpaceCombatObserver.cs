@@ -72,11 +72,6 @@ namespace Rebellion.Gameplay
             PlanetSector sector = planet?.GetParentOfType<PlanetSector>();
             if (sector == null)
                 throw new InvalidOperationException("The combat planet has no sector.");
-            foreach (Planet candidate in sector.GetChildren<Planet>())
-                if (candidate.IsPopulated() && !candidate.IsSectorSupportEligible.HasValue)
-                    throw new InvalidOperationException(
-                        $"Planet '{candidate.InstanceID}' is missing saved battle-support history."
-                    );
             foreach (TacticalCombatFactionDefinition faction in _definition.Factions)
                 if (
                     _game
@@ -173,7 +168,7 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Selects populated sector planets using retained eligibility and counterpart support.
+        /// Selects populated sector planets whose counterpart support falls below the threshold.
         /// </summary>
         /// <param name="result">The completed encounter selecting the sector and tick.</param>
         /// <param name="first">The first authored faction, relative to which support shifts are signed.</param>
@@ -204,13 +199,8 @@ namespace Rebellion.Gameplay
                     !planet.IsPopulated()
                     || planet.GetPopularSupport(comparison.InstanceID)
                         >= unchecked((int)adjustment.SupportThreshold)
-                    || planet.IsSectorSupportEligible == false
                 )
                     continue;
-                if (!planet.IsSectorSupportEligible.HasValue)
-                    throw new InvalidOperationException(
-                        "The saved planet has no sector support eligibility history."
-                    );
                 requests.Add(
                     new PopularSupportShiftResult
                     {

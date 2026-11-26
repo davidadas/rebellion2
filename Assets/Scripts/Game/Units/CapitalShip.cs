@@ -105,9 +105,6 @@ namespace Rebellion.Game.Units
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
 
         [PersistableIgnore]
-        private TacticalCombatDefinition _tacticalRules;
-
-        [PersistableIgnore]
         private TacticalCombatUnitDefinition _tacticalDefinition;
 
         [PersistableMember(Name = nameof(SublightSpeed))]
@@ -371,18 +368,11 @@ namespace Rebellion.Game.Units
         public string InitialParentInstanceID { get; set; }
 
         /// <summary>
-        /// Attaches shared tactical definitions without copying them into saved units.
+        /// Attaches the unit's tactical equipment definition without copying it into saves.
         /// </summary>
-        /// <param name="rules">The shared battle and repair rules.</param>
         /// <param name="definition">The unit type's installed tactical equipment.</param>
-        internal void BindTacticalDefinitions(
-            TacticalCombatDefinition rules,
-            TacticalCombatUnitDefinition definition
-        )
-        {
-            _tacticalRules = rules;
+        internal void BindTacticalDefinition(TacticalCombatUnitDefinition definition) =>
             _tacticalDefinition = definition;
-        }
 
         /// <summary>
         /// Returns the ship's surviving installed hyperdrive rating.
@@ -395,23 +385,6 @@ namespace Rebellion.Game.Units
             return SystemDamage.BackupHyperdrive == 0
                 ? _tacticalDefinition?.BackupHyperdrive ?? 0
                 : 0;
-        }
-
-        /// <summary>
-        /// Returns the authored interval between repairs to damaged systems.
-        /// </summary>
-        /// <param name="atShipyard">Whether a friendly operational shipyard is available.</param>
-        /// <returns>The configured number of campaign ticks between repair attempts.</returns>
-        internal int GetSystemRepairInterval(bool atShipyard)
-        {
-            int interval = atShipyard
-                ? _tacticalRules?.FastSystemRepairTicks ?? 0
-                : _tacticalRules?.NormalSystemRepairTicks ?? 0;
-            if (interval <= 0)
-                throw new InvalidOperationException(
-                    "System repair intervals are missing for this ship's content pack."
-                );
-            return interval;
         }
 
         /// <summary>
@@ -494,7 +467,6 @@ namespace Rebellion.Game.Units
             copy.ShieldRechargeRate = ShieldRechargeRate;
             copy.Hyperdrive = Hyperdrive;
             copy._hyperdriveCount = _hyperdriveCount;
-            copy._tacticalRules = _tacticalRules;
             copy._tacticalDefinition = _tacticalDefinition;
             copy.SystemDamage = SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             copy.SublightSpeed = SublightSpeed;
@@ -883,7 +855,7 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Returns true if this ship has hull or component damage that can be repaired.
+        /// Returns true if this ship has hull damage that can be repaired.
         /// </summary>
         /// <returns>True if current hull strength is below maximum hull strength.</returns>
         public bool IsDamaged() => CurrentHullStrength < MaxHullStrength;

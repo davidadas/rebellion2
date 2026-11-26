@@ -258,7 +258,11 @@ namespace Rebellion.Gameplay
                 return;
 
             Planet destination = _movement
-                .FindSafeRelocationDestinations(representativeFleet, planet)
+                .FindSafeRelocationDestinations(
+                    representativeFleet,
+                    planet,
+                    forceInterplanetaryTravel: true
+                )
                 .OfType<Planet>()
                 .FirstOrDefault();
             if (destination == null)

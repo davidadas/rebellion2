@@ -12,7 +12,6 @@ namespace Rebellion.Game.Units
     public sealed class UnitFactory
     {
         private readonly Dictionary<string, ISceneNode> _templates;
-        private readonly TacticalCombatDefinition _tacticalCombat;
         private readonly Dictionary<string, TacticalCombatUnitDefinition> _tacticalUnits;
 
         /// <summary>
@@ -23,7 +22,7 @@ namespace Rebellion.Game.Units
         /// <param name="starfighters">The starfighters.</param>
         /// <param name="regiments">The regiments.</param>
         /// <param name="specialForces">The special forces.</param>
-        /// <param name="tacticalCombat">The shared equipment and repair definitions for new runtime ships.</param>
+        /// <param name="tacticalCombat">The shared equipment definitions for new runtime ships.</param>
         public UnitFactory(
             IEnumerable<Building> buildings,
             IEnumerable<CapitalShip> capitalShips,
@@ -33,7 +32,6 @@ namespace Rebellion.Game.Units
             TacticalCombatDefinition tacticalCombat = null
         )
         {
-            _tacticalCombat = tacticalCombat;
             _tacticalUnits = tacticalCombat?.Units.ToDictionary(
                 unit => unit.UnitTypeID,
                 StringComparer.Ordinal
@@ -69,10 +67,10 @@ namespace Rebellion.Game.Units
             unit.ManufacturingProgress = 0;
             if (unit is IMovable movable)
                 movable.Movement = null;
-            if (unit is CapitalShip ship && _tacticalCombat != null)
+            if (unit is CapitalShip ship && _tacticalUnits != null)
             {
                 _tacticalUnits.TryGetValue(typeID, out TacticalCombatUnitDefinition definition);
-                ship.BindTacticalDefinitions(_tacticalCombat, definition);
+                ship.BindTacticalDefinition(definition);
             }
             return unit;
         }

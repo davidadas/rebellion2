@@ -914,7 +914,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                         PositionX = id == "FNALL1" ? -300 : 300,
                     };
                     home.SetPopularSupport(id, 100);
-                    home.InitializeSectorSupportEligibility(true);
                     game.AttachNode(home, sector);
                 }
                 UnitFactory units = TacticalTestData.CreateUnitFactory(game.Config);
@@ -928,7 +927,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                         PositionX = encounter * 20,
                     };
                     planet.SetPopularSupport("FNALL1", 100);
-                    planet.InitializeSectorSupportEligibility(true);
                     game.AttachNode(planet, sector);
                     foreach (string id in new[] { "FNALL1", "FNEMP1" })
                     {

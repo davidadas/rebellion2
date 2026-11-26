@@ -11,18 +11,20 @@ using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
+using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using UnityEngine;
 
 /// <summary>
 /// Owns the editable documents and validation state for one authored content pack.
 /// </summary>
-public sealed class ContentPackEditorProject
+public sealed class ContentPackEditorProject : IDisposable
 {
     private const string _packDefinitionAddress = "Pack/pack.xml";
 
     private List<ContentPackEditorDocument> documents;
     private ContentPackEditorHistory history;
+    private ContentPackEditorSaveRecovery saveRecovery;
     private IReadOnlyList<ContentPackEditorCatalog> catalogs;
 
     public string ContentRootPath { get; }
@@ -42,11 +44,83 @@ public sealed class ContentPackEditorProject
     internal IEnumerable<string> RemovedDocumentPaths =>
         documents.Where(document => document.IsRemoved).Select(document => document.TargetPath);
 
-    public bool IsDirty => documents.Any(document => document.IsDirty);
+    public bool IsDirty =>
+        saveRecovery?.HasPendingRestores == true
+        || history.HasUnsavedAssets
+        || documents.Any(document => document.IsDirty);
     public bool CanUndo => history.CanUndo;
     public bool CanRedo => history.CanRedo;
     public string UndoDescription => history.UndoDescription;
     public string RedoDescription => history.RedoDescription;
+
+    /// <summary>
+    /// Restores unsaved asset edits before releasing this project's temporary undo revisions.
+    /// </summary>
+    public void Dispose()
+    {
+        try
+        {
+            RestoreDocumentSave();
+        }
+        catch (IOException exception)
+        {
+            GameLogger.Warning(exception.ToString());
+        }
+        finally
+        {
+            history.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// Restores settings and artwork to their last successful save.
+    /// </summary>
+    public void DiscardChanges()
+    {
+        RestoreDocumentSave();
+        history.DiscardChanges();
+        catalogs = null;
+        RefreshDefinition();
+    }
+
+    /// <summary>
+    /// Refuses to save referencing documents over externally changed artwork.
+    /// </summary>
+    internal void VerifyAssets() => history.VerifyAssets();
+
+    /// <summary>
+    /// Prepares durable recovery before the first document of a save is written.
+    /// </summary>
+    /// <param name="changedDocuments">The documents participating in this save.</param>
+    /// <returns>The owned recovery transaction, or null when no documents changed.</returns>
+    internal ContentPackEditorSaveRecovery BeginDocumentSave(
+        IReadOnlyList<ContentPackEditorDocument> changedDocuments
+    )
+    {
+        RestoreDocumentSave();
+        return saveRecovery =
+            changedDocuments.Count == 0
+                ? null
+                : new ContentPackEditorSaveRecovery(this, changedDocuments);
+    }
+
+    /// <summary>
+    /// Resolves a failed save before Save, Discard, or close can release its preceding revisions.
+    /// </summary>
+    internal void RestoreDocumentSave()
+    {
+        saveRecovery?.Restore();
+        saveRecovery = null;
+    }
+
+    /// <summary>
+    /// Releases recovery after every saved document and the project save point are accepted.
+    /// </summary>
+    internal void CompleteDocumentSave()
+    {
+        saveRecovery?.Commit();
+        saveRecovery = null;
+    }
 
     /// <summary>
     /// Groups a continuous gesture or multi-field operation into one undoable edit.
@@ -64,6 +138,13 @@ public sealed class ContentPackEditorProject
     /// <param name="path">The destination inside this project.</param>
     /// <param name="bytes">The complete replacement contents.</param>
     internal void WriteAsset(string path, byte[] bytes) => history.WriteFile(this, path, bytes);
+
+    /// <summary>
+    /// Copies imported media without buffering its full contents while preserving undo revisions.
+    /// </summary>
+    /// <param name="path">The destination inside this project.</param>
+    /// <param name="source">The selected source file.</param>
+    internal void CopyAsset(string path, string source) => history.CopyFile(this, path, source);
 
     /// <summary>
     /// Restores the preceding edit and rebuilds catalog wrappers from the restored documents.
@@ -1639,9 +1720,11 @@ public sealed class ContentPackEditorProject
         IReadOnlyList<ContentPackEditorDocument> refreshedDocuments
     )
     {
+        history.AcceptSave();
         Definition = definition;
         if (refreshedDocuments == null)
             return;
+        history.Dispose();
         documents = refreshedDocuments.ToList();
         catalogs = null;
         history = new ContentPackEditorHistory(documents);

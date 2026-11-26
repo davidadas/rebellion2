@@ -115,7 +115,7 @@ public sealed class GameDataCatalog
     }
 
     /// <summary>
-    /// Reattaches shared tactical equipment and repair definitions to campaign ships.
+    /// Reattaches shared tactical equipment definitions to campaign ships.
     /// </summary>
     /// <param name="ships">The newly created or loaded ships.</param>
     internal void BindCapitalShipDefinitions(IEnumerable<CapitalShip> ships)
@@ -128,7 +128,7 @@ public sealed class GameDataCatalog
                 ship.TypeID ?? string.Empty,
                 out TacticalCombatUnitDefinition definition
             );
-            ship.BindTacticalDefinitions(TacticalCombat, definition);
+            ship.BindTacticalDefinition(definition);
         }
     }
 

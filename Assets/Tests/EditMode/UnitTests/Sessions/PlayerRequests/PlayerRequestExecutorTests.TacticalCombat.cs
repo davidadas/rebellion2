@@ -399,8 +399,6 @@ namespace Rebellion.Tests.PlayerRequests
             _origin = CreatePlanet("shared-combat", _opponentID, sector, 0);
             _destination = CreatePlanet("host-home", _opponentID, sector, 100);
             _opponentPlanet = CreatePlanet("guest-home", _ownerID, sector, 200);
-            foreach (Planet planet in sector.GetChildren<Planet>())
-                planet.InitializeSectorSupportEligibility(true);
             foreach (Faction faction in _game.GetFactions())
                 faction.Settings.BattleLossLoyaltyDivisor =
                     TacticalTestData.BattleLossLoyaltyDivisor;

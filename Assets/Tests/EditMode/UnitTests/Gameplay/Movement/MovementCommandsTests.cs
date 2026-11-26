@@ -22,37 +22,6 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
-        [TestCase(false, true)]
-        [TestCase(true, null)]
-        public void ProcessTick_BuildingSettlement_ChangesEligibilityOnlyForNewPopulation(
-            bool initiallyColonized,
-            bool? expectedEligibility
-        )
-        {
-            (GameRoot game, Planet origin, Planet destination, _, MovementCommands movement) =
-                BuildScene(new GameConfig());
-            destination.EnergyCapacity = 5;
-            Building building = new()
-            {
-                InstanceID = "settlement-building",
-                OwnerInstanceID = "empire",
-                BuildingType = BuildingType.Mine,
-                ManufacturingStatus = ManufacturingStatus.Delivering,
-            };
-            game.AttachNode(building, destination);
-            destination.IsColonized = initiallyColonized;
-            building.Movement = TestMovement.Create(
-                originPosition: origin.GetPosition(),
-                transitTicks: 1
-            );
-
-            new MovementTickProcessor(movement).ProcessTick(game);
-
-            Assert.IsTrue(destination.IsColonized);
-            Assert.AreEqual(expectedEligibility, destination.IsSectorSupportEligible);
-            Assert.IsNull(building.Movement);
-        }
-
         [Test]
         public void RequestMove_DeterministicPeerGames_AssignsSameMovementGroupWithoutRandomDraws()
         {

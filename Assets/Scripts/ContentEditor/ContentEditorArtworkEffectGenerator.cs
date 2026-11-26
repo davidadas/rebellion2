@@ -2973,6 +2973,12 @@ internal sealed class ContentEditorArtworkRecipe
     internal bool HasStoredSources => ExistingSources is { Length: > 0 };
     internal int RenderVersion => LegacyRenderVersion > 0 ? LegacyRenderVersion : Version;
     public List<ContentEditorArtworkLayer> Layers = new();
+    internal IEnumerable<string> SourceAddresses =>
+        (ExistingSources ?? Array.Empty<string>())
+            .Concat(TravelPatterns ?? Array.Empty<string>())
+            .Concat(TravelSubjects ?? Array.Empty<string>())
+            .Concat(Layers.Select(layer => layer.ImageSource))
+            .Where(address => !string.IsNullOrEmpty(address));
     internal bool NeedsImageLayerUpgrade =>
         Version < _imageLayerVersion
         && Layers.Exists(layer => !string.IsNullOrEmpty(layer.ImageSource));

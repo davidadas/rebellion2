@@ -3006,7 +3006,7 @@ namespace Rebellion.Game.FogOfWar
         private sealed class ObservationBatch
         {
             private readonly HashSet<string> _visitedPlanets = new HashSet<string>(
-                StringComparer.Ordinal
+                System.StringComparer.Ordinal
             );
             private Dictionary<string, List<string>> _candidatesByPlanet;
             private Dictionary<string, string> _indexedLocations;
@@ -3066,7 +3066,9 @@ namespace Rebellion.Game.FogOfWar
             /// <param name="locations">The forward index at the first reconciliation boundary.</param>
             private void BuildCandidates(Dictionary<string, string> locations)
             {
-                _candidatesByPlanet = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+                _candidatesByPlanet = new Dictionary<string, List<string>>(
+                    System.StringComparer.Ordinal
+                );
                 foreach (KeyValuePair<string, string> location in locations)
                 {
                     if (location.Value == null)
