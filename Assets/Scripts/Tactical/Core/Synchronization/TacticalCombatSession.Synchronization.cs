@@ -22,7 +22,6 @@ namespace Rebellion.Tactical
         private int _synchronizedSystemTime = 3;
         private int _synchronizedMovieID;
         private TacticalCombatBriefingSequence _remoteNotificationBriefing;
-        private TacticalCombatEnding _remoteNotificationEnding;
         private CombatSide? _synchronizedNotificationRecipient;
         private bool _synchronizedEntryPresentation;
         internal bool IsRefreshingSynchronizedPresentation { get; private set; }
@@ -90,12 +89,6 @@ namespace Rebellion.Tactical
             _remoteNotificationBriefing = new TacticalCombatBriefingSequence(
                 GetSide(remote).FactionIndex,
                 message => EnqueueFactionNotification(remote, message)
-            );
-            _remoteNotificationEnding = new TacticalCombatEnding(
-                GetSide(remote).FactionIndex,
-                message => EnqueueFactionNotification(remote, message),
-                () => { },
-                () => { }
             );
             foreach (CombatUnit unit in _units)
             {

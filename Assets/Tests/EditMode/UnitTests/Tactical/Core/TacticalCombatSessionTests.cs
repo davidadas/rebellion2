@@ -10,6 +10,7 @@ using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
 
@@ -2202,6 +2203,44 @@ namespace Rebellion.Tests.Tactical
                 new[] { false, true, false, false, false, false, false },
                 session.TerminalFlags
             );
+        }
+
+        [TestCase(CombatSide.Attacker, 283, 152)]
+        [TestCase(CombatSide.Defender, 152, 283)]
+        public void Advance_SynchronizedEnding_QueuesTheRemoteCueBeforeTheLocalCue(
+            CombatSide player,
+            int remoteMessage,
+            int localMessage
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(152, 283),
+                player
+            );
+            session.ConfigureSynchronizedAuthority();
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
+
+            clock.Advance(16);
+            session.AdvanceClocked(16);
+
+            TacticalCombatEvent[] cues = session
+                .CaptureSnapshot(1)
+                .Effects.Where(effect =>
+                    effect.Kind == TacticalCombatEventKind.Notification
+                    && effect.MessageID is 152 or 283
+                )
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { remoteMessage, localMessage },
+                cues.Select(cue => cue.MessageID)
+            );
+            Assert.IsTrue(cues.All(cue => cue.HasRecipient));
+            Assert.AreNotEqual(player, cues[0].Recipient);
+            Assert.AreEqual(player, cues[1].Recipient);
         }
 
         [Test]

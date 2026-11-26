@@ -98,6 +98,7 @@ namespace Rebellion.Tactical
                 return;
             SuspendDirectCommands();
             _ending.FinishWithoutAssessment();
+            Complete();
         }
 
         /// <summary>

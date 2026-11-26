@@ -55,7 +55,7 @@ namespace Rebellion.Tactical
         private double _elapsedFrameClock;
         private bool _usesFrameClock;
         private readonly TacticalCombatBriefingSequence _briefing;
-        private readonly TacticalCombatEnding _ending;
+        private readonly TacticalCombatEnding _ending = new();
         private bool _completionStarted;
         private TacticalCombatArrival _arrival;
         private bool _arrivalStarting;
@@ -139,7 +139,7 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Gets whether completion requests automatic resolution of the surviving forces.
         /// </summary>
-        public bool ImmediateResultRequested => _ending.Flags[6];
+        public bool ImmediateResultRequested => _ending.ImmediateResultRequested;
 
         public event Action<CombatUnit, CombatUnit> SuperlaserFired;
         public event Action<TacticalCombatAttackRun> AttackRunChanged;
@@ -360,12 +360,6 @@ namespace Rebellion.Tactical
                 GetSide(PlayerSide).FactionIndex,
                 messageID => EnqueueFactionNotification(PlayerSide, messageID)
             );
-            _ending = new TacticalCombatEnding(
-                GetSide(PlayerSide).FactionIndex,
-                messageID => EnqueueFactionNotification(PlayerSide, messageID),
-                AssignSurvivors,
-                Complete
-            );
             _fireControl.ShotRequested += RequestShot;
             _fireControl.TractorTargetRequested += RequestTractorTarget;
             attachAutomation(this);
@@ -385,7 +379,7 @@ namespace Rebellion.Tactical
         {
             private readonly TacticalCombatSession _session;
             public bool IsRunning => !_session._completionStarted;
-            public bool HasTerminalResult => _session._ending.Flags[6];
+            public bool HasTerminalResult => _session.ImmediateResultRequested;
 
             /// <summary>
             /// Borrows the encounter that owns every scheduled operation.

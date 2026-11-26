@@ -67,12 +67,6 @@ namespace Rebellion.Tactical
             TacticalCombatForceAssessment second = CaptureForceAssessment(_sides[1]);
             TacticalCombatForceAssessment alliance = _sides[0].FactionIndex == 0 ? first : second;
             TacticalCombatForceAssessment empire = _sides[0].FactionIndex == 1 ? first : second;
-            _remoteNotificationEnding?.TryBegin(
-                alliance,
-                empire,
-                BattleStation?.IsOperational == true,
-                BattleStation?.HasDeparted == true
-            );
             if (
                 !_ending.TryBegin(
                     alliance,
@@ -82,6 +76,14 @@ namespace Rebellion.Tactical
                 )
             )
                 return;
+            if (_synchronizationAuthority)
+            {
+                CombatSide remote =
+                    PlayerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
+                AnnounceEnding(remote);
+            }
+            AnnounceEnding(PlayerSide);
+            AssignSurvivors();
             _completionStarted = true;
             bool attacker =
                 first.ActiveCount != 0
@@ -95,6 +97,13 @@ namespace Rebellion.Tactical
                 : SpaceCombatResult.BattleOutcome.Defender;
             _outcomes[0] = GetEndingOutcome(CombatSide.Attacker, attacker);
             _outcomes[1] = GetEndingOutcome(CombatSide.Defender, defender);
+        }
+
+        private void AnnounceEnding(CombatSide recipient)
+        {
+            int? message = _ending.GetTerminalNotification(GetSide(recipient).FactionIndex);
+            if (message.HasValue)
+                EnqueueFactionNotification(recipient, message.Value);
         }
 
         /// <summary>
