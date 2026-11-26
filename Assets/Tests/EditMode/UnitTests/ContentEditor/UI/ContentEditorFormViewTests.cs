@@ -73,6 +73,951 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_PlanetSectorWindow_ShowsTheSectorHeaderButtons()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.PlanetSectorWindowPageKey));
+
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            RawImagePressVisual[] controls = preview.GetWindowControls().ToArray();
+            CollectionAssert.AreEquivalent(
+                new[] { "SwapButtonImage", "CloseButtonImage" },
+                controls.Select(control => control.name)
+            );
+            Assert.IsTrue(
+                controls.All(control =>
+                    control.isActiveAndEnabled && control.PressedTexture != null
+                )
+            );
+        }
+
+        [Test]
+        public void Render_PlanetSectorWindow_ListsSwapAndCloseArtwork()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.PlanetSectorWindowPageKey));
+            Canvas.ForceUpdateCanvases();
+
+            RawImage[] thumbnails = view.GetComponentsInChildren<RawImage>()
+                .Where(image =>
+                    image.name.EndsWith("-Normal", StringComparison.Ordinal)
+                    || image.name.EndsWith("-Pressed", StringComparison.Ordinal)
+                )
+                .ToArray();
+            Assert.AreEqual(4, thumbnails.Length);
+            string[] captions = view.GetComponentsInChildren<TMP_Text>()
+                .Select(label => label.text)
+                .ToArray();
+            CollectionAssert.IsSubsetOf(new[] { "Swap windows", "Close window" }, captions);
+            CollectionAssert.DoesNotContain(captions, "Open sector");
+            CollectionAssert.DoesNotContain(captions, "Minimize window");
+        }
+
+        [Test]
+        public void Render_PlanetSectorBackgroundColor_UpdatesTheRenderedWindow()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.PlanetSectorWindowPageKey));
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            RawImage background = preview
+                .GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "DimPanelImage");
+            Color original = background.color;
+            ContentEditorColorPickerView picker =
+                view.GetComponentInChildren<ContentEditorColorPickerView>();
+
+            picker.GetComponentInChildren<TMP_InputField>().onEndEdit.Invoke("123456");
+
+            Assert.AreEqual("123456", picker.Field.Value);
+            Assert.AreEqual(
+                new Color32(18, 52, 86, ((Color32)original).a),
+                (Color32)background.color
+            );
+        }
+
+        [Test]
+        public void Render_PlanetSectorSwapButtonDragged_CommitsItsPlacement()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.PlanetSectorWindowPageKey
+            );
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+            };
+            SelectPage(page);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorSectorPreview preview =
+                view.GetComponentInChildren<ContentEditorSectorPreview>();
+            RawImagePressVisual swap = preview
+                .GetWindowControls()
+                .Single(control => control.name == "SwapButtonImage");
+            RectTransform rect = (RectTransform)swap.transform;
+            Vector2 origin = rect.anchoredPosition;
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(
+                null,
+                rect.TransformPoint(rect.rect.center)
+            );
+            Vector2 end = RectTransformUtility.WorldToScreenPoint(
+                null,
+                rect.parent.TransformPoint(
+                    rect.parent.InverseTransformPoint(rect.TransformPoint(rect.rect.center))
+                        + new Vector3(-20, -10, 0)
+                )
+            );
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = swap.gameObject,
+                pressPosition = start,
+                position = start,
+            };
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.pointerMoveHandler);
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = end;
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            SelectPage(page);
+            Assert.AreEqual(origin + new Vector2(-20, -10), rect.anchoredPosition);
+        }
+
+        [Test]
+        public void Render_PlanetWindowHeader_ShowsEditableButtonArtwork()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.PlanetWindowHeaderPageKey));
+
+            PlanetWindowHeader header = view.GetComponentInChildren<PlanetWindowHeader>();
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    "BlackWindowUnderlayImage",
+                    "TitleImage",
+                    "OpenSectorButtonImage",
+                    "MinimizeButtonImage",
+                    "CloseButtonImage",
+                },
+                header.GetComponentsInChildren<RawImage>().Select(image => image.name)
+            );
+            Assert.IsTrue(header.Title.GetComponent<ContentEditorArtworkEditTarget>().CanMove);
+            Assert.IsTrue(header.Caption.GetComponent<ContentEditorArtworkEditTarget>().CanMove);
+            foreach (
+                RawImagePressVisual button in new[]
+                {
+                    header.OpenSector,
+                    header.Minimize,
+                    header.Close,
+                }
+            )
+            {
+                Assert.IsNotNull(button.ReleasedTexture);
+                Assert.IsNotNull(button.PressedTexture);
+                Assert.IsTrue(button.GetComponent<ContentEditorArtworkEditTarget>().CanMove);
+            }
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(PlanetWindowHeaderLayout.OpenSectorImagePath),
+                    nameof(PlanetWindowHeaderLayout.OpenSectorPressedImagePath),
+                    nameof(PlanetWindowHeaderLayout.MinimizeImagePath),
+                    nameof(PlanetWindowHeaderLayout.MinimizePressedImagePath),
+                    nameof(PlanetWindowHeaderLayout.CloseImagePath),
+                    nameof(PlanetWindowHeaderLayout.ClosePressedImagePath),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Select(row => row.Field.MemberName)
+            );
+        }
+
+        [Test]
+        public void Render_PlanetWindowHeaderAfterAssetReload_UsesTheReplacementTextures()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.PlanetWindowHeaderPageKey
+            );
+            using ContentAssets original = ContentPackEditorStorage.CreateAssets(project);
+            using ContentAssets replacement = ContentPackEditorStorage.CreateAssets(project);
+            ContentBindings.Apply(view.gameObject, original);
+            assets = original;
+            SelectPage(page);
+            RawImagePressVisual close = view.GetComponentInChildren<PlanetWindowHeader>().Close;
+            Texture oldTexture = close.ReleasedTexture;
+            Assert.IsTrue(oldTexture != null);
+
+            ContentBindings.Apply(view.gameObject, replacement);
+            assets = replacement;
+            SelectPage(page);
+            original.Dispose();
+            Assert.IsTrue(oldTexture == null);
+            SelectPage(page);
+
+            ContentPressVisualBinding binding = close.GetComponent<ContentPressVisualBinding>();
+            Assert.AreSame(replacement.GetTexture(binding.UpAddress), close.ReleasedTexture);
+            Assert.AreSame(replacement.GetTexture(binding.DownAddress), close.PressedTexture);
+        }
+
+        [Test]
+        public void Render_PlanetWindowHeaderNudged_KeepsButtonPositionThroughRebind()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.PlanetWindowHeaderPageKey
+            );
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+            };
+            SelectPage(page);
+            RawImagePressVisual close = view.GetComponentInChildren<PlanetWindowHeader>().Close;
+            RectTransform rect = (RectTransform)close.transform;
+            Vector2 start = rect.anchoredPosition;
+
+            Assert.IsTrue(
+                close.GetComponent<ContentEditorArtworkEditTarget>().Nudge(new Vector2Int(-4, 2))
+            );
+            SelectPage(page);
+
+            Assert.AreEqual(start + new Vector2(-4, -2), rect.anchoredPosition);
+        }
+
+        [Test]
+        public void Render_ConfirmationWindow_ShowsTheSharedDialog()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.ConfirmationWindowPageKey));
+            ConfirmationDialogView dialog = view.GetComponentInChildren<ConfirmationDialogView>();
+
+            Assert.IsNotNull(dialog);
+            CollectionAssert.AreEquivalent(
+                new[] { "ConfirmButtonImage", "CancelButtonImage" },
+                dialog
+                    .GetComponentsInChildren<RawImagePressVisual>()
+                    .Select(control => control.name)
+            );
+        }
+
+        [Test]
+        public void Render_ConfirmationWindow_FramesOnlyTheDialogArtwork()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.ConfirmationWindowPageKey));
+            ConfirmationDialogView dialog = view.GetComponentInChildren<ConfirmationDialogView>();
+            RectTransform root = (RectTransform)dialog.transform;
+
+            Assert.IsFalse(root.Find("InputBlocker").gameObject.activeSelf);
+            RectInt bounds = UILayout.GetSourceRect(dialog.BackgroundArtwork.rectTransform, root);
+            Assert.AreEqual(new RectInt(0, 0, (int)root.rect.width, (int)root.rect.height), bounds);
+        }
+
+        [Test]
+        public void Render_ConfirmationWindow_ExposesEditableArtworkStates()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.ConfirmationWindowPageKey));
+            var fields = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Select(row => row.Field)
+                .ToArray();
+
+            Assert.That(fields.All(field => field.MediaType == ContentPackEditorMediaType.Image));
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(ConfirmationWindowArtwork.BackgroundImagePath),
+                    nameof(ConfirmationWindowArtwork.YesImagePath),
+                    nameof(ConfirmationWindowArtwork.YesPressedImagePath),
+                    nameof(ConfirmationWindowArtwork.NoImagePath),
+                    nameof(ConfirmationWindowArtwork.NoPressedImagePath),
+                },
+                fields.Select(field => field.MemberName)
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_ConfirmationMessageAreaDragged_CommitsTheEditedRectangle(bool resize)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(
+                ContentEditorContentSections.ConfirmationWindowPageKey
+            );
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+            };
+            SelectPage(page);
+            Canvas.ForceUpdateCanvases();
+            RectTransform message =
+                view.GetComponentInChildren<ConfirmationDialogView>().MessageAreaTransform;
+            ExecuteEvents.Execute(
+                message.gameObject,
+                new PointerEventData(null),
+                ExecuteEvents.pointerEnterHandler
+            );
+            RectInt expected = UILayout.GetSourceRect(message);
+            RectTransform grab = resize
+                ? (RectTransform)message.Find("ContentEditorArtworkHoverFrame/ResizeHandle")
+                : message;
+            Vector3 worldPoint = grab.TransformPoint(grab.rect.center);
+            Vector2 end = RectTransformUtility.WorldToScreenPoint(
+                null,
+                message.parent.TransformPoint(
+                    message.parent.InverseTransformPoint(worldPoint) + new Vector3(20, -10, 0)
+                )
+            );
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(null, worldPoint);
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = message.gameObject,
+                pressPosition = start,
+                position = start,
+            };
+            ExecuteEvents.Execute(message.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = end;
+            ExecuteEvents.Execute(message.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(message.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            if (resize)
+                expected.size += new Vector2Int(20, 10);
+            else
+                expected.position += new Vector2Int(20, 10);
+            XElement area = selectedRecord.Element.Element(
+                nameof(ContentPackDefinition.ConfirmationMessageArea)
+            );
+            Assert.IsNotNull(area);
+            SelectPage(page);
+            Assert.AreEqual(expected, UILayout.GetSourceRect(message));
+        }
+
+        [Test]
+        public void Render_ConfirmationButtonNudged_KeepsSelectionThroughRebind()
+        {
+            EventSystem previous = EventSystem.current;
+            GameObject eventObject = new("Preview events", typeof(EventSystem));
+            EventSystem events = eventObject.GetComponent<EventSystem>();
+            UIComponentTestHelper.InvokeLifecycle(events, "OnEnable");
+            EventSystem.current = events;
+            try
+            {
+                ContentEditorNavigation navigation = new();
+                navigation.Render(project.GetCatalogs());
+                ContentEditorTreeNode page = navigation.Find(
+                    ContentEditorContentSections.ConfirmationWindowPageKey
+                );
+                view.ArtworkPlacementSubmitted += changes =>
+                {
+                    foreach (ContentEditorArtworkPlacementChange change in changes)
+                        project.SetField(
+                            change.Field,
+                            change.Value.ToString(CultureInfo.InvariantCulture)
+                        );
+                    SelectPage(page);
+                };
+                SelectPage(page);
+                GameObject button =
+                    view.GetComponentInChildren<ConfirmationDialogView>().NoArtwork.gameObject;
+                RectTransform rect = (RectTransform)button.transform;
+                Vector2 origin = rect.anchoredPosition;
+                PointerEventData click = new(events) { button = PointerEventData.InputButton.Left };
+                ExecuteEvents.Execute(button, click, ExecuteEvents.pointerClickHandler);
+                Assert.AreSame(button, events.currentSelectedGameObject);
+
+                Assert.IsTrue(
+                    button.GetComponent<ContentEditorArtworkEditTarget>().Nudge(Vector2Int.right)
+                );
+                Assert.IsTrue(
+                    button.GetComponent<ContentEditorArtworkEditTarget>().Nudge(Vector2Int.right)
+                );
+
+                Assert.AreSame(button, events.currentSelectedGameObject);
+                Assert.AreEqual(origin + Vector2.right * 2, rect.anchoredPosition);
+                Assert.IsTrue(rect.Find("ContentEditorArtworkHoverFrame").gameObject.activeSelf);
+            }
+            finally
+            {
+                UIComponentTestHelper.InvokeLifecycle(events, "OnDisable");
+                UnityEngine.Object.DestroyImmediate(eventObject);
+                if (previous != null)
+                    EventSystem.current = previous;
+            }
+        }
+
+        [Test]
+        public void Render_ConfirmationButtonDragged_SuppressesHoverOnOtherArtworkUntilRelease()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorContentSections.ConfirmationWindowPageKey));
+            Canvas.ForceUpdateCanvases();
+            ConfirmationDialogView dialog = view.GetComponentInChildren<ConfirmationDialogView>();
+            RectTransform yes = (RectTransform)dialog.YesArtwork.transform;
+            GameObject no = dialog.NoArtwork.gameObject;
+            Vector2 point = RectTransformUtility.WorldToScreenPoint(
+                null,
+                yes.TransformPoint(yes.rect.center)
+            );
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = yes.gameObject,
+                pressPosition = point,
+                position = point,
+            };
+            PointerEventData hover = new(null) { pointerEnter = no };
+            GameObject otherOutline = no
+                .transform.Find("ContentEditorArtworkHoverFrame")
+                .gameObject;
+
+            ExecuteEvents.Execute(yes.gameObject, drag, ExecuteEvents.beginDragHandler);
+            ExecuteEvents.Execute(no, hover, ExecuteEvents.pointerEnterHandler);
+            Assert.IsFalse(otherOutline.activeSelf);
+
+            ExecuteEvents.Execute(yes.gameObject, drag, ExecuteEvents.endDragHandler);
+            ExecuteEvents.Execute(no, hover, ExecuteEvents.pointerEnterHandler);
+            Assert.IsTrue(otherOutline.activeSelf);
+        }
+
+        [Test]
+        public void Render_StrategyAdvisorPlacement_OmitsCoordinateInputs()
+        {
+            RenderStrategyAdvisorPreview();
+
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(field => ContentEditorContentSections.IsAdvisorPlacementField(field.Field))
+            );
+        }
+
+        [TestCase("ProtocolImage", nameof(StrategyAdvisorTheme.ProtocolSourceLayout))]
+        [TestCase("DroidImage", nameof(StrategyAdvisorTheme.DroidSourceLayout))]
+        public void Render_StrategyAdvisorPortraitDragged_SubmitsItsCoordinates(
+            string portraitName,
+            string layoutName
+        )
+        {
+            RenderStrategyAdvisorPreview();
+            ContentEditorArtworkWindowPreview preview =
+                view.GetComponentInChildren<ContentEditorArtworkWindowPreview>();
+            RectTransform portrait = preview
+                .GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == portraitName)
+                .rectTransform;
+            RectInt origin = UILayout.GetSourceRect(portrait);
+            Vector3 center = portrait.TransformPoint(portrait.rect.center);
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(null, center);
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = portrait.gameObject,
+                pressPosition = start,
+                position = start,
+            };
+            IReadOnlyList<ContentEditorArtworkPlacementChange> committed = null;
+            view.ArtworkPlacementSubmitted += changes => committed = changes;
+
+            ExecuteEvents.Execute(portrait.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                center + portrait.TransformVector(new Vector3(8, -6, 0))
+            );
+            ExecuteEvents.Execute(portrait.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(portrait.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            Assert.IsNotNull(committed);
+            Assert.IsTrue(
+                committed.All(change => change.Field.XmlElement.Parent.Name == layoutName)
+            );
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    (nameof(SourceRectLayout.X), origin.x + 8),
+                    (nameof(SourceRectLayout.Y), origin.y + 6),
+                },
+                committed.Select(change => (change.Field.MemberName, change.Value))
+            );
+        }
+
+        [TestCase("TickTextField", nameof(TacticalHUDLayout.TickCounterSourceLayout))]
+        [TestCase("RawMaterialsTextField", nameof(TacticalHUDLayout.RawMaterialsSourceLayout))]
+        [TestCase(
+            "RefinedMaterialsTextField",
+            nameof(TacticalHUDLayout.RefinedMaterialsSourceLayout)
+        )]
+        [TestCase("MaintenanceTextField", nameof(TacticalHUDLayout.MaintenanceSourceLayout))]
+        [TestCase("TickTextField", nameof(TacticalHUDLayout.TickCounterSourceLayout), false)]
+        public void Render_StrategyHudCounterDragged_CommitsItsSourceLayout(
+            string controlName,
+            string memberName,
+            bool hasLayout = true
+        )
+        {
+            project = ContentPackEditorStorage.CreateInFolder(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                Path.Combine(folder, "hud-layout"),
+                "hud-layout-test",
+                "HUD layout test",
+                "1.0.0"
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/Alliance");
+            ContentPackEditorRecord theme = page.RelatedRecords.Single(record =>
+                record.Kind == nameof(FactionTheme)
+            );
+            XElement hud = theme.Element.Element(nameof(FactionTheme.TacticalHUDLayout));
+            if (!hasLayout)
+                hud.Element(memberName).Remove();
+            IReadOnlyList<ContentEditorArtworkPlacementChange> committed = null;
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                committed = changes;
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+            };
+            SelectPage(page);
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Strategy view");
+            Canvas.ForceUpdateCanvases();
+            TextMeshProUGUI counter = view.GetComponentsInChildren<TextMeshProUGUI>()
+                .Single(text => text.name == controlName);
+            ContentEditorArtworkEditTarget target =
+                counter.GetComponent<ContentEditorArtworkEditTarget>();
+            Assert.IsNotNull(target, controlName);
+            Assert.IsTrue(target.CanMove, controlName);
+            Vector2 origin = counter.rectTransform.anchoredPosition;
+            RectInt bounds = UILayout.GetSourceRect(counter.rectTransform);
+            RectTransform root =
+                counter
+                    .GetComponentInParent<ContentEditorArtworkWindowPreview>()
+                    .transform.Find("StrategyView") as RectTransform;
+            Vector3 center = counter.rectTransform.TransformPoint(counter.textBounds.center);
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(null, center);
+            Vector2 end = RectTransformUtility.WorldToScreenPoint(
+                null,
+                center + root.TransformVector(new Vector3(8, -6, 0))
+            );
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = counter.gameObject,
+                pressPosition = start,
+                position = start,
+            };
+            Assert.IsTrue(
+                ExecuteEvents.Execute(counter.gameObject, drag, ExecuteEvents.beginDragHandler)
+            );
+            Assert.IsTrue(drag.used, "The preview must accept the counter drag.");
+            drag.position = end;
+            ExecuteEvents.Execute(counter.gameObject, drag, ExecuteEvents.dragHandler);
+            Assert.AreEqual(origin + new Vector2(8, -6), counter.rectTransform.anchoredPosition);
+            ExecuteEvents.Execute(counter.gameObject, drag, ExecuteEvents.endDragHandler);
+            Assert.IsNotNull(committed, "Releasing the counter must submit a placement.");
+
+            XElement layout = hud.Element(memberName);
+            Assert.IsNotNull(layout);
+            Assert.AreEqual(bounds.x + 8, (int)layout.Element(nameof(SourceRectLayout.X)));
+            Assert.AreEqual(bounds.y + 6, (int)layout.Element(nameof(SourceRectLayout.Y)));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_StrategyHudSpeedBarDragged_UsesTheArtworkAtThePressPosition(
+            bool useGrabArea
+        )
+        {
+            project = ContentPackEditorStorage.CreateInFolder(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                Path.Combine(folder, "speed-bar"),
+                "speed-bar-test",
+                "Speed bar test",
+                "1.0.0"
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Strategy view");
+            Canvas.ForceUpdateCanvases();
+            ContentEditorArtworkWindowPreview preview =
+                view.GetComponentInChildren<ContentEditorArtworkWindowPreview>();
+            RectTransform tick = preview
+                .GetComponentsInChildren<TextMeshProUGUI>()
+                .Single(text => text.name == "TickTextField")
+                .rectTransform;
+            RectTransform speed = preview
+                .GetComponentsInChildren<RawImage>()
+                .Single(image => image.name == "SpeedIndicatorImage")
+                .rectTransform;
+            RectTransform speedGrab = preview
+                .GetComponentsInChildren<UIRaycastArea>()
+                .Single(hit => hit.name == "GameSpeedButton")
+                .GetComponent<RectTransform>();
+            Vector2 tickOrigin = tick.anchoredPosition;
+            Vector2 speedOrigin = speed.anchoredPosition;
+            Vector3 point = useGrabArea
+                ? speedGrab.TransformPoint(
+                    new Vector2(speedGrab.rect.xMax - 1, speedGrab.rect.center.y)
+                )
+                : speed.TransformPoint(speed.rect.center);
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(null, point);
+            Assert.IsFalse(
+                tick.GetComponent<ContentEditorArtworkEditTarget>().ContainsScreenPoint(start, null)
+            );
+            PointerEventData drag = new(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerDrag = tick.gameObject,
+                position = start,
+                pressPosition = start,
+            };
+
+            ExecuteEvents.Execute(tick.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                point + speed.TransformVector(new Vector3(8, -6, 0))
+            );
+            ExecuteEvents.Execute(tick.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(tick.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            Assert.AreEqual(tickOrigin, tick.anchoredPosition);
+            Assert.AreEqual(speedOrigin + new Vector2(8, -6), speed.anchoredPosition);
+        }
+
+        [Test]
+        public void Render_StrategyHudSpeedHitArea_RoutesClicksToAuthoringPreview()
+        {
+            project = ContentPackEditorStorage.CreateInFolder(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                Path.Combine(folder, "speed-area"),
+                "speed-area-test",
+                "Speed area test",
+                "1.0.0"
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Strategy view");
+            ContentEditorArtworkWindowPreview preview =
+                view.GetComponentInChildren<ContentEditorArtworkWindowPreview>();
+            UIRaycastArea hit = preview
+                .GetComponentsInChildren<UIRaycastArea>(true)
+                .Single(area => area.name == "GameSpeedButton");
+
+            Assert.IsTrue(hit.gameObject.activeInHierarchy);
+            Assert.AreSame(
+                preview.gameObject,
+                ExecuteEvents.GetEventHandler<IPointerClickHandler>(hit.gameObject)
+            );
+        }
+
+        [Test]
+        public void Render_MainMenuPage_ShowsAuthoredMenuAndCommitsDragToPackLayout()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(ContentEditorMainMenuSettings.PageKey);
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+            };
+            SelectPage(page);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorMainMenuPreview preview =
+                view.GetComponentInChildren<ContentEditorMainMenuPreview>();
+            Transform viewport = preview.transform.Find("Viewport");
+            RectTransform slot = (RectTransform)
+                viewport.Find("MainMenuControls/LeftFactionLaunchButton");
+            Vector2 origin = RectTransformUtility.WorldToScreenPoint(null, slot.position);
+            Vector2 destination = RectTransformUtility.WorldToScreenPoint(
+                null,
+                viewport.TransformPoint(
+                    viewport.InverseTransformPoint(slot.position) + new Vector3(80, -50, 0)
+                )
+            );
+            Assert.IsNotNull(viewport.Find("Cockpit"));
+            Assert.AreEqual(
+                2,
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Count(field =>
+                        field.Field?.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
+                    )
+            );
+
+            PointerEventData drag = new(null) { pressPosition = origin, position = origin };
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = destination;
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            XElement layout = page.Record.Element.Element(
+                nameof(ContentPackDefinition.MainMenuLayout)
+            );
+            Assert.IsNotNull(layout);
+            Assert.AreEqual(80, (int)layout.Element(nameof(MainMenuLayout.LeftLaunchX)));
+            Assert.AreEqual(50, (int)layout.Element(nameof(MainMenuLayout.LeftLaunchY)));
+            SelectPage(page);
+            Assert.IsTrue(view.Validate());
+        }
+
+        [Test]
+        public void Render_MainMenuPreview_ShowsEverySelectionOverlay()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+
+            ContentEditorMainMenuPreview preview =
+                view.GetComponentInChildren<ContentEditorMainMenuPreview>();
+            Image[] overlays = preview
+                .EditableControls.Select(control => control.Selection)
+                .Where(overlay => overlay != null)
+                .ToArray();
+
+            Assert.AreEqual(7, overlays.Length);
+            Assert.IsTrue(
+                overlays.All(overlay =>
+                    overlay.isActiveAndEnabled && overlay.canvasRenderer.GetAlpha() == 1f
+                )
+            );
+        }
+
+        [Test]
+        public void Render_MainMenuPlanetBackdrop_LabelsPickerAsStaticImageOverride()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+
+            ContentPackEditorField field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Select(control => control.Field)
+                .Single(value =>
+                    value?.MemberName == nameof(MainMenuControlLayout.ImagePath)
+                    && (string)value.Container.Attribute("ID") == "Planet"
+                );
+
+            Assert.AreEqual("Static image override", field.Caption);
+        }
+
+        [Test]
+        public void Render_MainMenuDifficultyArtwork_ShowsBuiltInModelName()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control =>
+                    control.Field?.MediaType == ContentPackEditorMediaType.Model
+                    && (string)control.Field.Container.Attribute("ID") == "EasyDifficultyToggle"
+                );
+
+            Assert.AreEqual(
+                "X-wing",
+                field
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "SelectedMedia")
+                    .text
+            );
+        }
+
+        [TestCase("EasyDifficultyToggle")]
+        [TestCase("SmallGalaxyToggle")]
+        public void Render_MainMenuControlDragged_KeepsPositionThroughViewportResize(string id)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+                view.Refresh();
+            };
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+            Canvas.ForceUpdateCanvases();
+            ContentEditorMainMenuPreview preview =
+                view.GetComponentInChildren<ContentEditorMainMenuPreview>();
+            RectTransform viewport = (RectTransform)preview.transform.Find("Viewport");
+            MainMenuArtwork.Control control = preview.EditableControls.Single(item =>
+                item.ID == id
+            );
+            RectTransform target = control.Target;
+            Vector2 selectionOrigin = control.Selection.rectTransform.anchoredPosition;
+            Vector2 original = target.anchoredPosition;
+            Vector2 start = RectTransformUtility.WorldToScreenPoint(null, target.position);
+            Vector2 destination = RectTransformUtility.WorldToScreenPoint(
+                null,
+                viewport.TransformPoint(
+                    viewport.InverseTransformPoint(target.position) + new Vector3(40, -30, 0)
+                )
+            );
+            PointerEventData drag = new(null) { pressPosition = start, position = start };
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = destination;
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            viewport.sizeDelta += Vector2.one;
+            Canvas.ForceUpdateCanvases();
+
+            Assert.AreEqual(original + new Vector2(40, -30), target.anchoredPosition);
+            Assert.AreEqual(selectionOrigin, control.Selection.rectTransform.anchoredPosition);
+        }
+
+        [Test]
+        public void Render_MainMenuSelectorDragged_MovesOnlyItsSelectionArtwork()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find(ContentEditorMainMenuSettings.PageKey);
+            view.ArtworkPlacementSubmitted += changes =>
+            {
+                foreach (ContentEditorArtworkPlacementChange change in changes)
+                    project.SetField(
+                        change.Field,
+                        change.Value.ToString(CultureInfo.InvariantCulture)
+                    );
+                view.Refresh();
+            };
+            SelectPage(page);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorMainMenuPreview preview =
+                view.GetComponentInChildren<ContentEditorMainMenuPreview>();
+            RectTransform viewport = (RectTransform)preview.transform.Find("Viewport");
+            MainMenuArtwork.Control control = preview.EditableControls.Single(item =>
+                item.ID == "SmallGalaxyToggle"
+            );
+            RectTransform selector = control.Selection.rectTransform;
+            Vector2 originalIcon = control.Target.anchoredPosition;
+            Vector2 originalSelector = selector.anchoredPosition;
+            Texture2D texture = assets.GetReadableTexture(
+                control.Selection.GetComponent<ContentSpriteBinding>().Address
+            );
+            int pixel = Array.FindIndex(texture.GetPixels32(), color => color.a == byte.MaxValue);
+            Assert.That(pixel, Is.GreaterThanOrEqualTo(0));
+            Vector2 uv = new(
+                (pixel % texture.width + 0.5f) / texture.width,
+                (pixel / texture.width + 0.5f) / texture.height
+            );
+            Vector3 start = selector.TransformPoint(
+                selector.rect.min + Vector2.Scale(selector.rect.size, uv)
+            );
+            Vector2 delta = new(40, -30);
+            Vector2 origin = RectTransformUtility.WorldToScreenPoint(null, start);
+            Vector2 destination = RectTransformUtility.WorldToScreenPoint(
+                null,
+                viewport.TransformPoint(viewport.InverseTransformPoint(start) + (Vector3)delta)
+            );
+            PointerEventData drag = new(null) { pressPosition = origin, position = origin };
+
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.beginDragHandler);
+            drag.position = destination;
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.dragHandler);
+            ExecuteEvents.Execute(preview.gameObject, drag, ExecuteEvents.endDragHandler);
+
+            Assert.AreEqual(originalIcon, control.Target.anchoredPosition);
+            Assert.AreEqual(originalSelector + delta, selector.anchoredPosition);
+            XElement placement = page
+                .Record.Element.Element(nameof(ContentPackDefinition.MainMenuLayout))
+                .Elements("Control")
+                .Single(element => (string)element.Attribute("ID") == control.ID);
+            Assert.AreEqual(40, (int)placement.Element(nameof(MainMenuControlLayout.SelectionX)));
+            Assert.AreEqual(30, (int)placement.Element(nameof(MainMenuControlLayout.SelectionY)));
+        }
+
+        [Test]
+        public void Render_MainMenuPage_OmitsNumericPlacementFields()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+
+            Assert.IsFalse(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Any(control => control.Field?.IsNumber == true)
+            );
+        }
+
+        [Test]
+        public void Render_MainMenuExitArtwork_TracksThePackImageField()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+            ContentEditorArtworkEditTarget exit =
+                view.GetComponentsInChildren<ContentEditorArtworkEditTarget>()
+                    .Single(target => target.transform.parent.name == "ExitButton");
+
+            Assert.AreEqual(ContentPackEditorMediaType.Image, exit.Field.MediaType);
+            Assert.AreEqual("ExitButton", (string)exit.Field.Container.Attribute("ID"));
+        }
+
+        [Test]
+        public void Render_MainMenuGalaxyArtwork_ExposesSeparateSelectionImage()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find(ContentEditorMainMenuSettings.PageKey));
+
+            ContentPackEditorField[] images = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Select(control => control.Field)
+                .Where(field =>
+                    field?.MediaType == ContentPackEditorMediaType.Image
+                    && (string)field.Container.Attribute("ID") == "SmallGalaxyToggle"
+                )
+                .ToArray();
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(MainMenuControlLayout.ImagePath),
+                    nameof(MainMenuControlLayout.SelectionImagePath),
+                },
+                images.Select(field => field.MemberName)
+            );
+        }
+
+        [Test]
         public void Render_AIDecisionIntervals_ExposesOnlyPositiveDecisionValues()
         {
             ContentEditorNavigation navigation = new();
@@ -865,7 +1810,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 ContentPackEditorProjector.BuildField(project, field),
                 () => { },
                 _ => { },
-                (_, _) => { }
+                (_, _, _) => { }
             );
             MenuDropdown selector = control.GetComponentInChildren<MenuDropdown>();
             Assert.IsNotNull(selector);
@@ -3222,7 +4167,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_FactionArtwork_ListedFieldsHaveMatchingPreviewTargets()
+        public void Render_FactionArtwork_PreviewableFieldsHaveMatchingPreviewTargets()
         {
             ContentEditorNavigation navigation = new();
             navigation.Render(project.GetCatalogs());
@@ -3241,6 +4186,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 string[] missing = view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Select(field => field.Field)
                     .Where(field => ContentEditorContentSections.IsFactionInterfaceField(field))
+                    .Where(field => field.MediaType == ContentPackEditorMediaType.Image)
                     .Where(field =>
                         !represented.Any(candidate =>
                             candidate.XmlElement == field.XmlElement
@@ -3731,7 +4677,7 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             ContentEditorArtworkEditTarget[] targets =
                 view.GetComponentsInChildren<ContentEditorArtworkEditTarget>()
-                    .Where(target => target.Field.Group == nameof(FactionTheme.ColorScheme))
+                    .Where(target => target.Field?.Group == nameof(FactionTheme.ColorScheme))
                     .ToArray();
             CollectionAssert.IsSubsetOf(
                 new[]
@@ -5058,6 +6004,27 @@ namespace Rebellion.Tests.ContentEditor.UI
                 corners[2].x - .01f,
                 corners[2].y - .01f
             );
+        }
+
+        /// <summary>
+        /// Presents the strategy preview with the stock advisor artwork and placement.
+        /// </summary>
+        private void RenderStrategyAdvisorPreview()
+        {
+            project = ContentPackEditorStorage.CreateInFolder(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                Path.Combine(folder, "advisor-layout"),
+                "advisor-layout-test",
+                "Advisor layout test",
+                "1.0.0"
+            );
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            RenderSection("Interfaces");
+            SelectArtworkSurface("Strategy view");
+            Canvas.ForceUpdateCanvases();
         }
 
         /// <summary>

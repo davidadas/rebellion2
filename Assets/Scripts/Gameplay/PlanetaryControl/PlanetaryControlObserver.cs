@@ -611,8 +611,33 @@ namespace Rebellion.Gameplay
                 )
                 .ToList();
 
+            HashSet<IMovable> evacuatedPersonnel = new();
+            foreach (
+                var party in displacedUnits
+                    .Where(unit => !string.IsNullOrEmpty(unit.Movement?.MovementGroupID))
+                    .GroupBy(unit =>
+                        (
+                            unit.Movement.MovementGroupID,
+                            Owner: unit.GetOwnerInstanceID(),
+                            unit.Movement.CurrentPosition
+                        )
+                    )
+            )
+                evacuatedPersonnel.UnionWith(
+                    _movement.EvacuatePersonnelGroup(
+                        party.ToList(),
+                        results,
+                        change.BlockadedFactionInstanceIDs == null
+                            ? null
+                            : change.BlockadedFactionInstanceIDs.Contains(party.Key.Owner)
+                    )
+                );
+
             foreach (IMovable unit in displacedUnits)
             {
+                if (evacuatedPersonnel.Contains(unit))
+                    continue;
+
                 bool isStationedFighter =
                     unit is Starfighter
                     {

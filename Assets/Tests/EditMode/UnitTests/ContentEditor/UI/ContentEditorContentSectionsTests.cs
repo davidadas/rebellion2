@@ -141,6 +141,33 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(themes.Document.IsDirty);
         }
 
+        [Test]
+        public void FactionArtworkFields_ConfiguredMedallion_LeavesModelToMainMenuPage()
+        {
+            ContentPackEditorCatalog themes = Catalog(
+                "themes",
+                "<FactionThemes><FactionTheme><FactionInstanceID>FNTEST</FactionInstanceID>"
+                    + "<MainMenuMedallionModelPath>Pack/Models/custom-medallion</MainMenuMedallionModelPath>"
+                    + "</FactionTheme></FactionThemes>"
+            );
+            ContentPackEditorRecord theme = themes.Records.Single();
+
+            ContentPackEditorField medallion = theme
+                .GetFields()
+                .Single(field =>
+                    field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
+                );
+
+            Assert.AreEqual(ContentPackEditorMediaType.Model, medallion.MediaType);
+            Assert.IsFalse(ContentEditorContentSections.IsFactionInterfaceField(medallion));
+            Assert.IsFalse(
+                ContentEditorContentSections
+                    .FactionArtworkFields(theme)
+                    .Any(field => field.MemberName == medallion.MemberName)
+            );
+            Assert.IsFalse(themes.Document.IsDirty);
+        }
+
         [TestCase("facility-research", true)]
         [TestCase("diplomacy", false)]
         public void IsFactionInterfaceField_NeutralMissionArtwork_FollowsTheSharedKeys(
@@ -166,6 +193,30 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(
                 shared,
                 ContentEditorContentSections.IsFactionInterfaceField(field, neutral: true)
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void IsFactionInterfaceField_ConfirmationDialogArtwork_LeavesArtworkInAdvanced(
+            bool neutral
+        )
+        {
+            ContentPackEditorCatalog themes = Catalog(
+                "themes",
+                "<FactionThemes><FactionTheme><FactionInstanceID>FNTEST</FactionInstanceID>"
+                    + "<ConfirmDialogTheme><BackgroundImagePath>Pack/Factions/Alliance/confirm</BackgroundImagePath>"
+                    + "</ConfirmDialogTheme></FactionTheme></FactionThemes>"
+            );
+            ContentPackEditorField field = themes
+                .Records.Single()
+                .GetFields()
+                .Single(item => item.MemberName == nameof(ConfirmDialogTheme.BackgroundImagePath));
+
+            Assert.IsFalse(ContentEditorContentSections.IsFactionInterfaceField(field, neutral));
+            Assert.AreEqual(
+                "Advanced",
+                ContentEditorContentSections.FactionSection(field, neutral)
             );
         }
 
@@ -280,7 +331,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 )
             );
             Assert.AreEqual(
-                "Shell and dialogs",
+                "Shell artwork",
                 ContentEditorContentSections.FactionArtworkCategory(
                     fields.Single(field => field.Value == "Pack/Factions/Alliance/save-icon")
                 )

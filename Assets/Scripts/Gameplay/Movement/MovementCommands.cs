@@ -2207,6 +2207,102 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Evacuates an existing free-personnel travel party with one shared transit duration.
+        /// </summary>
+        /// <param name="participants">The travelling personnel with one owner, position, and group ID.</param>
+        /// <param name="results">The collection receiving the evacuation results.</param>
+        /// <param name="opposingBlockadeAtDeparture">The blockade state before the ownership change.</param>
+        /// <returns>The personnel successfully assigned to a common evacuation destination.</returns>
+        internal IReadOnlyList<IMovable> EvacuatePersonnelGroup(
+            IReadOnlyList<IMovable> participants,
+            ICollection<GameResult> results,
+            bool? opposingBlockadeAtDeparture
+        )
+        {
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (participants.Count < 2)
+                return Array.Empty<IMovable>();
+
+            IMovable first = participants[0];
+            Planet origin = first?.GetParentOfType<Planet>();
+            if (
+                origin == null
+                || string.IsNullOrEmpty(first.Movement?.MovementGroupID)
+                || participants.Any(unit =>
+                    unit is not IMissionParticipant
+                    || unit is Officer { IsCaptured: true } or Officer { IsKilled: true }
+                    || unit.GetOwnerInstanceID() != first.GetOwnerInstanceID()
+                    || unit.GetParentOfType<Planet>() != origin
+                    || unit.Movement?.MovementGroupID != first.Movement.MovementGroupID
+                    || unit.Movement.CurrentPosition != first.Movement.CurrentPosition
+                )
+            )
+                return Array.Empty<IMovable>();
+
+            List<IMovable> units = participants.ToList();
+            Dictionary<IMovable, MovementState> movements = units.ToDictionary(
+                unit => unit,
+                unit => unit.Movement
+            );
+            foreach (
+                ContainerNode fallback in _queries.FindSafeRelocationDestinations(
+                    first,
+                    origin,
+                    forceInterplanetaryTravel: true
+                )
+            )
+            {
+                if (!_queries.CanUseSafeRelocationDestination(units, fallback))
+                    continue;
+
+                List<ContainerNode> destinations;
+                bool accepted;
+                foreach (IMovable unit in units)
+                    unit.Movement = null;
+                try
+                {
+                    accepted = _queries.TryResolveMoveGroupDestinations(
+                        units,
+                        fallback,
+                        out destinations,
+                        out _
+                    );
+                }
+                finally
+                {
+                    RestoreMovement(movements);
+                }
+                if (!accepted)
+                    continue;
+
+                int transitTicks = CalculateGroupTransitTicks(units, destinations);
+                string groupID = _game.GenerateRuntimeIdentifier();
+                List<IMovable> evacuated = new();
+                for (int index = 0; index < units.Count; index++)
+                {
+                    if (
+                        ExecuteAcceptedMove(
+                            units[index],
+                            destinations[index],
+                            results,
+                            out _,
+                            groupID,
+                            transitTicksOverride: transitTicks,
+                            opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                        )
+                    )
+                        evacuated.Add(units[index]);
+                }
+                return evacuated;
+            }
+
+            return Array.Empty<IMovable>();
+        }
+
+        /// <summary>
         /// Relocates units to a compatible ship in their current fleet or, when none can accept
         /// them, sends them toward the nearest eligible planet owned by their movement controller.
         /// </summary>

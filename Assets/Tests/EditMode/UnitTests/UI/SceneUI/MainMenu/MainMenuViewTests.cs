@@ -603,6 +603,69 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void RenderFactions_CustomMedallionModel_ReplacesOnlyConfiguredModel()
+        {
+            Array bindings = GetBindings("factionLaunchBindings");
+            ContentModelBinding firstModel = GetBindingValue<ContentModelBinding>(
+                bindings.GetValue(0),
+                "MedallionModel"
+            );
+            ContentModelBinding secondModel = GetBindingValue<ContentModelBinding>(
+                bindings.GetValue(1),
+                "MedallionModel"
+            );
+            string secondAuthoredAddress = secondModel.Address;
+            FactionThemeLibrary themes = new FactionThemeLibrary(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme
+                    {
+                        FactionInstanceID = "CUSTOM1",
+                        MainMenuMedallionModelPath = "Pack/Models/custom-medallion",
+                    },
+                    new FactionTheme { FactionInstanceID = "CUSTOM2" },
+                }
+            );
+
+            _view.RenderFactions(new[] { "CUSTOM1", "CUSTOM2" }, themes);
+
+            Assert.AreEqual("Pack/Models/custom-medallion", firstModel.Address);
+            Assert.AreEqual(secondAuthoredAddress, secondModel.Address);
+            Assert.AreEqual("CUSTOM1", GetBindingValue<string>(bindings.GetValue(0), "FactionId"));
+            Assert.AreEqual("CUSTOM2", GetBindingValue<string>(bindings.GetValue(1), "FactionId"));
+        }
+
+        [Test]
+        public void RenderFactions_AuthoredSlotOffset_MovesTheButtonAndItsMedallion()
+        {
+            Array bindings = GetBindings("factionLaunchBindings");
+            RectTransform left = (RectTransform)
+                GetBindingValue<Button>(bindings.GetValue(0), "Button").transform;
+            RectTransform right = (RectTransform)
+                GetBindingValue<Button>(bindings.GetValue(1), "Button").transform;
+            Vector2 leftMinimum = left.anchorMin;
+            Vector2 leftMaximum = left.anchorMax;
+            Vector2 rightMinimum = right.anchorMin;
+            FactionThemeLibrary themes = new(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme { FactionInstanceID = "FNEMP1" },
+                    new FactionTheme { FactionInstanceID = "FNALL1" },
+                }
+            );
+            MainMenuLayout layout = new() { LeftLaunchX = 256, LeftLaunchY = 144 };
+
+            _view.RenderFactions(new[] { "FNEMP1", "FNALL1" }, themes, layout);
+            _view.RenderFactions(new[] { "FNEMP1", "FNALL1" }, themes, layout);
+
+            Assert.AreEqual(leftMinimum + new Vector2(0.1f, -0.1f), left.anchorMin);
+            Assert.AreEqual(leftMaximum + new Vector2(0.1f, -0.1f), left.anchorMax);
+            Assert.AreEqual(rightMinimum, right.anchorMin);
+        }
+
+        [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
             object binding = GetBindings("audioCueBindings").GetValue(0);

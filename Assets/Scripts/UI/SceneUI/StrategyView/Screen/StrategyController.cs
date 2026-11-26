@@ -591,6 +591,10 @@ public sealed class StrategyController
         StrategyFleetCommandController fleetCommandController
     )
     {
+        strategyWindowLayerView.SetPlanetWindowHeader(
+            _appBootstrap.GetContentPack().Definition.PlanetWindowHeaderLayout,
+            _appBootstrap.GetContentAssets()
+        );
         Func<SelectionModifierState> getSelectionModifiers = () =>
             AppBootstrap.Instance?.GetInputManager()?.GetSelectionModifierState() ?? default;
         fleetWindowController = new FleetWindowController(
@@ -670,7 +674,8 @@ public sealed class StrategyController
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
             GetSelectedFleetInstanceIds,
-            GetQuickOpenMapItems
+            GetQuickOpenMapItems,
+            _appBootstrap.GetContentPack().Definition.PlanetSectorWindowLayout
         );
         missionsWindowController = new MissionsWindowController(
             () => uiContext,

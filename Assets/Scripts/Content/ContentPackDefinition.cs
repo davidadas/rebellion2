@@ -20,6 +20,12 @@ public sealed class ContentCatalogDefinition
 [XmlRoot("ContentPack")]
 public sealed class ContentPackDefinition
 {
+    // The built-in video used when the pack's startup intro slot is empty.
+    public const string DefaultStartupIntroVideoPath = "Application/Boot/Videos/intro";
+
+    // The built-in video used when the pack's opening crawl slot is empty.
+    public const string DefaultOpeningCrawlVideoPath = "Application/Boot/Videos/opening-crawl";
+
     [XmlElement]
     public string ID { get; set; }
 
@@ -37,6 +43,36 @@ public sealed class ContentPackDefinition
 
     [XmlElement]
     public string MainMenuMusicPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional video shown first at startup.
+    /// </summary>
+    [XmlElement]
+    public string StartupIntroVideoPath { get; set; }
+
+    /// <summary>
+    /// Gets or sets the optional opening crawl shown before the main menu.
+    /// </summary>
+    [XmlElement]
+    public string OpeningCrawlVideoPath { get; set; }
+
+    [XmlElement]
+    public MainMenuLayout MainMenuLayout { get; set; }
+
+    [XmlElement]
+    public PlanetSectorWindowLayout PlanetSectorWindowLayout { get; set; }
+
+    [XmlElement]
+    public PlanetWindowHeaderLayout PlanetWindowHeaderLayout { get; set; }
+
+    /// <summary>
+    /// Gets or sets the prompt area in the shared confirmation dialog's source coordinates.
+    /// </summary>
+    [XmlElement]
+    public SourceRectLayout ConfirmationMessageArea { get; set; }
+
+    [XmlElement]
+    public ConfirmationWindowArtwork ConfirmationWindowArtwork { get; set; }
 
     [XmlElement]
     public string GameConfigPath { get; set; }
@@ -74,6 +110,109 @@ public sealed class ContentPackDefinition
     [XmlArrayItem("Preload")]
     public List<ContentPreloadDefinition> Preloads { get; set; } =
         new List<ContentPreloadDefinition>();
+}
+
+/// <summary>
+/// Stores pack-wide presentation overrides for the planet-sector window.
+/// </summary>
+public sealed class PlanetSectorWindowLayout
+{
+    public string BackgroundColorHex { get; set; }
+    public SourcePointLayout SwapButton { get; set; }
+    public SourcePointLayout CloseButton { get; set; }
+}
+
+/// <summary>
+/// Overrides the shared header of the Defense, Fleet, Facilities, and Missions windows.
+/// Positions are displacements from each window's authored header in source pixels.
+/// </summary>
+public sealed class PlanetWindowHeaderLayout
+{
+    public SourcePointLayout TitleOffset { get; set; }
+    public SourcePointLayout CaptionOffset { get; set; }
+    public SourcePointLayout OpenSectorOffset { get; set; }
+    public SourcePointLayout MinimizeOffset { get; set; }
+    public SourcePointLayout CloseOffset { get; set; }
+    public string OpenSectorImagePath { get; set; }
+    public string OpenSectorPressedImagePath { get; set; }
+    public string MinimizeImagePath { get; set; }
+    public string MinimizePressedImagePath { get; set; }
+    public string CloseImagePath { get; set; }
+    public string ClosePressedImagePath { get; set; }
+}
+
+/// <summary>
+/// Overrides the artwork of the shared two-choice confirmation window.
+/// </summary>
+public sealed class ConfirmationWindowArtwork
+{
+    public string BackgroundImagePath { get; set; }
+    public string YesImagePath { get; set; }
+    public string YesPressedImagePath { get; set; }
+    public string NoImagePath { get; set; }
+    public string NoPressedImagePath { get; set; }
+    public SourcePointLayout YesPosition { get; set; }
+    public SourcePointLayout NoPosition { get; set; }
+}
+
+/// <summary>
+/// Stores launch-slot offsets in the main menu's reference pixels, with positive Y down.
+/// </summary>
+public sealed class MainMenuLayout
+{
+    public const int ReferenceWidth = 2560;
+    public const int ReferenceHeight = 1440;
+
+    public int LeftLaunchX { get; set; }
+    public int LeftLaunchY { get; set; }
+    public int RightLaunchX { get; set; }
+    public int RightLaunchY { get; set; }
+
+    [XmlElement("Control")]
+    public List<MainMenuControlLayout> Controls { get; set; } = new();
+
+    /// <summary>
+    /// Finds the optional artwork and coordinates for a menu control.
+    /// </summary>
+    /// <param name="id">The control identifier.</param>
+    /// <returns>The configured control, or null to use its authored appearance.</returns>
+    public MainMenuControlLayout FindControl(string id) =>
+        Controls.Find(control => control.ID == id);
+
+    /// <summary>
+    /// Returns the two editable members for the specified launch slot.
+    /// </summary>
+    /// <param name="slot">The slot index in scenario faction order.</param>
+    /// <returns>The horizontal and vertical members of the layout.</returns>
+    public static (string X, string Y) GetLaunchMembers(int slot) =>
+        slot == 0
+            ? (nameof(LeftLaunchX), nameof(LeftLaunchY))
+            : (nameof(RightLaunchX), nameof(RightLaunchY));
+
+    /// <summary>
+    /// Returns the stored offset of a launch button.
+    /// </summary>
+    /// <param name="slot">The slot index in scenario faction order.</param>
+    /// <returns>The horizontal and vertical reference-pixel offsets.</returns>
+    public (int X, int Y) GetLaunchOffset(int slot) =>
+        slot == 0 ? (LeftLaunchX, LeftLaunchY) : (RightLaunchX, RightLaunchY);
+}
+
+/// <summary>
+/// Overrides one main-menu control's artwork and position in reference pixels.
+/// </summary>
+public sealed class MainMenuControlLayout
+{
+    [XmlAttribute]
+    public string ID { get; set; }
+
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string ImagePath { get; set; }
+    public string ModelPath { get; set; }
+    public string SelectionImagePath { get; set; }
+    public int SelectionX { get; set; }
+    public int SelectionY { get; set; }
 }
 
 /// <summary>

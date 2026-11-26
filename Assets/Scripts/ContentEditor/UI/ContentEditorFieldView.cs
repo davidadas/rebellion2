@@ -48,7 +48,9 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private Action changed;
     private Action<ContentPackEditorField> importRequested;
     private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
-    private Action<ContentPackEditorField, string> previewRequested;
+    private Action<ContentPackEditorField, string, Vector2Int?> previewRequested;
+    private string videoPreviewAddress;
+    private IReadOnlyList<Vector2Int> videoResolutions;
     private Action editArtwork;
     private bool bound;
     private bool rendering;
@@ -70,6 +72,12 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public bool HasRejectedDraft => hasRejectedDraft;
     public bool HasOpenChoice => choiceDropdown.IsExpanded;
     public ContentPackEditorField Field => this.field;
+
+    /// <summary>
+    /// Displays the authored asset name when the editor field has no replacement value.
+    /// </summary>
+    /// <param name="assetName">The display name of the built-in artwork.</param>
+    internal void ShowBuiltInArtwork(string assetName) => selectedMedia.text = assetName;
 
     /// <summary>
     /// Applies the owning form's background palette to the editable value.
@@ -324,22 +332,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         bool stacked = edit != null && bounds.width < 200;
         int height = stacked ? 76 : 40;
         bounds.height = height;
-        UILayout.SetSourceRect(
-            (RectTransform)transform,
-            Mathf.RoundToInt(bounds.x),
-            Mathf.RoundToInt(bounds.y),
-            Mathf.RoundToInt(bounds.width),
-            height
-        );
-        label.gameObject.SetActive(false);
-        help.gameObject.SetActive(false);
-        input.gameObject.SetActive(false);
-        selectedMedia.gameObject.SetActive(false);
-        checkbox.gameObject.SetActive(false);
-        error.gameObject.SetActive(false);
-        revertButton.gameObject.SetActive(false);
-        selectItemsButton.gameObject.SetActive(false);
-        choiceDropdown.gameObject.SetActive(false);
+        PlaceMediaActions(bounds, height, showChoice: false);
         editArtwork = edit;
         previewButton.gameObject.SetActive(edit != null);
         importButton.gameObject.SetActive(true);
@@ -379,6 +372,85 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             );
         }
         return height;
+    }
+
+    /// <summary>
+    /// Places the shared file and preview buttons beneath a cutscene still.
+    /// </summary>
+    /// <param name="bounds">The content-space action bounds.</param>
+    /// <param name="address">The installed video address or an empty slot.</param>
+    /// <param name="resolutions">The fullscreen sizes supported on the current display.</param>
+    /// <returns>The height of the action row.</returns>
+    internal int SetVideoActionLayout(
+        Rect bounds,
+        string address,
+        IReadOnlyList<Vector2Int> resolutions
+    )
+    {
+        const int height = 40;
+        PlaceMediaActions(bounds, height, showChoice: true);
+        if (!ReferenceEquals(videoResolutions, resolutions))
+        {
+            choiceDropdown.ClearOptions();
+            choiceDropdown.AddOptions(
+                new[] { "Preview" }
+                    .Concat(resolutions.Select(size => $"{size.x} × {size.y}"))
+                    .ToList()
+            );
+            choiceDropdown.SetValueWithoutNotify(0);
+            videoResolutions = resolutions;
+        }
+        videoPreviewAddress = address;
+        editArtwork = null;
+        bool hasVideo = !string.IsNullOrWhiteSpace(address);
+        importButton.GetComponentInChildren<TextMeshProUGUI>().text = hasVideo
+            ? "Replace..."
+            : "Choose video...";
+        int width = Mathf.Max(1, Mathf.Min(146, Mathf.FloorToInt((bounds.width - 6) / 2)));
+        UILayout.SetSourceRect(
+            (RectTransform)importButton.transform,
+            0,
+            4,
+            Mathf.Min(116, width),
+            32
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)choiceDropdown.transform,
+            Mathf.Min(116, width) + 6,
+            4,
+            width,
+            32
+        );
+        importButton.gameObject.SetActive(true);
+        previewButton.gameObject.SetActive(false);
+        choiceDropdown.interactable = hasVideo;
+        return height;
+    }
+
+    /// <summary>
+    /// Hides ordinary field controls for a compact action row beneath a media preview.
+    /// </summary>
+    /// <param name="bounds">The available action rectangle.</param>
+    /// <param name="height">The action row height.</param>
+    /// <param name="showChoice">Whether the row needs the shared dropdown.</param>
+    private void PlaceMediaActions(Rect bounds, int height, bool showChoice)
+    {
+        UILayout.SetSourceRect(
+            (RectTransform)transform,
+            Mathf.RoundToInt(bounds.x),
+            Mathf.RoundToInt(bounds.y),
+            Mathf.RoundToInt(bounds.width),
+            height
+        );
+        label.gameObject.SetActive(false);
+        help.gameObject.SetActive(false);
+        input.gameObject.SetActive(false);
+        selectedMedia.gameObject.SetActive(false);
+        checkbox.gameObject.SetActive(false);
+        error.gameObject.SetActive(false);
+        revertButton.gameObject.SetActive(false);
+        selectItemsButton.gameObject.SetActive(false);
+        choiceDropdown.gameObject.SetActive(showChoice);
     }
 
     /// <summary>
@@ -507,13 +579,35 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         bound = true;
         input.onEndEdit.AddListener(ApplyText);
         importButton.onClick.AddListener(InvokePrimaryMediaAction);
-        choiceDropdown.onValueChanged.AddListener(index =>
-        {
-            if (!rendering && field?.IsMediaDirectory == false && index < choiceValues.Count)
-                ApplyText(choiceValues[index]);
-        });
+        choiceDropdown.onValueChanged.AddListener(SelectDropdownValue);
         previewButton.onClick.AddListener(PreviewSelectedMedia);
         checkbox.ValueChanged += ApplyBoolean;
+    }
+
+    /// <summary>
+    /// Applies a form choice or starts a video at the resolution chosen in its Preview menu.
+    /// </summary>
+    /// <param name="index">The selected option index.</param>
+    private void SelectDropdownValue(int index)
+    {
+        if (rendering)
+            return;
+        if (videoPreviewAddress != null)
+        {
+            if (
+                index > 0
+                && index <= videoResolutions.Count
+                && !string.IsNullOrEmpty(videoPreviewAddress)
+            )
+            {
+                choiceDropdown.SetValueWithoutNotify(0);
+                choiceDropdown.Hide();
+                previewRequested?.Invoke(field, videoPreviewAddress, videoResolutions[index - 1]);
+            }
+            return;
+        }
+        if (field?.IsMediaDirectory == false && index < choiceValues.Count)
+            ApplyText(choiceValues[index]);
     }
 
     /// <summary>
@@ -540,7 +634,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         ContentPackEditorFieldRenderData value,
         Action onChanged,
         Action<ContentPackEditorField> onImport,
-        Action<ContentPackEditorField, string> onPreview
+        Action<ContentPackEditorField, string, Vector2Int?> onPreview
     )
     {
         rendering = true;
@@ -564,6 +658,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             changed = onChanged;
             importRequested = onImport;
             previewRequested = onPreview;
+            videoPreviewAddress = null;
+            videoResolutions = null;
             editArtwork = null;
             previewButton.GetComponentInChildren<TextMeshProUGUI>().text =
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
@@ -747,6 +843,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         changed = null;
         importRequested = null;
         previewRequested = null;
+        videoPreviewAddress = null;
+        videoResolutions = null;
         editArtwork = null;
         choiceValues = mediaFiles = Array.Empty<string>();
         help.Configure(null, input);
@@ -954,7 +1052,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         {
             string selected = mediaFiles.ElementAtOrDefault(choiceDropdown.value);
             if (selected != null)
-                previewRequested?.Invoke(field, selected);
+                previewRequested?.Invoke(field, selected, null);
             return;
         }
         int line = field.IsList
@@ -963,7 +1061,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 .Count(character => character == '\n')
             : 0;
         string address = field.Values.ElementAtOrDefault(line) ?? field.Values.FirstOrDefault();
-        previewRequested?.Invoke(field, address);
+        previewRequested?.Invoke(field, address, null);
     }
 
     /// <summary>
