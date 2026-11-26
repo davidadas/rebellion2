@@ -53,6 +53,9 @@ namespace Rebellion.Tactical
         /// <param name="flags">The seven validated terminal flags.</param>
         internal void ApplySnapshotFlags(bool[] flags) => Array.Copy(flags, _flags, _flags.Length);
 
+        /// <summary>
+        /// Initializes the battle's terminal assessment.
+        /// </summary>
         internal TacticalCombatEnding() => Flags = Array.AsReadOnly(_flags);
 
         /// <summary>

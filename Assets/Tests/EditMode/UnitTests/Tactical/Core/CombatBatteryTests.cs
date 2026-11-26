@@ -396,6 +396,14 @@ namespace Rebellion.Tests.Tactical
             );
         }
 
+        /// <summary>
+        /// Creates a combatant with the fixture's weapon ratings and initial damage.
+        /// </summary>
+        /// <param name="strengths">The authored weapon strengths in arc order.</param>
+        /// <param name="ranges">The weapon ranges for the fixture.</param>
+        /// <param name="damage">The initial number of disabled weapon systems.</param>
+        /// <param name="fighter">Whether to use the fighter battery rules.</param>
+        /// <returns>The detached battle participant used to test battery behavior.</returns>
         private static CombatUnit CreateBatteryUnit(
             int[,] strengths,
             float[] ranges,

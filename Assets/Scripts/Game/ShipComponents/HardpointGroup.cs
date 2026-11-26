@@ -23,6 +23,11 @@ namespace Rebellion.Game.ShipComponents
             return _hardpoints;
         }
 
+        /// <summary>
+        /// Totals the damage ratings of mounts in this battery that use one weapon type.
+        /// </summary>
+        /// <param name="weaponType">The authored weapon type that identifies the matching mounts.</param>
+        /// <returns>The combined authored damage rating.</returns>
         internal int GetStrength(HardpointWeaponType weaponType)
         {
             int strength = 0;
@@ -32,6 +37,11 @@ namespace Rebellion.Game.ShipComponents
             return strength;
         }
 
+        /// <summary>
+        /// Finds the maximum range among mounts with the given weapon type.
+        /// </summary>
+        /// <param name="weaponType">The authored weapon type that identifies the matching mounts.</param>
+        /// <returns>The maximum range, or zero when no mount matches.</returns>
         internal float GetRange(HardpointWeaponType weaponType)
         {
             float? range = null;

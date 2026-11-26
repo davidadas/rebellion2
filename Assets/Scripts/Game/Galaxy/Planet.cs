@@ -270,6 +270,12 @@ namespace Rebellion.Game.Galaxy
             return hasHostile && !hasDefender;
         }
 
+        /// <summary>
+        /// Evaluates blockade using the configured orbital forces.
+        /// </summary>
+        /// <param name="game">The active campaign providing the required state.</param>
+        /// <param name="blockaded">The resulting blockade state when it can be determined.</param>
+        /// <returns>Whether the configured faction data supports a blockade assessment.</returns>
         private bool TryCalculateOrbitalBlockade(GameRoot game, out bool blockaded)
         {
             blockaded = false;

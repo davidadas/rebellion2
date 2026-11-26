@@ -18,6 +18,10 @@ namespace Rebellion.Game.Units
         public float HullDepth { get; set; }
         public float MaximumTurnRate { get; set; }
 
+        /// <summary>
+        /// Copies the ship's hull dimensions and maneuver limit.
+        /// </summary>
+        /// <returns>The independent physical definition.</returns>
         internal CapitalShipGeometry CreateCopy() => (CapitalShipGeometry)MemberwiseClone();
     }
 }

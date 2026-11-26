@@ -198,18 +198,30 @@ namespace Rebellion.Tactical
             public TacticalCombatCarrier Carrier { get; }
             public bool IsAssigned => _phase != Phase.Reserved;
 
+            /// <summary>
+            /// Records the fighter and carrier associated with one reserved berth.
+            /// </summary>
+            /// <param name="carrier">The carrier reserving a recovery berth.</param>
+            /// <param name="fighter">The fighter squadron associated with the berth.</param>
             internal Recovery(TacticalCombatCarrier carrier, CombatUnit fighter)
             {
                 Carrier = carrier;
                 _fighter = fighter;
             }
 
+            /// <summary>
+            /// Applies the queued carrier assignment so the fighter can approach.
+            /// </summary>
             public void BeginApproach()
             {
                 _phase = Phase.Approaching;
                 _fighter.CarrierID = Carrier.Unit.InstanceID;
             }
 
+            /// <summary>
+            /// Admits a landing when the assigned fighter is close enough to the hangar.
+            /// </summary>
+            /// <returns>Whether the landing command should be queued.</returns>
             public bool TryQueueLanding()
             {
                 if (_phase != Phase.Approaching)

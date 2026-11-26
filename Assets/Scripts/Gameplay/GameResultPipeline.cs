@@ -57,6 +57,13 @@ namespace Rebellion.Gameplay
             return ProcessResults(results, processMessages, null);
         }
 
+        /// <summary>
+        /// Processes results while allowing the encounter to supply pending command results.
+        /// </summary>
+        /// <param name="results">The result batch entering this operation.</param>
+        /// <param name="processMessages">Whether to create faction messages for this batch.</param>
+        /// <param name="collectPending">Drains command-owned facts into the next ordinary reaction wave.</param>
+        /// <returns>All initial results and reactions in settlement order.</returns>
         internal List<GameResult> ProcessResults(
             IEnumerable<GameResult> results,
             bool processMessages,

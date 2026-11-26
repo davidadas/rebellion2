@@ -143,6 +143,10 @@ namespace Rebellion.Content
         public bool SplitTurbolaserBeams { get; set; }
 
         // Earlier packs supplied equipment and physical defaults in the tactical catalog.
+        /// <summary>
+        /// Supplies ship-owned defaults from older tactical catalogs.
+        /// </summary>
+        /// <param name="ship">The capital ship receiving migrated defaults.</param>
         internal void MigrateCapitalShip(CapitalShip ship)
         {
             ship.MigrateBackupHyperdrive(BackupHyperdrive);
@@ -157,6 +161,12 @@ namespace Rebellion.Content
             };
         }
 
+        /// <summary>
+        /// Initializes the detached participant with its tactical registration and ship equipment.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <param name="index">The tactical registration index.</param>
         internal void InitializeCombatant(CombatUnit unit, CombatSide side, int index)
         {
             if (unit.Unit is CapitalShip ship)

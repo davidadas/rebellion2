@@ -109,6 +109,9 @@ namespace Rebellion.UI
         /// <summary>
         /// Creates the local fly-in from the battle's ordered display groups.
         /// </summary>
+        /// <param name="session">The deployed battle supplying unit positions and notification cues.</param>
+        /// <param name="presentation">The renderer that owns the arrival effects.</param>
+        /// <returns>The local arrival sequence for the battle's entry gate.</returns>
         public static TacticalCombatArrival CreateFor(
             TacticalCombatSession session,
             ITacticalCombatArrivalPresentation presentation

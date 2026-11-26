@@ -34,6 +34,10 @@ namespace Rebellion.Tactical
         public float WithdrawalMilliseconds { get; private set; }
         public DeparturePhase? WithdrawalPhase { get; private set; }
 
+        /// <summary>
+        /// Projects the authoritative side and withdrawal state into the local view.
+        /// </summary>
+        /// <param name="state">The authoritative side snapshot.</param>
         internal void ApplySnapshot(TacticalCombatSideSnapshot state)
         {
             IsWithdrawing = state.Withdrawing;
@@ -43,6 +47,9 @@ namespace Rebellion.Tactical
             AttackBudget = state.AttackBudget;
         }
 
+        /// <summary>
+        /// Starts the side's withdrawal countdown once.
+        /// </summary>
         internal void BeginWithdrawal()
         {
             if (FactionIndex is not 0 and not 1)
@@ -53,6 +60,10 @@ namespace Rebellion.Tactical
             WithdrawalMilliseconds = InitialWithdrawalMilliseconds;
         }
 
+        /// <summary>
+        /// Raises the route countdown to the applicable station or fleet departure minimum.
+        /// </summary>
+        /// <param name="stationOperational">Whether the battle station contributes to the withdrawal delay.</param>
         internal void SelectWithdrawalDelay(bool stationOperational)
         {
             float minimum = FactionIndex == 1 && stationOperational ? 150000 : 30000;
@@ -61,6 +72,11 @@ namespace Rebellion.Tactical
         }
 
         // Returns true once, on the tick that admits the side's departures.
+        /// <summary>
+        /// Advances the waiting phase and admits departure when the countdown elapses.
+        /// </summary>
+        /// <param name="elapsedMilliseconds">The elapsed interval in milliseconds.</param>
+        /// <returns>Whether this interval opened the departure phase.</returns>
         internal bool AdvanceWithdrawal(float elapsedMilliseconds)
         {
             if (WithdrawalPhase != DeparturePhase.Waiting)
@@ -75,6 +91,9 @@ namespace Rebellion.Tactical
             return true;
         }
 
+        /// <summary>
+        /// Records that this side may now scuttle fighters that cannot recover.
+        /// </summary>
         internal void StartScuttling() => WithdrawalPhase = DeparturePhase.Scuttling;
 
         /// <summary>

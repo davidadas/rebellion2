@@ -172,87 +172,6 @@ namespace Rebellion.Game.Combat
         [PersistableIgnore]
         public BaseSceneNode Unit => _unit;
 
-        /// <summary>
-        /// Captures the campaign unit state used for the duration of one battle.
-        /// </summary>
-        /// <param name="sourceUnit">The strategic capital ship or starfighter.</param>
-        /// <returns>An independently mutable combat copy.</returns>
-        public static CombatUnit Create(BaseSceneNode sourceUnit)
-        {
-            CombatUnit unit = new();
-            unit.CaptureSource(sourceUnit);
-            return unit;
-        }
-
-        /// <summary>
-        /// Creates a battle unit for deserialization.
-        /// </summary>
-        public CombatUnit() { }
-
-        /// <summary>
-        /// Copies the campaign unit and captures its starting carrier and payload.
-        /// </summary>
-        /// <param name="sourceUnit">The campaign unit entering the battle.</param>
-        private void CaptureSource(BaseSceneNode sourceUnit)
-        {
-            if (sourceUnit == null)
-                throw new ArgumentNullException(nameof(sourceUnit));
-            if (sourceUnit is not CapitalShip && sourceUnit is not Starfighter)
-                throw new ArgumentException(
-                    "Only capital ships and starfighters can enter a space battle.",
-                    nameof(sourceUnit)
-                );
-
-            _unit = (BaseSceneNode)sourceUnit.CreateCopy();
-            SourceUnitInstanceID = sourceUnit.InstanceID;
-            CarrierSourceUnitInstanceID =
-                sourceUnit is Starfighter
-                    ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
-                    : null;
-
-            if (sourceUnit is CapitalShip ship)
-            {
-                PayloadCount =
-                    ship.GetChildren<Officer>().Count
-                    + ship.GetChildren<Regiment>().Count
-                    + ship.GetChildren<SpecialForces>().Count;
-                int fighterCount = ship.GetChildren<Starfighter>(includeDisabled: true).Count;
-                int activeFighterCount = ship.GetChildren<Starfighter>()
-                    .Count(fighter =>
-                        fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        && fighter.Movement == null
-                        && fighter.CurrentSquadronSize > 0
-                    );
-                FighterCapacity = ship.StarfighterCapacity - fighterCount + activeFighterCount;
-            }
-        }
-
-        /// <summary>
-        /// Replaces the battle copy's mutable capital-ship result state.
-        /// </summary>
-        /// <param name="hull">The surviving hull strength.</param>
-        /// <param name="systemDamage">The surviving component damage.</param>
-        public void ApplyCapitalShipState(int hull, CapitalShipSystemDamage systemDamage)
-        {
-            if (_unit is not CapitalShip ship)
-                throw new InvalidOperationException("The battle unit is not a capital ship.");
-            ship.CurrentHullStrength = hull;
-            ship.SystemDamage = systemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
-        }
-
-        /// <summary>
-        /// Replaces the battle copy's mutable starfighter result state.
-        /// </summary>
-        /// <param name="squadronSize">The surviving fighter count.</param>
-        /// <param name="carrierSourceUnitInstanceID">The campaign carrier identity after recovery.</param>
-        public void ApplyStarfighterState(int squadronSize, string carrierSourceUnitInstanceID)
-        {
-            if (_unit is not Starfighter fighter)
-                throw new InvalidOperationException("The battle unit is not a starfighter.");
-            fighter.CurrentSquadronSize = squadronSize;
-            CarrierSourceUnitInstanceID = carrierSourceUnitInstanceID;
-        }
-
         [PersistableIgnore]
         public int PresentationIndex { get; internal set; }
 
@@ -342,6 +261,149 @@ namespace Rebellion.Game.Combat
                     or CombatUnitStatus.AwaitingWithdrawal
                     or CombatUnitStatus.AttackingBattleStation;
         public int SquadronSize => IsAlive ? Math.Max((int)(Hull / 8), 1) : 0;
+
+        [PersistableMember(Name = "ComponentDamage")]
+        private CapitalShipSystemDamage _battleDamage = new();
+
+        [PersistableMember(Name = "WeaponRecharge")]
+        private float _weaponRecharge;
+
+        [PersistableMember(Name = "ShieldRecharge")]
+        private float _shieldRecharge;
+
+        [PersistableMember(Name = "MovementBudget")]
+        private float _movementBudget;
+
+        [PersistableMember(Name = "TractorBudget")]
+        private float _tractorBudget;
+
+        [PersistableMember(Name = "TurnBonus")]
+        private float _turnBonus;
+
+        [PersistableMember(Name = "HyperdriveCount")]
+        private uint _hyperdriveCount;
+
+        [PersistableMember(Name = "DamageControl")]
+        private float _damageControl;
+
+        [PersistableMember(Name = "DamageEventCount")]
+        private uint _damageEventCount;
+
+        [PersistableMember(Name = "RepairMilliseconds")]
+        private float _repairMilliseconds;
+
+        [PersistableMember(Name = "ShieldLimit")]
+        private float _shieldLimit;
+
+        public float MaximumHull { get; private set; }
+        public float Hull { get; internal set; }
+        public float Shields { get; internal set; }
+        public float MaximumShields => _shieldLimit;
+        public float AttackDelay { get; internal set; }
+        public float MovementDelay { get; internal set; }
+        public bool IsAlive => Hull > 0;
+
+        public bool HasHyperdrive => GetDamage(TacticalShipSystem.Hyperdrive) < _hyperdriveCount;
+        public double HullFraction => (double)Hull / MaximumHull;
+
+        internal float WeaponRechargeSample => _weaponRecharge;
+        internal float ShieldRechargeSample => _shieldRecharge;
+
+        internal float ShieldLimit
+        {
+            get => _shieldLimit;
+            set => _shieldLimit = value;
+        }
+
+        internal float RepairMilliseconds
+        {
+            get => _repairMilliseconds;
+            set => _repairMilliseconds = value;
+        }
+
+        internal float DamageControl => _damageControl;
+        internal uint DamageEventCount => _damageEventCount;
+
+        /// <summary>
+        /// Captures the campaign unit state used for the duration of one battle.
+        /// </summary>
+        /// <param name="sourceUnit">The strategic capital ship or starfighter.</param>
+        /// <returns>An independently mutable combat copy.</returns>
+        public static CombatUnit Create(BaseSceneNode sourceUnit)
+        {
+            CombatUnit unit = new();
+            unit.CaptureSource(sourceUnit);
+            return unit;
+        }
+
+        /// <summary>
+        /// Creates a battle unit for deserialization.
+        /// </summary>
+        public CombatUnit() { }
+
+        /// <summary>
+        /// Copies the campaign unit and captures its starting carrier and payload.
+        /// </summary>
+        /// <param name="sourceUnit">The campaign unit entering the battle.</param>
+        private void CaptureSource(BaseSceneNode sourceUnit)
+        {
+            if (sourceUnit == null)
+                throw new ArgumentNullException(nameof(sourceUnit));
+            if (sourceUnit is not CapitalShip && sourceUnit is not Starfighter)
+                throw new ArgumentException(
+                    "Only capital ships and starfighters can enter a space battle.",
+                    nameof(sourceUnit)
+                );
+
+            _unit = (BaseSceneNode)sourceUnit.CreateCopy();
+            SourceUnitInstanceID = sourceUnit.InstanceID;
+            CarrierSourceUnitInstanceID =
+                sourceUnit is Starfighter
+                    ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
+                    : null;
+
+            if (sourceUnit is CapitalShip ship)
+            {
+                PayloadCount =
+                    ship.GetChildren<Officer>().Count
+                    + ship.GetChildren<Regiment>().Count
+                    + ship.GetChildren<SpecialForces>().Count;
+                int fighterCount = ship.GetChildren<Starfighter>(includeDisabled: true).Count;
+                int activeFighterCount = ship.GetChildren<Starfighter>()
+                    .Count(fighter =>
+                        fighter.ManufacturingStatus == ManufacturingStatus.Complete
+                        && fighter.Movement == null
+                        && fighter.CurrentSquadronSize > 0
+                    );
+                FighterCapacity = ship.StarfighterCapacity - fighterCount + activeFighterCount;
+            }
+        }
+
+        /// <summary>
+        /// Replaces the battle copy's mutable capital-ship result state.
+        /// </summary>
+        /// <param name="hull">The surviving hull strength.</param>
+        /// <param name="systemDamage">The surviving component damage.</param>
+        public void ApplyCapitalShipState(int hull, CapitalShipSystemDamage systemDamage)
+        {
+            if (_unit is not CapitalShip ship)
+                throw new InvalidOperationException("The battle unit is not a capital ship.");
+            ship.CurrentHullStrength = hull;
+            ship.SystemDamage = systemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
+        }
+
+        /// <summary>
+        /// Replaces the battle copy's mutable starfighter result state.
+        /// </summary>
+        /// <param name="squadronSize">The surviving fighter count.</param>
+        /// <param name="carrierSourceUnitInstanceID">The campaign carrier identity after recovery.</param>
+        public void ApplyStarfighterState(int squadronSize, string carrierSourceUnitInstanceID)
+        {
+            if (_unit is not Starfighter fighter)
+                throw new InvalidOperationException("The battle unit is not a starfighter.");
+            fighter.CurrentSquadronSize = squadronSize;
+            CarrierSourceUnitInstanceID = carrierSourceUnitInstanceID;
+        }
 
         /// <summary>
         /// Creates tactical simulation state over an independently copied campaign unit.
@@ -479,6 +541,11 @@ namespace Rebellion.Game.Combat
             return rate;
         }
 
+        /// <summary>
+        /// Resets and charges each live battery in tactical arc order.
+        /// </summary>
+        /// <param name="weaponDamage">The initial number of disabled weapon systems.</param>
+        /// <param name="isFighter">Whether the participant is a fighter squadron.</param>
         private void InitializeBatteries(uint weaponDamage, bool isFighter)
         {
             for (int index = 0; index < _batteryCharge.Length; index++)
@@ -493,6 +560,10 @@ namespace Rebellion.Game.Combat
             }
         }
 
+        /// <summary>
+        /// Reads the ship's authored batteries or builds them from older weapon ratings.
+        /// </summary>
+        /// <returns>The batteries that supply the live weapon state.</returns>
         private IReadOnlyList<HardpointGroup> GetBatteries()
         {
             HardpointGroup[] groups = new HardpointGroup[4];
@@ -594,12 +665,29 @@ namespace Rebellion.Game.Combat
                 + GetWeaponStrength(arc, TacticalWeaponType.Turbolaser)
             );
 
+        /// <summary>
+        /// Reads the combined rating for a weapon in one battery arc.
+        /// </summary>
+        /// <param name="arc">The requested ship-relative weapon arc.</param>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The weapon strength across matching mounts.</returns>
         public int GetWeaponStrength(TacticalWeaponArc arc, TacticalWeaponType weapon) =>
             Batteries[(int)arc].GetStrength(GetMountWeaponType(weapon));
 
+        /// <summary>
+        /// Reads the range of a weapon in one battery arc.
+        /// </summary>
+        /// <param name="arc">The requested ship-relative weapon arc.</param>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The matching weapon range, or zero when absent.</returns>
         public float GetWeaponRange(TacticalWeaponArc arc, TacticalWeaponType weapon) =>
             Batteries[(int)arc].GetRange(GetMountWeaponType(weapon));
 
+        /// <summary>
+        /// Maps a tactical discharge to its authored mount category.
+        /// </summary>
+        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <returns>The corresponding hardpoint weapon category.</returns>
         private static HardpointWeaponType GetMountWeaponType(TacticalWeaponType weapon) =>
             weapon switch
             {
@@ -687,53 +775,6 @@ namespace Rebellion.Game.Combat
                     return;
             _batteryRechargeOrder[_batteryRechargeCount++] = arc;
         }
-
-        [PersistableMember(Name = "ComponentDamage")]
-        private CapitalShipSystemDamage _battleDamage = new();
-
-        [PersistableMember(Name = "WeaponRecharge")]
-        private float _weaponRecharge;
-
-        [PersistableMember(Name = "ShieldRecharge")]
-        private float _shieldRecharge;
-
-        [PersistableMember(Name = "MovementBudget")]
-        private float _movementBudget;
-
-        [PersistableMember(Name = "TractorBudget")]
-        private float _tractorBudget;
-
-        [PersistableMember(Name = "TurnBonus")]
-        private float _turnBonus;
-
-        [PersistableMember(Name = "HyperdriveCount")]
-        private uint _hyperdriveCount;
-
-        [PersistableMember(Name = "DamageControl")]
-        private float _damageControl;
-
-        [PersistableMember(Name = "DamageEventCount")]
-        private uint _damageEventCount;
-
-        [PersistableMember(Name = "RepairMilliseconds")]
-        private float _repairMilliseconds;
-
-        [PersistableMember(Name = "ShieldLimit")]
-        private float _shieldLimit;
-
-        public float MaximumHull { get; private set; }
-        public float Hull { get; internal set; }
-        public float Shields { get; internal set; }
-        public float MaximumShields => _shieldLimit;
-        public float AttackDelay { get; internal set; }
-        public float MovementDelay { get; internal set; }
-        public bool IsAlive => Hull > 0;
-
-        public bool HasHyperdrive => GetDamage(TacticalShipSystem.Hyperdrive) < _hyperdriveCount;
-        public double HullFraction => (double)Hull / MaximumHull;
-
-        internal float WeaponRechargeSample => _weaponRecharge;
-        internal float ShieldRechargeSample => _shieldRecharge;
 
         /// <summary>
         /// Restores authoritative visible pools and components without applying damage or requesting repairs.
@@ -1096,24 +1137,18 @@ namespace Rebellion.Game.Combat
             Shields = shields;
         }
 
-        internal float ShieldLimit
-        {
-            get => _shieldLimit;
-            set => _shieldLimit = value;
-        }
-
-        internal float RepairMilliseconds
-        {
-            get => _repairMilliseconds;
-            set => _repairMilliseconds = value;
-        }
-
-        internal float DamageControl => _damageControl;
-        internal uint DamageEventCount => _damageEventCount;
-
+        /// <summary>
+        /// Writes a damage level into the shared ship-component state.
+        /// </summary>
+        /// <param name="system">The affected ship system.</param>
+        /// <param name="damage">The new damage level.</param>
         private void SetDamage(TacticalShipSystem system, uint damage) =>
             _battleDamage.SetCombatDamage(system, unchecked((int)damage));
 
+        /// <summary>
+        /// Restores the ordered component damage values from persisted battle state.
+        /// </summary>
+        /// <param name="damage">Damage in tactical system registration order.</param>
         private void RestoreComponentDamage(uint[] damage)
         {
             for (int system = 0; system < damage.Length; system++)

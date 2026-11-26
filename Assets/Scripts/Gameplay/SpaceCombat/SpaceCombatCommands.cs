@@ -238,6 +238,12 @@ namespace Rebellion.Gameplay
             return true;
         }
 
+        /// <summary>
+        /// Projects final tactical state into the campaign's combat result.
+        /// </summary>
+        /// <param name="outcome">The authoritative set of final unit states.</param>
+        /// <param name="validateNetwork">Whether peer data requires network admission checks.</param>
+        /// <returns>The result whose units are resolved against the campaign.</returns>
         private SpaceCombatResult CreateTacticalResult(
             TacticalCombatOutcome outcome,
             bool validateNetwork = false
@@ -369,6 +375,11 @@ namespace Rebellion.Gameplay
             return result;
         }
 
+        /// <summary>
+        /// Finds the live campaign unit represented by a detached combatant.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <returns>The campaign participant, or null once it is absent.</returns>
         private ISceneNode ResolveTacticalSource(CombatUnit unit)
         {
             string sourceID = unit?.SourceUnitInstanceID;
@@ -1539,6 +1550,10 @@ namespace Rebellion.Gameplay
             return selected;
         }
 
+        /// <summary>
+        /// Retains the initial report rows for both forces using the battle's detached copies.
+        /// </summary>
+        /// <param name="roster">The validated roster captured for this encounter.</param>
         private void CaptureTacticalReport(TacticalCombatFactory.EncounterRoster roster)
         {
             Dictionary<string, ISceneNode> battleCopies = _tacticalCombat.Units.ToDictionary(
@@ -1983,6 +1998,13 @@ namespace Rebellion.Gameplay
             return events;
         }
 
+        /// <summary>
+        /// Records a participant destruction and the military loss it contributes.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <param name="planet">The campaign planet where the battle takes place.</param>
+        /// <param name="tick">The campaign tick at which destruction takes effect.</param>
+        /// <returns>The destruction result for publication with the completed battle.</returns>
         internal static GameObjectDestroyedResult CreateCombatDestructionResult(
             ISceneNode unit,
             Planet planet,
