@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical

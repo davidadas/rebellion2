@@ -24,6 +24,13 @@ namespace Rebellion.Tactical
         public bool CanReceiveAttackRun => IsOperational && !HasPlanetaryProtection;
         public event Action ChargeCompleted;
 
+        internal static bool CanStartAttackRun(
+            bool canReceiveAttackRun,
+            bool hasAttackRun,
+            int friendlySquadrons,
+            int opposingSquadrons
+        ) => canReceiveAttackRun && !hasAttackRun && friendlySquadrons > opposingSquadrons;
+
         /// <summary>
         /// Restores the authoritative charge and departure facts without firing or withdrawing locally.
         /// </summary>

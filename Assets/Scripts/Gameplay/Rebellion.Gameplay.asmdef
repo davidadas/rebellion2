@@ -2,6 +2,7 @@
     "name": "Rebellion.Gameplay",
     "rootNamespace": "Rebellion.Gameplay",
     "references": [
+        "Rebellion.Content",
         "Rebellion.Game",
         "Rebellion.SceneGraph",
         "Rebellion.Tactical.Core",

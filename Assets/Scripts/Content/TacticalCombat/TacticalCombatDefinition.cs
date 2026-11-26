@@ -1,7 +1,10 @@
 using System.Collections.Generic;
+using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.SpaceCombat
+namespace Rebellion.Content
 {
     /// <summary>
     /// Provides the authored deployment and model geometry used by tactical battles.
@@ -23,33 +26,6 @@ namespace Rebellion.Game.SpaceCombat
         public string AttackRunFailureMoviePath { get; set; }
         public int FastSystemRepairTicks { get; set; }
         public int NormalSystemRepairTicks { get; set; }
-    }
-
-    /// <summary>
-    /// Identifies a combat sound requested by a weapon, impact, or unit transition.
-    /// </summary>
-    public enum TacticalCombatSound
-    {
-        CapitalLaser,
-        HeavyWeapon,
-        CapitalIon,
-        AllianceFighterLaser,
-        EmpireFighterLaser,
-        FighterIon,
-        TractorEngaged,
-        TractorReleased,
-        TargetLocked,
-        SmallExplosion,
-        MediumExplosion,
-        LargeExplosion,
-        HeavyShieldHit,
-        LaserShieldHit,
-        IonShieldHit,
-        HeavyHullHit,
-        LaserHullHit,
-        IonHullHit,
-        Superlaser,
-        FighterLaunch,
     }
 
     /// <summary>
@@ -165,5 +141,31 @@ namespace Rebellion.Game.SpaceCombat
         public int BackupHyperdrive { get; set; }
         public int FighterGroup { get; set; }
         public bool SplitTurbolaserBeams { get; set; }
+
+        // Earlier packs supplied equipment and physical defaults in the tactical catalog.
+        internal void MigrateCapitalShip(CapitalShip ship)
+        {
+            ship.MigrateBackupHyperdrive(BackupHyperdrive);
+            bool largeHull = PresentationIndex == 21;
+            ship.PhysicalGeometry ??= new CapitalShipGeometry
+            {
+                CollisionRadius = largeHull ? 19 : CapitalShipGeometry.DefaultCollisionRadius,
+                MaximumTurnRate = largeHull ? (float)((double)1.5707964f * 0.033333335f) : 0,
+                HullWidth = HullWidth,
+                HullHeight = HullHeight,
+                HullDepth = HullDepth,
+            };
+        }
+
+        internal void InitializeCombatant(CombatUnit unit, CombatSide side, int index)
+        {
+            if (unit.Unit is CapitalShip ship)
+                MigrateCapitalShip(ship);
+            else if (unit.Unit is Starfighter fighter)
+                fighter.MigrateBackupHyperdrive(BackupHyperdrive);
+
+            unit.PresentationIndex = PresentationIndex;
+            unit.InitializeTacticalState(side, index);
+        }
     }
 }

@@ -82,7 +82,20 @@ namespace Rebellion.Tactical
                     group.AttackRun = null;
             }
             foreach (TacticalCombatUnitSnapshot state in snapshot.Units)
-                ApplySnapshotUnit(GetUnit(state.UnitID), state);
+            {
+                CombatUnit unit = GetUnit(state.UnitID);
+                unit.GroupID = null;
+                unit.RequestedGroupID = null;
+                ApplySnapshotUnit(unit, state);
+            }
+            foreach (TacticalCombatGroupSnapshot state in snapshot.Groups)
+            {
+                TacticalCombatGroup group = _groupsByID[state.GroupID];
+                foreach (CombatUnit unit in group.Members)
+                    unit.GroupID = group.ID;
+                foreach (CombatUnit unit in group.RequestedMembers)
+                    unit.RequestedGroupID = group.ID;
+            }
             _synchronizedSystemTime = snapshot.SystemTime;
             _userPaused = snapshot.Paused;
             IsComplete = snapshot.Complete;
@@ -193,7 +206,6 @@ namespace Rebellion.Tactical
             unit.DesiredMovement = state.DesiredMovement.ToVector();
             unit.Status = state.Status;
             unit.CarrierID = string.IsNullOrEmpty(state.CarrierID) ? null : state.CarrierID;
-            unit.TargetID = string.IsNullOrEmpty(state.TargetID) ? null : state.TargetID;
             unit.Systems.ApplyProjection(
                 state.Hull,
                 state.Shields,
@@ -211,8 +223,6 @@ namespace Rebellion.Tactical
             unit.CommandBudget = state.CommandBudget;
             unit.TurnRate = state.TurnRate;
             unit.HasCollision = state.HasCollision;
-            unit.GroupID = state.HasGroup ? state.GroupID : null;
-            unit.RequestedGroupID = state.HasRequestedGroup ? state.RequestedGroupID : null;
         }
 
         /// <summary>
@@ -288,6 +298,8 @@ namespace Rebellion.Tactical
                 );
             HashSet<string> participants = new(StringComparer.Ordinal);
             HashSet<int> groups = new();
+            HashSet<string> activeMembers = new(StringComparer.Ordinal);
+            HashSet<string> requestedMembers = new(StringComparer.Ordinal);
             foreach (TacticalCombatGroupSnapshot state in snapshot.Groups)
             {
                 if (
@@ -336,6 +348,14 @@ namespace Rebellion.Tactical
                     );
                 RequireSnapshotUnits(state.Members, state.Side);
                 RequireSnapshotUnits(state.RequestedMembers, state.Side);
+                if (
+                    state.Members.Any(member => !activeMembers.Add(member))
+                    || state.RequestedMembers.Any(member => !requestedMembers.Add(member))
+                )
+                    throw new ArgumentException(
+                        "The combat projection assigns a participant to multiple groups.",
+                        nameof(snapshot)
+                    );
                 RequireSnapshotUnits(state.Targets);
                 RequireSnapshotUnits(state.RequestedTargets);
                 RequireSnapshotUnits(state.ComputedTargets);
@@ -352,15 +372,12 @@ namespace Rebellion.Tactical
                     || state.Charge?.Length != 4
                     || state.Ready?.Length != 4
                     || !Enum.IsDefined(typeof(CombatUnitStatus), state.Status)
-                    || state.HasGroup && !groups.Contains(state.GroupID)
-                    || state.HasRequestedGroup && !groups.Contains(state.RequestedGroupID)
                 )
                     throw new ArgumentException(
                         "The combat participant projection is invalid.",
                         nameof(snapshot)
                     );
                 RequireSnapshotUnit(state.CarrierID);
-                RequireSnapshotUnit(state.TargetID);
             }
             HashSet<CombatSide> sides = new();
             foreach (TacticalCombatSideSnapshot state in snapshot.Sides)

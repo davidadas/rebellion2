@@ -1,8 +1,8 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Tactical;
 
@@ -49,12 +49,8 @@ namespace Rebellion.Tests.Tactical
                 CurrentSquadronSize = 12,
                 Hyperdrive = primary,
             };
-            CombatUnit unit = new(
-                fighter,
-                CombatSide.Attacker,
-                1,
-                new TacticalCombatUnitDefinition { BackupHyperdrive = backup }
-            );
+            fighter.BackupHyperdrive = backup;
+            CombatUnit unit = new(fighter, CombatSide.Attacker, 1);
             for (int index = 0; index < damaged; index++)
                 unit.Systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
 
@@ -77,7 +73,7 @@ namespace Rebellion.Tests.Tactical
                 HullDepth = 60,
             };
 
-            CombatUnit unit = new(CreateShip(), CombatSide.Attacker, 1, definition);
+            CombatUnit unit = CreateWithLegacyGeometry(definition);
 
             Assert.AreEqual(3, unit.HalfHeight);
             Assert.AreEqual(expectedRadius, unit.CollisionRadius);
@@ -87,10 +83,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
         {
-            CombatUnit unit = new(
-                CreateShip(),
-                CombatSide.Attacker,
-                1,
+            CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition
                 {
                     PresentationIndex = 20,
@@ -105,15 +98,19 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Constructor_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
         {
-            CombatUnit unit = new(
-                CreateShip(),
-                CombatSide.Attacker,
-                1,
+            CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition { PresentationIndex = 21 }
             );
 
             Assert.AreEqual(0.0523598827f, unit.MaximumTurnRate);
             Assert.AreEqual(0.0523598827f, unit.TurnRate);
+        }
+
+        private static CombatUnit CreateWithLegacyGeometry(TacticalCombatUnitDefinition definition)
+        {
+            CombatUnit unit = CombatUnit.Create(CreateShip());
+            definition.InitializeCombatant(unit, CombatSide.Attacker, 1);
+            return unit;
         }
 
         [Test]

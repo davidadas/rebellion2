@@ -2,9 +2,9 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 

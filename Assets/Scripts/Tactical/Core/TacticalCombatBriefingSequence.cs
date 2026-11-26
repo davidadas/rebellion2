@@ -21,12 +21,12 @@ namespace Rebellion.Tactical
         public int AllianceActiveFightersOutsideAttackRuns { get; }
 
         public bool CanAttackBattleStation =>
-            StationExists
-            && StationOperational
-            && !StationProtected
-            && !AttackRunActive
-            && AllianceActiveFighters > EmpireActiveFighters
-            && !AllianceAttackRunOrdered;
+            TacticalCombatBattleStation.CanStartAttackRun(
+                StationExists && StationOperational && !StationProtected,
+                AttackRunActive || AllianceAttackRunOrdered,
+                AllianceActiveFighters,
+                EmpireActiveFighters
+            );
 
         /// <summary>
         /// Captures the explicit station, root membership, and group-order facts for one frame.

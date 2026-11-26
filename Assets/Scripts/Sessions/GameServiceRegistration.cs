@@ -83,8 +83,7 @@ namespace Rebellion.Gameplay
                     content.CapitalShips,
                     content.Starfighters,
                     content.Regiments,
-                    content.SpecialForces,
-                    content.TacticalCombat
+                    content.SpecialForces
                 );
             });
 

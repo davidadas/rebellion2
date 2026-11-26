@@ -754,7 +754,11 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (7, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
         }
 
@@ -774,7 +778,11 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (0, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
         }
 
@@ -808,14 +816,22 @@ namespace Rebellion.Tests.Game
             );
             Assert.AreEqual(
                 (18, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
 
             _game.DeleteNode(ship);
 
             Assert.AreEqual(
                 (0, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
         }
 
@@ -832,7 +848,11 @@ namespace Rebellion.Tests.Game
             _game.AddSceneNodeByInstanceID(regiment);
             Assert.AreEqual(
                 (0, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
 
             regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
@@ -840,7 +860,11 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (17, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
         }
 
@@ -861,7 +885,11 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (0, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
         }
 
@@ -887,14 +915,19 @@ namespace Rebellion.Tests.Game
 
             Assert.AreEqual(
                 (23, 0),
-                restored.CaptureSpaceCombatMilitaryValues(
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    restored,
                     _faction1.InstanceID,
                     _faction2.InstanceID
                 )
             );
             Assert.AreEqual(
                 (17, 0),
-                _game.CaptureSpaceCombatMilitaryValues(_faction1.InstanceID, _faction2.InstanceID)
+                SpaceCombatObserver.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
             );
             StringAssert.DoesNotContain("SpaceCombatMilitaryRoster", xml);
         }

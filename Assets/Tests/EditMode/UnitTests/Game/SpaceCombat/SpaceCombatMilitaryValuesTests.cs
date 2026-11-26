@@ -1,18 +1,24 @@
 using System;
 using NUnit.Framework;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Game;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.SpaceCombat
 {
     [TestFixture]
-    public class SpaceCombatMilitaryRosterTests
+    public class SpaceCombatMilitaryValuesTests
     {
+        private static void Register(GameRoot game, ISceneNode unit) =>
+            game.NodesByInstanceID.Add(unit.InstanceID, unit);
+
         [Test]
         public void CaptureValues_EligibleFamilies_UsesFullValuesForBothOwners()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new CapitalShip
                 {
                     InstanceID = "ship",
@@ -24,7 +30,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     CurrentHullStrength = 1,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new CapitalShip
                 {
                     InstanceID = "station",
@@ -34,7 +41,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -46,7 +54,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     CurrentSquadronSize = 1,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "regiment",
@@ -57,14 +66,18 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
 
-            Assert.AreEqual((268, 13), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (268, 13),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void CaptureValues_BuildingUnits_ExcludesAllMilitaryFamilies()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new CapitalShip
                 {
                     InstanceID = "ship",
@@ -73,7 +86,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     ManufacturingStatus = ManufacturingStatus.Building,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -82,7 +96,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     ManufacturingStatus = ManufacturingStatus.Building,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "regiment",
@@ -92,7 +107,10 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
 
-            Assert.AreEqual((0, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [TestCase(ManufacturingStatus.Building, 0)]
@@ -103,7 +121,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             int expectedValue
         )
         {
-            SpaceCombatMilitaryRoster roster = new();
+            GameRoot game = new();
             Regiment regiment = new Regiment
             {
                 InstanceID = "regiment",
@@ -111,17 +129,20 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 UprisingDefense = 17,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
-            roster.Register(regiment);
+            Register(game, regiment);
 
             regiment.ManufacturingStatus = status;
 
-            Assert.AreEqual((expectedValue, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (expectedValue, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void CaptureValues_OwnerAndValueChangeInPlace_ReadsCurrentFacts()
         {
-            SpaceCombatMilitaryRoster roster = new();
+            GameRoot game = new();
             CapitalShip ship = new CapitalShip
             {
                 InstanceID = "ship",
@@ -129,34 +150,45 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 UprisingDefense = 7,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            roster.Register(ship);
-            Assert.AreEqual((7, 0), roster.CaptureValues("first", "second"));
+            Register(game, ship);
+            Assert.AreEqual(
+                (7, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
 
             ship.OwnerInstanceID = "second";
             ship.UprisingDefense = 19;
 
-            Assert.AreEqual((0, 19), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (0, 19),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void Register_NonMilitaryFamilies_DoNotEnterTotals()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(new Fleet { InstanceID = "fleet", OwnerInstanceID = "first" });
-            roster.Register(
+            GameRoot game = new();
+            Register(game, new Fleet { InstanceID = "fleet", OwnerInstanceID = "first" });
+            Register(
+                game,
                 new SpecialForces { InstanceID = "special-forces", OwnerInstanceID = "first" }
             );
-            roster.Register(new Officer { InstanceID = "officer", OwnerInstanceID = "second" });
-            roster.Register(new Building { InstanceID = "building", OwnerInstanceID = "second" });
+            Register(game, new Officer { InstanceID = "officer", OwnerInstanceID = "second" });
+            Register(game, new Building { InstanceID = "building", OwnerInstanceID = "second" });
 
-            Assert.AreEqual((0, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void Register_DuplicateRegistryKey_LeavesExistingContributionIntact()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "unit",
@@ -167,16 +199,19 @@ namespace Rebellion.Tests.Game.SpaceCombat
             );
 
             Assert.Throws<ArgumentException>(() =>
-                roster.Register(new CapitalShip { InstanceID = "unit", UprisingDefense = 100 })
+                Register(game, new CapitalShip { InstanceID = "unit", UprisingDefense = 100 })
             );
 
-            Assert.AreEqual((7, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (7, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void Unregister_UnitIdentifierChanged_RemovesOriginalRegistryKey()
         {
-            SpaceCombatMilitaryRoster roster = new();
+            GameRoot game = new();
             Regiment regiment = new Regiment
             {
                 InstanceID = "registered-key",
@@ -184,19 +219,23 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 UprisingDefense = 7,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            roster.Register(regiment);
+            Register(game, regiment);
             regiment.InstanceID = "changed-identifier";
 
-            roster.Unregister("registered-key");
+            game.NodesByInstanceID.Remove("registered-key");
 
-            Assert.AreEqual((0, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void Clear_ReplacementUsesSameRegistryKey_DropsOutgoingReference()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "unit",
@@ -205,9 +244,10 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            roster.Clear();
+            game.NodesByInstanceID.Clear();
 
-            roster.Register(
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "unit",
@@ -217,14 +257,18 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
 
-            Assert.AreEqual((0, 19), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (0, 19),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void CaptureValues_TotalExceedsSignedRange_WrapsToLow32Bits()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "first-unit",
@@ -233,7 +277,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 }
             );
-            roster.Register(
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "second-unit",
@@ -243,14 +288,18 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
 
-            Assert.AreEqual((int.MinValue, 0), roster.CaptureValues("first", "second"));
+            Assert.AreEqual(
+                (int.MinValue, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
         }
 
         [Test]
         public void CaptureValues_NeutralOwner_DoesNotEnterConfiguredFactionTotals()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "unit",
@@ -259,15 +308,22 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
 
-            Assert.AreEqual((0, 0), roster.CaptureValues("first", "second"));
-            Assert.AreEqual((17, 0), roster.CaptureValues(null, "first"));
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second")
+            );
+            Assert.AreEqual(
+                (17, 0),
+                SpaceCombatObserver.CaptureMilitaryValues(game, null, "first")
+            );
         }
 
         [Test]
         public void CaptureValues_RepeatedQueries_AllocateNoManagedMemory()
         {
-            SpaceCombatMilitaryRoster roster = new();
-            roster.Register(
+            GameRoot game = new();
+            Register(
+                game,
                 new Regiment
                 {
                     InstanceID = "unit",
@@ -277,12 +333,14 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 }
             );
             for (int index = 0; index < 32; index++)
-                roster.CaptureValues("first", "second");
+                SpaceCombatObserver.CaptureMilitaryValues(game, "first", "second");
             long before = GC.GetAllocatedBytesForCurrentThread();
             int total = 0;
 
             for (int index = 0; index < 1024; index++)
-                total += roster.CaptureValues("first", "second").FirstSide;
+                total += SpaceCombatObserver
+                    .CaptureMilitaryValues(game, "first", "second")
+                    .FirstSide;
 
             long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
             Assert.AreEqual(17408, total);

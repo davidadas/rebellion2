@@ -1,6 +1,5 @@
 using System;
 using NUnit.Framework;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Tactical.Core

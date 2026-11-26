@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
@@ -461,7 +460,6 @@ namespace Rebellion.Tactical
                 DesiredMovement = new(unit.DesiredMovement),
                 Status = unit.Status,
                 CarrierID = unit.CarrierID,
-                TargetID = unit.TargetID,
                 Hull = unit.Systems.Hull,
                 Shields = unit.Systems.Shields,
                 ShieldLimit = unit.Systems.MaximumShields,
@@ -485,10 +483,6 @@ namespace Rebellion.Tactical
                 CommandBudget = unit.CommandBudget,
                 TurnRate = unit.TurnRate,
                 HasCollision = unit.HasCollision,
-                HasGroup = unit.GroupID.HasValue,
-                GroupID = unit.GroupID ?? 0,
-                HasRequestedGroup = unit.RequestedGroupID.HasValue,
-                RequestedGroupID = unit.RequestedGroupID ?? 0,
             };
             state.WeaponRechargeSample = unit.Systems.WeaponRechargeSample;
             state.ShieldRechargeSample = unit.Systems.ShieldRechargeSample;

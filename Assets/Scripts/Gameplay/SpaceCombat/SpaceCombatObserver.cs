@@ -1,10 +1,12 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Gameplay
 {
@@ -102,7 +104,7 @@ namespace Rebellion.Gameplay
 
                 SpaceCombatSupportProfile profile = null;
                 if (
-                    !SpaceCombatSupportConfig.TryResolveFactionIDs(
+                    !SpaceCombatSupport.TryResolveFactionIDs(
                         _definition,
                         out string firstID,
                         out string secondID
@@ -131,8 +133,11 @@ namespace Rebellion.Gameplay
 
                 Faction first = _game.GetFactionByOwnerInstanceID(firstID);
                 Faction second = _game.GetFactionByOwnerInstanceID(secondID);
-                int firstLoss = result.AcceptedLosses.GetLostValue(firstID);
-                int secondLoss = result.AcceptedLosses.GetLostValue(secondID);
+                (int firstLoss, int secondLoss) = CaptureLostMilitaryValues(
+                    result.Events,
+                    firstID,
+                    secondID
+                );
                 Faction controller = survivingSide == 1 ? first : second;
                 int loyalty = CombatLoyaltyCalculator.Calculate(
                     survivingSide == 1 ? firstLoss : secondLoss,
@@ -140,10 +145,7 @@ namespace Rebellion.Gameplay
                     controller.Settings.BattleLossLoyaltyDivisor
                 );
 
-                (int firstTotal, int secondTotal) = _game.CaptureSpaceCombatMilitaryValues(
-                    firstID,
-                    secondID
-                );
+                (int firstTotal, int secondTotal) = CaptureMilitaryValues(_game, firstID, secondID);
                 SpaceCombatSupportCalculator.TryCalculate(
                     firstTotal,
                     secondTotal,
@@ -166,6 +168,80 @@ namespace Rebellion.Gameplay
             }
             return reactions;
         }
+
+        /// <summary>
+        /// Captures both requested owners' current full military values without scene traversal or allocation.
+        /// </summary>
+        /// <param name="game">The campaign supplying its live scene index.</param>
+        /// <param name="firstOwnerInstanceId">The first owner identity, or null for neutral ownership.</param>
+        /// <param name="secondOwnerInstanceId">The second owner identity, or null for neutral ownership.</param>
+        /// <returns>The current completed and delivering military values in the requested owner order.</returns>
+        internal static (int FirstSide, int SecondSide) CaptureMilitaryValues(
+            GameRoot game,
+            string firstOwnerInstanceId,
+            string secondOwnerInstanceId
+        )
+        {
+            int first = 0;
+            int second = 0;
+            foreach (ISceneNode unit in game.NodesByInstanceID.Values)
+            {
+                if (
+                    unit
+                    is not IManufacturable
+                    {
+                        ManufacturingStatus: ManufacturingStatus.Complete
+                            or ManufacturingStatus.Delivering
+                    }
+                )
+                    continue;
+                int value = GetMilitaryValue(unit);
+                string owner = unit.OwnerInstanceID;
+                if (owner == firstOwnerInstanceId)
+                    first = unchecked(first + value);
+                if (owner == secondOwnerInstanceId)
+                    second = unchecked(second + value);
+            }
+            return (first, second);
+        }
+
+        internal static (int FirstSide, int SecondSide) CaptureLostMilitaryValues(
+            IEnumerable<GameResult> events,
+            string firstOwner,
+            string secondOwner
+        )
+        {
+            int firstLoss = 0;
+            int secondLoss = 0;
+            foreach (GameResult item in events)
+            {
+                if (
+                    item
+                    is not GameObjectDestroyedResult
+                    {
+                        CountsAsMilitaryLoss: true,
+                        DestroyedObject: ISceneNode unit,
+                    }
+                )
+                    continue;
+                int value = GetMilitaryValue(unit);
+                string owner = unit.OwnerInstanceID;
+                if (owner == firstOwner)
+                    firstLoss = unchecked(firstLoss + value);
+                if (owner == secondOwner)
+                    secondLoss = unchecked(secondLoss + value);
+            }
+            return (firstLoss, secondLoss);
+        }
+
+        private static int GetMilitaryValue(ISceneNode unit) =>
+            unit switch
+            {
+                Regiment regiment => regiment.UprisingDefense,
+                CapitalShip ship => ship.UprisingDefense,
+                Starfighter fighter => fighter.UprisingDefense,
+                _ => 0,
+            };
 
         /// <summary>
         /// Selects populated sector planets whose counterpart support falls below the threshold.

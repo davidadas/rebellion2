@@ -1,5 +1,4 @@
 using System;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
@@ -131,11 +130,22 @@ namespace Rebellion.Game.Combat
         [PersistableMember(Name = "DamageControl")]
         private float _damageControl;
 
+        // Older saved battles carried a separate component timer.
         [PersistableMember(Name = "CampaignRepairDueTick")]
-        private int _campaignRepairDueTick;
+        [PersistableIgnore]
+        private int LegacyCampaignRepairDueTick
+        {
+            get => 0;
+            set { }
+        }
 
         [PersistableMember(Name = "CampaignRepairInterval")]
-        private int _campaignRepairInterval;
+        [PersistableIgnore]
+        private int LegacyCampaignRepairInterval
+        {
+            get => 0;
+            set { }
+        }
 
         [PersistableMember(Name = "DamageEventCount")]
         private uint _damageEventCount;
@@ -242,8 +252,6 @@ namespace Rebellion.Game.Combat
             CapitalShipSystemDamage initialDamage = null
         )
         {
-            _campaignRepairDueTick = initialDamage?.RepairDueTick ?? 0;
-            _campaignRepairInterval = initialDamage?.RepairInterval ?? 0;
             IsFighter = isFighter;
             MaximumHull = maximumHull;
             Hull = currentHull;
@@ -260,14 +268,9 @@ namespace Rebellion.Game.Combat
             _damageControl = damageControlRating;
             if (initialDamage != null)
             {
-                _componentDamage[(int)TacticalShipSystem.Shields] = (uint)initialDamage.Shields;
-                _componentDamage[(int)TacticalShipSystem.Weapons] = (uint)initialDamage.Weapons;
-                _componentDamage[(int)TacticalShipSystem.TractorBeam] = (uint)
-                    initialDamage.TractorBeam;
-                _componentDamage[(int)TacticalShipSystem.Engines] = (uint)initialDamage.Engines;
-                _componentDamage[(int)TacticalShipSystem.Hyperdrive] = (uint)(
-                    initialDamage.PrimaryHyperdrive + initialDamage.BackupHyperdrive
-                );
+                for (int system = 0; system < _componentDamage.Length; system++)
+                    _componentDamage[system] = (uint)
+                        initialDamage.GetCombatDamage((TacticalShipSystem)system);
                 // Existing weapon damage does not seed repair work; later weapon hits add events.
                 _damageEventCount =
                     _componentDamage[(int)TacticalShipSystem.Engines]
@@ -292,7 +295,7 @@ namespace Rebellion.Game.Combat
             int remaining = (int)_componentDamage[(int)TacticalShipSystem.Hyperdrive];
             int primary = primaryHyperdriveInstalled ? Math.Min(remaining, 1) : 0;
             remaining -= primary;
-            CapitalShipSystemDamage result = new()
+            return new CapitalShipSystemDamage()
             {
                 Shields = (int)_componentDamage[(int)TacticalShipSystem.Shields],
                 Weapons = (int)_componentDamage[(int)TacticalShipSystem.Weapons],
@@ -301,12 +304,6 @@ namespace Rebellion.Game.Combat
                 PrimaryHyperdrive = primary,
                 BackupHyperdrive = backupHyperdriveInstalled ? Math.Min(remaining, 1) : 0,
             };
-            if (result.Total > 0)
-            {
-                result.RepairDueTick = _campaignRepairDueTick;
-                result.RepairInterval = _campaignRepairInterval;
-            }
-            return result;
         }
 
         /// <summary>

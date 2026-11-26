@@ -5,7 +5,6 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
@@ -41,7 +40,6 @@ namespace Rebellion.Game
 
         // Scene graph.
         private GalaxyMap _galaxy;
-        private readonly SpaceCombatMilitaryRoster _spaceCombatMilitaryRoster = new();
         private string[] _blockadeFactionIds = Array.Empty<string>();
 
         // Game details.
@@ -318,14 +316,7 @@ namespace Rebellion.Game
                     : Array.Empty<string>();
         }
 
-        /// <summary>
-        /// Evaluates a registered planet using the current two-faction orbital rules when applicable.
-        /// </summary>
-        /// <param name="planet">The authoritative planet registered in this game.</param>
-        /// <param name="blockaded">The current blockade state when the faction domain is supported.</param>
-        /// <returns>Whether the current campaign still uses its configured faction pair.</returns>
-        internal bool TryCalculateSpaceCombatBlockade(Planet planet, out bool blockaded) =>
-            SpaceCombatBlockadeRules.TryCalculate(this, _blockadeFactionIds, planet, out blockaded);
+        internal IReadOnlyList<string> BlockadeFactionIds => _blockadeFactionIds;
 
         /// <summary>
         /// Gets the game configuration.
@@ -894,17 +885,6 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Captures both requested owners' current full military values without scene traversal or allocation.
-        /// </summary>
-        /// <param name="firstOwnerInstanceId">The first owner identity, or null for neutral ownership.</param>
-        /// <param name="secondOwnerInstanceId">The second owner identity, or null for neutral ownership.</param>
-        /// <returns>The current completed and delivering military values in the requested owner order.</returns>
-        internal (int FirstSide, int SecondSide) CaptureSpaceCombatMilitaryValues(
-            string firstOwnerInstanceId,
-            string secondOwnerInstanceId
-        ) => _spaceCombatMilitaryRoster.CaptureValues(firstOwnerInstanceId, secondOwnerInstanceId);
-
-        /// <summary>
         /// Registers a unit to the faction that owns the unit.
         /// </summary>
         /// <param name="node">The unit to register.</param>
@@ -995,7 +975,6 @@ namespace Rebellion.Game
             try
             {
                 NodesByInstanceID.Add(node.InstanceID, node);
-                _spaceCombatMilitaryRoster.Register(node);
                 if (node is Officer officer)
                     _registeredOfficers.Add(officer);
             }
@@ -1014,7 +993,6 @@ namespace Rebellion.Game
         public void RemoveSceneNodeByInstanceID(ISceneNode node)
         {
             NodesByInstanceID.Remove(node.InstanceID);
-            _spaceCombatMilitaryRoster.Unregister(node.InstanceID);
             if (node is Officer officer)
                 _registeredOfficers.Remove(officer);
         }
@@ -1046,7 +1024,6 @@ namespace Rebellion.Game
         private void ClearSceneRegistration()
         {
             NodesByInstanceID.Clear();
-            _spaceCombatMilitaryRoster.Clear();
             _registeredOfficers.Clear();
             foreach (Faction faction in _factions)
                 faction.ClearOwnedUnits();

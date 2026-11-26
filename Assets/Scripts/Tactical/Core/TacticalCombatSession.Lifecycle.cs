@@ -27,7 +27,7 @@ namespace Rebellion.Tactical
                     members.Add(
                         new TacticalCombatArrivalMember(
                             unit.Index,
-                            unit.Definition.PresentationIndex,
+                            unit.PresentationIndex,
                             unit.Side,
                             unit.IsFighter,
                             unit.Status == CombatUnitStatus.Docked,

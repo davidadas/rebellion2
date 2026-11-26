@@ -9,7 +9,8 @@ namespace Rebellion.Game
     [PersistableObject]
     public sealed class GameMetadata
     {
-        public const int CurrentSaveVersion = 1;
+        public const int CurrentSaveVersion = ShipEquipmentSaveVersion;
+        internal const int ShipEquipmentSaveVersion = 2;
 
         [PersistableMember(Name = nameof(CampaignID))]
         private string _campaignId;

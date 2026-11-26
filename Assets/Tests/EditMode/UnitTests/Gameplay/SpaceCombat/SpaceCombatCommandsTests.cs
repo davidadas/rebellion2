@@ -9,7 +9,6 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -5447,7 +5446,12 @@ namespace Rebellion.Tests.Gameplay
                 .OfType<SpaceCombatResult>()
                 .Single();
 
-            Assert.AreEqual(0, result.AcceptedLosses.GetLostValue(attacker.OwnerInstanceID));
+            Assert.AreEqual(
+                0,
+                SpaceCombatObserver
+                    .CaptureLostMilitaryValues(result.Events, attacker.OwnerInstanceID, null)
+                    .FirstSide
+            );
         }
 
         [Test]
@@ -5476,7 +5480,12 @@ namespace Rebellion.Tests.Gameplay
                 .OfType<SpaceCombatResult>()
                 .Single();
 
-            Assert.AreEqual(36, result.AcceptedLosses.GetLostValue(first.OwnerInstanceID));
+            Assert.AreEqual(
+                36,
+                SpaceCombatObserver
+                    .CaptureLostMilitaryValues(result.Events, first.OwnerInstanceID, null)
+                    .FirstSide
+            );
         }
 
         [Test]
@@ -5535,7 +5544,12 @@ namespace Rebellion.Tests.Gameplay
                 .OfType<SpaceCombatResult>()
                 .Single();
 
-            Assert.AreEqual(37, result.AcceptedLosses.GetLostValue("empire"));
+            Assert.AreEqual(
+                37,
+                SpaceCombatObserver
+                    .CaptureLostMilitaryValues(result.Events, "empire", null)
+                    .FirstSide
+            );
         }
 
         /// <summary>

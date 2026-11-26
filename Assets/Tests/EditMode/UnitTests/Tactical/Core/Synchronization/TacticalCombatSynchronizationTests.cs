@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -188,22 +188,16 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSession replica = CreateReplica();
             TacticalCombatSnapshot captured = authority.CaptureSnapshot(1);
             Assert.IsNull(captured.Units[0].CarrierID);
-            Assert.IsNull(captured.Units[0].TargetID);
             string json = JsonUtility.ToJson(captured);
             TacticalCombatSnapshot restored = JsonUtility.FromJson<TacticalCombatSnapshot>(json);
             Assert.AreEqual(string.Empty, restored.Units[0].CarrierID);
-            Assert.AreEqual(string.Empty, restored.Units[0].TargetID);
 
             ApplyCapturedProjection(replica, restored);
 
             Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).CarrierID);
-            Assert.IsNull(replica.GetUnit(restored.Units[0].UnitID).TargetID);
             TacticalCombatSnapshot next = JsonUtility.FromJson<TacticalCombatSnapshot>(
                 JsonUtility.ToJson(authority.CaptureSnapshot(2))
             );
-            next.Units[0].TargetID = "missing";
-            Assert.Throws<ArgumentException>(() => replica.ApplySnapshot(next));
-            next.Units[0].TargetID = string.Empty;
             next.Groups[0].Members[0] = string.Empty;
             Assert.Throws<ArgumentException>(() => replica.ApplySnapshot(next));
             Assert.AreEqual(captured.SystemTime, replica.SystemTime);
@@ -964,13 +958,9 @@ namespace Rebellion.Tests.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 20, 20, 20, 20, 100 };
-            return new(
-                ship,
-                side,
-                index,
-                new TacticalCombatUnitDefinition { PresentationIndex = 1 }
-            )
+            return new(ship, side, index)
             {
+                PresentationIndex = 1,
                 Heading = heading,
                 DesiredHeading = heading,
             };

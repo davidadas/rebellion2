@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.SpaceCombat
+namespace Rebellion.Content
 {
     /// <summary>
     /// Addresses the ordered playback variants for one tactical notification and optional faction.

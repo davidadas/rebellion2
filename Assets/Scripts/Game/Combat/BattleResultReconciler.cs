@@ -35,13 +35,9 @@ namespace Rebellion.Game.Combat
             switch (combatant.Unit, sourceUnit)
             {
                 case (CapitalShip battleShip, CapitalShip sourceShip):
-                    int repairDueTick = sourceShip.SystemDamage?.RepairDueTick ?? 0;
-                    int repairInterval = sourceShip.SystemDamage?.RepairInterval ?? 0;
                     sourceShip.CurrentHullStrength = battleShip.CurrentHullStrength;
                     sourceShip.SystemDamage =
                         battleShip.SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
-                    sourceShip.SystemDamage.RepairDueTick = repairDueTick;
-                    sourceShip.SystemDamage.RepairInterval = repairInterval;
                     break;
                 case (Starfighter battleFighter, Starfighter sourceFighter):
                     sourceFighter.CurrentSquadronSize = battleFighter.CurrentSquadronSize;

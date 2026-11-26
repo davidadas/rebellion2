@@ -7,7 +7,6 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 
@@ -325,7 +324,7 @@ namespace Rebellion.Game.Results
     #region Officer
 
     /// <summary>
-    /// A Force discovery state changed — either an officer began scanning for Force users,
+    /// A Force discovery state changed â€” either an officer began scanning for Force users,
     /// or a hidden Force user was discovered by a scanner.
     /// </summary>
     public class ForceDiscoveryResult : GameResult
@@ -580,6 +579,7 @@ namespace Rebellion.Game.Results
     {
         public IGameEntity DestroyedObject { get; set; }
         public IGameEntity DestroyedBy { get; set; }
+        internal bool CountsAsMilitaryLoss { get; set; }
         public IGameEntity Context { get; set; }
         public UnitDestructionReason Reason { get; set; }
     }
@@ -731,11 +731,15 @@ namespace Rebellion.Game.Results
         /// </summary>
         /// <param name="unit">The unit to capture.</param>
         public CombatUnitSnapshot(ISceneNode unit)
+            : this(unit, null) { }
+
+        // A deployed participant already owns a detached copy of its campaign unit.
+        internal CombatUnitSnapshot(ISceneNode unit, ISceneNode battleCopy)
         {
             if (unit == null)
                 throw new ArgumentNullException(nameof(unit));
 
-            Unit = unit.CreateCopy();
+            Unit = battleCopy ?? unit.CreateCopy();
             Unit.ParentInstanceID = unit.ParentInstanceID;
             Unit.LastParentInstanceID = unit.LastParentInstanceID;
             WasOperational =
@@ -835,11 +839,6 @@ namespace Rebellion.Game.Results
         /// Gets whether this encounter imported a manually played battle, including any continuation.
         /// </summary>
         internal bool IsTacticalCombat { get; set; }
-
-        /// <summary>
-        /// Gets or sets the runtime losses retained across this encounter's resolution phases.
-        /// </summary>
-        internal SpaceCombatLossLedger AcceptedLosses { get; set; } = new();
 
         /// <summary>
         /// Gets the faction that explicitly requested withdrawal, or null for an automatic resolution.

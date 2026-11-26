@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Game.Units
@@ -12,7 +11,6 @@ namespace Rebellion.Game.Units
     public sealed class UnitFactory
     {
         private readonly Dictionary<string, ISceneNode> _templates;
-        private readonly Dictionary<string, TacticalCombatUnitDefinition> _tacticalUnits;
 
         /// <summary>
         /// Builds a unit-template lookup from every repeatable unit category.
@@ -22,20 +20,14 @@ namespace Rebellion.Game.Units
         /// <param name="starfighters">The starfighters.</param>
         /// <param name="regiments">The regiments.</param>
         /// <param name="specialForces">The special forces.</param>
-        /// <param name="tacticalCombat">The shared equipment definitions for new runtime ships.</param>
         public UnitFactory(
             IEnumerable<Building> buildings,
             IEnumerable<CapitalShip> capitalShips,
             IEnumerable<Starfighter> starfighters,
             IEnumerable<Regiment> regiments,
-            IEnumerable<SpecialForces> specialForces,
-            TacticalCombatDefinition tacticalCombat = null
+            IEnumerable<SpecialForces> specialForces
         )
         {
-            _tacticalUnits = tacticalCombat?.Units.ToDictionary(
-                unit => unit.UnitTypeID,
-                StringComparer.Ordinal
-            );
             _templates = Combine(buildings, capitalShips, starfighters, regiments, specialForces)
                 .Where(template => !string.IsNullOrWhiteSpace(template.TypeID))
                 .GroupBy(template => template.TypeID, StringComparer.Ordinal)
@@ -67,11 +59,6 @@ namespace Rebellion.Game.Units
             unit.ManufacturingProgress = 0;
             if (unit is IMovable movable)
                 movable.Movement = null;
-            if (unit is CapitalShip ship && _tacticalUnits != null)
-            {
-                _tacticalUnits.TryGetValue(typeID, out TacticalCombatUnitDefinition definition);
-                ship.BindTacticalDefinition(definition);
-            }
             return unit;
         }
 

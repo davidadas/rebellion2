@@ -2,7 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 using Stopwatch = global::System.Diagnostics.Stopwatch;
 

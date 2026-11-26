@@ -114,12 +114,9 @@ namespace Rebellion.Tactical
                 || GetSide(side).IsWithdrawing
             )
                 return false;
+            bool hasAttackRun = false;
             foreach (TacticalCombatGroup group in _groups)
-                if (
-                    group.Order == TacticalCombatOrder.AttackBattleStation
-                    || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
-                )
-                    return false;
+                hasAttackRun |= IsBattleStationAttackOrdered(group);
             int own = 0;
             int opposing = 0;
             foreach (CombatUnit unit in _units)
@@ -130,8 +127,17 @@ namespace Rebellion.Tactical
                     else
                         opposing++;
                 }
-            return own > opposing;
+            return TacticalCombatBattleStation.CanStartAttackRun(
+                BattleStation.CanReceiveAttackRun,
+                hasAttackRun,
+                own,
+                opposing
+            );
         }
+
+        private static bool IsBattleStationAttackOrdered(TacticalCombatGroup group) =>
+            group.Order == TacticalCombatOrder.AttackBattleStation
+            || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
 
         /// <summary>
         /// Queues the superlaser visual and delayed destruction for an admitted opposing target.

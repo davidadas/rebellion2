@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Game.Combat
                     CurrentHullStrength = 1000,
                 }
             );
-            unit.InitializeTacticalState(CombatSide.Attacker, 1, null);
+            unit.InitializeTacticalState(CombatSide.Attacker, 1);
             unit.Position = new Vector3(12, 0, -48);
             unit.Systems.ApplyHullLoss(99.5f);
 

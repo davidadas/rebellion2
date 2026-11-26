@@ -819,8 +819,7 @@ namespace Rebellion.Tests.Gameplay
                 TestContent.Data.CapitalShips,
                 TestContent.Data.Starfighters,
                 TestContent.Data.Regiments,
-                TestContent.Data.SpecialForces,
-                TestContent.Data.TacticalCombat
+                TestContent.Data.SpecialForces
             );
             SpaceCombatCommands commands = CreateTacticalCombatScenario(
                 playerFactionId,

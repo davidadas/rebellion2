@@ -31,6 +31,7 @@ namespace Rebellion.Architecture.Tests
                 ["Rebellion.Game"] = ["Rebellion.SceneGraph", "Rebellion.Util"],
                 ["Rebellion.Tactical.Core"] =
                 [
+                    "Rebellion.Content",
                     "Rebellion.Game",
                     "Rebellion.SceneGraph",
                     "Rebellion.Util",
@@ -64,6 +65,7 @@ namespace Rebellion.Architecture.Tests
                 ],
                 ["Rebellion.Gameplay"] =
                 [
+                    "Rebellion.Content",
                     "Rebellion.Game",
                     "Rebellion.SceneGraph",
                     "Rebellion.Tactical.Core",

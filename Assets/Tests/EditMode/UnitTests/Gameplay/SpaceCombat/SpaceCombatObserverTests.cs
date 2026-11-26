@@ -6,7 +6,6 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
@@ -84,7 +83,7 @@ namespace Rebellion.Tests.Gameplay
                 DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
                 Tick = 42,
             };
-            _result.AcceptedLosses.RecordDestroyedUnit(_lostShip);
+            RecordCombatLoss(_lostShip);
             _session = new GameSession(_game, TacticalTestData.CreateCatalog(_game.Config));
         }
 
@@ -145,9 +144,7 @@ namespace Rebellion.Tests.Gameplay
         public void HandleResults_CurrentMilitaryRoster_WeightsLossesAfterOrdinaryReactions()
         {
             Profile.FirstSide.LeadingGapScale = 100;
-            _result.AcceptedLosses.RecordDestroyedUnit(
-                new CapitalShip { OwnerInstanceID = _firstID, UprisingDefense = 20 }
-            );
+            RecordCombatLoss(new CapitalShip { OwnerInstanceID = _firstID, UprisingDefense = 20 });
             using IDisposable reaction = _session.Results.Subscribe<SpaceCombatResult>(_ =>
                 AddShip("late-survivor", _firstID, 2000)
             );
@@ -197,10 +194,8 @@ namespace Rebellion.Tests.Gameplay
         {
             _result.AttackerOutcome = SpaceCombatSideOutcome.Destroyed;
             _result.DefenderOutcome = SpaceCombatSideOutcome.Active;
-            _result.AcceptedLosses = new SpaceCombatLossLedger();
-            _result.AcceptedLosses.RecordDestroyedUnit(
-                new CapitalShip { OwnerInstanceID = _firstID, UprisingDefense = 20 }
-            );
+            _result.Events.Clear();
+            RecordCombatLoss(new CapitalShip { OwnerInstanceID = _firstID, UprisingDefense = 20 });
 
             List<GameResult> results = Publish();
 
@@ -211,7 +206,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_CarriedCompletedRegiment_AddsAcceptedLossAndAppliesMagnitudeCap()
         {
-            _result.AcceptedLosses.RecordDestroyedUnit(
+            RecordCombatLoss(
                 new Regiment
                 {
                     OwnerInstanceID = _secondID,
@@ -280,7 +275,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_NoAcceptedDestruction_DoesNotTreatHullDamageAsLostValue()
         {
-            _result.AcceptedLosses = new SpaceCombatLossLedger();
+            _result.Events.Clear();
             _result.ShipDamage.Add(
                 new ShipDamageResult
                 {
@@ -329,6 +324,11 @@ namespace Rebellion.Tests.Gameplay
         /// Publishes the encounter through the campaign's ordinary and settled reaction phases.
         /// </summary>
         /// <returns>The encounter and all of its campaign reactions.</returns>
+        private void RecordCombatLoss(Rebellion.SceneGraph.ISceneNode unit) =>
+            _result.Events.Add(
+                SpaceCombatCommands.CreateCombatDestructionResult(unit, _planet, _result.Tick)
+            );
+
         private List<GameResult> Publish() =>
             _session.Pipeline.ProcessResults(new[] { _result }, false);
 

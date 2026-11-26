@@ -2,13 +2,13 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Messages;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 
 /// <summary>
@@ -112,13 +112,21 @@ public sealed class GameDataCatalog
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
         TacticalCombat = tacticalCombat ?? new TacticalCombatDefinition();
+        MigrateCapitalShipEquipment(CapitalShips);
+        foreach (Starfighter fighter in Starfighters)
+        {
+            TacticalCombatUnitDefinition definition = TacticalCombat.Units.Find(unit =>
+                unit.UnitTypeID == fighter.TypeID
+            );
+            fighter.MigrateBackupHyperdrive(definition?.BackupHyperdrive ?? 0);
+        }
     }
 
     /// <summary>
-    /// Reattaches shared tactical equipment definitions to campaign ships.
+    /// Supplies ship-owned ratings for older packs and saves that authored them in tactical XML.
     /// </summary>
     /// <param name="ships">The newly created or loaded ships.</param>
-    internal void BindCapitalShipDefinitions(IEnumerable<CapitalShip> ships)
+    internal void MigrateCapitalShipEquipment(IEnumerable<CapitalShip> ships)
     {
         Dictionary<string, TacticalCombatUnitDefinition> definitions =
             TacticalCombat.Units.ToDictionary(unit => unit.UnitTypeID, StringComparer.Ordinal);
@@ -128,7 +136,7 @@ public sealed class GameDataCatalog
                 ship.TypeID ?? string.Empty,
                 out TacticalCombatUnitDefinition definition
             );
-            ship.BindTacticalDefinition(definition);
+            definition?.MigrateCapitalShip(ship);
         }
     }
 

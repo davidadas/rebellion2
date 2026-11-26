@@ -9,13 +9,10 @@ namespace Rebellion.Game.Results
     [PersistableObject]
     public sealed class TacticalCombatOutcome
     {
-        public const int TerminalFlagCount = 7;
-
         public CombatSide Winner { get; set; }
         public SpaceCombatSideOutcome AttackerOutcome { get; set; }
         public SpaceCombatSideOutcome DefenderOutcome { get; set; }
         public int IterationsCompleted { get; set; }
-        public bool[] TerminalFlags { get; set; }
         public ShipOutcome[] Ships { get; set; }
         public FighterOutcome[] Fighters { get; set; }
 

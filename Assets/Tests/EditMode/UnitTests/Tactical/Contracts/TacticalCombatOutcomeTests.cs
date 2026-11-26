@@ -54,8 +54,6 @@ namespace Rebellion.Tests.Game.SpaceCombat
             Assert.AreEqual(57, restored.Ships.Single().Hull);
             Assert.AreEqual(7, restored.Fighters.Single().SquadronSize);
             Assert.AreEqual(4, restored.Ships.Single().SystemDamage.Engines);
-            Assert.AreEqual(123, restored.Ships.Single().SystemDamage.RepairDueTick);
-            CollectionAssert.AreEqual(outcome.TerminalFlags, restored.TerminalFlags);
         }
 
         /// <summary>
@@ -69,7 +67,6 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
                 DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
                 IterationsCompleted = 19,
-                TerminalFlags = new[] { true, false, true, false, true, false, false },
                 Ships = new[]
                 {
                     new TacticalCombatOutcome.ShipOutcome
@@ -85,8 +82,6 @@ namespace Rebellion.Tests.Game.SpaceCombat
                             Engines = 4,
                             PrimaryHyperdrive = 5,
                             BackupHyperdrive = 6,
-                            RepairDueTick = 123,
-                            RepairInterval = 24,
                         },
                     },
                 },

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Galaxy;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
 
@@ -103,9 +102,10 @@ namespace Rebellion.Game.Units
         private int? _hyperdriveCount;
 
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
+        public CapitalShipGeometry PhysicalGeometry { get; set; }
 
-        [PersistableIgnore]
-        private TacticalCombatUnitDefinition _tacticalDefinition;
+        [PersistableMember(Name = nameof(BackupHyperdrive))]
+        private int? _backupHyperdrive;
 
         [PersistableMember(Name = nameof(SublightSpeed))]
         private int _sublightSpeed;
@@ -269,6 +269,16 @@ namespace Rebellion.Game.Units
             set => _hyperdrive = value;
         }
 
+        [PersistableIgnore]
+        public int BackupHyperdrive
+        {
+            get => _backupHyperdrive ?? 0;
+            set => _backupHyperdrive = value;
+        }
+
+        // Old content and saves omitted the rating and used the tactical definition.
+        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
+
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
         /// An omitted count provides one system when the travel rating is positive.
@@ -368,13 +378,6 @@ namespace Rebellion.Game.Units
         public string InitialParentInstanceID { get; set; }
 
         /// <summary>
-        /// Attaches the unit's tactical equipment definition without copying it into saves.
-        /// </summary>
-        /// <param name="definition">The unit type's installed tactical equipment.</param>
-        internal void BindTacticalDefinition(TacticalCombatUnitDefinition definition) =>
-            _tacticalDefinition = definition;
-
-        /// <summary>
         /// Returns the ship's surviving installed hyperdrive rating.
         /// </summary>
         /// <returns>The primary rating, surviving backup rating, or zero when neither drive works.</returns>
@@ -382,9 +385,7 @@ namespace Rebellion.Game.Units
         {
             if (Hyperdrive > 0 && SystemDamage.PrimaryHyperdrive == 0)
                 return Hyperdrive;
-            return SystemDamage.BackupHyperdrive == 0
-                ? _tacticalDefinition?.BackupHyperdrive ?? 0
-                : 0;
+            return SystemDamage.BackupHyperdrive == 0 ? BackupHyperdrive : 0;
         }
 
         /// <summary>
@@ -467,7 +468,8 @@ namespace Rebellion.Game.Units
             copy.ShieldRechargeRate = ShieldRechargeRate;
             copy.Hyperdrive = Hyperdrive;
             copy._hyperdriveCount = _hyperdriveCount;
-            copy._tacticalDefinition = _tacticalDefinition;
+            copy._backupHyperdrive = _backupHyperdrive;
+            copy.PhysicalGeometry = PhysicalGeometry?.CreateCopy();
             copy.SystemDamage = SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             copy.SublightSpeed = SublightSpeed;
             copy.Maneuverability = Maneuverability;

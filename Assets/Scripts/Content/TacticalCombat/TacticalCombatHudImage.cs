@@ -1,6 +1,6 @@
 using Rebellion.Util.Serialization;
 
-namespace Rebellion.Game.SpaceCombat
+namespace Rebellion.Content
 {
     /// <summary>
     /// Associates one semantic tactical image with a private content address.

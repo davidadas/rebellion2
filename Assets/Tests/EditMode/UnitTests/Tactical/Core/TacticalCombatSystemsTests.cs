@@ -827,7 +827,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void CaptureDamage_ExistingRepairSchedule_PreservesCampaignTimer()
+        public void CaptureDamage_FullyRepairedComponents_ReturnsNoDamage()
         {
             TacticalCombatSystems systems = new(
                 false,
@@ -841,44 +841,11 @@ namespace Rebellion.Tests.Tactical
                 0,
                 1,
                 0,
-                new CapitalShipSystemDamage
-                {
-                    Shields = 1,
-                    RepairDueTick = 42,
-                    RepairInterval = 30,
-                }
+                new CapitalShipSystemDamage { Shields = 1 }
             );
-            CapitalShipSystemDamage result = systems.CaptureDamage(true, false);
-            Assert.AreEqual(42, result.RepairDueTick);
-            Assert.AreEqual(30, result.RepairInterval);
-        }
-
-        [Test]
-        public void CaptureDamage_FullyRepairedComponents_ClearsCampaignTimer()
-        {
-            TacticalCombatSystems systems = new(
-                false,
-                100,
-                100,
-                0,
-                0,
-                0,
-                0,
-                0,
-                0,
-                1,
-                0,
-                new CapitalShipSystemDamage
-                {
-                    Shields = 1,
-                    RepairDueTick = 42,
-                    RepairInterval = 30,
-                }
-            );
+            Assert.AreEqual(1, systems.CaptureDamage(true, false).Shields);
             systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
-            CapitalShipSystemDamage result = systems.CaptureDamage(true, false);
-            Assert.AreEqual(0, result.RepairDueTick);
-            Assert.AreEqual(0, result.RepairInterval);
+            Assert.AreEqual(0, systems.CaptureDamage(true, false).Total);
         }
 
         [TestCase(TacticalWeaponType.LaserCannon)]

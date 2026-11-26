@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -1391,18 +1391,6 @@ namespace Rebellion.Tests.Tactical
             ship.SystemDamage.Engines++;
 
             Assert.AreEqual(previous, unit.Systems.GetDamage(TacticalShipSystem.Engines));
-        }
-
-        [Test]
-        public void CaptureOutcome_ExportedTerminalFlagChanges_LeavesEncounterEndingUnchanged()
-        {
-            TacticalCombatSession session = CreateCompletedExportSession();
-            TacticalCombatOutcome outcome = session.CaptureOutcome();
-            bool previous = session.TerminalFlags[0];
-
-            outcome.TerminalFlags[0] = !previous;
-
-            Assert.AreEqual(previous, session.TerminalFlags[0]);
         }
 
         [TestCase(0.5f, 1)]
@@ -3184,22 +3172,14 @@ namespace Rebellion.Tests.Tactical
             IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
-            CombatUnit first = new(
-                attacker,
-                CombatSide.Attacker,
-                0,
-                new TacticalCombatUnitDefinition { PresentationIndex = 1 }
-            )
+            CombatUnit first = new(attacker, CombatSide.Attacker, 0)
             {
+                PresentationIndex = 1,
                 Position = new Vector3(0, 0, -40),
             };
-            CombatUnit second = new(
-                defender,
-                CombatSide.Defender,
-                1000000,
-                new TacticalCombatUnitDefinition { PresentationIndex = 2 }
-            )
+            CombatUnit second = new(defender, CombatSide.Defender, 1000000)
             {
+                PresentationIndex = 2,
                 Position = new Vector3(0, 0, 40),
                 Heading = -Vector3.UnitZ,
                 DesiredHeading = -Vector3.UnitZ,

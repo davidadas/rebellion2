@@ -1,7 +1,6 @@
 using System;
 using System.Numerics;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Serialization;
@@ -31,7 +30,7 @@ namespace Rebellion.Game.Combat
     public sealed partial class CombatUnit
     {
         [PersistableIgnore]
-        public TacticalCombatUnitDefinition Definition { get; internal set; }
+        public int PresentationIndex { get; internal set; }
 
         [PersistableIgnore]
         public new string InstanceID
@@ -61,6 +60,8 @@ namespace Rebellion.Game.Combat
             Unit is Starfighter fighter
                 ? fighter.Hyperdrive != 0
                 : Unit is CapitalShip { Hyperdrive: not 0 };
+        public bool HasBackupHyperdrive =>
+            Unit is CapitalShip { BackupHyperdrive: > 0 } or Starfighter { BackupHyperdrive: > 0 };
         public bool IsBattleStation => Unit is CapitalShip { CanDestroyPlanets: true };
         public int InitialSquadronSize => (Unit as Starfighter)?.CurrentSquadronSize ?? 0;
         public float InitialHull =>
@@ -79,7 +80,6 @@ namespace Rebellion.Game.Combat
         public Vector3 Velocity { get; internal set; }
         public CombatUnitStatus Status { get; internal set; }
         public string CarrierID { get; internal set; }
-        public string TargetID { get; internal set; }
         public float HyperspaceMilliseconds { get; internal set; }
         public float TractorRestraint { get; internal set; }
 
@@ -121,8 +121,6 @@ namespace Rebellion.Game.Combat
                     or CombatUnitStatus.AttackingBattleStation;
         public int SquadronSize => Systems.IsAlive ? Math.Max((int)(Systems.Hull / 8), 1) : 0;
 
-        private readonly int _torpedoStrength;
-
         /// <summary>
         /// Announces the first retained source and every removal that leaves the source chain empty.
         /// </summary>
@@ -139,16 +137,10 @@ namespace Rebellion.Game.Combat
         /// <param name="sourceUnit">The campaign unit to copy into battle.</param>
         /// <param name="side">The participant's encounter side.</param>
         /// <param name="index">The unique battle registration identifier.</param>
-        /// <param name="definition">The authored tactical unit definition.</param>
-        public CombatUnit(
-            BaseSceneNode sourceUnit,
-            CombatSide side,
-            int index,
-            TacticalCombatUnitDefinition definition = null
-        )
+        public CombatUnit(BaseSceneNode sourceUnit, CombatSide side, int index)
         {
             CaptureSource(sourceUnit);
-            InitializeTacticalState(side, index, definition);
+            InitializeTacticalState(side, index);
         }
 
         /// <summary>
@@ -156,12 +148,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="side">The battle side assigned at deployment.</param>
         /// <param name="index">The unit's registration order.</param>
-        /// <param name="definition">The authored equipment and geometry for the unit type.</param>
-        internal void InitializeTacticalState(
-            CombatSide side,
-            int index,
-            TacticalCombatUnitDefinition definition
-        )
+        internal void InitializeTacticalState(CombatSide side, int index)
         {
             BaseSceneNode battleUnit = Unit;
             CapitalShip ship = battleUnit as CapitalShip;
@@ -211,7 +198,6 @@ namespace Rebellion.Game.Combat
                 }
             }
 
-            Definition = definition;
             Side = side;
             Index = index;
             CarrierID = InitialCarrierID;
@@ -225,7 +211,7 @@ namespace Rebellion.Game.Combat
                 sublightSpeed,
                 maneuverability,
                 tractorBeamPower,
-                (uint)((HasPrimaryHyperdrive ? 1 : 0) + (definition?.BackupHyperdrive > 0 ? 1 : 0)),
+                (uint)((HasPrimaryHyperdrive ? 1 : 0) + (HasBackupHyperdrive ? 1 : 0)),
                 damageControl,
                 systemDamage
             );
@@ -235,22 +221,21 @@ namespace Rebellion.Game.Combat
                 IsFighter ? 0 : Systems.GetDamage(TacticalShipSystem.Weapons),
                 IsFighter
             );
-            MaximumTurnRate =
-                !IsFighter && definition?.PresentationIndex == 21
-                    ? (float)((double)1.5707964f * 0.033333335f)
-                    : 0;
-            HalfHeight = IsFighter ? 0.3f : 3;
-            CollisionRadius =
-                IsFighter ? 1.2f
-                : definition?.PresentationIndex == 21 ? 19
-                : 3.6f;
+            CapitalShipGeometry geometry = ship?.PhysicalGeometry;
+            MaximumTurnRate = geometry?.MaximumTurnRate ?? 0;
+            HalfHeight = IsFighter
+                ? 0.3f
+                : geometry?.HalfHeight ?? CapitalShipGeometry.DefaultHalfHeight;
+            CollisionRadius = IsFighter
+                ? 1.2f
+                : geometry?.CollisionRadius ?? CapitalShipGeometry.DefaultCollisionRadius;
             Heading = Vector3.UnitZ;
             CommandBudget = 1;
-            if (!IsFighter && definition?.HullWidth > 0 && definition.HullDepth > 0)
+            if (geometry is { HullWidth: > 0, HullDepth: > 0 })
                 HullDimensions = new Vector3(
-                    definition.HullWidth,
-                    definition.HullHeight,
-                    definition.HullDepth
+                    geometry.HullWidth,
+                    geometry.HullHeight,
+                    geometry.HullDepth
                 );
             DesiredHeading = Heading;
             TurnRate = GetInitialTurnRate();

@@ -15,29 +15,18 @@ namespace Rebellion.Tests.Game.Combat
             {
                 InstanceID = "ship",
                 CurrentHullStrength = 100,
-                SystemDamage = new CapitalShipSystemDamage
-                {
-                    RepairDueTick = 40,
-                    RepairInterval = 5,
-                },
+                NextRepairTick = 40,
+                RepairIntervalTicks = 5,
             };
             CombatUnit combatant = CombatUnit.Create(source);
-            combatant.ApplyCapitalShipState(
-                35,
-                new CapitalShipSystemDamage
-                {
-                    Engines = 2,
-                    RepairDueTick = 90,
-                    RepairInterval = 30,
-                }
-            );
+            combatant.ApplyCapitalShipState(35, new CapitalShipSystemDamage { Engines = 2 });
 
             BattleResultReconciler.Apply(combatant, source);
 
             Assert.AreEqual(35, source.CurrentHullStrength);
             Assert.AreEqual(2, source.SystemDamage.Engines);
-            Assert.AreEqual(40, source.SystemDamage.RepairDueTick);
-            Assert.AreEqual(5, source.SystemDamage.RepairInterval);
+            Assert.AreEqual(40, source.NextRepairTick);
+            Assert.AreEqual(5, source.RepairIntervalTicks);
             Assert.AreNotSame(((CapitalShip)combatant.Unit).SystemDamage, source.SystemDamage);
         }
 

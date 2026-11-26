@@ -1,24 +1,33 @@
+using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.SpaceCombat
 {
     [TestFixture]
-    public class SpaceCombatLossLedgerTests
+    public class SpaceCombatLossResultsTests
     {
+        private static void RecordDestruction(List<GameResult> events, ISceneNode unit) =>
+            events.Add(SpaceCombatCommands.CreateCombatDestructionResult(unit, null, 0));
+
+        private static int GetLostValue(List<GameResult> events, string owner) =>
+            SpaceCombatObserver.CaptureLostMilitaryValues(events, owner, null).FirstSide;
+
         [Test]
         public void GetLostValue_ChangedShipOwnerAndValue_ReadsRetainedUnitAtQueryTime()
         {
             CapitalShip ship = new CapitalShip { OwnerInstanceID = "first", UprisingDefense = 7 };
-            SpaceCombatLossLedger ledger = new();
-            ledger.RecordDestroyedUnit(ship);
+            List<GameResult> events = new();
+            RecordDestruction(events, ship);
 
             ship.OwnerInstanceID = "second";
             ship.UprisingDefense = 19;
 
-            Assert.AreEqual(0, ledger.GetLostValue("first"));
-            Assert.AreEqual(19, ledger.GetLostValue("second"));
+            Assert.AreEqual(0, GetLostValue(events, "first"));
+            Assert.AreEqual(19, GetLostValue(events, "second"));
         }
 
         [Test]
@@ -31,11 +40,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 MaxSquadronSize = 24,
                 CurrentSquadronSize = 0,
             };
-            SpaceCombatLossLedger ledger = new();
+            List<GameResult> events = new();
 
-            ledger.RecordDestroyedUnit(fighter);
+            RecordDestruction(events, fighter);
 
-            Assert.AreEqual(13, ledger.GetLostValue("first"));
+            Assert.AreEqual(13, GetLostValue(events, "first"));
         }
 
         [Test]
@@ -48,11 +57,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 ManufacturingStatus = ManufacturingStatus.Building,
                 UprisingDefense = 250,
             };
-            SpaceCombatLossLedger ledger = new();
+            List<GameResult> events = new();
 
-            ledger.RecordDestroyedUnit(station);
+            RecordDestruction(events, station);
 
-            Assert.AreEqual(250, ledger.GetLostValue("first"));
+            Assert.AreEqual(250, GetLostValue(events, "first"));
         }
 
         [TestCase(ManufacturingStatus.Building, false, 0)]
@@ -73,11 +82,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 ManufacturingStatus = status,
                 Movement = moving ? new MovementState() : null,
             };
-            SpaceCombatLossLedger ledger = new();
+            List<GameResult> events = new();
 
-            ledger.RecordDestroyedUnit(regiment);
+            RecordDestruction(events, regiment);
 
-            Assert.AreEqual(expectedValue, ledger.GetLostValue("first"));
+            Assert.AreEqual(expectedValue, GetLostValue(events, "first"));
         }
 
         [Test]
@@ -89,14 +98,14 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 UprisingDefense = 17,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            SpaceCombatLossLedger ledger = new();
-            ledger.RecordDestroyedUnit(regiment);
+            List<GameResult> events = new();
+            RecordDestruction(events, regiment);
 
             regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
             regiment.Movement = new MovementState();
             regiment.UprisingDefense = 23;
 
-            Assert.AreEqual(23, ledger.GetLostValue("first"));
+            Assert.AreEqual(23, GetLostValue(events, "first"));
         }
 
         [Test]
@@ -108,12 +117,12 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 UprisingDefense = 17,
                 ManufacturingStatus = ManufacturingStatus.Building,
             };
-            SpaceCombatLossLedger ledger = new();
-            ledger.RecordDestroyedUnit(regiment);
+            List<GameResult> events = new();
+            RecordDestruction(events, regiment);
 
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
 
-            Assert.AreEqual(0, ledger.GetLostValue("first"));
+            Assert.AreEqual(0, GetLostValue(events, "first"));
         }
 
         [Test]
@@ -124,36 +133,38 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 OwnerInstanceID = "first",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            SpaceCombatLossLedger ledger = new();
+            List<GameResult> events = new();
 
-            ledger.RecordDestroyedUnit(unit);
+            RecordDestruction(events, unit);
 
-            Assert.AreEqual(0, ledger.GetLostValue("first"));
+            Assert.AreEqual(0, GetLostValue(events, "first"));
         }
 
         [Test]
         public void GetLostValue_NeutralLoss_DoesNotEnterConfiguredFactionTotals()
         {
-            SpaceCombatLossLedger ledger = new();
-            ledger.RecordDestroyedUnit(new CapitalShip { UprisingDefense = 17 });
+            List<GameResult> events = new();
+            RecordDestruction(events, new CapitalShip { UprisingDefense = 17 });
 
-            Assert.AreEqual(0, ledger.GetLostValue("first"));
-            Assert.AreEqual(0, ledger.GetLostValue("second"));
-            Assert.AreEqual(17, ledger.GetLostValue(null));
+            Assert.AreEqual(0, GetLostValue(events, "first"));
+            Assert.AreEqual(0, GetLostValue(events, "second"));
+            Assert.AreEqual(17, GetLostValue(events, null));
         }
 
         [Test]
         public void GetLostValue_TotalExceedsSignedRange_WrapsToLow32Bits()
         {
-            SpaceCombatLossLedger ledger = new();
-            ledger.RecordDestroyedUnit(
+            List<GameResult> events = new();
+            RecordDestruction(
+                events,
                 new CapitalShip { OwnerInstanceID = "first", UprisingDefense = int.MaxValue }
             );
-            ledger.RecordDestroyedUnit(
+            RecordDestruction(
+                events,
                 new Starfighter { OwnerInstanceID = "first", UprisingDefense = 1 }
             );
 
-            Assert.AreEqual(int.MinValue, ledger.GetLostValue("first"));
+            Assert.AreEqual(int.MinValue, GetLostValue(events, "first"));
         }
     }
 }

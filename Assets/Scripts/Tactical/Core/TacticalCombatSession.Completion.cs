@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tactical
@@ -40,9 +39,7 @@ namespace Rebellion.Tactical
                     group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
                     && group.AttackRun != null;
                 if (GetSide(group.Side).FactionIndex == 0)
-                    allianceAttackRunOrdered |=
-                        group.Order == TacticalCombatOrder.AttackBattleStation
-                        || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation;
+                    allianceAttackRunOrdered |= IsBattleStationAttackOrdered(group);
             }
             return new TacticalCombatBriefingState(
                 IsArriving,
@@ -160,7 +157,7 @@ namespace Rebellion.Tactical
                     int hull = GetCapitalResultHull(unit);
                     CapitalShipSystemDamage damage = unit.Systems.CaptureDamage(
                         unit.HasPrimaryHyperdrive,
-                        unit.Definition?.BackupHyperdrive > 0
+                        unit.HasBackupHyperdrive
                     );
                     ships.Add(
                         new TacticalCombatOutcome.ShipOutcome
@@ -198,7 +195,6 @@ namespace Rebellion.Tactical
                 AttackerOutcome = _outcomes[0],
                 DefenderOutcome = _outcomes[1],
                 IterationsCompleted = unchecked((int)(_scheduler?.Progress ?? 0)),
-                TerminalFlags = _ending.Flags.ToArray(),
                 Ships = ships.ToArray(),
                 Fighters = fighters.ToArray(),
             };

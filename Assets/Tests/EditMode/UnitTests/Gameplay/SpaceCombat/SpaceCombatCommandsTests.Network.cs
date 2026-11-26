@@ -5,7 +5,6 @@ using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -184,8 +183,6 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("unknown")]
         [TestCase("hull")]
         [TestCase("components")]
-        [TestCase("flags")]
-        [TestCase("instant")]
         [TestCase("squadron")]
         [TestCase("carrier")]
         [TestCase("battle")]
@@ -221,12 +218,6 @@ namespace Rebellion.Tests.Gameplay
                     break;
                 case "components":
                     outcome.Ships[0].SystemDamage.Engines = 5;
-                    break;
-                case "flags":
-                    outcome.TerminalFlags = new bool[6];
-                    break;
-                case "instant":
-                    outcome.TerminalFlags[6] = true;
                     break;
                 case "squadron":
                     outcome.Fighters[0].SquadronSize = int.MaxValue;

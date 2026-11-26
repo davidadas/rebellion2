@@ -17,7 +17,6 @@ namespace Rebellion.Tactical.Synchronization
         public TacticalCombatSnapshotVector DesiredMovement;
         public CombatUnitStatus Status;
         public string CarrierID;
-        public string TargetID;
         public float Hull;
         public float Shields;
         public float ShieldLimit;
@@ -34,9 +33,5 @@ namespace Rebellion.Tactical.Synchronization
         public float CommandBudget;
         public float TurnRate;
         public bool HasCollision;
-        public bool HasGroup;
-        public int GroupID;
-        public bool HasRequestedGroup;
-        public int RequestedGroupID;
     }
 }

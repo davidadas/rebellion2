@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 using Rebellion.Game.Units;
 using Rebellion.Tactical;
 
@@ -23,8 +22,6 @@ namespace Rebellion.Gameplay
                 || !Enum.IsDefined(typeof(CombatSide), outcome.Winner)
                 || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), outcome.AttackerOutcome)
                 || !Enum.IsDefined(typeof(SpaceCombatSideOutcome), outcome.DefenderOutcome)
-                || outcome.TerminalFlags?.Length != TacticalCombatOutcome.TerminalFlagCount
-                || outcome.TerminalFlags[6]
                 || outcome.Ships == null
                 || outcome.Fighters == null
             )
@@ -101,6 +98,6 @@ namespace Rebellion.Gameplay
             && damage.PrimaryHyperdrive >= 0
             && damage.PrimaryHyperdrive <= (ship.Hyperdrive != 0 ? 1 : 0)
             && damage.BackupHyperdrive >= 0
-            && damage.BackupHyperdrive <= (unit.Definition?.BackupHyperdrive > 0 ? 1 : 0);
+            && damage.BackupHyperdrive <= (unit.HasBackupHyperdrive ? 1 : 0);
     }
 }

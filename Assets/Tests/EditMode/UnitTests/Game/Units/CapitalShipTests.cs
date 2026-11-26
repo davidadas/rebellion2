@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void SerializeAndDeserialize_SystemDamage_PreservesLevelsAndRepairTimer()
+        public void Deserialize_SystemDamageWithLegacyTimer_PreservesDamageAndHullRepairSchedule()
         {
             _capitalShip.SystemDamage = new CapitalShipSystemDamage
             {
@@ -55,15 +55,20 @@ namespace Rebellion.Tests.Game.Units
                 Engines = 1,
                 PrimaryHyperdrive = 1,
                 BackupHyperdrive = 1,
-                RepairDueTick = 120,
-                RepairInterval = 30,
             };
-            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(
-                SerializationHelper.Serialize(_capitalShip)
+            _capitalShip.NextRepairTick = 120;
+            _capitalShip.RepairIntervalTicks = 30;
+            string xml = SerializationHelper.Serialize(_capitalShip);
+            StringAssert.DoesNotContain("<RepairDueTick>", xml);
+            string legacyXml = xml.Replace(
+                "</SystemDamage>",
+                "<RepairDueTick>99</RepairDueTick><RepairInterval>5</RepairInterval></SystemDamage>"
             );
+            Assert.AreNotEqual(xml, legacyXml);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(legacyXml);
+            Assert.AreEqual(120, restored.NextRepairTick);
+            Assert.AreEqual(30, restored.RepairIntervalTicks);
             Assert.AreEqual(12, restored.SystemDamage.Total);
-            Assert.AreEqual(120, restored.SystemDamage.RepairDueTick);
-            Assert.AreEqual(30, restored.SystemDamage.RepairInterval);
         }
 
         [Test]

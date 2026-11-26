@@ -294,16 +294,14 @@ namespace Rebellion.Tests.Content
                 supplied,
                 source.Starfighters,
                 source.Regiments,
-                source.SpecialForces,
-                source.TacticalCombat
+                source.SpecialForces
             );
             UnitFactory derivedFactory = new(
                 source.Buildings,
                 derived.CapitalShips,
                 source.Starfighters,
                 source.Regiments,
-                source.SpecialForces,
-                derived.TacticalCombat
+                source.SpecialForces
             );
             CapitalShip captured = sourceFactory.Create<CapitalShip>(template.TypeID, "owner");
             derivedFactory.Create<CapitalShip>(template.TypeID, "owner");

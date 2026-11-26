@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Game.SpaceCombat;
 
 namespace Rebellion.Tactical
 {

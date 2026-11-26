@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Content;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Util.Random;

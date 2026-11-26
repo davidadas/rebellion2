@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
-using Rebellion.Game.SpaceCombat;
+using Rebellion.Gameplay;
 
 namespace Rebellion.Tests.Game.SpaceCombat
 {
