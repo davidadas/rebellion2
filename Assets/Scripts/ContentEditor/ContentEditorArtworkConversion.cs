@@ -25,6 +25,15 @@ internal static class ContentEditorArtworkConversion
             project.PackRootPath,
             project.Definition
         );
+        HashSet<string> reservedAddresses = aliases
+            .Keys.Concat(
+                resolver
+                    .PackRootPaths.Skip(1)
+                    .SelectMany(root => ContentArtworkAliases.Load(root))
+                    .Where(alias => alias.Key != alias.Value)
+                    .Select(alias => alias.Key)
+            )
+            .ToHashSet(StringComparer.Ordinal);
         ContentPackEditorField[] fields = project
             .GetCatalogs()
             .SelectMany(catalog => catalog.Records)
@@ -95,7 +104,7 @@ internal static class ContentEditorArtworkConversion
                 Path.GetExtension(candidate.Source).ToLowerInvariant(),
                 bytes,
                 recipe,
-                aliases,
+                reservedAddresses,
                 resolver,
                 destinations
             );
@@ -321,7 +330,7 @@ internal static class ContentEditorArtworkConversion
     /// <param name="extension">The source image's file extension.</param>
     /// <param name="bytes">The image contents to retain.</param>
     /// <param name="recipe">The editable layers, or null when none belong to this image.</param>
-    /// <param name="aliases">Addresses already owned by image redirects.</param>
+    /// <param name="reservedAddresses">Local mappings and inherited redirects that own addresses.</param>
     /// <param name="resolver">The active pack's inherited images and redirects.</param>
     /// <param name="destinations">The writes reserved by preceding conversion entries.</param>
     /// <returns>The stable address to store in the unit definition.</returns>
@@ -331,7 +340,7 @@ internal static class ContentEditorArtworkConversion
         string extension,
         byte[] bytes,
         string recipe,
-        IReadOnlyDictionary<string, string> aliases,
+        ISet<string> reservedAddresses,
         ContentFileResolver resolver,
         IDictionary<string, byte[]> destinations
     )
@@ -349,7 +358,7 @@ internal static class ContentEditorArtworkConversion
         {
             string path = Path.GetFullPath(address[5..], project.PackRootPath);
             if (
-                !aliases.ContainsKey(address)
+                !reservedAddresses.Contains(address)
                 && (
                     address == preferred
                     || !new[] { address }
@@ -366,7 +375,7 @@ internal static class ContentEditorArtworkConversion
                         })
                 )
                 && !_extensions.Any(format =>
-                    aliases.ContainsKey(address + format)
+                    reservedAddresses.Contains(address + format)
                     || DestinationConflicts(
                         project,
                         destinations,
