@@ -34,7 +34,7 @@ public static class ContentPackEditorPreview
             Path.GetTempPath(),
             "editor-preview-" + Guid.NewGuid().ToString("N")
         );
-        ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
+        using ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
             contentRoot,
             sourceID,
             workingFolder,
