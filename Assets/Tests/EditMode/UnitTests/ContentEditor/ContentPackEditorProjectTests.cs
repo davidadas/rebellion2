@@ -17,6 +17,152 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Dispose_ArtworkUndoHistory_RemovesOnlyOwnedSnapshots(bool undoBeforeClosing)
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address;
+            using (project.BeginEdit("First artwork"))
+            {
+                address = ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    new byte[] { 1 },
+                    layerRecipe: "first"
+                );
+                project.SetField(field, address);
+            }
+            ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 2 },
+                layerRecipe: "second"
+            );
+            if (undoBeforeClosing)
+                Assert.IsTrue(project.Undo());
+            string image = Path.Combine(project.PackRootPath, address[5..] + ".png");
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            string session = Directory.GetDirectories(history).Single();
+            string legacy = Path.Combine(history, "previous-version-file");
+            string source = Path.Combine(
+                project.PackRootPath,
+                "Assets",
+                "ArtworkSources",
+                "keep.png"
+            );
+            string backup = Path.Combine(
+                project.PackRootPath,
+                ".rebellion2-editor",
+                "Backups",
+                "keep.xml"
+            );
+            Directory.CreateDirectory(Path.GetDirectoryName(source));
+            Directory.CreateDirectory(Path.GetDirectoryName(backup));
+            File.WriteAllText(legacy, "unowned history");
+            File.WriteAllBytes(source, new byte[] { 3 });
+            File.WriteAllText(backup, "backup");
+            string document = field.Document.Text;
+            string recipe = File.ReadAllText(image + ".layers.json");
+
+            project.Dispose();
+
+            Assert.IsFalse(Directory.Exists(session));
+            CollectionAssert.AreEqual(
+                new byte[] { undoBeforeClosing ? (byte)1 : (byte)2 },
+                File.ReadAllBytes(image)
+            );
+            Assert.AreEqual(recipe, File.ReadAllText(image + ".layers.json"));
+            Assert.IsTrue(File.Exists(image + ".layers.hash"));
+            Assert.AreEqual(document, field.Document.Text);
+            Assert.IsTrue(File.Exists(source));
+            Assert.IsTrue(File.Exists(backup));
+            Assert.IsTrue(File.Exists(legacy));
+            Assert.IsFalse(project.CanUndo);
+            Assert.IsFalse(project.CanRedo);
+            Assert.DoesNotThrow(project.Dispose);
+        }
+
+        [Test]
+        public void Dispose_AnotherWorkspaceIsOpen_PreservesItsSnapshotsAndUndo()
+        {
+            (ContentPackEditorProject first, ContentPackEditorField field) = CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                first,
+                field,
+                new byte[] { 1 }
+            );
+            first.SetField(field, address);
+            ContentPackEditorStorage.Save(first);
+            using ContentPackEditorProject second = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                first.PackRootPath
+            );
+            ContentPackEditorField secondField = second
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single()
+                .GetField("SmallDisplayImagePath");
+            string secondAddress = ContentPackEditorStorage.WriteGeneratedPng(
+                second,
+                secondField,
+                new byte[] { 2 }
+            );
+            string secondImage = Path.Combine(second.PackRootPath, secondAddress[5..] + ".png");
+            string history = Path.Combine(first.PackRootPath, ".rebellion2-editor", "History");
+            Assert.AreEqual(2, Directory.GetDirectories(history).Length);
+
+            first.Dispose();
+
+            Assert.AreEqual(1, Directory.GetDirectories(history).Length);
+            Assert.IsTrue(second.CanUndo);
+            Assert.IsTrue(second.Undo());
+            Assert.IsFalse(File.Exists(secondImage));
+            Assert.IsTrue(second.Redo());
+            CollectionAssert.AreEqual(new byte[] { 2 }, File.ReadAllBytes(secondImage));
+            second.Dispose();
+            Assert.IsEmpty(Directory.GetDirectories(history));
+        }
+
+        [Test]
+        public void Dispose_DocumentOnlyEdits_DoesNotCreateAnArtworkCache()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            project.SetField(field.Record.GetField("DisplayName"), "Renamed fighter");
+
+            project.Dispose();
+
+            Assert.IsFalse(
+                Directory.Exists(
+                    Path.Combine(project.PackRootPath, ".rebellion2-editor", "History")
+                )
+            );
+        }
+
+        [Test]
+        public void Dispose_ClosedProject_RejectsFurtherArtworkWrites()
+        {
+            (ContentPackEditorProject project, ContentPackEditorField field) =
+                CreateArtworkProject();
+            string address = ContentPackEditorStorage.WriteGeneratedPng(
+                project,
+                field,
+                new byte[] { 1 }
+            );
+            project.Dispose();
+
+            Assert.Throws<ObjectDisposedException>(() =>
+                ContentPackEditorStorage.WriteGeneratedPng(project, field, new byte[] { 2 })
+            );
+
+            CollectionAssert.AreEqual(
+                new byte[] { 1 },
+                File.ReadAllBytes(Path.Combine(project.PackRootPath, address[5..] + ".png"))
+            );
+        }
+
         [TestCase("theme")]
         [TestCase("dictionary")]
         public void ResetFieldToInherited_OverlaySelector_RejectsResetWithoutChangingTheDocument(
@@ -1549,6 +1695,28 @@ namespace Rebellion.Tests.ContentEditor
             Assert.Throws<ArgumentException>(() =>
                 project.ValidateField(ship.GetField("Hyperdrive"))
             );
+        }
+
+        /// <summary>
+        /// Creates an inherited artwork record without requiring installed game media.
+        /// </summary>
+        /// <returns>The working project and its display artwork field.</returns>
+        private (
+            ContentPackEditorProject Project,
+            ContentPackEditorField Field
+        ) CreateArtworkProject()
+        {
+            WriteFixtureFile(
+                "Data/units.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID><DisplayName>Fighter</DisplayName><DisplayImagePath/><SmallDisplayImagePath/></Starfighter></Starfighters>"
+            );
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single()
+                .GetField("DisplayImagePath");
+            return (project, field);
         }
 
         /// <summary>

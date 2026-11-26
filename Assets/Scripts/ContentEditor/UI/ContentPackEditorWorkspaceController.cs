@@ -73,9 +73,13 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         catch
         {
             session.Restore(previousProject, previousSelection);
+            if (project != previousProject)
+                project.Dispose();
             throw;
         }
         assets = contentAssets;
+        if (previousProject != project)
+            previousProject?.Dispose();
     }
 
     /// <summary>
@@ -84,7 +88,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     public void ClearProject()
     {
         view.ClearProject();
-        session.Open(null);
+        session.Dispose();
         assets = null;
     }
 

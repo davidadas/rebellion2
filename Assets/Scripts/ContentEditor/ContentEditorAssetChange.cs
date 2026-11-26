@@ -9,6 +9,7 @@ internal sealed class ContentEditorAssetChange
 {
     internal const string EditorDirectory = ".rebellion2-editor";
     private readonly ContentPackEditorProject project;
+    private readonly string snapshotDirectory;
     private readonly string before;
     private string after;
     internal string Path { get; }
@@ -19,9 +20,15 @@ internal sealed class ContentEditorAssetChange
     /// </summary>
     /// <param name="project">The writable project owning the file.</param>
     /// <param name="path">The verified destination.</param>
-    internal ContentEditorAssetChange(ContentPackEditorProject project, string path)
+    /// <param name="snapshotDirectory">The temporary revision directory owned by this project's history.</param>
+    internal ContentEditorAssetChange(
+        ContentPackEditorProject project,
+        string path,
+        string snapshotDirectory
+    )
     {
         this.project = project;
+        this.snapshotDirectory = snapshotDirectory;
         Path = path;
         before = File.Exists(path) ? Snapshot(File.ReadAllBytes(path)) : null;
         after = before;
@@ -71,7 +78,7 @@ internal sealed class ContentEditorAssetChange
     }
 
     /// <summary>
-    /// Keeps one content-addressed revision outside published pack assets.
+    /// Keeps one content-addressed revision in the owning history's private directory.
     /// </summary>
     /// <param name="bytes">The complete file contents.</param>
     /// <returns>The immutable revision path.</returns>
@@ -79,12 +86,7 @@ internal sealed class ContentEditorAssetChange
     {
         using SHA256 hash = SHA256.Create();
         string key = BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", "");
-        string snapshot = System.IO.Path.Combine(
-            project.PackRootPath,
-            EditorDirectory,
-            "History",
-            key
-        );
+        string snapshot = System.IO.Path.Combine(snapshotDirectory, key);
         ContentEditorPaths.VerifyWritePath(project, snapshot);
         Directory.CreateDirectory(System.IO.Path.GetDirectoryName(snapshot));
         if (!File.Exists(snapshot))

@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.Util.Logging;
 
 /// <summary>
 /// Records reversible document edits and groups continuous gestures into one history entry.
 /// </summary>
-internal sealed class ContentPackEditorHistory
+internal sealed class ContentPackEditorHistory : IDisposable
 {
+    private readonly List<ContentPackEditorDocument> documents = new();
     private readonly Stack<Edit> undo = new Stack<Edit>();
     private readonly Stack<Edit> redo = new Stack<Edit>();
     private readonly Dictionary<ContentPackEditorDocument, Change> pending =
@@ -18,9 +20,12 @@ internal sealed class ContentPackEditorHistory
     private bool restoring;
     private int depth;
     private string description;
+    private ContentPackEditorProject project;
+    private string snapshotDirectory;
+    private bool disposed;
 
-    public bool CanUndo => undo.Count > 0 && depth == 0;
-    public bool CanRedo => redo.Count > 0 && depth == 0;
+    public bool CanUndo => !disposed && undo.Count > 0 && depth == 0;
+    public bool CanRedo => !disposed && redo.Count > 0 && depth == 0;
     public string UndoDescription => undo.Count == 0 ? string.Empty : undo.Peek().Description;
     public string RedoDescription => redo.Count == 0 ? string.Empty : redo.Peek().Description;
 
@@ -38,7 +43,43 @@ internal sealed class ContentPackEditorHistory
     /// Includes a newly authored document in subsequent reversible edits.
     /// </summary>
     /// <param name="document">The project-owned document.</param>
-    internal void Track(ContentPackEditorDocument document) => document.StateChanged += Record;
+    internal void Track(ContentPackEditorDocument document)
+    {
+        VerifyActive();
+        documents.Add(document);
+        document.StateChanged += Record;
+    }
+
+    /// <summary>
+    /// Releases only the revisions owned by this history after its project is no longer editable.
+    /// </summary>
+    public void Dispose()
+    {
+        if (disposed)
+            return;
+        disposed = true;
+        foreach (ContentPackEditorDocument document in documents)
+            document.StateChanged -= Record;
+        documents.Clear();
+        undo.Clear();
+        redo.Clear();
+        pending.Clear();
+        pendingFiles.Clear();
+        if (snapshotDirectory == null)
+            return;
+        try
+        {
+            ContentEditorPaths.VerifyWritePath(project, snapshotDirectory);
+            if (Directory.Exists(snapshotDirectory))
+                Directory.Delete(snapshotDirectory, true);
+        }
+        catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
+        {
+            GameLogger.Warning(
+                "Could not remove temporary artwork undo files: " + exception.Message
+            );
+        }
+    }
 
     /// <summary>
     /// Begins an edit group that completes when its returned scope is disposed.
@@ -47,6 +88,7 @@ internal sealed class ContentPackEditorHistory
     /// <returns>The owned edit scope.</returns>
     internal IDisposable BeginEdit(string name)
     {
+        VerifyActive();
         if (depth++ == 0)
             description = name;
         return new EditScope(this);
@@ -78,13 +120,21 @@ internal sealed class ContentPackEditorHistory
     /// <param name="bytes">The complete new file contents.</param>
     internal void WriteFile(ContentPackEditorProject project, string path, byte[] bytes)
     {
+        VerifyActive();
         ContentEditorPaths.VerifyWritePath(project, path);
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         using (BeginEdit("Replace artwork"))
         {
             if (!pendingFiles.TryGetValue(path, out ContentEditorAssetChange change))
             {
-                change = new ContentEditorAssetChange(project, path);
+                this.project = project;
+                snapshotDirectory ??= Path.Combine(
+                    project.PackRootPath,
+                    ContentEditorAssetChange.EditorDirectory,
+                    "History",
+                    Guid.NewGuid().ToString("N")
+                );
+                change = new ContentEditorAssetChange(project, path, snapshotDirectory);
                 pendingFiles.Add(path, change);
             }
             change.Write(bytes);
@@ -122,6 +172,8 @@ internal sealed class ContentPackEditorHistory
     /// </summary>
     private void EndEdit()
     {
+        if (disposed)
+            return;
         if (--depth != 0)
             return;
         Change[] changes = pending
@@ -147,6 +199,7 @@ internal sealed class ContentPackEditorHistory
     /// <returns>True when the requested history operation had an edit to restore.</returns>
     private bool Restore(Stack<Edit> source, Stack<Edit> destination, bool forward)
     {
+        VerifyActive();
         if (depth != 0)
             throw new InvalidOperationException(
                 "Finish the current edit before using undo or redo."
@@ -184,6 +237,15 @@ internal sealed class ContentPackEditorHistory
         source.Pop();
         destination.Push(edit);
         return true;
+    }
+
+    /// <summary>
+    /// Rejects new edits through a project whose undo resources have been released.
+    /// </summary>
+    private void VerifyActive()
+    {
+        if (disposed)
+            throw new ObjectDisposedException(nameof(ContentPackEditorHistory));
     }
 
     /// <summary>

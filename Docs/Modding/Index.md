@@ -192,6 +192,13 @@ It clears the overrides shown in the active tab and uses the inherited or built-
 Resetting the last override removes the unnecessary local file. Undo, redo, exports, and test
 snapshots retain the authored overrides rather than copying displayed defaults into the pack.
 
+Artwork undo and redo belong to the open editing session. Temporary revisions are stored in a
+separate `.rebellion2-editor/History/<session>` directory for each open project and are removed
+when that project closes, is replaced, or the editor exits normally. Ordinary saves and refreshing
+the same project preserve its undo history. Cleanup preserves authored artwork, editable layer
+sources, conversion backups, and revisions owned by other open projects. Files left by older
+editor versions or interrupted sessions are not automatically deleted.
+
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
 in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
 complete identity and dependency manifests. Packs using setting overlays require game and editor

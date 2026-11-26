@@ -17,7 +17,7 @@ using UnityEngine;
 /// <summary>
 /// Owns the editable documents and validation state for one authored content pack.
 /// </summary>
-public sealed class ContentPackEditorProject
+public sealed class ContentPackEditorProject : IDisposable
 {
     private const string _packDefinitionAddress = "Pack/pack.xml";
 
@@ -47,6 +47,11 @@ public sealed class ContentPackEditorProject
     public bool CanRedo => history.CanRedo;
     public string UndoDescription => history.UndoDescription;
     public string RedoDescription => history.RedoDescription;
+
+    /// <summary>
+    /// Releases temporary undo revisions without changing authored documents or artwork.
+    /// </summary>
+    public void Dispose() => history.Dispose();
 
     /// <summary>
     /// Groups a continuous gesture or multi-field operation into one undoable edit.
@@ -1642,6 +1647,7 @@ public sealed class ContentPackEditorProject
         Definition = definition;
         if (refreshedDocuments == null)
             return;
+        history.Dispose();
         documents = refreshedDocuments.ToList();
         catalogs = null;
         history = new ContentPackEditorHistory(documents);

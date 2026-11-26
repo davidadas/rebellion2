@@ -23,6 +23,87 @@ namespace Rebellion.Tests.ContentEditor.Integration
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void ClearProject_ArtworkUndoHistory_ReleasesSnapshotsAndPreservesArtwork()
+        {
+            string image = AddArtworkHistory();
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            byte[] expected = File.ReadAllBytes(image);
+            Assert.IsNotEmpty(Directory.GetDirectories(history));
+
+            workspace.ClearProject();
+
+            Assert.IsNull(workspace.Project);
+            Assert.IsEmpty(Directory.GetDirectories(history));
+            CollectionAssert.AreEqual(expected, File.ReadAllBytes(image));
+        }
+
+        [Test]
+        public void Dispose_ArtworkUndoHistory_ReleasesSnapshotsAndPreservesArtwork()
+        {
+            string image = AddArtworkHistory();
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            byte[] expected = File.ReadAllBytes(image);
+
+            workspace.Dispose();
+
+            Assert.IsEmpty(Directory.GetDirectories(history));
+            CollectionAssert.AreEqual(expected, File.ReadAllBytes(image));
+        }
+
+        [Test]
+        public void RenderProject_SameProject_PreservesArtworkUndoAndSnapshots()
+        {
+            string image = AddArtworkHistory();
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            string[] before = Directory.GetDirectories(history);
+            byte[] latest = File.ReadAllBytes(image);
+
+            workspace.RenderProject(project, assets);
+
+            CollectionAssert.AreEquivalent(before, Directory.GetDirectories(history));
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreNotEqual(latest, File.ReadAllBytes(image));
+            Assert.IsTrue(project.Redo());
+            CollectionAssert.AreEqual(latest, File.ReadAllBytes(image));
+        }
+
+        [Test]
+        public void RenderProject_DifferentProject_ReleasesPreviousArtworkSnapshots()
+        {
+            string image = AddArtworkHistory();
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            ContentPackEditorProject next = CreateProject(Path.Combine(folder, "next"));
+
+            workspace.RenderProject(next, assets);
+
+            Assert.AreSame(next, workspace.Project);
+            Assert.IsEmpty(Directory.GetDirectories(history));
+            Assert.IsTrue(File.Exists(image));
+        }
+
+        [Test]
+        public void RenderProject_RejectedProject_PreservesPreviousArtworkUndo()
+        {
+            string image = AddArtworkHistory();
+            string history = Path.Combine(project.PackRootPath, ".rebellion2-editor", "History");
+            using ContentPackEditorProject rejected = ContentPackEditorStorage.Open(
+                TestContent.Pack.ContentRootPath,
+                TestContent.Pack.Definition.ID
+            );
+            Assert.IsTrue(rejected.IsInstalled);
+            byte[] latest = File.ReadAllBytes(image);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                workspace.RenderProject(rejected, assets)
+            );
+
+            Assert.AreSame(project, workspace.Project);
+            Assert.IsNotEmpty(Directory.GetDirectories(history));
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreNotEqual(latest, File.ReadAllBytes(image));
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void RenderProject_AddFaction_CreatesAndOpensCombinedFactionPage(bool fromMenu)
@@ -2708,6 +2789,39 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 view.GetComponentsInChildren<ContentEditorFieldView>()
                     .Any(field => field.Field.MemberName == "Description")
             );
+        }
+
+        /// <summary>
+        /// Replaces one image twice so the active workspace owns usable artwork undo revisions.
+        /// </summary>
+        /// <returns>The current artwork file.</returns>
+        private string AddArtworkHistory()
+        {
+            ContentPackEditorField field = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "Starfighter")
+                .GetField("DisplayImagePath");
+            Texture2D texture = new Texture2D(1, 1);
+            try
+            {
+                texture.SetPixel(0, 0, Color.red);
+                texture.Apply();
+                string address = ContentPackEditorStorage.WriteGeneratedPng(
+                    project,
+                    field,
+                    texture.EncodeToPNG()
+                );
+                project.SetField(field, address);
+                texture.SetPixel(0, 0, Color.blue);
+                texture.Apply();
+                ContentPackEditorStorage.WriteGeneratedPng(project, field, texture.EncodeToPNG());
+                return Path.Combine(project.PackRootPath, address[5..] + ".png");
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(texture);
+            }
         }
 
         /// <summary>
