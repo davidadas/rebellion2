@@ -21,7 +21,11 @@ namespace Rebellion.AI.Tactical
         private readonly List<TacticalCombatGroup> _laserGroups = new();
         private readonly List<TargetCandidate> _capitalFirst = new();
         private readonly List<TargetCandidate> _fighterFirst = new();
-        private readonly List<TacticalCombatDeployment>[] _deployments = { new(), new() };
+        private readonly List<TacticalCombatDeployment.CapitalShipRank>[] _deployments =
+        {
+            new(),
+            new(),
+        };
         private readonly List<CombatUnit>[] _buckets = { new(), new(), new() };
         private readonly bool[] _partitioned = new bool[2];
         private readonly int[] _countdown = new int[2];
@@ -40,9 +44,10 @@ namespace Rebellion.AI.Tactical
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
             foreach (CombatUnit unit in session.Units)
                 if (!unit.IsFighter && !unit.IsBattleStation)
-                    _deployments[(int)unit.Side].Add(new TacticalCombatDeployment(unit));
-            foreach (List<TacticalCombatDeployment> deployments in _deployments)
-                deployments.Sort(TacticalCombatDeployment.Compare);
+                    _deployments[(int)unit.Side]
+                        .Add(new TacticalCombatDeployment.CapitalShipRank(unit));
+            foreach (List<TacticalCombatDeployment.CapitalShipRank> deployments in _deployments)
+                deployments.Sort(TacticalCombatDeployment.CapitalShipRank.Compare);
             session.AutomationRequested += Plan;
         }
 
@@ -135,7 +140,7 @@ namespace Rebellion.AI.Tactical
                     _session.DeleteGroup(group);
             foreach (List<CombatUnit> bucket in _buckets)
                 bucket.Clear();
-            foreach (TacticalCombatDeployment deployment in _deployments[(int)side])
+            foreach (TacticalCombatDeployment.CapitalShipRank deployment in _deployments[(int)side])
                 if (deployment.Unit.IsTargetable)
                     _buckets[deployment.Category].Add(deployment.Unit);
             int first = PartitionBucket(_buckets[0], 0, 3);
@@ -152,31 +157,27 @@ namespace Rebellion.AI.Tactical
         /// <returns>The number of created groups.</returns>
         private int PartitionBucket(List<CombatUnit> bucket, int lower, int upper)
         {
-            uint count = (uint)bucket.Count & 0xffffu;
-            uint limit = 1;
-            while (limit <= (uint)upper && limit * limit <= count)
-                limit++;
-            uint selected = count < 2 ? 1 : limit - 1;
-            uint available = (uint)(upper - lower + 1);
-            if (selected >= available)
-                selected = available;
-            uint spacing = count / selected;
-            uint created = 0;
+            (int selected, int spacing) = TacticalCombatDeployment.GetCapitalGroupLayout(
+                bucket.Count,
+                lower,
+                upper
+            );
+            int created = 0;
             TacticalCombatGroup group = null;
             for (int index = 0; index < bucket.Count; index++)
             {
                 CombatUnit unit = bucket[index];
-                if (index % (int)spacing == 0 && created < selected)
+                if (index % spacing == 0 && created < selected)
                 {
                     group = _session.CreateGroup(new[] { unit });
                     if (unit.Side == _session.PlayerSide)
-                        _session.SetObjectGroup(unit.Side, lower + (int)created, group);
+                        _session.SetObjectGroup(unit.Side, lower + created, group);
                     created++;
                 }
                 else
                     _session.AddGroupMember(group, unit);
             }
-            return bucket.Count == 0 ? 0 : (int)selected;
+            return bucket.Count == 0 ? 0 : selected;
         }
 
         /// <summary>

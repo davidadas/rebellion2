@@ -2771,15 +2771,11 @@ namespace Rebellion.Gameplay
         {
             if (result.Winner == SpaceCombatResult.BattleOutcome.Draw)
                 return MessageResultOutcome.Stalemate;
-            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
-                return result.Winner == SpaceCombatResult.BattleOutcome.Attacker
-                    ? MessageResultOutcome.Victory
-                    : MessageResultOutcome.Defeat;
-            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Defender))
-                return result.Winner == SpaceCombatResult.BattleOutcome.Defender
-                    ? MessageResultOutcome.Victory
-                    : MessageResultOutcome.Defeat;
-            return MessageResultOutcome.None;
+            if (GetSide(faction, result) is not CombatSide side)
+                return MessageResultOutcome.None;
+            return result.WinningSide == side
+                ? MessageResultOutcome.Victory
+                : MessageResultOutcome.Defeat;
         }
 
         /// <summary>
@@ -2841,14 +2837,13 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction.</param>
         /// <param name="result">The result.</param>
         /// <returns>The requested fleet.</returns>
-        private static Fleet GetFleet(Faction faction, SpaceCombatResult result)
-        {
-            if (faction?.InstanceID == GetOwnerID(result, CombatSide.Attacker))
-                return result.AttackerFleet;
-            return faction?.InstanceID == GetOwnerID(result, CombatSide.Defender)
-                ? result.DefenderFleet
-                : null;
-        }
+        private static Fleet GetFleet(Faction faction, SpaceCombatResult result) =>
+            GetSide(faction, result) switch
+            {
+                CombatSide.Attacker => result.AttackerFleet,
+                CombatSide.Defender => result.DefenderFleet,
+                _ => null,
+            };
 
         /// <summary>
         /// Gets owner id.
@@ -2856,17 +2851,20 @@ namespace Rebellion.Gameplay
         /// <param name="result">The result.</param>
         /// <param name="side">The side.</param>
         /// <returns>The requested owner id.</returns>
-        private static string GetOwnerID(SpaceCombatResult result, CombatSide side) =>
-            side switch
+        private static string GetOwnerID(SpaceCombatResult result, CombatSide side)
+        {
+            string ownerID = result?.GetOwner(side);
+            if (!string.IsNullOrEmpty(ownerID))
+                return ownerID;
+
+            Fleet fleet = side switch
             {
-                CombatSide.Attacker => string.IsNullOrEmpty(result?.AttackerOwnerInstanceID)
-                    ? result?.AttackerFleet?.GetOwnerInstanceID()
-                    : result.AttackerOwnerInstanceID,
-                CombatSide.Defender => string.IsNullOrEmpty(result?.DefenderOwnerInstanceID)
-                    ? result?.DefenderFleet?.GetOwnerInstanceID()
-                    : result.DefenderOwnerInstanceID,
+                CombatSide.Attacker => result?.AttackerFleet,
+                CombatSide.Defender => result?.DefenderFleet,
                 _ => null,
             };
+            return fleet?.GetOwnerInstanceID();
+        }
 
         /// <summary>
         /// Gets bombardment outcome.

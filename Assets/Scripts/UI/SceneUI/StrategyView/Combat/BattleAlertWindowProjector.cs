@@ -825,13 +825,10 @@ internal sealed class BattleAlertWindowProjector
             return $"The battle at {GetPlanetName(result?.Planet)} is indecisive.\n\nThere has been no victor.";
 
         string planetName = GetPlanetName(result.Planet);
-        CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
+        CombatSide? playerSide = result.GetSideForOwner(playerFactionId);
         CombatSide? losingSide = SpaceCombatResult.OpposingSide(winner);
         string winnerName = GetSideLabel(uiContext, result, winner, "Victorious");
-        string winnerOwnerInstanceId =
-            winner == CombatSide.Attacker
-                ? result.AttackerOwnerInstanceID
-                : result.DefenderOwnerInstanceID;
+        string winnerOwnerInstanceId = result.GetOwner(winner);
 
         if (playerSide.HasValue && winner != playerSide.Value)
         {
@@ -1204,13 +1201,7 @@ internal sealed class BattleAlertWindowProjector
         string fallback
     )
     {
-        string ownerInstanceId = side switch
-        {
-            CombatSide.Attacker => result?.AttackerOwnerInstanceID,
-            CombatSide.Defender => result?.DefenderOwnerInstanceID,
-            _ => null,
-        };
-        return GetOwnerLabel(uiContext, ownerInstanceId, fallback);
+        return GetOwnerLabel(uiContext, result?.GetOwner(side), fallback);
     }
 
     /// <summary>

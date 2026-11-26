@@ -379,7 +379,8 @@ namespace Rebellion.Gameplay
         /// Finds the live campaign unit represented by a detached combatant.
         /// </summary>
         /// <param name="unit">The battle participant being evaluated or updated.</param>
-        /// <returns>The campaign participant, or null once it is absent.</returns>
+        /// <returns>The campaign participant.</returns>
+        /// <exception cref="InvalidDataException">The participant is absent from the campaign.</exception>
         private ISceneNode ResolveTacticalSource(CombatUnit unit)
         {
             string sourceID = unit?.SourceUnitInstanceID;

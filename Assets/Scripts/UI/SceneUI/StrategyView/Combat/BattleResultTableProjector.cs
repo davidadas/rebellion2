@@ -46,7 +46,7 @@ internal sealed class BattleResultTableProjector
         BattleResultCategory category
     )
     {
-        CombatSide? side = BattleResultPresentation.GetSideForOwner(result, ownerInstanceId);
+        CombatSide? side = result?.GetSideForOwner(ownerInstanceId);
         if (!side.HasValue)
             return CreateEmptyTable();
 

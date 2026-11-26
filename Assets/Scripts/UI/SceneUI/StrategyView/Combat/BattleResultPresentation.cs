@@ -118,23 +118,6 @@ internal abstract class BattleResultPresentation
     );
 
     /// <summary>
-    /// Returns the combat side represented by an owner identifier.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="ownerInstanceId">The requested owner identifier.</param>
-    /// <returns>The matching side, or null when the owner is not represented.</returns>
-    internal static CombatSide? GetSideForOwner(SpaceCombatResult result, string ownerInstanceId)
-    {
-        if (result == null || string.IsNullOrEmpty(ownerInstanceId))
-            return null;
-        if (ownerInstanceId == result.AttackerOwnerInstanceID)
-            return CombatSide.Attacker;
-        if (ownerInstanceId == result.DefenderOwnerInstanceID)
-            return CombatSide.Defender;
-        return null;
-    }
-
-    /// <summary>
     /// Resolves the fleet-pane planet for one side of a completed space battle.
     /// </summary>
     /// <param name="ownerInstanceId">The owner whose fleet should be opened.</param>
@@ -239,7 +222,7 @@ internal abstract class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIDForSide(result, side);
+        string ownerInstanceId = result?.GetOwner(side);
         return string.IsNullOrEmpty(ownerInstanceId)
             ? null
             : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.VictoriousImagePath;
@@ -258,26 +241,10 @@ internal abstract class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIDForSide(result, side);
+        string ownerInstanceId = result?.GetOwner(side);
         return string.IsNullOrEmpty(ownerInstanceId)
             ? null
             : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.DefeatedImagePath;
-    }
-
-    /// <summary>
-    /// Returns the owner identifier represented by one combat side.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="side">The requested combat side.</param>
-    /// <returns>The represented owner identifier.</returns>
-    private static string GetOwnerIDForSide(SpaceCombatResult result, CombatSide side)
-    {
-        return side switch
-        {
-            CombatSide.Attacker => result?.AttackerOwnerInstanceID,
-            CombatSide.Defender => result?.DefenderOwnerInstanceID,
-            _ => null,
-        };
     }
 
     /// <summary>
@@ -339,7 +306,7 @@ internal abstract class BattleResultPresentation
             if (theme == null)
                 return null;
 
-            CombatSide? playerSide = GetSideForOwner(result, playerFactionId);
+            CombatSide? playerSide = result.GetSideForOwner(playerFactionId);
             if (!playerSide.HasValue || result.Winner == SpaceCombatResult.BattleOutcome.Draw)
                 return FirstNonBlank(theme.ResultDrawMusicPath, theme.ResultMusicPath);
 

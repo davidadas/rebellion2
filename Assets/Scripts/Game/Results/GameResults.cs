@@ -929,7 +929,7 @@ namespace Rebellion.Game.Results
         /// <summary>
         /// Translates a battle outcome into a participant identity.
         /// </summary>
-        /// <param name="winner">The battle?s recorded winning outcome.</param>
+        /// <param name="winner">The recorded battle outcome.</param>
         /// <returns>The winning side, or null for a draw.</returns>
         public static CombatSide? GetWinningSide(BattleOutcome winner) =>
             winner switch
@@ -977,7 +977,28 @@ namespace Rebellion.Game.Results
         /// <param name="side">The side identified by the encounter.</param>
         /// <returns>The owner's instance ID, or null for an unrecognized side.</returns>
         internal string GetOwner(CombatSide side) =>
-            side == CombatSide.Attacker ? AttackerOwnerInstanceID : DefenderOwnerInstanceID;
+            side switch
+            {
+                CombatSide.Attacker => AttackerOwnerInstanceID,
+                CombatSide.Defender => DefenderOwnerInstanceID,
+                _ => null,
+            };
+
+        /// <summary>
+        /// Finds the side whose recorded owner matches the supplied identifier.
+        /// </summary>
+        /// <param name="ownerInstanceID">The campaign faction's instance ID.</param>
+        /// <returns>The represented side, or null when the faction did not participate.</returns>
+        internal CombatSide? GetSideForOwner(string ownerInstanceID)
+        {
+            if (string.IsNullOrEmpty(ownerInstanceID))
+                return null;
+            if (ownerInstanceID == AttackerOwnerInstanceID)
+                return CombatSide.Attacker;
+            if (ownerInstanceID == DefenderOwnerInstanceID)
+                return CombatSide.Defender;
+            return null;
+        }
     }
 
     /// <summary>

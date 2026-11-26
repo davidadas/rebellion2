@@ -146,9 +146,12 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateNetworkEncounter();
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
-            battle.GetUnit(attacker.InstanceID).ApplyHullLoss(100);
+            CombatUnit combatant = battle.GetUnit(attacker.InstanceID);
+            combatant.ApplyHullLoss(100);
+            combatant.ApplyComponentEvent(TacticalShipSystem.Engines, false);
             TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
+            Assert.Zero(attacker.SystemDamage.Engines);
 
             Assert.IsTrue(
                 commands.TryCompleteNetworkTacticalCombat(
@@ -166,6 +169,8 @@ namespace Rebellion.Tests.Gameplay
                 damage.HullAfter
             );
             Assert.AreEqual(damage.HullAfter, attacker.CurrentHullStrength);
+            Assert.AreEqual(1, attacker.SystemDamage.Engines);
+            Assert.AreNotSame(damage.SystemDamage, attacker.SystemDamage);
             Assert.IsFalse(commands.HasPendingDecision);
             Assert.IsNull(commands.ActiveTacticalCombat);
             Assert.IsNull(commands.ActiveTacticalBattleID);
