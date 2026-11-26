@@ -31,13 +31,7 @@ internal static class ContentEditorArtworkConversion
             .SelectMany(record => record.GetFields())
             .Where(field => ContentEditorArtworkPaths.GetAddress(field) != null)
             .ToArray();
-        var candidates =
-            new List<(
-                ContentPackEditorField Field,
-                string Source,
-                string Address,
-                string Target
-            )>();
+        var candidates = new List<(ContentPackEditorField Field, string Source, string Address)>();
         foreach (
             ContentPackEditorField field in fields.Where(field =>
                 ContentEditorArtworkPaths.IsLegacy(field.Value)
@@ -58,7 +52,7 @@ internal static class ContentEditorArtworkConversion
                 project.PackRootPath
             );
             ContentEditorPaths.VerifyWritePath(project, target);
-            candidates.Add((field, source, address, target));
+            candidates.Add((field, source, address));
         }
         var warnings = new List<string>();
         var shared = candidates
@@ -83,11 +77,37 @@ internal static class ContentEditorArtworkConversion
                     + Path.GetRelativePath(project.PackRootPath, source).Replace('\\', '/')
                     + "; its unit slots have different destinations."
             );
-        var edits = candidates.Where(item => !shared.Contains(item.Source)).ToArray();
+        var edits =
+            new List<(
+                ContentPackEditorField Field,
+                string Source,
+                string Address,
+                string Target
+            )>();
         var destinations = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
-        foreach (var edit in edits)
+        foreach (var candidate in candidates.Where(item => !shared.Contains(item.Source)))
         {
-            byte[] bytes = File.ReadAllBytes(edit.Source);
+            byte[] bytes = File.ReadAllBytes(candidate.Source);
+            string recipe = ContentPackEditorStorage.ReadGeneratedLayers(project, candidate.Field);
+            string address = AllocateAddress(
+                project,
+                candidate.Address,
+                Path.GetExtension(candidate.Source).ToLowerInvariant(),
+                bytes,
+                recipe,
+                aliases,
+                resolver,
+                destinations
+            );
+            var edit = (
+                candidate.Field,
+                candidate.Source,
+                Address: address,
+                Target: Path.GetFullPath(
+                    address[5..] + Path.GetExtension(candidate.Source).ToLowerInvariant(),
+                    project.PackRootPath
+                )
+            );
             foreach (string extension in _extensions)
             {
                 string other = Path.GetFullPath(
@@ -98,7 +118,6 @@ internal static class ContentEditorArtworkConversion
                     CheckDestination(project, destinations, other, bytes);
             }
             CheckDestination(project, destinations, edit.Target, bytes);
-            string recipe = ContentPackEditorStorage.ReadGeneratedLayers(project, edit.Field);
             if (recipe != null)
             {
                 CheckDestination(
@@ -116,6 +135,7 @@ internal static class ContentEditorArtworkConversion
                     )
                 );
             }
+            edits.Add(edit);
         }
         foreach (var candidate in candidates.Where(candidate => shared.Contains(candidate.Source)))
         {
@@ -129,7 +149,7 @@ internal static class ContentEditorArtworkConversion
                 );
             aliases[candidate.Field.Value] = candidate.Field.Value;
         }
-        if (edits.Length == 0)
+        if (edits.Count == 0)
         {
             if (shared.Count > 0)
                 project.WriteAsset(
@@ -181,7 +201,7 @@ internal static class ContentEditorArtworkConversion
                 project.SetField(edit.Field, edit.Address);
         }
         string report =
-            $"Organized {edits.Length} artwork assignments. Original images were retained. "
+            $"Organized {edits.Count} artwork assignments. Original images were retained. "
             + string.Join(" ", warnings)
             + " Backup: "
             + Path.GetRelativePath(project.PackRootPath, backup).Replace('\\', '/');
@@ -293,7 +313,109 @@ internal static class ContentEditorArtworkConversion
     }
 
     /// <summary>
-    /// Rejects differing images assigned to the same destination before conversion writes anything.
+    /// Chooses a reusable or unused slot without replacing another image, recipe, or redirect.
+    /// An extensionless slot must resolve to one image format with its matching layer recipe.
+    /// </summary>
+    /// <param name="project">The pack receiving the converted artwork.</param>
+    /// <param name="preferred">The unit's preferred slot address.</param>
+    /// <param name="extension">The source image's file extension.</param>
+    /// <param name="bytes">The image contents to retain.</param>
+    /// <param name="recipe">The editable layers, or null when none belong to this image.</param>
+    /// <param name="aliases">Addresses already owned by image redirects.</param>
+    /// <param name="resolver">The active pack's inherited images and redirects.</param>
+    /// <param name="destinations">The writes reserved by preceding conversion entries.</param>
+    /// <returns>The stable address to store in the unit definition.</returns>
+    private static string AllocateAddress(
+        ContentPackEditorProject project,
+        string preferred,
+        string extension,
+        byte[] bytes,
+        string recipe,
+        IReadOnlyDictionary<string, string> aliases,
+        ContentFileResolver resolver,
+        IDictionary<string, byte[]> destinations
+    )
+    {
+        byte[] layers = recipe == null ? null : Encoding.UTF8.GetBytes(recipe);
+        byte[] revision =
+            recipe == null
+                ? null
+                : Encoding.UTF8.GetBytes(
+                    ContentPackEditorStorage.GetArtworkRevision(bytes, recipe)
+                );
+        string address = preferred;
+        int suffix = 2;
+        while (true)
+        {
+            string path = Path.GetFullPath(address[5..], project.PackRootPath);
+            if (
+                !aliases.ContainsKey(address)
+                && (
+                    address == preferred
+                    || !new[] { address }
+                        .Concat(_extensions.Select(format => address + format))
+                        .Any(value =>
+                        {
+                            string existing = resolver.ResolveFile(value, _extensions);
+                            return existing != null
+                                && !string.Equals(
+                                    existing,
+                                    path + extension,
+                                    StringComparison.Ordinal
+                                );
+                        })
+                )
+                && !_extensions.Any(format =>
+                    aliases.ContainsKey(address + format)
+                    || DestinationConflicts(
+                        project,
+                        destinations,
+                        path + format,
+                        format == extension ? bytes : null
+                    )
+                    || DestinationConflicts(
+                        project,
+                        destinations,
+                        path + format + ".layers.json",
+                        format == extension ? layers : null
+                    )
+                    || DestinationConflicts(
+                        project,
+                        destinations,
+                        path + format + ".layers.hash",
+                        format == extension ? revision : null
+                    )
+                )
+            )
+                return address;
+            address = preferred + "-" + suffix++;
+        }
+    }
+
+    /// <summary>
+    /// Detects files that cannot be reused without replacing different authored contents.
+    /// </summary>
+    /// <param name="project">The pack owning the proposed destination.</param>
+    /// <param name="destinations">The already reserved writes.</param>
+    /// <param name="target">The candidate physical filename.</param>
+    /// <param name="bytes">The reusable contents, or null when the filename must be unused.</param>
+    /// <returns>True when another file or planned write owns this filename.</returns>
+    private static bool DestinationConflicts(
+        ContentPackEditorProject project,
+        IDictionary<string, byte[]> destinations,
+        string target,
+        byte[] bytes
+    )
+    {
+        ContentEditorPaths.VerifyWritePath(project, target);
+        return destinations.TryGetValue(target, out byte[] pending)
+                && (bytes == null || !pending.AsSpan().SequenceEqual(bytes))
+            || File.Exists(target)
+                && (bytes == null || !File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes));
+    }
+
+    /// <summary>
+    /// Rechecks the chosen destination before reserving its contents for conversion.
     /// </summary>
     /// <param name="project">The pack owning the proposed destination.</param>
     /// <param name="destinations">The checked file writes.</param>
@@ -306,12 +428,7 @@ internal static class ContentEditorArtworkConversion
         byte[] bytes
     )
     {
-        ContentEditorPaths.VerifyWritePath(project, target);
-        if (
-            destinations.TryGetValue(target, out byte[] pending)
-                && !pending.AsSpan().SequenceEqual(bytes)
-            || File.Exists(target) && !File.ReadAllBytes(target).AsSpan().SequenceEqual(bytes)
-        )
+        if (DestinationConflicts(project, destinations, target, bytes))
             throw new IOException(
                 "Artwork conversion would replace a different file: "
                     + Path.GetRelativePath(project.PackRootPath, target)
