@@ -1,16 +1,29 @@
 using System;
 using NUnit.Framework;
+using Rebellion.Game;
 using Rebellion.Gameplay;
 
 namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public class SpaceCombatSupportCalculatorTests
+    public class SpaceCombatSupportTests
     {
-        private static readonly SpaceCombatSupportWeights _firstWeights =
-            new SpaceCombatSupportWeights(100, 100, 100, 50, 1000, 17);
-        private static readonly SpaceCombatSupportWeights _secondWeights =
-            new SpaceCombatSupportWeights(80, 40, 60, 20, 2000, 83);
+        private static readonly SpaceCombatSupportSideConfig _firstWeights = Weights(
+            100,
+            100,
+            100,
+            50,
+            1000,
+            17
+        );
+        private static readonly SpaceCombatSupportSideConfig _secondWeights = Weights(
+            80,
+            40,
+            60,
+            20,
+            2000,
+            83
+        );
 
         [TestCase(200, 100, 1, 6u, 2, 83u)]
         [TestCase(200, 100, 2, 19u, 1, 17u)]
@@ -25,7 +38,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedThreshold
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 firstTotal,
                 secondTotal,
                 20,
@@ -51,7 +64,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedThreshold
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 100,
                 100,
                 20,
@@ -82,7 +95,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedThreshold
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 firstTotal,
                 secondTotal,
                 firstLoss,
@@ -107,7 +120,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedMagnitude
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 survivingSide == 1 ? 200 : 100,
                 survivingSide == 2 ? 200 : 100,
                 firstLoss,
@@ -129,7 +142,7 @@ namespace Rebellion.Tests.Gameplay
             int secondTotal
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 firstTotal,
                 secondTotal,
                 int.MaxValue,
@@ -148,13 +161,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_FractionalGapWeight_TruncatesBeforeApplyingLosses()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 3,
                 2,
                 100,
                 100,
                 1,
-                new SpaceCombatSupportWeights(0, 50, 0, 0, int.MaxValue, 0),
+                Weights(0, 50, 0, 0, int.MaxValue, 0),
                 FlatWeights(100)
             );
 
@@ -165,7 +178,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_FractionalWeightedLosses_TruncatesEachSideBeforeCombining()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 9,
@@ -182,7 +195,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_NegativeWeightedLoss_TruncatesTowardZero()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 3,
@@ -207,7 +220,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedMagnitude
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 firstLoss,
@@ -225,13 +238,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_GapProductOverflow_UsesLow32ProductBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 int.MaxValue,
                 0,
                 100,
                 100,
                 1,
-                new SpaceCombatSupportWeights(100, 2, 0, 0, int.MaxValue, 0),
+                Weights(100, 2, 0, 0, int.MaxValue, 0),
                 FlatWeights(100)
             );
 
@@ -242,13 +255,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_TotalGapOverflow_UsesLow32DifferenceBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 int.MaxValue,
                 -1,
                 100,
                 100,
                 1,
-                new SpaceCombatSupportWeights(100, 1, 0, 0, int.MaxValue, 0),
+                Weights(100, 1, 0, 0, int.MaxValue, 0),
                 FlatWeights(100)
             );
 
@@ -259,13 +272,13 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_LeadingWeightOverflow_UsesLow32SumBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 0,
                 1,
                 0,
                 1,
-                new SpaceCombatSupportWeights(int.MaxValue, 1, 0, 0, int.MaxValue, 0),
+                Weights(int.MaxValue, 1, 0, 0, int.MaxValue, 0),
                 FlatWeights(0)
             );
 
@@ -276,14 +289,14 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_TrailingWeightOverflow_UsesLow32SumBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 0,
                 1,
                 1,
                 FlatWeights(0),
-                new SpaceCombatSupportWeights(0, 0, int.MaxValue, 1, int.MaxValue, 0)
+                Weights(0, 0, int.MaxValue, 1, int.MaxValue, 0)
             );
 
             Assert.AreEqual(2, adjustment.BeneficiarySide);
@@ -293,7 +306,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_WeightedLossProductOverflow_UsesLow32ProductBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 int.MaxValue,
@@ -315,7 +328,7 @@ namespace Rebellion.Tests.Gameplay
             uint expectedThreshold
         )
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 1,
                 1,
                 0,
@@ -334,7 +347,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryCalculate_NegativeCap_PreservesSignedClampOrderAndUnsignedResultBits()
         {
-            SpaceCombatSupportAdjustment adjustment = Calculate(
+            SpaceCombatSupport.Adjustment adjustment = Calculate(
                 2,
                 1,
                 0,
@@ -355,7 +368,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(int.MaxValue)]
         public void TryCalculate_InvalidSurvivor_ReturnsNoRuleWithoutDividing(int survivingSide)
         {
-            bool calculated = SpaceCombatSupportCalculator.TryCalculate(
+            bool calculated = SpaceCombatSupport.TryCalculate(
                 1,
                 1,
                 1,
@@ -364,7 +377,7 @@ namespace Rebellion.Tests.Gameplay
                 _firstWeights,
                 _secondWeights,
                 0,
-                out SpaceCombatSupportAdjustment adjustment
+                out SpaceCombatSupport.Adjustment adjustment
             );
 
             Assert.IsFalse(calculated);
@@ -393,7 +406,7 @@ namespace Rebellion.Tests.Gameplay
                     0,
                     0,
                     1,
-                    new SpaceCombatSupportWeights(0, int.MinValue, 0, 0, int.MaxValue, 0),
+                    Weights(0, int.MinValue, 0, 0, int.MaxValue, 0),
                     FlatWeights(0)
                 )
             );
@@ -411,18 +424,18 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="secondWeights">The second configured side's weights.</param>
         /// <param name="divisor">The final signed divisor.</param>
         /// <returns>The calculated support adjustment.</returns>
-        private static SpaceCombatSupportAdjustment Calculate(
+        private static SpaceCombatSupport.Adjustment Calculate(
             int firstTotal,
             int secondTotal,
             int firstLoss,
             int secondLoss,
             int survivingSide,
-            SpaceCombatSupportWeights firstWeights,
-            SpaceCombatSupportWeights secondWeights,
+            SpaceCombatSupportSideConfig firstWeights,
+            SpaceCombatSupportSideConfig secondWeights,
             int divisor = 1
         )
         {
-            bool calculated = SpaceCombatSupportCalculator.TryCalculate(
+            bool calculated = SpaceCombatSupport.TryCalculate(
                 firstTotal,
                 secondTotal,
                 firstLoss,
@@ -431,11 +444,29 @@ namespace Rebellion.Tests.Gameplay
                 firstWeights,
                 secondWeights,
                 divisor,
-                out SpaceCombatSupportAdjustment adjustment
+                out SpaceCombatSupport.Adjustment adjustment
             );
             Assert.IsTrue(calculated);
             return adjustment;
         }
+
+        private static SpaceCombatSupportSideConfig Weights(
+            int leadingFlat,
+            int leadingGapScale,
+            int trailingFlat,
+            int trailingGapScale,
+            int magnitudeCap,
+            uint supportThreshold
+        ) =>
+            new()
+            {
+                LeadingFlat = leadingFlat,
+                LeadingGapScale = leadingGapScale,
+                TrailingFlat = trailingFlat,
+                TrailingGapScale = trailingGapScale,
+                MagnitudeCap = magnitudeCap,
+                SupportThreshold = supportThreshold,
+            };
 
         /// <summary>
         /// Creates equal flat weights for both force orderings without gap scaling.
@@ -444,10 +475,10 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="cap">The beneficiary's signed upper magnitude bound.</param>
         /// <param name="threshold">The comparison side's support threshold.</param>
         /// <returns>The side's fixed support weights.</returns>
-        private static SpaceCombatSupportWeights FlatWeights(
+        private static SpaceCombatSupportSideConfig FlatWeights(
             int weight,
             int cap = int.MaxValue,
             uint threshold = 0
-        ) => new SpaceCombatSupportWeights(weight, 0, weight, 0, cap, threshold);
+        ) => Weights(weight, 0, weight, 0, cap, threshold);
     }
 }

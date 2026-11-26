@@ -46,7 +46,8 @@ namespace Rebellion.Gameplay
                 _game.Config.SupportShift.BattleSupport?.TryResolveProfile(
                     _game,
                     _definition,
-                    out _
+                    out _,
+                    out var factions
                 ) != true
             )
                 throw new InvalidOperationException(
@@ -55,15 +56,13 @@ namespace Rebellion.Gameplay
             PlanetSector sector = planet?.GetParentOfType<PlanetSector>();
             if (sector == null)
                 throw new InvalidOperationException("The combat planet has no sector.");
-            foreach (TacticalCombatFactionDefinition faction in _definition.Factions)
-                if (
-                    _game
-                        .GetFactionByOwnerInstanceID(faction.FactionInstanceID)
-                        .Settings.BattleLossLoyaltyDivisor == 0
-                )
-                    throw new InvalidOperationException(
-                        "Battle loyalty requires a nonzero configured divisor."
-                    );
+            if (
+                factions.First.Settings.BattleLossLoyaltyDivisor == 0
+                || factions.Second.Settings.BattleLossLoyaltyDivisor == 0
+            )
+                throw new InvalidOperationException(
+                    "Battle loyalty requires a nonzero configured divisor."
+                );
         }
 
         /// <summary>
@@ -81,23 +80,21 @@ namespace Rebellion.Gameplay
                 if (result.RemainingSide is not CombatSide remaining)
                     continue;
 
-                SpaceCombatSupportProfile profile = null;
                 if (
-                    !SpaceCombatSupport.TryResolveFactionIDs(
-                        _definition,
-                        out string firstID,
-                        out string secondID
-                    )
-                    || _game.Config.SupportShift.BattleSupport?.TryResolveProfile(
+                    _game.Config.SupportShift.BattleSupport?.TryResolveProfile(
                         _game,
                         _definition,
-                        out profile
+                        out SpaceCombatSupportProfile profile,
+                        out var factions
                     ) != true
                 )
                     throw new InvalidOperationException(
                         "The campaign has no complete battle support profile."
                     );
 
+                (Faction first, Faction second) = factions;
+                string firstID = first.InstanceID;
+                string secondID = second.InstanceID;
                 string controllerID = result.GetOwner(remaining);
                 int survivingSide =
                     controllerID == firstID ? 1
@@ -108,8 +105,6 @@ namespace Rebellion.Gameplay
                         "The surviving combat faction has no authored battle index."
                     );
 
-                Faction first = _game.GetFactionByOwnerInstanceID(firstID);
-                Faction second = _game.GetFactionByOwnerInstanceID(secondID);
                 (int firstLoss, int secondLoss) = CaptureLostMilitaryValues(
                     result.Events,
                     firstID,
@@ -123,16 +118,16 @@ namespace Rebellion.Gameplay
                 );
 
                 (int firstTotal, int secondTotal) = CaptureMilitaryValues(_game, firstID, secondID);
-                SpaceCombatSupportCalculator.TryCalculate(
+                SpaceCombatSupport.TryCalculate(
                     firstTotal,
                     secondTotal,
                     firstLoss,
                     secondLoss,
                     survivingSide,
-                    CreateWeights(profile.FirstSide),
-                    CreateWeights(profile.SecondSide),
+                    profile.FirstSide,
+                    profile.SecondSide,
                     profile.Divisor.Value,
-                    out SpaceCombatSupportAdjustment adjustment
+                    out SpaceCombatSupport.Adjustment adjustment
                 );
 
                 List<GameResult> support = CreateSupportRequests(result, first, second, adjustment);
@@ -227,7 +222,7 @@ namespace Rebellion.Gameplay
             SpaceCombatResult result,
             Faction first,
             Faction second,
-            SpaceCombatSupportAdjustment adjustment
+            SpaceCombatSupport.Adjustment adjustment
         )
         {
             List<GameResult> requests = new();
@@ -261,20 +256,5 @@ namespace Rebellion.Gameplay
             }
             return requests;
         }
-
-        /// <summary>
-        /// Converts a validated authored side profile into the calculation's value inputs.
-        /// </summary>
-        /// <param name="side">The complete side profile.</param>
-        /// <returns>The six authored weights and bounds.</returns>
-        private static SpaceCombatSupportWeights CreateWeights(SpaceCombatSupportSideConfig side) =>
-            new(
-                side.LeadingFlat.Value,
-                side.LeadingGapScale.Value,
-                side.TrailingFlat.Value,
-                side.TrailingGapScale.Value,
-                side.MagnitudeCap.Value,
-                side.SupportThreshold.Value
-            );
     }
 }

@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
-                config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile)
+                config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
             Assert.AreSame(config.Profiles[expected], profile);
         }
@@ -42,7 +42,7 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
-                config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile)
+                config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
             Assert.AreSame(config.Profiles[SpaceCombatSupportContext.FirstFactionHard], profile);
         }
@@ -68,7 +68,12 @@ namespace Rebellion.Tests.Gameplay
             SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
-                config.TryResolveProfile(restored, CreateTacticalDefinition(), out var profile)
+                config.TryResolveProfile(
+                    restored,
+                    CreateTacticalDefinition(),
+                    out var profile,
+                    out _
+                )
             );
             Assert.AreSame(config.Profiles[SpaceCombatSupportContext.Multiplayer], profile);
         }
@@ -83,7 +88,8 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame(faction, GameDifficulty.Easy);
 
             Assert.IsFalse(
-                CreateConfig().TryResolveProfile(game, CreateTacticalDefinition(), out var profile)
+                CreateConfig()
+                    .TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
             Assert.IsNull(profile);
         }
@@ -94,7 +100,8 @@ namespace Rebellion.Tests.Gameplay
             GameRoot game = CreateGame("first", (GameDifficulty)99);
 
             Assert.IsFalse(
-                CreateConfig().TryResolveProfile(game, CreateTacticalDefinition(), out var profile)
+                CreateConfig()
+                    .TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
             Assert.IsNull(profile);
         }
@@ -106,7 +113,8 @@ namespace Rebellion.Tests.Gameplay
             game.GetFactions().RemoveAt(1);
 
             Assert.IsFalse(
-                CreateConfig().TryResolveProfile(game, CreateTacticalDefinition(), out var profile)
+                CreateConfig()
+                    .TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
             Assert.IsNull(profile);
         }
@@ -134,7 +142,8 @@ namespace Rebellion.Tests.Gameplay
                     .TryResolveProfile(
                         CreateGame("first", GameDifficulty.Easy),
                         definition,
-                        out var profile
+                        out var profile,
+                        out _
                     )
             );
             Assert.IsNull(profile);
@@ -153,7 +162,8 @@ namespace Rebellion.Tests.Gameplay
                 config.TryResolveProfile(
                     CreateGame("first", GameDifficulty.Easy),
                     CreateTacticalDefinition(),
-                    out var profile
+                    out var profile,
+                    out _
                 )
             );
             Assert.IsNull(profile);
@@ -233,7 +243,8 @@ namespace Rebellion.Tests.Gameplay
                 config.TryResolveProfile(
                     CreateGame("first", GameDifficulty.Easy),
                     CreateTacticalDefinition(),
-                    out var selected
+                    out var selected,
+                    out _
                 )
             );
             Assert.IsNull(selected);
@@ -249,6 +260,7 @@ namespace Rebellion.Tests.Gameplay
                 config.TryResolveProfile(
                     CreateGame("first", GameDifficulty.Easy),
                     CreateTacticalDefinition(),
+                    out _,
                     out _
                 )
             );
@@ -275,7 +287,8 @@ namespace Rebellion.Tests.Gameplay
                 config.TryResolveProfile(
                     CreateGame("first", GameDifficulty.Easy),
                     CreateTacticalDefinition(),
-                    out var selected
+                    out var selected,
+                    out _
                 )
             );
             Assert.AreSame(profile, selected);
