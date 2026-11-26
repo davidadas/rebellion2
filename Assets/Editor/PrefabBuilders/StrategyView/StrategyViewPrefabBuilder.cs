@@ -8082,7 +8082,7 @@ public static class StrategyViewPrefabBuilder
             _planetWindowHeight
         );
         CreateBlackWindowUnderlay(shell.transform, _planetWindowWidth, _planetWindowHeight);
-        var (_, caption) = CreatePlanetWindowHeader(
+        (RawImage _, TextMeshProUGUI caption) = CreatePlanetWindowHeader(
             shell.GetComponent<UIWindow>(),
             _planetWindowWidth,
             _planetWindowHeight
