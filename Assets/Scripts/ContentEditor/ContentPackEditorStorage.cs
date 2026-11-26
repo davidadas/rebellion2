@@ -388,6 +388,8 @@ public static class ContentPackEditorStorage
             DisplayName = displayName,
             DefaultScenarioID = source.DefaultScenarioID,
             MainMenuMusicPath = source.MainMenuMusicPath,
+            MainMenuLayout = source.MainMenuLayout,
+            PlanetSectorWindowLayout = source.PlanetSectorWindowLayout,
             GameConfigPath = source.GameConfigPath,
             PlanetSectorsPath = source.PlanetSectorsPath,
             BuildingsPath = source.BuildingsPath,

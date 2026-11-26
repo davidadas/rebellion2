@@ -196,6 +196,38 @@ public sealed class ContentEditorNavigation
         ContentPackEditorCatalog pack = catalogs.FirstOrDefault(catalog => catalog.CanAddFaction);
         if (pack != null)
         {
+            ContentEditorTreeNode interfaces = new("interfaces", "Interfaces", 0);
+            interfaces.Children.Add(
+                new ContentEditorTreeNode(
+                    ContentEditorMainMenuSettings.PageKey,
+                    "Main Menu",
+                    1,
+                    pack.DocumentRecord,
+                    pack,
+                    Array.Empty<ContentPackEditorField>()
+                )
+            );
+            foreach (
+                (string key, string title) in new[]
+                {
+                    (
+                        ContentEditorContentSections.PlanetSectorWindowPageKey,
+                        "Planet Sector Window"
+                    ),
+                    (ContentEditorContentSections.ConfirmationWindowPageKey, "Confirmation Window"),
+                }
+            )
+                interfaces.Children.Add(
+                    new ContentEditorTreeNode(
+                        key,
+                        title,
+                        1,
+                        pack.DocumentRecord,
+                        pack,
+                        Array.Empty<ContentPackEditorField>()
+                    )
+                );
+            roots.Add(interfaces);
             ContentEditorTreeNode factions = roots.FirstOrDefault(node => node.Key == "factions");
             if (factions == null)
             {
@@ -236,6 +268,7 @@ public sealed class ContentEditorNavigation
                         new[] { neutral }
                     )
                 );
+
             factions.Children.Add(
                 new ContentEditorTreeNode("factions/add", "+ Add faction", 1, creationCatalog: pack)
             );

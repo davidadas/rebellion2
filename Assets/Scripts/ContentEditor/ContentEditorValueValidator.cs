@@ -20,17 +20,18 @@ internal static class ContentEditorValueValidator
             field.Container ?? field.Record.Element
         );
         if (
-            owner == null
-            || !int.TryParse(
-                value,
-                NumberStyles.Integer,
-                CultureInfo.InvariantCulture,
-                out int number
-            )
+            !int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int number)
         )
             return;
 
         string member = field.MemberName;
+        if (
+            field.Container?.Name.LocalName == nameof(ContentPackDefinition.ConfirmationMessageArea)
+            && member is nameof(SourceRectLayout.Width) or nameof(SourceRectLayout.Height)
+        )
+            RequireRange(field, number, 1, int.MaxValue);
+        if (owner == null)
+            return;
         if (
             (
                 typeof(IManufacturable).IsAssignableFrom(owner)

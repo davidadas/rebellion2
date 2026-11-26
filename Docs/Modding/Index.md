@@ -197,6 +197,17 @@ in an existing replacement retains its other authored values. `pack.xml` and `mo
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
+### Main menu
+
+Open **Interfaces > Main Menu** to preview the default scenario's cockpit and launch controls.
+The preview starts paused. Select **Play** to see it animate. Drag a highlighted control to move
+it, or double-click its artwork to open the image or model field. The fields below the preview
+also let you edit background artwork. Replacement images for Load Game,
+Multiplayer, and Exit display as still artwork. Medallions use the selected faction's GLB.
+Galaxy size controls have separate fields for the monitor artwork and the selection icon.
+Drag a selection frame by its visible outline to position it independently of its icon.
+The **Advanced** tab lets you edit the layout XML. Zero offsets restore the generated positions.
+
 ### Faction and neutral themes
 
 In the Content Pack Editor, open a faction's **Colors** tab to set its primary
@@ -210,7 +221,7 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit the neutral theme.
 Double-click an outlined sector icon to open its image settings. Use
 **Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's

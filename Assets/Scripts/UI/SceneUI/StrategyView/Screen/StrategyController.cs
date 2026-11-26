@@ -670,7 +670,8 @@ public sealed class StrategyController
                 galacticInformationDisplayController?.FilterMode
                 ?? GalacticInformationFilterMode.DisplayOff,
             GetSelectedFleetInstanceIds,
-            GetQuickOpenMapItems
+            GetQuickOpenMapItems,
+            _appBootstrap.GetContentPack().Definition.PlanetSectorWindowLayout
         );
         missionsWindowController = new MissionsWindowController(
             () => uiContext,

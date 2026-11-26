@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
@@ -9,7 +10,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Outlines one rendered image on hover and opens its exact authored field on double click.
 /// </summary>
-[RequireComponent(typeof(RawImage))]
+[RequireComponent(typeof(RectTransform))]
 public sealed class ContentEditorArtworkEditTarget
     : MonoBehaviour,
         IPointerEnterHandler,
@@ -38,6 +39,10 @@ public sealed class ContentEditorArtworkEditTarget
     private bool requiresPress;
     private bool moving;
     private Vector2 movementOrigin;
+    private Vector2 sizeOrigin;
+    private RectTransform resizeHandle;
+    private ContentEditorArtworkPlacement dimensions;
+    private IReadOnlyList<ContentEditorArtworkPlacement> dragPlacements;
     private IReadOnlyList<Vector2Int> placementOrigins = Array.Empty<Vector2Int>();
     private IReadOnlyList<ContentEditorArtworkPlacement> placements =
         Array.Empty<ContentEditorArtworkPlacement>();
@@ -104,19 +109,26 @@ public sealed class ContentEditorArtworkEditTarget
         bool requiresPress = false
     )
     {
-        if (releasedValue == null && hoverValue == null)
+        if (releasedValue == null && hoverValue == null && placementBindings?.Count is not > 0)
             throw new ArgumentNullException(nameof(releasedValue));
         releasedField = releasedValue ?? hoverValue;
         hoverField = hoverValue ?? releasedValue;
-        opened = onOpened ?? throw new ArgumentNullException(nameof(onOpened));
-        RawImage image = GetComponent<RawImage>();
-        originalRaycastTarget ??= image.raycastTarget;
-        image.raycastTarget = true;
-        releasedTexture = image.texture;
+        opened =
+            releasedField == null
+                ? null
+                : onOpened ?? throw new ArgumentNullException(nameof(onOpened));
+        Graphic graphic = GetComponent<Graphic>();
+        RawImage image = graphic as RawImage;
+        originalRaycastTarget ??= graphic.raycastTarget;
+        graphic.raycastTarget = true;
+        releasedTexture = image?.texture;
         hoverTexture = previewHoverTexture;
         interactionArea = pointerInteractionArea;
         this.requiresPress = requiresPress;
         placements = placementBindings ?? Array.Empty<ContentEditorArtworkPlacement>();
+        dimensions = null;
+        if (resizeHandle != null)
+            resizeHandle.gameObject.SetActive(false);
         placementOrigins = Array.Empty<Vector2Int>();
         moving = false;
         CalculateFrameAnchors(image, releasedContentBounds, out frameAnchorMin, out frameAnchorMax);
@@ -132,16 +144,74 @@ public sealed class ContentEditorArtworkEditTarget
     }
 
     /// <summary>
+    /// Enables placement for a graphic with no replaceable image field.
+    /// </summary>
+    /// <param name="placement">The two authored source coordinates moved with the graphic.</param>
+    internal void BindPlacement(ContentEditorArtworkPlacement placement)
+    {
+        Bind(null, null, null, default, default, null, new[] { placement });
+        if (GetComponent<Graphic>() is not TMP_Text text)
+            return;
+
+        text.ForceMeshUpdate();
+        Rect rect = text.rectTransform.rect;
+        Bounds ink = text.textBounds;
+        if (rect.width <= 0f || rect.height <= 0f || ink.size.x <= 0f || ink.size.y <= 0f)
+            return;
+
+        frameAnchorMin = new Vector2(
+            Mathf.Clamp01((ink.min.x - rect.xMin) / rect.width),
+            Mathf.Clamp01((ink.min.y - rect.yMin) / rect.height)
+        );
+        frameAnchorMax = new Vector2(
+            Mathf.Clamp01((ink.max.x - rect.xMin) / rect.width),
+            Mathf.Clamp01((ink.max.y - rect.yMin) / rect.height)
+        );
+    }
+
+    /// <summary>
+    /// Outlines an editable rectangle and displays a grip for resizing it from the lower-right corner.
+    /// </summary>
+    /// <param name="position">The fields storing the rectangle's source position.</param>
+    /// <param name="size">The fields storing its width and height.</param>
+    internal void BindResizableArea(
+        ContentEditorArtworkPlacement position,
+        ContentEditorArtworkPlacement size
+    )
+    {
+        Bind(null, null, null, default, default, null, new[] { position });
+        dimensions = size;
+        if (resizeHandle == null)
+        {
+            CreateBorder("ResizeHandle", hoverFrame);
+            resizeHandle = (RectTransform)hoverFrame.Find("ResizeHandle");
+            resizeHandle.anchorMin = resizeHandle.anchorMax = resizeHandle.pivot = Vector2.right;
+            resizeHandle.sizeDelta = new Vector2(12f, 12f);
+        }
+        resizeHandle.gameObject.SetActive(true);
+        SetHovered(false);
+    }
+
+    /// <summary>
     /// Captures the rendered and authored origins for one click-drag placement gesture.
     /// </summary>
+    /// <param name="pointer">The pointer grab, when resize is available.</param>
     /// <returns>True when the image has valid movable coordinate fields.</returns>
-    internal bool BeginMove()
+    internal bool BeginMove(PointerEventData pointer = null)
     {
         if (!CanMove)
             return false;
 
-        List<Vector2Int> origins = new(placements.Count);
-        foreach (ContentEditorArtworkPlacement placement in placements)
+        bool resizing =
+            dimensions != null
+            && pointer != null
+            && IsResizeHandleAt(
+                pointer.pressPosition,
+                pointer.pressEventCamera ?? pointer.enterEventCamera
+            );
+        dragPlacements = resizing ? new[] { dimensions } : placements;
+        List<Vector2Int> origins = new(dragPlacements.Count);
+        foreach (ContentEditorArtworkPlacement placement in dragPlacements)
         {
             if (
                 !int.TryParse(
@@ -161,7 +231,9 @@ public sealed class ContentEditorArtworkEditTarget
             origins.Add(new Vector2Int(x, y));
         }
 
-        movementOrigin = ((RectTransform)transform).anchoredPosition;
+        RectTransform rect = (RectTransform)transform;
+        movementOrigin = rect.anchoredPosition;
+        sizeOrigin = rect.sizeDelta;
         placementOrigins = origins;
         moving = true;
         return true;
@@ -175,8 +247,12 @@ public sealed class ContentEditorArtworkEditTarget
     {
         if (!moving)
             return;
-        ((RectTransform)transform).anchoredPosition =
-            movementOrigin + new Vector2(delta.x, -delta.y);
+        delta = ConstrainAreaDrag(delta);
+        RectTransform rect = (RectTransform)transform;
+        if (dragPlacements[0] == dimensions)
+            rect.sizeDelta = sizeOrigin + (Vector2)delta;
+        else
+            rect.anchoredPosition = movementOrigin + new Vector2(delta.x, -delta.y);
     }
 
     /// <summary>
@@ -189,14 +265,18 @@ public sealed class ContentEditorArtworkEditTarget
         if (!moving)
             return Array.Empty<ContentEditorArtworkPlacementChange>();
 
+        delta = ConstrainAreaDrag(delta);
         PreviewMove(delta);
-        List<ContentEditorArtworkPlacementChange> changes = new(placements.Count * 2);
-        for (int index = 0; index < placements.Count; index++)
+        List<ContentEditorArtworkPlacementChange> changes = new(dragPlacements.Count * 2);
+        if (dimensions == null || delta != Vector2Int.zero)
         {
-            ContentEditorArtworkPlacement placement = placements[index];
-            Vector2Int origin = placementOrigins[index];
-            AddPlacementChange(changes, placement.XField, checked(origin.x + delta.x));
-            AddPlacementChange(changes, placement.YField, checked(origin.y + delta.y));
+            for (int index = 0; index < dragPlacements.Count; index++)
+            {
+                ContentEditorArtworkPlacement placement = dragPlacements[index];
+                Vector2Int origin = placementOrigins[index];
+                AddPlacementChange(changes, placement.XField, checked(origin.x + delta.x));
+                AddPlacementChange(changes, placement.YField, checked(origin.y + delta.y));
+            }
         }
         moving = false;
         placementOrigins = Array.Empty<Vector2Int>();
@@ -204,12 +284,50 @@ public sealed class ContentEditorArtworkEditTarget
     }
 
     /// <summary>
+    /// Keeps an edited rectangle within its source canvas and preserves a positive size.
+    /// </summary>
+    /// <param name="delta">The proposed drag from the captured origin.</param>
+    /// <returns>The drag that the editable rectangle can apply.</returns>
+    private Vector2Int ConstrainAreaDrag(Vector2Int delta)
+    {
+        if (dimensions == null || delta == Vector2Int.zero)
+            return delta;
+
+        Vector2Int canvas = Vector2Int.RoundToInt(((RectTransform)transform.parent).rect.size);
+        Vector2Int origin = Vector2Int.RoundToInt(new Vector2(movementOrigin.x, -movementOrigin.y));
+        Vector2Int size = Vector2Int.RoundToInt(sizeOrigin);
+        if (dragPlacements[0] == dimensions)
+        {
+            Vector2Int maximum = Vector2Int.Max(Vector2Int.one, canvas - origin);
+            return Vector2Int.Max(Vector2Int.one, Vector2Int.Min(size + delta, maximum)) - size;
+        }
+        return Vector2Int.Max(Vector2Int.zero, Vector2Int.Min(origin + delta, canvas - size))
+            - origin;
+    }
+
+    /// <summary>
+    /// Checks whether the pointer is on the rectangle's resize grip.
+    /// </summary>
+    /// <param name="position">The screen point to check.</param>
+    /// <param name="camera">The event camera for the preview.</param>
+    /// <returns>True when the pointer is over the visible grip.</returns>
+    private bool IsResizeHandleAt(Vector2 position, Camera camera) =>
+        resizeHandle != null
+        && resizeHandle.gameObject.activeInHierarchy
+        && RectTransformUtility.RectangleContainsScreenPoint(resizeHandle, position, camera);
+
+    /// <summary>
     /// Restores the rendered origin when an in-progress placement gesture is interrupted.
     /// </summary>
     internal void CancelMove()
     {
         if (moving)
-            ((RectTransform)transform).anchoredPosition = movementOrigin;
+        {
+            RectTransform rect = (RectTransform)transform;
+            rect.anchoredPosition = movementOrigin;
+            if (dimensions != null)
+                rect.sizeDelta = sizeOrigin;
+        }
         moving = false;
         placementOrigins = Array.Empty<Vector2Int>();
     }
@@ -247,21 +365,21 @@ public sealed class ContentEditorArtworkEditTarget
     /// </summary>
     /// <param name="eventData">The initial drag event.</param>
     public void OnBeginDrag(PointerEventData eventData) =>
-        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnBeginDrag(eventData);
+        GetComponentInParent<IContentEditorArtworkDragPreview>()?.OnBeginDrag(eventData);
 
     /// <summary>
     /// Routes movement of the current artwork to the preview.
     /// </summary>
     /// <param name="eventData">The current drag event.</param>
     public void OnDrag(PointerEventData eventData) =>
-        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnDrag(eventData);
+        GetComponentInParent<IContentEditorArtworkDragPreview>()?.OnDrag(eventData);
 
     /// <summary>
     /// Routes the completed placement gesture to the preview.
     /// </summary>
     /// <param name="eventData">The final drag event.</param>
     public void OnEndDrag(PointerEventData eventData) =>
-        GetComponentInParent<ContentEditorArtworkWindowPreview>()?.OnEndDrag(eventData);
+        GetComponentInParent<IContentEditorArtworkDragPreview>()?.OnEndDrag(eventData);
 
     /// <summary>
     /// Applies hover state from direct pointer events or a composed-preview router.
@@ -269,17 +387,21 @@ public sealed class ContentEditorArtworkEditTarget
     /// <param name="hovered">Whether this image is the current edit target.</param>
     internal void SetHovered(bool hovered)
     {
-        if (hoverFrame == null || releasedField == null)
+        if (hoverFrame == null || releasedField == null && !CanMove)
             return;
         this.hovered = hovered;
-        RawImage image = GetComponent<RawImage>();
-        if (hoverTexture != null)
+        if (hoverTexture != null && GetComponent<Graphic>() is RawImage image)
             image.texture = hovered ? hoverTexture : releasedTexture;
-        if (hovered)
+        bool showFrame = hovered || dimensions != null;
+        if (showFrame)
         {
             if (
                 hoverClip == null
-                && GetComponentInParent<ContentEditorArtworkWindowPreview>()?.CanZoom == true
+                && (
+                    dimensions != null
+                    || GetComponentInParent<ContentEditorArtworkWindowPreview>()?.CanZoom == true
+                    || GetComponentInParent<ContentEditorSectorPreview>() != null
+                )
             )
             {
                 GetComponentsInParent(false, enclosingMasks);
@@ -292,8 +414,8 @@ public sealed class ContentEditorArtworkEditTarget
                 Field == releasedField ? frameAnchorMax : hoverFrameAnchorMax
             );
         }
-        hoverFrame.gameObject.SetActive(hovered);
-        if (hovered)
+        hoverFrame.gameObject.SetActive(showFrame);
+        if (showFrame)
             ClipHoverFrame();
     }
 
@@ -324,6 +446,8 @@ public sealed class ContentEditorArtworkEditTarget
     /// <returns>True while the image contains the pointer.</returns>
     internal bool ContainsScreenPoint(Vector2 position, Camera camera)
     {
+        if (IsResizeHandleAt(position, camera))
+            return true;
         if (
             interactionArea != null
             && RectTransformUtility.RectangleContainsScreenPoint(interactionArea, position, camera)
@@ -371,9 +495,9 @@ public sealed class ContentEditorArtworkEditTarget
     public void Clear()
     {
         CancelMove();
-        RawImage image = GetComponent<RawImage>();
-        if (image != null && originalRaycastTarget.HasValue)
-            image.raycastTarget = originalRaycastTarget.Value;
+        Graphic graphic = GetComponent<Graphic>();
+        if (graphic != null && originalRaycastTarget.HasValue)
+            graphic.raycastTarget = originalRaycastTarget.Value;
         originalRaycastTarget = null;
         releasedField = null;
         hoverField = null;
@@ -383,6 +507,7 @@ public sealed class ContentEditorArtworkEditTarget
         hovered = false;
         opened = null;
         placements = Array.Empty<ContentEditorArtworkPlacement>();
+        dimensions = null;
         if (hoverFrame != null)
             hoverFrame.gameObject.SetActive(false);
     }
@@ -427,7 +552,7 @@ public sealed class ContentEditorArtworkEditTarget
         if (hoverFrame?.gameObject.activeSelf != true)
             return;
         ClipHoverFrame();
-        float alpha = 0.88f + Mathf.Sin(Time.unscaledTime * 5f) * 0.1f;
+        float alpha = hovered ? 0.88f + Mathf.Sin(Time.unscaledTime * 5f) * 0.1f : 0.88f;
         foreach (Image border in hoverFrame.GetComponentsInChildren<Image>())
             border.color = new Color(_accentColor.r, _accentColor.g, _accentColor.b, alpha);
     }
@@ -611,3 +736,11 @@ public sealed class ContentEditorArtworkEditTarget
         }
     }
 }
+
+/// <summary>
+/// Routes drags from an artwork edit target to the preview that owns its placement.
+/// </summary>
+internal interface IContentEditorArtworkDragPreview
+    : IBeginDragHandler,
+        IDragHandler,
+        IEndDragHandler { }

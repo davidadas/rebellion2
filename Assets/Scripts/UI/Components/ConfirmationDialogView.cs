@@ -80,6 +80,21 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
 
     private bool bound;
     private DialogMode _mode;
+    private RectInt? authoredMessageArea;
+    private SourceRectLayout confirmationMessageArea;
+
+    /// <summary>
+    /// Gets the rectangle used to lay out the shared dialog's message.
+    /// </summary>
+    public RectTransform MessageAreaTransform => messageTextField.rectTransform;
+
+    /// <summary>
+    /// Gets the prefab's message area in top-left source coordinates.
+    /// </summary>
+    public RectInt AuthoredMessageArea
+    {
+        get { return authoredMessageArea ??= UILayout.GetSourceRect(MessageAreaTransform); }
+    }
 
     /// <summary>
     /// Occurs when the dialog is confirmed.
@@ -115,7 +130,36 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
         );
         cancelButtonUpTexture = ContentBindings.RequireTexture(contentAssets, _cancelUpAddress);
         cancelButtonDownTexture = ContentBindings.RequireTexture(contentAssets, _cancelDownAddress);
+        SetConfirmationMessageArea(
+            (contentAssets as ContentAssets)?.PackDefinition?.ConfirmationMessageArea
+        );
         ApplyDialogArtwork();
+    }
+
+    /// <summary>
+    /// Updates the prompt area used by the two-choice dialog.
+    /// </summary>
+    /// <param name="area">The optional pack override in source coordinates.</param>
+    public void SetConfirmationMessageArea(SourceRectLayout area)
+    {
+        confirmationMessageArea = area;
+        ApplyMessageArea();
+    }
+
+    /// <summary>
+    /// Uses the authored prompt area when a dialog mode has no usable override.
+    /// </summary>
+    private void ApplyMessageArea()
+    {
+        RectInt area = AuthoredMessageArea;
+        if (
+            _mode == DialogMode.Confirmation
+            && confirmationMessageArea is { Width: > 0, Height: > 0 } layout
+        )
+            area = new RectInt(layout.X, layout.Y, layout.Width, layout.Height);
+        RectTransform rect = messageTextField.rectTransform;
+        rect.anchoredPosition = new Vector2(area.x, -area.y);
+        rect.sizeDelta = new Vector2(area.width, area.height);
     }
 
     /// <summary>
@@ -158,6 +202,7 @@ public sealed class ConfirmationDialogView : MonoBehaviour, IContentInitializabl
             mode == DialogMode.Confirmation || _mode != mode || !gameObject.activeSelf;
         _mode = mode;
         ApplyDialogArtwork();
+        ApplyMessageArea();
         confirmButtonPressVisual.SetTextures(
             mode == DialogMode.Progress ? cancelButtonUpTexture : confirmButtonUpTexture,
             mode == DialogMode.Progress ? cancelButtonDownTexture : confirmButtonDownTexture

@@ -21,13 +21,13 @@ public sealed class MainMenuView : MonoBehaviour
         "Application/MainMenu/UI/ui_mainmenu_hq_icon";
     private const string _exitAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_exit_";
     private const string _loadAnimationRoot = "Application/MainMenu/UI/ui_mainmenu_load_";
-    private const string _multiplayerAnimationRoot =
-        "Application/MainMenu/UI/ui_mainmenu_multiplayer_";
-    private const float _multiplayerAnimationFrameIntervalSeconds = 0.066f;
     private const string _creditsPressedSpriteAddress =
         "Application/MainMenu/UI/ui_mainmenu_credits_icon_pressed";
     private const string _multiplayerPressedSpriteAddress =
         "Application/MainMenu/UI/ui_mainmenu_multiplayer_icon_pressed";
+    private const string _multiplayerAnimationRoot =
+        "Application/MainMenu/UI/ui_mainmenu_multiplayer_";
+    private const float _multiplayerAnimationFrameIntervalSeconds = 0.066f;
     private const int _commandAnimationFrameCount = 30;
     private const float _exitAnimationFrameIntervalSeconds = 1f / 60f;
     private const float _loadAnimationFrameIntervalSeconds = 1.7666667f / 30f;
@@ -84,6 +84,7 @@ public sealed class MainMenuView : MonoBehaviour
 
         [SerializeField]
         private ContentModelBinding medallionModel;
+        private (Vector2 Min, Vector2 Max)? authoredAnchors;
 
         public Button Button => button;
 
@@ -102,11 +103,23 @@ public sealed class MainMenuView : MonoBehaviour
         /// </summary>
         /// <param name="id">The configured faction identifier.</param>
         /// <param name="medallionModelPath">The optional replacement medallion model.</param>
-        public void Configure(string id, string medallionModelPath)
+        /// <param name="offset">The launch slot offset in reference pixels, with positive Y down.</param>
+        public void Configure(string id, string medallionModelPath, (int X, int Y) offset)
         {
             factionId = id;
-            if (!string.IsNullOrWhiteSpace(medallionModelPath))
+            if (
+                !string.IsNullOrWhiteSpace(medallionModelPath)
+                && medallionModel.Address != medallionModelPath
+            )
                 medallionModel.SetAddress(medallionModelPath, normalize: true);
+            RectTransform rect = (RectTransform)button.transform;
+            authoredAnchors ??= (rect.anchorMin, rect.anchorMax);
+            Vector2 normalized = new(
+                (float)offset.X / MainMenuLayout.ReferenceWidth,
+                -(float)offset.Y / MainMenuLayout.ReferenceHeight
+            );
+            rect.anchorMin = authoredAnchors.Value.Min + normalized;
+            rect.anchorMax = authoredAnchors.Value.Max + normalized;
         }
     }
 
@@ -350,7 +363,7 @@ public sealed class MainMenuView : MonoBehaviour
             ? headquartersVictoryConditionSprite
             : standardVictoryConditionSprite;
         victoryConditionIcon.gameObject.SetActive(true);
-        victoryConditionText.text = headquarters ? "Headquarters Victory" : "Standard Game";
+        victoryConditionText.text = GetVictoryConditionTitle(condition);
 
         // HQ-only state shows a crosshair over the citadel and pauses its spin so it reads as a still
         // HQ symbol.
@@ -359,10 +372,19 @@ public sealed class MainMenuView : MonoBehaviour
     }
 
     /// <summary>
+    /// Gets the title displayed in the cockpit for a victory condition.
+    /// </summary>
+    /// <param name="condition">The selected victory condition.</param>
+    /// <returns>The title shown on the cockpit panel.</returns>
+    internal static string GetVictoryConditionTitle(GameVictoryCondition condition) =>
+        condition == GameVictoryCondition.Headquarters ? "Headquarters Victory" : "Standard Game";
+
+    /// <summary>
     /// Replaces editor-only preview sprites with assets loaded from the installation content.
     /// </summary>
     /// <param name="contentAssets">The active external content source.</param>
-    internal void InitializeContent(IContentAssetSource contentAssets)
+    /// <param name="layout">The optional pack artwork used in the cockpit.</param>
+    internal void InitializeContent(IContentAssetSource contentAssets, MainMenuLayout layout = null)
     {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
@@ -392,9 +414,24 @@ public sealed class MainMenuView : MonoBehaviour
         multiplayerSpriteState.disabledSprite = null;
         multiplayerButton.spriteState = multiplayerSpriteState;
         exitConfirmationDialog.InitializeContent(contentAssets);
-        exitAnimationFrames = LoadAnimationFrames(contentAssets, _exitAnimationRoot);
-        loadAnimationFrames = LoadAnimationFrames(contentAssets, _loadAnimationRoot);
-        multiplayerAnimationFrames = LoadAnimationFrames(contentAssets, _multiplayerAnimationRoot);
+        exitAnimationFrames = LoadAnimationFrames(
+            contentAssets,
+            _exitAnimationRoot,
+            exitButton,
+            layout
+        );
+        loadAnimationFrames = LoadAnimationFrames(
+            contentAssets,
+            _loadAnimationRoot,
+            loadGameButton,
+            layout
+        );
+        multiplayerAnimationFrames = LoadAnimationFrames(
+            contentAssets,
+            _multiplayerAnimationRoot,
+            multiplayerButton,
+            layout
+        );
         foreach (Sprite frame in loadAnimationFrames)
             frame.texture.filterMode = FilterMode.Bilinear;
         ContentBindings
@@ -445,7 +482,12 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     /// <param name="factionIDs">The playable faction identifiers in display order.</param>
     /// <param name="themes">The active faction presentation themes.</param>
-    internal void RenderFactions(IReadOnlyList<string> factionIDs, FactionThemeLibrary themes)
+    /// <param name="layout">The pack's optional main-menu placement overrides.</param>
+    internal void RenderFactions(
+        IReadOnlyList<string> factionIDs,
+        FactionThemeLibrary themes,
+        MainMenuLayout layout = null
+    )
     {
         if (factionIDs == null)
             throw new ArgumentNullException(nameof(factionIDs));
@@ -469,7 +511,11 @@ public sealed class MainMenuView : MonoBehaviour
 
             string factionId = factionIDs[index];
             FactionTheme theme = themes.GetTheme(factionId);
-            binding.Configure(factionId, theme.MainMenuMedallionModelPath);
+            binding.Configure(
+                factionId,
+                theme.MainMenuMedallionModelPath,
+                layout?.GetLaunchOffset(index) ?? default
+            );
         }
     }
 
@@ -554,9 +600,18 @@ public sealed class MainMenuView : MonoBehaviour
     /// </summary>
     /// <param name="contentAssets">The active external content source.</param>
     /// <param name="addressRoot">The address prefix before the two-digit frame number.</param>
+    /// <param name="button">The command displaying the artwork.</param>
+    /// <param name="layout">The optional pack artwork replacing the animation.</param>
     /// <returns>The loaded animation frames.</returns>
-    private Sprite[] LoadAnimationFrames(IContentAssetSource contentAssets, string addressRoot)
+    private Sprite[] LoadAnimationFrames(
+        IContentAssetSource contentAssets,
+        string addressRoot,
+        Button button,
+        MainMenuLayout layout
+    )
     {
+        if (!string.IsNullOrWhiteSpace(layout?.FindControl(button.name)?.ImagePath))
+            return Array.Empty<Sprite>();
         Sprite[] frames = new Sprite[_commandAnimationFrameCount];
         for (int index = 0; index < frames.Length; index++)
         {

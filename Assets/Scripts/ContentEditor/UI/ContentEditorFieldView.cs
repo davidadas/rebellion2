@@ -72,6 +72,12 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public ContentPackEditorField Field => this.field;
 
     /// <summary>
+    /// Displays the authored asset name when the editor field has no replacement value.
+    /// </summary>
+    /// <param name="assetName">The display name of the built-in artwork.</param>
+    internal void ShowBuiltInArtwork(string assetName) => selectedMedia.text = assetName;
+
+    /// <summary>
     /// Applies the owning form's background palette to the editable value.
     /// </summary>
     /// <param name="role">The background's semantic palette role.</param>

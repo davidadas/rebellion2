@@ -26,9 +26,7 @@ public sealed class ContentEditorArtworkWindowPreview
         IPointerExitHandler,
         IPointerMoveHandler,
         IPointerClickHandler,
-        IBeginDragHandler,
-        IDragHandler,
-        IEndDragHandler,
+        IContentEditorArtworkDragPreview,
         IScrollHandler
 {
     private const float _maximumScale = 3f;
@@ -36,6 +34,7 @@ public sealed class ContentEditorArtworkWindowPreview
     private const int _windowGap = 12;
     private const float _maximumStrategyZoom = 4f;
     private const float _zoomStep = 0.05f;
+    internal const string ConfirmationCategory = "Confirmation Window";
 
     private static readonly IReadOnlyDictionary<string, string[]> _windowNames = new Dictionary<
         string,
@@ -49,11 +48,11 @@ public sealed class ContentEditorArtworkWindowPreview
         ["Status window"] = new[] { "StatusWindow" },
         ["Messages"] = new[] { "MessagesWindow" },
         ["Combat"] = new[] { "BattleAlertWindow" },
+        [ConfirmationCategory] = new[] { "ConfirmationDialog" },
         ["Encyclopedia"] = new[] { "EncyclopediaWindow", EncyclopediaDetailWindowName },
         ["Galactic information"] = new[] { "FinderWindow" },
         ["Advisor"] = new[] { "AdvisorReportWindow" },
         ["Strategy view"] = new[] { "StrategyView" },
-        ["Shell and dialogs"] = new[] { "ConfirmDialogWindow" },
     };
 
     public const string EncyclopediaDetailWindowName = "EncyclopediaDetailWindow";
@@ -115,6 +114,17 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="category">The faction-artwork category.</param>
     /// <returns>True when at least one matching window exists.</returns>
     public bool Supports(string category) => GetWindows(category).Count > 0;
+
+    /// <summary>
+    /// Gets shared header buttons from the authored window previews for a category.
+    /// </summary>
+    /// <param name="category">The category supplying the header artwork.</param>
+    /// <returns>The press visuals from the windows' button layers.</returns>
+    internal IEnumerable<RawImagePressVisual> GetWindowControls(string category) =>
+        GetWindows(category)
+            .Select(window => window.Find("Buttons"))
+            .Where(buttons => buttons != null)
+            .SelectMany(buttons => buttons.GetComponentsInChildren<RawImagePressVisual>(true));
 
     /// <summary>
     /// Binds the Strategy view's own zoom controls.
@@ -337,6 +347,7 @@ public sealed class ContentEditorArtworkWindowPreview
     /// <param name="assets">The working pack's resolved artwork.</param>
     /// <param name="themeFields">Every editable interface field on the selected faction theme.</param>
     /// <param name="surfaceFields">The theme fields represented by the selected surface.</param>
+    /// <param name="themeRecord">The working theme document that owns the layouts.</param>
     /// <param name="state">The interaction state to project across compatible controls.</param>
     public void Render(
         string category,
@@ -345,6 +356,7 @@ public sealed class ContentEditorArtworkWindowPreview
         ContentAssets assets,
         IReadOnlyList<ContentPackEditorField> themeFields,
         IReadOnlyList<ContentPackEditorField> surfaceFields,
+        ContentPackEditorRecord themeRecord,
         ContentEditorArtworkPreviewState state = ContentEditorArtworkPreviewState.Default
     )
     {
@@ -384,10 +396,32 @@ public sealed class ContentEditorArtworkWindowPreview
             ContentEditorArtworkWindowPreviewRenderer.Render(window, content, theme, assets);
             DisableGameplayInput(window);
             AttachEditCommands(window, themeFields, surfaceFields, assets, state);
+            if (category == "Strategy view")
+                AttachHudCounterPlacement(window, themeRecord);
         }
         activeCategory = category;
         Layout(windows);
         RefreshCursor();
+    }
+
+    /// <summary>
+    /// Shows the standard non-faction confirmation dialog in the shared preview surface.
+    /// </summary>
+    /// <param name="assets">The installed content supplying the dialog artwork.</param>
+    internal void RenderConfirmation(ContentAssets assets)
+    {
+        Clear();
+        IReadOnlyList<RectTransform> windows = GetWindows(ConfirmationCategory);
+        gameObject.SetActive(windows.Count > 0);
+        foreach (RectTransform window in windows)
+        {
+            ConfirmationDialogView dialog = window.GetComponent<ConfirmationDialogView>();
+            dialog.InitializeContent(assets);
+            dialog.Show("Are you sure you want to quit?");
+            DisableGameplayInput(window);
+        }
+        activeCategory = ConfirmationCategory;
+        Layout(windows);
     }
 
     /// <summary>
@@ -398,6 +432,79 @@ public sealed class ContentEditorArtworkWindowPreview
     {
         foreach (Selectable selectable in window.GetComponentsInChildren<Selectable>(true))
             selectable.enabled = false;
+    }
+
+    /// <summary>
+    /// Makes the rendered HUD counts movable through the same source layouts the game reads.
+    /// </summary>
+    /// <param name="window">The rendered strategy view.</param>
+    /// <param name="themeRecord">The faction theme document that owns the counter layouts.</param>
+    private static void AttachHudCounterPlacement(
+        RectTransform window,
+        ContentPackEditorRecord themeRecord
+    )
+    {
+        StrategyHudView hud = window.GetComponentInChildren<StrategyHudView>(true);
+        if (hud == null)
+            return;
+
+        string hudMember = nameof(FactionTheme.TacticalHUDLayout);
+        XElement hudLayout = themeRecord.Element.Element(hudMember) ?? new XElement(hudMember);
+        foreach (TextMeshProUGUI counter in hud.GetComponentsInChildren<TextMeshProUGUI>())
+        {
+            string layoutName = counter.name switch
+            {
+                "TickTextField" => nameof(TacticalHUDLayout.TickCounterSourceLayout),
+                "RawMaterialsTextField" => nameof(TacticalHUDLayout.RawMaterialsSourceLayout),
+                "RefinedMaterialsTextField" => nameof(
+                    TacticalHUDLayout.RefinedMaterialsSourceLayout
+                ),
+                "MaintenanceTextField" => nameof(TacticalHUDLayout.MaintenanceSourceLayout),
+                _ => null,
+            };
+            if (layoutName == null)
+                continue;
+
+            RectInt bounds = UILayout.GetSourceRect(counter.rectTransform);
+            XElement layout =
+                hudLayout.Element(layoutName)
+                ?? new XElement(
+                    layoutName,
+                    new XElement(nameof(SourceRectLayout.X), bounds.x),
+                    new XElement(nameof(SourceRectLayout.Y), bounds.y),
+                    new XElement(nameof(SourceRectLayout.Width), bounds.width),
+                    new XElement(nameof(SourceRectLayout.Height), bounds.height)
+                );
+            Action attach = () =>
+            {
+                if (hudLayout.Parent == null)
+                    themeRecord.Element.Add(hudLayout);
+                if (layout.Parent == null)
+                    hudLayout.Add(layout);
+            };
+
+            ContentEditorArtworkEditTarget target =
+                counter.GetComponent<ContentEditorArtworkEditTarget>()
+                ?? counter.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+            target.BindPlacement(
+                new ContentEditorArtworkPlacement(
+                    ContentPackEditorField.CreateOptional(
+                        themeRecord,
+                        layout,
+                        nameof(SourceRectLayout.X),
+                        typeof(int),
+                        attachOwner: attach
+                    ),
+                    ContentPackEditorField.CreateOptional(
+                        themeRecord,
+                        layout,
+                        nameof(SourceRectLayout.Y),
+                        typeof(int),
+                        attachOwner: attach
+                    )
+                )
+            );
+        }
     }
 
     /// <summary>
@@ -980,9 +1087,15 @@ public sealed class ContentEditorArtworkWindowPreview
         if (eventData == null)
             return;
         bool primary = eventData.button == PointerEventData.InputButton.Left;
-        if (primary)
+        ContentEditorArtworkEditTarget directTarget = primary
+            ? eventData.pointerDrag?.GetComponent<ContentEditorArtworkEditTarget>()
+            : null;
+        if (primary && !CanDragArtwork(directTarget))
             UpdatePointerTarget(eventData, fromPress: true);
-        if (CanZoom && (!primary || !CanDragArtwork(hoveredTarget)))
+        ContentEditorArtworkEditTarget target = CanDragArtwork(directTarget)
+            ? directTarget
+            : hoveredTarget;
+        if (CanZoom && (!primary || !CanDragArtwork(target)))
         {
             if (
                 strategyZoom > 1f
@@ -998,13 +1111,12 @@ public sealed class ContentEditorArtworkWindowPreview
         }
         if (!primary)
             return;
-        ContentEditorArtworkEditTarget target = hoveredTarget;
         RectTransform window = GetWindows(activeCategory)
             .FirstOrDefault(candidate => target?.transform.IsChildOf(candidate) == true);
         if (
             target == null
             || window == null
-            || !target.BeginMove()
+            || !target.BeginMove(eventData)
             || !TryGetSourcePoint(window, eventData, out artworkDragOrigin, fromPress: true)
         )
         {
@@ -1198,9 +1310,9 @@ public sealed class ContentEditorArtworkWindowPreview
         Vector2 position = fromPress ? eventData.pressPosition : eventData.position;
         ContentEditorArtworkEditTarget next =
             GetComponentsInChildren<ContentEditorArtworkEditTarget>()
-                .Where(target => target.Field != null)
+                .Where(target => target.Field != null || target.CanMove)
                 .Where(target => target.ContainsScreenPoint(position, camera))
-                .OrderByDescending(target => target.GetComponent<RawImage>().depth)
+                .OrderByDescending(target => target.GetComponent<Graphic>().depth)
                 .ThenBy(target =>
                 {
                     Rect rect = ((RectTransform)target.transform).rect;

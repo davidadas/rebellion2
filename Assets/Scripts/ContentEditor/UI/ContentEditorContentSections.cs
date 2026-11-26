@@ -61,16 +61,17 @@ internal static class ContentEditorContentSections
         "Facilities and construction",
         "Fleet window",
         "Galactic information",
-        "Main menu",
         "Messages",
         "Missions",
         "Planet sector",
-        "Shell and dialogs",
+        "Shell artwork",
         "Status window",
         "Strategy view",
     };
 
     internal const string NeutralThemePageKey = "factions/neutral-theme";
+    internal const string PlanetSectorWindowPageKey = "interfaces/window-controls";
+    internal const string ConfirmationWindowPageKey = "interfaces/confirmation-window";
     internal const string FacilityResearchIconsArtworkCategory = "Facility research icons";
 
     /// <summary>
@@ -83,13 +84,13 @@ internal static class ContentEditorContentSections
         field.Record.Kind == "EncyclopediaEntry" ? "Encyclopedia"
         : IsFactionBackgroundField(field) ? "Default backgrounds"
         : field.Group == nameof(FactionTheme.ColorScheme) ? "Colors"
+        : field.Record.Kind == nameof(FactionTheme)
+        && field.Group == nameof(FactionTheme.ConfirmDialogTheme)
+            ? "Advanced"
         : neutral
             ? IsFactionInterfaceField(field, neutral: true) ? "Interfaces"
                 : "Advanced"
-        : IsFactionArtworkField(field)
-        || IsFactionMainMenuField(field)
-        || IsAdvisorPlacementField(field)
-            ? "Interfaces"
+        : IsFactionArtworkField(field) || IsAdvisorPlacementField(field) ? "Interfaces"
         : field.IsMediaDirectory ? "Advanced"
         : field.Record.Element.Element("FactionDataPath") != null ? "Advanced"
         : field.MemberName == "DisallowedMissionTypeIDs" ? "Rules"
@@ -125,16 +126,6 @@ internal static class ContentEditorContentSections
                         ?.Value
                 )
         );
-
-    /// <summary>
-    /// Identifies the faction model used by its launch control on the main menu.
-    /// </summary>
-    /// <param name="field">A faction-theme field.</param>
-    /// <returns>Whether the field selects the main-menu medallion model.</returns>
-    internal static bool IsFactionMainMenuField(ContentPackEditorField field) =>
-        field.Record.Kind == nameof(FactionTheme)
-        && field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
-        && field.MediaType == ContentPackEditorMediaType.Model;
 
     /// <summary>
     /// Identifies faction backgrounds retained for unit artwork workflows.
@@ -243,8 +234,9 @@ internal static class ContentEditorContentSections
         ContentPackEditorField field,
         bool neutral = false
     ) =>
-        !neutral && (IsAdvisorPlacementField(field) || IsFactionMainMenuField(field))
+        !neutral && IsAdvisorPlacementField(field)
         || IsFactionArtworkField(field, neutral)
+            && field.Group != nameof(FactionTheme.ConfirmDialogTheme)
             && !IsFactionBackgroundField(field)
             && !IsUnusedUnitTileField(field)
             && !IsRemovedMixedPlanetMarker(field)
@@ -378,32 +370,6 @@ internal static class ContentEditorContentSections
                 )
             );
         }
-        if (
-            !neutral
-            && !fields.Any(field =>
-                field.MemberName == nameof(FactionTheme.MainMenuMedallionModelPath)
-            )
-        )
-        {
-            string member = nameof(FactionTheme.MainMenuMedallionModelPath);
-            XElement element = theme.Element.Element(member) ?? new XElement(member);
-            fields.Add(
-                new ContentPackEditorField(
-                    theme,
-                    element,
-                    member,
-                    attach: () =>
-                    {
-                        if (element.Parent == null)
-                            theme.Element.Add(element);
-                    },
-                    valueTypeOverride: typeof(string),
-                    caption: "Main menu medallion",
-                    sectionPath: new[] { "Main menu" },
-                    parentOverride: theme.Element
-                )
-            );
-        }
         fields.AddRange(FactionColorFields(theme));
         return fields;
     }
@@ -525,8 +491,6 @@ internal static class ContentEditorContentSections
     {
         if (field.Group == nameof(FactionTheme.ArtworkDefaults))
             return "Default backgrounds";
-        if (IsFactionMainMenuField(field))
-            return "Main menu";
         XElement top = field
             .XmlElement.AncestorsAndSelf()
             .FirstOrDefault(element => element.Parent == field.Record.Element);
@@ -602,11 +566,10 @@ internal static class ContentEditorContentSections
         if (
             root
             is nameof(FactionTheme.SavedGameSlotIconImagePath)
-                or nameof(FactionTheme.ConfirmDialogTheme)
                 or nameof(FactionTheme.StrategyCheckboxTheme)
                 or nameof(FactionTheme.WindowTitleTheme)
         )
-            return "Shell and dialogs";
+            return "Shell artwork";
         return "Other artwork";
     }
 
@@ -825,10 +788,9 @@ internal static class ContentEditorContentSections
             "Encyclopedia" => "Encyclopedia navigation, controls, frames, and category artwork.",
             "Galactic information" =>
                 "Galactic-information categories, frames, close controls, and finder artwork.",
-            "Main menu" => "The rotating faction medallion used to start a new campaign.",
             "Advisor" => "Advisor animations, reports, objectives, and briefing artwork.",
-            "Shell and dialogs" =>
-                "Faction-owned save-slot identity and confirmation-dialog artwork. Shared controls and color-driven masks are configured elsewhere.",
+            "Shell artwork" =>
+                "Faction-owned save-slot icons, checkboxes, and window title artwork.",
             "Default backgrounds" =>
                 "The default officer, capital-ship, and starfighter backgrounds used when a unit does not provide an override.",
             _ => "Interface artwork outside the previews.",

@@ -637,6 +637,35 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         }
 
         [Test]
+        public void RenderFactions_AuthoredSlotOffset_MovesTheButtonAndItsMedallion()
+        {
+            Array bindings = GetBindings("factionLaunchBindings");
+            RectTransform left = (RectTransform)
+                GetBindingValue<Button>(bindings.GetValue(0), "Button").transform;
+            RectTransform right = (RectTransform)
+                GetBindingValue<Button>(bindings.GetValue(1), "Button").transform;
+            Vector2 leftMinimum = left.anchorMin;
+            Vector2 leftMaximum = left.anchorMax;
+            Vector2 rightMinimum = right.anchorMin;
+            FactionThemeLibrary themes = new(
+                new FactionThemes
+                {
+                    new FactionTheme { FactionInstanceID = "DEFAULT" },
+                    new FactionTheme { FactionInstanceID = "FNEMP1" },
+                    new FactionTheme { FactionInstanceID = "FNALL1" },
+                }
+            );
+            MainMenuLayout layout = new() { LeftLaunchX = 256, LeftLaunchY = 144 };
+
+            _view.RenderFactions(new[] { "FNEMP1", "FNALL1" }, themes, layout);
+            _view.RenderFactions(new[] { "FNEMP1", "FNALL1" }, themes, layout);
+
+            Assert.AreEqual(leftMinimum + new Vector2(0.1f, -0.1f), left.anchorMin);
+            Assert.AreEqual(leftMaximum + new Vector2(0.1f, -0.1f), left.anchorMax);
+            Assert.AreEqual(rightMinimum, right.anchorMin);
+        }
+
+        [Test]
         public void AudioCue_ConfiguredPointerEvent_RaisesConfiguredResourcePath()
         {
             object binding = GetBindings("audioCueBindings").GetValue(0);

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Schema;
 using Rebellion.Game;
 using Rebellion.Game.Messages;
@@ -1630,7 +1631,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         selectedRecord = record;
         selectedPage = data.Page;
         section = data.Section;
-        xml.Bind(record, selectedPage?.Fields);
+        BindInspectorXml();
         textRedoTarget = null;
         navigation.Render(catalogs);
         navigation.Reveal(record, page?.Key);
@@ -1703,7 +1704,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         RenderTabSelection();
         bool advanced = section == "Advanced";
         if (advanced)
+        {
+            if (
+                selectedPage?.Key
+                is ContentEditorMainMenuSettings.PageKey
+                    or ContentEditorContentSections.PlanetSectorWindowPageKey
+                    or ContentEditorContentSections.ConfirmationWindowPageKey
+            )
+                BindInspectorXml();
             xml.Show();
+        }
         else
             xml.Hide();
         form.gameObject.SetActive(!advanced);
@@ -1711,6 +1721,41 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             !advanced && name != "Encyclopedia" && selectedRecord?.Catalog.IsMap == true
         );
         RenderFields();
+    }
+
+    /// <summary>
+    /// Binds the XML for the current page, including optional authored main-menu layout.
+    /// </summary>
+    private void BindInspectorXml()
+    {
+        if (selectedPage?.Key == ContentEditorMainMenuSettings.PageKey)
+            xml.BindScopes(ContentEditorMainMenuSettings.GetXmlScopes(project, selectedRecord));
+        else if (
+            selectedPage?.Key
+            is ContentEditorContentSections.PlanetSectorWindowPageKey
+                or ContentEditorContentSections.ConfirmationWindowPageKey
+        )
+        {
+            bool isConfirmation =
+                selectedPage.Key == ContentEditorContentSections.ConfirmationWindowPageKey;
+            XElement layout = selectedRecord.Element.Element(
+                isConfirmation
+                    ? nameof(ContentPackDefinition.ConfirmationMessageArea)
+                    : nameof(ContentPackDefinition.PlanetSectorWindowLayout)
+            );
+            xml.BindScopes(
+                new[]
+                {
+                    new ContentEditorXmlScope(
+                        selectedRecord,
+                        layout ?? selectedRecord.Element,
+                        layout == null ? "Pack manifest" : selectedPage.Caption
+                    ),
+                }
+            );
+        }
+        else
+            xml.Bind(selectedRecord, selectedPage?.Fields);
     }
 
     /// <summary>

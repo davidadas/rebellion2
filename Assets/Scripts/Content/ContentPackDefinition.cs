@@ -39,6 +39,18 @@ public sealed class ContentPackDefinition
     public string MainMenuMusicPath { get; set; }
 
     [XmlElement]
+    public MainMenuLayout MainMenuLayout { get; set; }
+
+    [XmlElement]
+    public PlanetSectorWindowLayout PlanetSectorWindowLayout { get; set; }
+
+    /// <summary>
+    /// Gets or sets the prompt area in the shared confirmation dialog's source coordinates.
+    /// </summary>
+    [XmlElement]
+    public SourceRectLayout ConfirmationMessageArea { get; set; }
+
+    [XmlElement]
     public string GameConfigPath { get; set; }
 
     [XmlElement]
@@ -74,6 +86,76 @@ public sealed class ContentPackDefinition
     [XmlArrayItem("Preload")]
     public List<ContentPreloadDefinition> Preloads { get; set; } =
         new List<ContentPreloadDefinition>();
+}
+
+/// <summary>
+/// Stores pack-wide presentation overrides for the planet-sector window.
+/// </summary>
+public sealed class PlanetSectorWindowLayout
+{
+    public string BackgroundColorHex { get; set; }
+    public SourcePointLayout SwapButton { get; set; }
+    public SourcePointLayout CloseButton { get; set; }
+}
+
+/// <summary>
+/// Stores launch-slot offsets in the main menu's reference pixels, with positive Y down.
+/// </summary>
+public sealed class MainMenuLayout
+{
+    public const int ReferenceWidth = 2560;
+    public const int ReferenceHeight = 1440;
+
+    public int LeftLaunchX { get; set; }
+    public int LeftLaunchY { get; set; }
+    public int RightLaunchX { get; set; }
+    public int RightLaunchY { get; set; }
+
+    [XmlElement("Control")]
+    public List<MainMenuControlLayout> Controls { get; set; } = new();
+
+    /// <summary>
+    /// Finds the optional artwork and coordinates for a menu control.
+    /// </summary>
+    /// <param name="id">The control identifier.</param>
+    /// <returns>The configured control, or null to use its authored appearance.</returns>
+    public MainMenuControlLayout FindControl(string id) =>
+        Controls.Find(control => control.ID == id);
+
+    /// <summary>
+    /// Returns the two editable members for the specified launch slot.
+    /// </summary>
+    /// <param name="slot">The slot index in scenario faction order.</param>
+    /// <returns>The horizontal and vertical members of the layout.</returns>
+    public static (string X, string Y) GetLaunchMembers(int slot) =>
+        slot == 0
+            ? (nameof(LeftLaunchX), nameof(LeftLaunchY))
+            : (nameof(RightLaunchX), nameof(RightLaunchY));
+
+    /// <summary>
+    /// Returns the stored offset of a launch button.
+    /// </summary>
+    /// <param name="slot">The slot index in scenario faction order.</param>
+    /// <returns>The horizontal and vertical reference-pixel offsets.</returns>
+    public (int X, int Y) GetLaunchOffset(int slot) =>
+        slot == 0 ? (LeftLaunchX, LeftLaunchY) : (RightLaunchX, RightLaunchY);
+}
+
+/// <summary>
+/// Overrides one main-menu control's artwork and position in reference pixels.
+/// </summary>
+public sealed class MainMenuControlLayout
+{
+    [XmlAttribute]
+    public string ID { get; set; }
+
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string ImagePath { get; set; }
+    public string ModelPath { get; set; }
+    public string SelectionImagePath { get; set; }
+    public int SelectionX { get; set; }
+    public int SelectionY { get; set; }
 }
 
 /// <summary>

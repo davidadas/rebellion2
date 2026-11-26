@@ -392,7 +392,8 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorSectorPreview artworkSectorPreview =
             artworkSectorSurface.gameObject.AddComponent<ContentEditorSectorPreview>();
         PlanetSectorWindowView artworkSectorWindow = StrategyViewPrefabBuilder.CreateSectorPreview(
-            artworkSectorSurface.transform
+            artworkSectorSurface.transform,
+            includeWindowControls: true
         );
         Assign(artworkSectorPreview, "window", artworkSectorWindow);
         artworkSectorSurface.gameObject.SetActive(false);
@@ -405,6 +406,7 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorArtworkWindowPreview artworkWindowPreview =
             artworkWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
         StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(artworkWindowSurface.transform);
+        CommonUIPrefabBuilder.CreateConfirmationArtworkPreview(artworkWindowSurface.transform);
         BuildStrategyPreviewZoom(fields.ScrollArea.ContentRoot, artworkWindowPreview);
         artworkWindowSurface.gameObject.SetActive(false);
         Assign(form, "artworkWindowPreview", artworkWindowPreview);
@@ -423,6 +425,26 @@ public static class ContentPackEditorPrefabBuilder
         );
         artworkDisabledWindowSurface.gameObject.SetActive(false);
         Assign(form, "artworkDisabledWindowPreview", artworkDisabledWindowPreview);
+        ContentEditorMainMenuPreview mainMenuPreview =
+            MainMenuPrefabBuilder.CreateMainMenuPreview();
+        try
+        {
+            const string path = "Assets/Prefabs/UI/ContentPackEditor/MainMenuPreview.prefab";
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            GameObject previewPrefab = PrefabUtility.SaveAsPrefabAsset(
+                mainMenuPreview.gameObject,
+                path
+            );
+            Assign(
+                form,
+                "mainMenuPreviewTemplate",
+                previewPrefab.GetComponent<ContentEditorMainMenuPreview>()
+            );
+        }
+        finally
+        {
+            Object.DestroyImmediate(mainMenuPreview.gameObject);
+        }
         Button addMessage = Button(
             "AddFactionMessage",
             fields.ScrollArea.ContentRoot,

@@ -8221,8 +8221,12 @@ public static class StrategyViewPrefabBuilder
     /// Creates an authoring preview using the same window geometry and planet controls as gameplay.
     /// </summary>
     /// <param name="parent">The editor map surface.</param>
+    /// <param name="includeWindowControls">Whether to retain the shared header button artwork.</param>
     /// <returns>The self-contained preview without gameplay window actions.</returns>
-    internal static PlanetSectorWindowView CreateSectorPreview(Transform parent)
+    internal static PlanetSectorWindowView CreateSectorPreview(
+        Transform parent,
+        bool includeWindowControls = false
+    )
     {
         PlanetSectorPlanetView template = CreatePlanetSectorPlanetObject()
             .GetComponent<PlanetSectorPlanetView>();
@@ -8231,8 +8235,11 @@ public static class StrategyViewPrefabBuilder
         template.transform.SetParent(window.transform, false);
         template.gameObject.SetActive(false);
         Object.DestroyImmediate(window.GetComponent<UIWindow>());
-        Object.DestroyImmediate(window.transform.Find("SwapButtonImage").gameObject);
-        Object.DestroyImmediate(window.transform.Find("CloseButtonImage").gameObject);
+        if (!includeWindowControls)
+        {
+            Object.DestroyImmediate(window.transform.Find("SwapButtonImage").gameObject);
+            Object.DestroyImmediate(window.transform.Find("CloseButtonImage").gameObject);
+        }
         return window.GetComponent<PlanetSectorWindowView>();
     }
 
@@ -8319,12 +8326,6 @@ public static class StrategyViewPrefabBuilder
             parent,
             PreviewTheme?.StrategyWindows?.AdvisorReport,
             "StrategyWindows.AdvisorReport"
-        );
-        CreateArtworkWindowPreview(
-            _confirmDialogWindowPrefabPath,
-            parent,
-            PreviewTheme?.ConfirmDialogTheme,
-            "ConfirmDialogTheme"
         );
         CreateArtworkStrategyViewPreview(parent);
     }
@@ -8753,10 +8754,15 @@ public static class StrategyViewPrefabBuilder
                 StrategyWindowButtonActions.CloseWindow,
             }
         );
+        AssignReference(view, "background", dim);
+        AssignReference(view, "swapButton", swapButton.rectTransform);
+        AssignReference(view, "closeButton", closeButton.rectTransform);
 
         GameObject planets = new GameObject("Planets", typeof(RectTransform), typeof(RectMask2D));
         planets.transform.SetParent(window.transform, false);
         UILayout.SetStretch(planets.GetComponent<RectTransform>());
+        swapButton.transform.SetAsLastSibling();
+        closeButton.transform.SetAsLastSibling();
 
         AssignReference(view, "sectorNameTextField", sectorNameTextField);
         AssignReference(view, "planetsRoot", planets.GetComponent<RectTransform>());
