@@ -339,13 +339,7 @@ namespace Rebellion.Tactical
                     side.FactionIndex == 1 || _session.CanStartBattleStationAttack;
                 if (!includeStation)
                     foreach (TacticalCombatGroup group in _session.Groups)
-                        if (
-                            group.Side == side.Side
-                            && (
-                                group.Order == TacticalCombatOrder.AttackBattleStation
-                                || group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
-                            )
-                        )
+                        if (group.Side == side.Side && group.HasBattleStationAttackOrder)
                         {
                             includeStation = true;
                             break;

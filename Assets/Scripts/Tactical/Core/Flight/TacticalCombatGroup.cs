@@ -59,6 +59,9 @@ namespace Rebellion.Tactical
         public TacticalCombatAttackRun AttackRun { get; internal set; }
         public TacticalCombatOrder Order { get; private set; }
         public TacticalCombatOrder ActiveOrder { get; private set; }
+        internal bool HasBattleStationAttackOrder =>
+            Order == TacticalCombatOrder.AttackBattleStation
+            || ActiveOrder == TacticalCombatOrder.AttackBattleStation;
         public event Action<TacticalCombatGroup, TacticalCombatOrder> OrderRequested;
         public bool CloseAttack { get; private set; }
         public bool ActiveCloseAttack { get; private set; }
