@@ -213,6 +213,15 @@ in an existing replacement retains its other authored values. `pack.xml` and `mo
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
+Message definitions with stable `InstanceID` values inherit per report and per setting. Changing
+one report's picture keeps the other reports and its unedited text inherited. Keep an existing
+report's ID when changing its text or outcome; give a new report its own unique ID. Removing a
+report records an explicit removal so future base updates do not bring it back.
+
+Older anonymous message lists remain complete replacements, including their omissions. They are
+not automatically converted or rewritten. Explicitly reordering existing reports also retains a
+complete replacement because their lookup order affects which report is selected.
+
 ### Faction and neutral themes
 
 In the Content Pack Editor, open a faction's **Colors** tab to set its primary
