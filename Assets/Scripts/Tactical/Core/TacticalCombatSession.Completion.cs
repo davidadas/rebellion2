@@ -9,53 +9,6 @@ namespace Rebellion.Tactical
     public sealed partial class TacticalCombatSession
     {
         /// <summary>
-        /// Captures the station, faction fighter roots, and retained behavior helpers for notification sequencing.
-        /// </summary>
-        /// <returns>The current admission and briefing facts, independent of hull and simulation pause.</returns>
-        private TacticalCombatBriefingState CaptureBriefingState()
-        {
-            int allianceFighters = 0;
-            int empireFighters = 0;
-            int allianceOutsideAttackRuns = 0;
-            foreach (CombatUnit unit in _units)
-            {
-                if (!unit.IsFighter || !unit.IsEngaged)
-                    continue;
-                if (GetSide(unit.Side).FactionIndex == 0)
-                {
-                    allianceFighters++;
-                    if (unit.Status != CombatUnitStatus.AttackingBattleStation)
-                        allianceOutsideAttackRuns++;
-                }
-                else
-                    empireFighters++;
-            }
-            bool attackRunActive = false;
-            bool allianceAttackRunOrdered = false;
-            foreach (TacticalCombatGroup group in _groups)
-            {
-                attackRunActive |=
-                    group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
-                    && group.AttackRun != null;
-                if (GetSide(group.Side).FactionIndex == 0)
-                    allianceAttackRunOrdered |= IsBattleStationAttackOrdered(group);
-            }
-            return new TacticalCombatBriefingState(
-                IsArriving,
-                BattleStation != null,
-                BattleStation?.IsOperational == true,
-                BattleStation?.HasPlanetaryProtection == true,
-                attackRunActive,
-                allianceFighters != 0,
-                empireFighters != 0,
-                allianceAttackRunOrdered,
-                allianceFighters,
-                empireFighters,
-                allianceOutsideAttackRuns
-            );
-        }
-
-        /// <summary>
         /// Starts the terminal assessment once active movement and object counting find an inactive faction.
         /// </summary>
         private void CheckCompletion()

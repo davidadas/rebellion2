@@ -102,6 +102,52 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
+        /// Captures the station, faction fighter roots, and existing attack runs.
+        /// </summary>
+        /// <returns>The availability of a new attack run and the active fighter balance.</returns>
+        private TacticalCombatBattleStation.AttackReadiness CaptureBattleStationAttackReadiness()
+        {
+            int allianceFighters = 0;
+            int empireFighters = 0;
+            int allianceOutsideAttackRuns = 0;
+            foreach (CombatUnit unit in _units)
+            {
+                if (!unit.IsFighter || !unit.IsEngaged)
+                    continue;
+                if (GetSide(unit.Side).FactionIndex == 0)
+                {
+                    allianceFighters++;
+                    if (unit.Status != CombatUnitStatus.AttackingBattleStation)
+                        allianceOutsideAttackRuns++;
+                }
+                else
+                    empireFighters++;
+            }
+            bool attackRunActive = false;
+            bool allianceAttackRunOrdered = false;
+            foreach (TacticalCombatGroup group in _groups)
+            {
+                attackRunActive |=
+                    group.ActiveOrder == TacticalCombatOrder.AttackBattleStation
+                    && group.AttackRun != null;
+                if (GetSide(group.Side).FactionIndex == 0)
+                    allianceAttackRunOrdered |= IsBattleStationAttackOrdered(group);
+            }
+            return new TacticalCombatBattleStation.AttackReadiness(
+                BattleStation != null,
+                BattleStation?.IsOperational == true,
+                BattleStation?.HasPlanetaryProtection == true,
+                attackRunActive,
+                allianceFighters != 0,
+                empireFighters != 0,
+                allianceAttackRunOrdered,
+                allianceFighters,
+                empireFighters,
+                allianceOutsideAttackRuns
+            );
+        }
+
+        /// <summary>
         /// Checks station protection, attack availability, and current squadron superiority.
         /// </summary>
         /// <param name="side">The side requesting a fighter attack.</param>

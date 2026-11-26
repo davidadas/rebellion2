@@ -6,7 +6,6 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay.GameEvents;
 using Rebellion.Gameplay.Scripting;
-using Rebellion.Tactical;
 using Rebellion.Util.DependencyInjection;
 using Rebellion.Util.Random;
 
@@ -44,15 +43,13 @@ namespace Rebellion.Gameplay
         /// <param name="random">The active game's random provider.</param>
         /// <param name="messageFactory">The message factory configured for this game.</param>
         /// <param name="results">The bus delivering completed game changes.</param>
-        /// <param name="createTacticalAudio">Creates encounter audio from the active content catalog.</param>
         /// <returns>A locator that owns this game's runtime services.</returns>
         internal static ServiceLocator Create(
             GameRoot game,
             GameDataCatalog gameData,
             IRandomNumberProvider random,
             MessageFactory messageFactory,
-            GameResultBus results,
-            TacticalCombatAudioFactory createTacticalAudio
+            GameResultBus results
         )
         {
             if (game == null)
@@ -65,8 +62,6 @@ namespace Rebellion.Gameplay
                 throw new ArgumentNullException(nameof(messageFactory));
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
-            if (createTacticalAudio == null)
-                throw new ArgumentNullException(nameof(createTacticalAudio));
 
             ServiceContainer services = new();
             services.AddSingletonInstance(game);
@@ -154,8 +149,7 @@ namespace Rebellion.Gameplay
                 locator.GetService<GameRoot>(),
                 locator.GetService<GameDataCatalog>().TacticalCombat,
                 locator.GetService<SpaceCombatQueries>(),
-                TacticalCombatPlanner.Attach,
-                createTacticalAudio
+                TacticalCombatPlanner.Attach
             ));
             services.AddSingleton<SpaceCombatAftermath>(locator => new SpaceCombatAftermath(
                 locator.GetService<GameRoot>(),

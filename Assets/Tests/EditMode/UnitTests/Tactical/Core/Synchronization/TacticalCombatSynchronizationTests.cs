@@ -808,7 +808,6 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
         }
@@ -924,7 +923,6 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 random,
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
         }

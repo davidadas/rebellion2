@@ -566,7 +566,11 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="elapsedMilliseconds">The authoritative unscaled interval.</param>
         private void AdvanceSynchronizedNotifications(float elapsedMilliseconds) =>
-            _remoteNotificationBriefing?.Advance(elapsedMilliseconds, CaptureBriefingState());
+            _remoteNotificationBriefing?.Advance(
+                elapsedMilliseconds,
+                CaptureBattleStationAttackReadiness(),
+                IsArriving
+            );
 
         /// <summary>
         /// Resolves an attack cue's authored recipient index to its authenticated encounter side.

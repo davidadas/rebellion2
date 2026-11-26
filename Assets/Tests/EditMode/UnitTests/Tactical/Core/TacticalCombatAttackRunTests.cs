@@ -412,7 +412,6 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new SystemRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach,
                 new TacticalCombatDefinition
                 {

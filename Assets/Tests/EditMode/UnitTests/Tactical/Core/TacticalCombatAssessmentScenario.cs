@@ -132,7 +132,6 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new LinearCongruentialRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
         }
@@ -189,7 +188,6 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 100,
                 new LinearCongruentialRandomProvider(42),
-                TacticalCombatAudio.Create,
                 TacticalCombatPlanner.Attach
             );
         }

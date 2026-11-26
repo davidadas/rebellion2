@@ -5657,7 +5657,6 @@ namespace Rebellion.Tests.Gameplay
                 TacticalTestData.CreateDefinition(),
                 queries,
                 TacticalCombatPlanner.Attach,
-                TacticalCombatAudio.Create,
                 () => new LinearCongruentialRandomProvider(42)
             );
             SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);
@@ -6317,6 +6316,7 @@ namespace Rebellion.Tests.Gameplay
             }
 
             List<string> trace = new();
+            List<string> cues = new();
             List<GameResult> results;
             if (scenario == "auto")
             {
@@ -6326,6 +6326,8 @@ namespace Rebellion.Tests.Gameplay
             {
                 TacticalCombatSession battle = commands.BeginTacticalCombat();
                 int frame = 0;
+                battle.Audio.NotificationRequested += (messageID, loop) =>
+                    cues.Add($"cue {frame} {battle.SystemTime} {messageID} {loop}");
                 battle.ShotFired += shot =>
                     trace.Add(
                         FormattableString.Invariant(
@@ -6407,6 +6409,7 @@ namespace Rebellion.Tests.Gameplay
             {
                 Directory.CreateDirectory(outputDirectory);
                 File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".txt"), trace);
+                File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".cues.txt"), cues);
             }
         }
 

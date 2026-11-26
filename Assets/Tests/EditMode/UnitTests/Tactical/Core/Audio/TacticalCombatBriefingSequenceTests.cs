@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using NUnit.Framework;
-using Rebellion.Gameplay;
 using Rebellion.Tactical;
 
 namespace Rebellion.Tests.Tactical
@@ -23,7 +22,7 @@ namespace Rebellion.Tests.Tactical
         {
             List<int> messages = new();
             TacticalCombatBriefingSequence director = new(0, messages.Add);
-            director.Advance(100000, State(arriving: true));
+            director.Advance(100000, State(), isArriving: true);
             Assert.IsEmpty(messages);
             director.Advance(0, State());
             CollectionAssert.AreEqual(new[] { 32 }, messages);
@@ -34,7 +33,7 @@ namespace Rebellion.Tests.Tactical
         {
             List<int> messages = new();
             TacticalCombatBriefingSequence director = new(0, messages.Add);
-            TacticalCombatBriefingState state = State(
+            TacticalCombatBattleStation.AttackReadiness state = State(
                 station: true,
                 operational: true,
                 protectedStation: true
@@ -52,7 +51,7 @@ namespace Rebellion.Tests.Tactical
         {
             List<int> messages = new();
             TacticalCombatBriefingSequence director = new(0, messages.Add);
-            TacticalCombatBriefingState state = State(
+            TacticalCombatBattleStation.AttackReadiness state = State(
                 station: true,
                 operational: true,
                 protectedStation: true
@@ -78,7 +77,7 @@ namespace Rebellion.Tests.Tactical
         {
             List<int> messages = new();
             TacticalCombatBriefingSequence director = new(0, messages.Add);
-            TacticalCombatBriefingState state = State(
+            TacticalCombatBattleStation.AttackReadiness state = State(
                 station: true,
                 operational: true,
                 allianceChain: true,
@@ -99,7 +98,7 @@ namespace Rebellion.Tests.Tactical
         {
             List<int> messages = new();
             TacticalCombatBriefingSequence director = new(0, messages.Add);
-            TacticalCombatBriefingState state = State(
+            TacticalCombatBattleStation.AttackReadiness state = State(
                 station: true,
                 operational: true,
                 allianceChain: true,
@@ -197,7 +196,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void CanAttackBattleStation_AttackRunMembersInActiveRoot_CountTowardsAdmission()
         {
-            TacticalCombatBriefingState state = State(
+            TacticalCombatBattleStation.AttackReadiness state = State(
                 station: true,
                 operational: true,
                 allianceCount: 2,
@@ -249,7 +248,7 @@ namespace Rebellion.Tests.Tactical
         /// Captures a globally admitted attack run with populated fighter chains.
         /// </summary>
         /// <returns>The admitted director facts.</returns>
-        private static TacticalCombatBriefingState Admitted() =>
+        private static TacticalCombatBattleStation.AttackReadiness Admitted() =>
             State(
                 station: true,
                 operational: true,
@@ -263,7 +262,6 @@ namespace Rebellion.Tests.Tactical
         /// <summary>
         /// Captures explicit director facts without a simulation or presentation clock.
         /// </summary>
-        /// <param name="arriving">Whether arrival is active.</param>
         /// <param name="station">Whether the station exists.</param>
         /// <param name="operational">Whether the station is operational.</param>
         /// <param name="protectedStation">Whether the protection gate is set.</param>
@@ -275,8 +273,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="empireCount">Every Empire active-root fighter.</param>
         /// <param name="allianceOutsideRuns">Alliance active-root fighters outside attack runs.</param>
         /// <returns>The explicit director facts.</returns>
-        private static TacticalCombatBriefingState State(
-            bool arriving = false,
+        private static TacticalCombatBattleStation.AttackReadiness State(
             bool station = false,
             bool operational = false,
             bool protectedStation = false,
@@ -289,7 +286,6 @@ namespace Rebellion.Tests.Tactical
             int allianceOutsideRuns = 0
         ) =>
             new(
-                arriving,
                 station,
                 operational,
                 protectedStation,

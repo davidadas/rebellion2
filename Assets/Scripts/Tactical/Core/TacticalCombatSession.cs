@@ -68,11 +68,12 @@ namespace Rebellion.Tactical
         public IReadOnlyList<CombatUnit> Units { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
         internal IReadOnlyList<CombatUnit> InitiallyDockedFighters => _initiallyDockedFighters;
-        internal bool CanStartBattleStationAttack => CaptureBriefingState().CanAttackBattleStation;
+        internal bool CanStartBattleStationAttack =>
+            CaptureBattleStationAttackReadiness().CanAttackBattleStation;
         public CombatSide PlayerSide { get; }
         public float BattleDepth { get; }
         public TacticalCombatNavigation Navigation { get; }
-        public ITacticalCombatAudio Audio { get; }
+        public TacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
         internal TacticalCombatTargeting Targeting => _targeting;
         public int SystemTime =>
@@ -158,7 +159,6 @@ namespace Rebellion.Tactical
         /// <param name="playerSide">The side controlled by the player.</param>
         /// <param name="battleDepth">The deployment span used by movement and withdrawal.</param>
         /// <param name="random">The encounter's random-number stream.</param>
-        /// <param name="createAudio">Creates notification scheduling with this encounter's stream and pause state.</param>
         /// <param name="attachAutomation">Attaches the selected tactical AI after encounter initialization.</param>
         /// <param name="definition">The shared tactical presentation definitions.</param>
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
@@ -173,7 +173,6 @@ namespace Rebellion.Tactical
             CombatSide playerSide,
             float battleDepth,
             IRandomNumberProvider random,
-            TacticalCombatAudioFactory createAudio,
             Action<TacticalCombatSession> attachAutomation,
             TacticalCombatDefinition definition = null,
             TacticalCombatEnvironmentDefinition environment = null,
@@ -191,7 +190,6 @@ namespace Rebellion.Tactical
                 playerSide,
                 battleDepth,
                 random,
-                createAudio,
                 attachAutomation,
                 definition,
                 environment,
@@ -213,7 +211,6 @@ namespace Rebellion.Tactical
         /// <param name="playerSide">The side controlled by the player.</param>
         /// <param name="battleDepth">The deployment span used by movement and withdrawal.</param>
         /// <param name="random">The encounter's random-number stream.</param>
-        /// <param name="createAudio">Creates notification scheduling with this encounter's stream and pause state.</param>
         /// <param name="attachAutomation">Attaches the selected tactical AI after encounter initialization.</param>
         /// <param name="definition">The shared tactical presentation definitions.</param>
         /// <param name="environment">The planet-specific tactical scenery and texture palette.</param>
@@ -228,7 +225,6 @@ namespace Rebellion.Tactical
             CombatSide playerSide,
             float battleDepth,
             IRandomNumberProvider random,
-            TacticalCombatAudioFactory createAudio,
             Action<TacticalCombatSession> attachAutomation,
             TacticalCombatDefinition definition = null,
             TacticalCombatEnvironmentDefinition environment = null,
@@ -258,15 +254,15 @@ namespace Rebellion.Tactical
             string playerFactionID = definition
                 ?.Factions.Find(faction => faction.FactionIndex == GetSide(playerSide).FactionIndex)
                 ?.FactionInstanceID;
-            if (createAudio == null)
-                throw new ArgumentNullException(nameof(createAudio));
             if (attachAutomation == null)
                 throw new ArgumentNullException(nameof(attachAutomation));
-            Audio =
-                createAudio(definition, random, playerFactionID, () => IsPaused, presentationClock)
-                ?? throw new InvalidOperationException(
-                    "The encounter requires a notification service."
-                );
+            Audio = TacticalCombatAudio.Create(
+                definition,
+                random,
+                playerFactionID,
+                () => IsPaused,
+                presentationClock
+            );
             _queueCombatSound = Audio.Enqueue;
             Damage.SystemChangeRequested += QueueSystemChange;
             Damage.LethalHit += ReportDestruction;

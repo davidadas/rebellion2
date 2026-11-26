@@ -22,6 +22,70 @@ namespace Rebellion.Tactical
         public event Action ChargeCompleted;
 
         /// <summary>
+        /// Captures station and fighter availability for assessing a new attack run.
+        /// Fighter counts describe the active tactical root, independently of selection and withdrawal.
+        /// </summary>
+        internal readonly struct AttackReadiness
+        {
+            public bool StationExists { get; }
+            public bool StationOperational { get; }
+            public bool StationProtected { get; }
+            public bool AttackRunActive { get; }
+            public bool AllianceFighterChainPopulated { get; }
+            public bool EmpireFighterChainPopulated { get; }
+            public bool AllianceAttackRunOrdered { get; }
+            public int AllianceActiveFighters { get; }
+            public int EmpireActiveFighters { get; }
+            public int AllianceActiveFightersOutsideAttackRuns { get; }
+
+            public bool CanAttackBattleStation =>
+                CanStartAttackRun(
+                    StationExists && StationOperational && !StationProtected,
+                    AttackRunActive || AllianceAttackRunOrdered,
+                    AllianceActiveFighters,
+                    EmpireActiveFighters
+                );
+
+            /// <summary>
+            /// Captures the explicit station, root membership, and group-order facts for one frame.
+            /// </summary>
+            /// <param name="stationExists">Whether a battle-station record exists.</param>
+            /// <param name="stationOperational">Whether that station is operational.</param>
+            /// <param name="stationProtected">Whether that station's protection gate is set.</param>
+            /// <param name="attackRunActive">Whether an attack-run helper currently exists.</param>
+            /// <param name="allianceFighterChainPopulated">Whether the Alliance fighter chain is nonempty.</param>
+            /// <param name="empireFighterChainPopulated">Whether the Empire fighter chain is nonempty.</param>
+            /// <param name="allianceAttackRunOrdered">Whether an Alliance group requests or performs an attack run.</param>
+            /// <param name="allianceActiveFighters">Every Alliance fighter in the active root.</param>
+            /// <param name="empireActiveFighters">Every Empire fighter in the active root.</param>
+            /// <param name="allianceActiveFightersOutsideAttackRuns">Alliance active fighters excluding attack-run members.</param>
+            public AttackReadiness(
+                bool stationExists,
+                bool stationOperational,
+                bool stationProtected,
+                bool attackRunActive,
+                bool allianceFighterChainPopulated,
+                bool empireFighterChainPopulated,
+                bool allianceAttackRunOrdered,
+                int allianceActiveFighters,
+                int empireActiveFighters,
+                int allianceActiveFightersOutsideAttackRuns
+            )
+            {
+                StationExists = stationExists;
+                StationOperational = stationOperational;
+                StationProtected = stationProtected;
+                AttackRunActive = attackRunActive;
+                AllianceFighterChainPopulated = allianceFighterChainPopulated;
+                EmpireFighterChainPopulated = empireFighterChainPopulated;
+                AllianceAttackRunOrdered = allianceAttackRunOrdered;
+                AllianceActiveFighters = allianceActiveFighters;
+                EmpireActiveFighters = empireActiveFighters;
+                AllianceActiveFightersOutsideAttackRuns = allianceActiveFightersOutsideAttackRuns;
+            }
+        }
+
+        /// <summary>
         /// Evaluates the shared station and squadron gates for a new attack run.
         /// </summary>
         /// <param name="canReceiveAttackRun">Whether the station is operational and unprotected.</param>
