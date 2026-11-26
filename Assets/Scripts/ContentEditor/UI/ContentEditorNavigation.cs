@@ -1014,6 +1014,10 @@ public sealed class ContentEditorNavigation
     /// <summary>
     /// Appends matching branches in hierarchy order with one visit per node.
     /// </summary>
+    /// <remarks>
+    /// A branch can be ruled out only after checking its descendants. This pass retains
+    /// the ancestor row when a descendant matches, avoiding a separate subtree scan.
+    /// </remarks>
     /// <param name="node">The current branch.</param>
     /// <param name="filter">The active search.</param>
     /// <param name="ancestorMatches">Whether a matching ancestor exposes this whole branch.</param>

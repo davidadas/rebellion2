@@ -105,6 +105,7 @@ public sealed class ContentEditorArtworkEditTarget
     /// <param name="value">The exact field supplying the rendered texture.</param>
     /// <param name="onOpened">The action invoked after an intentional double click.</param>
     /// <param name="contentBounds">The texture-space bounds containing visible pixels.</param>
+    /// <exception cref="InvalidOperationException">The target has no graphic to bind.</exception>
     public void Bind(
         ContentPackEditorField value,
         Action<ContentPackEditorField> onOpened,
@@ -127,6 +128,7 @@ public sealed class ContentEditorArtworkEditTarget
     /// <param name="pointerInteractionArea">The optional gameplay hit area that may begin interaction with this image.</param>
     /// <param name="requiresPress">Whether the alternate texture is shown by the gameplay press handler.</param>
     /// <param name="bounds">The optional source-space limits for placement.</param>
+    /// <exception cref="InvalidOperationException">The target has no graphic to bind.</exception>
     internal void Bind(
         ContentPackEditorField releasedValue,
         ContentPackEditorField hoverValue,
@@ -142,6 +144,10 @@ public sealed class ContentEditorArtworkEditTarget
     {
         if (releasedValue == null && hoverValue == null && placementBindings?.Count is not > 0)
             throw new ArgumentNullException(nameof(releasedValue));
+        Graphic graphic = GetComponent<Graphic>();
+        if (graphic == null)
+            throw new InvalidOperationException("An artwork binding requires a Graphic component.");
+
         UnbindTextGeometry();
         selectionOnly = false;
         releasedField = releasedValue ?? hoverValue;
@@ -150,7 +156,6 @@ public sealed class ContentEditorArtworkEditTarget
             releasedField == null
                 ? null
                 : onOpened ?? throw new ArgumentNullException(nameof(onOpened));
-        Graphic graphic = GetComponent<Graphic>();
         RawImage image = graphic as RawImage;
         originalRaycastTarget ??= graphic.raycastTarget;
         graphic.raycastTarget = true;
