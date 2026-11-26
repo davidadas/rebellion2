@@ -1,4 +1,7 @@
 using System;
+using System.Numerics;
+using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical
 {
@@ -15,6 +18,82 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The elapsed interval in milliseconds.</param>
         /// <returns>Whether the local entry sequence has released battle admission.</returns>
         bool Advance(float elapsedMilliseconds);
+    }
+
+    /// <summary>
+    /// Coordinates the shared encounter, its local entry, and movie acknowledgements.
+    /// </summary>
+    public interface ITacticalCombatPresentationDriver : IDisposable
+    {
+        TacticalCombatSession Session { get; }
+        ITacticalCombatPresentationTimeline ReplicaPlayback { get; }
+        bool IsAuthoritative { get; }
+        bool CompletionReady { get; }
+        SpaceCombatResult CommittedResult { get; }
+
+        /// <summary>
+        /// Begins local entry presentation after the required combat assets are ready.
+        /// </summary>
+        /// <param name="presentation">The local owner of entry transforms.</param>
+        void Prepare(ITacticalCombatEntry presentation);
+
+        /// <summary>
+        /// Advances the owning playback boundary for one unscaled presentation frame.
+        /// </summary>
+        /// <param name="elapsedSeconds">The unscaled presentation interval.</param>
+        void Advance(float elapsedSeconds);
+
+        /// <summary>
+        /// Reports that this view has finished an admitted movie.
+        /// </summary>
+        /// <param name="request">The movie whose local playback ended.</param>
+        void AcknowledgeMovie(TacticalCombatMovieRequest request);
+    }
+
+    /// <summary>
+    /// Supplies the renderer with poses sampled from the multiplayer playback clock.
+    /// </summary>
+    public interface ITacticalCombatPresentationTimeline
+    {
+        TacticalCombatSession Session { get; }
+        double TimestampMilliseconds { get; }
+
+        /// <summary>
+        /// Samples a participant's position and heading at the presentation timestamp.
+        /// </summary>
+        /// <param name="unitID">The stable participant identity.</param>
+        /// <param name="position">The sampled canonical position.</param>
+        /// <param name="heading">The sampled heading.</param>
+        /// <returns>Whether a pose exists for this participant.</returns>
+        bool TryGetPose(string unitID, out Vector3 position, out Vector3 heading);
+
+        /// <summary>
+        /// Samples motion and lifecycle at the presentation timestamp.
+        /// </summary>
+        /// <param name="unitID">The stable participant identity.</param>
+        /// <param name="position">The sampled canonical position.</param>
+        /// <param name="heading">The sampled heading.</param>
+        /// <param name="hyperspaceMilliseconds">The sampled departure animation time.</param>
+        /// <param name="status">The sampled lifecycle.</param>
+        /// <param name="isAlive">Whether the sampled hull was alive.</param>
+        /// <returns>Whether a pose exists for this participant.</returns>
+        bool TryGetPose(
+            string unitID,
+            out Vector3 position,
+            out Vector3 heading,
+            out float hyperspaceMilliseconds,
+            out CombatUnitStatus status,
+            out bool isAlive
+        );
+
+        /// <summary>
+        /// Samples visibility without changing current command eligibility.
+        /// </summary>
+        /// <param name="unitID">The stable participant identity.</param>
+        /// <param name="status">The sampled lifecycle.</param>
+        /// <param name="isAlive">Whether the sampled hull was alive.</param>
+        /// <returns>Whether a lifecycle exists for this participant.</returns>
+        bool TryGetLifecycle(string unitID, out CombatUnitStatus status, out bool isAlive);
     }
 
     public sealed partial class TacticalCombatSession
