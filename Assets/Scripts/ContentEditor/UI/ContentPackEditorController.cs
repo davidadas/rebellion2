@@ -46,6 +46,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             throw new MissingReferenceException("ContentPackEditorController has no view.");
         workspace = new ContentPackEditorWorkspaceController(view);
         publisher = new ThunderstorePublisher();
+        publisher.AuthenticationRejected += HandleThunderstoreAuthenticationRejected;
         contentRootPath = ContentPackLoader.ResolveContentRootPath();
         view.CreateRequested += CreatePack;
         view.OpenRequested += ChooseOpenPack;
@@ -207,7 +208,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             projects.Dispose();
         }
         modManager?.Dispose();
-        publisher?.Dispose();
+        if (publisher != null)
+        {
+            publisher.AuthenticationRejected -= HandleThunderstoreAuthenticationRejected;
+            publisher.Dispose();
+        }
         Application.wantsToQuit -= CanQuit;
         if (view != null)
         {
@@ -2163,12 +2168,6 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (operationCancellation != null)
             return;
-        if (publisher.Teams.Length > 0)
-        {
-            view.Connection.Show();
-            view.Connection.RenderConnection(publisher.Teams);
-            return;
-        }
         await RunOperationAsync(
             async cancellationToken =>
             {
@@ -2180,10 +2179,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         return;
                     view.Publishing.RenderConnection(publisher.Teams);
                     RenderThunderstoreConnection();
+                    view.Connection.Show();
+                    view.Connection.RenderConnection(publisher.Teams);
                     if (!connected)
                     {
-                        view.Connection.Show();
-                        view.Connection.RenderConnection(publisher.Teams);
                         view.Connection.ShowStatus("Paste a token to connect this device.");
                     }
                 }
@@ -2210,6 +2209,19 @@ public sealed class ContentPackEditorController : MonoBehaviour
             },
             connecting: true
         );
+    }
+
+    /// <summary>
+    /// Clears rejected account access from every account display while retaining its saved credential.
+    /// </summary>
+    private void HandleThunderstoreAuthenticationRejected()
+    {
+        if (this == null)
+            return;
+        view.Publishing.RenderConnection(publisher.Teams);
+        view.Connection.RenderConnection(publisher.Teams, true);
+        RenderThunderstoreConnection();
+        view.RenderThunderstoreConnection("connection needs attention", isError: true);
     }
 
     /// <summary>

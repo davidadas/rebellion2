@@ -21,6 +21,7 @@ internal sealed class ThunderstorePublisher : IDisposable
     private string token;
     private bool disposed;
     internal string[] Teams { get; private set; } = Array.Empty<string>();
+    internal event Action AuthenticationRejected;
 
     /// <summary>
     /// Creates an owned HTTP transport that does not forward credentials through redirects.
@@ -66,12 +67,8 @@ internal sealed class ThunderstorePublisher : IDisposable
     /// <returns>Whether a usable saved or current connection exists.</returns>
     internal async Task<bool> RestoreAsync(CancellationToken cancellationToken)
     {
-        if (token != null)
-            return true;
-        string credential = await Task.Run(
-            () => credentials.Read(cancellationToken),
-            cancellationToken
-        );
+        string credential =
+            token ?? await Task.Run(() => credentials.Read(cancellationToken), cancellationToken);
         if (credential == null)
             return false;
         string[] teams = await AuthenticateAsync(credential, cancellationToken);
@@ -125,10 +122,25 @@ internal sealed class ThunderstorePublisher : IDisposable
             .Distinct(StringComparer.Ordinal)
             .ToArray();
         if (string.IsNullOrEmpty(profile.username) || teams.Length == 0)
+        {
+            RejectSession(credential);
             throw new InvalidOperationException(
                 "This token has no active publishing team. Create a service account under your Thunderstore team."
             );
+        }
         return teams;
+    }
+
+    /// <summary>
+    /// Invalidates rejected live access without deleting the saved token or another valid session.
+    /// </summary>
+    /// <param name="credential">The credential whose access was rejected.</param>
+    private void RejectSession(string credential)
+    {
+        if (token == null || !string.Equals(token, credential, StringComparison.Ordinal))
+            return;
+        ClearSession();
+        AuthenticationRejected?.Invoke();
     }
 
     /// <summary>
@@ -401,9 +413,12 @@ internal sealed class ThunderstorePublisher : IDisposable
         if (!response.IsSuccessStatusCode)
         {
             if (response.StatusCode is HttpStatusCode.Unauthorized or HttpStatusCode.Forbidden)
+            {
+                RejectSession(credential);
                 throw new InvalidOperationException(
                     "Thunderstore rejected the token or team permissions. Connect a valid service-account token for this team."
                 );
+            }
             if ((int)response.StatusCode >= 500)
                 throw new HttpRequestException(
                     "Thunderstore is temporarily unavailable (HTTP "

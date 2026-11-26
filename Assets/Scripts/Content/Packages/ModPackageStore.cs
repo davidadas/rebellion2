@@ -16,6 +16,9 @@ using UnityEngine;
 /// </summary>
 public sealed class ModPackageStore
 {
+    private const int _maximumArchiveEntries = 100000;
+    private const long _maximumExtractedBytes = 16L * 1024 * 1024 * 1024;
+    private const long _maximumEntryBytes = 4L * 1024 * 1024 * 1024;
     private readonly string _contentRoot;
     private readonly string _modsRoot;
     private readonly string _stateRoot;
@@ -315,51 +318,24 @@ public sealed class ModPackageStore
             foreach (var item in plan)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+                InstalledModPackage current = registry.Packages.SingleOrDefault(installed =>
+                    installed.PackageID == item.Package.full_name
+                    && installed.Version == item.Version.version_number
+                );
                 if (
                     item.Package.full_name != package.full_name
-                    && registry.Packages.Any(installed =>
-                        installed.PackageID == item.Package.full_name
-                        && installed.Version == item.Version.version_number
-                        && installed.Content.All(content =>
-                            Directory.Exists(ResolveFolder(content.Folder))
-                        )
-                    )
+                    && current != null
+                    && await Task.Run(
+                        () => InspectInstallation(current, cancellationToken),
+                        cancellationToken
+                    ) == InstallationState.Intact
                 )
                     continue;
-                string archive = ArchivePath(item.Package.full_name, item.Version.version_number);
-                if (
-                    !File.Exists(archive)
-                    || item.Version.file_size > 0
-                        && new FileInfo(archive).Length != item.Version.file_size
-                )
-                {
-                    Directory.CreateDirectory(Path.GetDirectoryName(archive));
-                    string temporary = archive + "." + Guid.NewGuid().ToString("N") + ".tmp";
-                    try
-                    {
-                        await _client.DownloadAsync(
-                            item.Version,
-                            temporary,
-                            value => progress?.Invoke("Downloading " + item.Package.name, value),
-                            cancellationToken
-                        );
-                        if (File.Exists(archive))
-                            File.Replace(temporary, archive, null);
-                        else
-                            File.Move(temporary, archive);
-                    }
-                    finally
-                    {
-                        if (File.Exists(temporary))
-                            File.Delete(temporary);
-                    }
-                }
-                progress?.Invoke("Preparing " + item.Package.name, 0);
-                var staged = await PrepareAsync(
-                    archive,
-                    Path.Combine(transaction, "prepared", HashText(item.Package.full_name)),
+                var staged = await PrepareReleaseAsync(
                     item.Package,
                     item.Version,
+                    Path.Combine(transaction, "prepared", HashText(item.Package.full_name)),
+                    progress,
                     cancellationToken
                 );
                 prepared.Add(staged);
@@ -377,6 +353,112 @@ public sealed class ModPackageStore
         {
             CleanTransaction(transaction);
         }
+    }
+
+    /// <summary>
+    /// Uses a validated cache entry or prepares one fresh download before caching it.
+    /// </summary>
+    /// <param name="package">The requested package identity.</param>
+    /// <param name="version">The exact release to prepare.</param>
+    /// <param name="staging">The transaction-owned extraction directory.</param>
+    /// <param name="progress">The download and preparation status sink.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The validated receipt and staged payload.</returns>
+    private async Task<(InstalledModPackage Receipt, string Payload)> PrepareReleaseAsync(
+        ThunderstorePackage package,
+        ThunderstorePackageVersion version,
+        string staging,
+        Action<string, float> progress,
+        CancellationToken cancellationToken
+    )
+    {
+        string archive = ArchivePath(package.full_name, version.version_number);
+        if (
+            File.Exists(archive)
+            && (version.file_size <= 0 || new FileInfo(archive).Length == version.file_size)
+        )
+        {
+            try
+            {
+                progress?.Invoke("Preparing " + package.name, 0);
+                return await PrepareAsync(archive, staging, package, version, cancellationToken);
+            }
+            catch (Exception exception)
+                when (exception
+                        is InvalidDataException
+                            or System.Xml.XmlException
+                            or EndOfStreamException
+                            or InvalidOperationException
+                            or ArgumentException
+                )
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                File.Delete(archive);
+                if (Directory.Exists(staging))
+                    Directory.Delete(staging, true);
+            }
+        }
+        Directory.CreateDirectory(Path.GetDirectoryName(archive));
+        string temporary = archive + "." + Guid.NewGuid().ToString("N") + ".tmp";
+        try
+        {
+            await _client.DownloadAsync(
+                version,
+                temporary,
+                value => progress?.Invoke("Downloading " + package.name, value),
+                cancellationToken
+            );
+            progress?.Invoke("Preparing " + package.name, 0);
+            var staged = await PrepareAsync(
+                temporary,
+                staging,
+                package,
+                version,
+                cancellationToken
+            );
+            cancellationToken.ThrowIfCancellationRequested();
+            if (File.Exists(archive))
+                File.Replace(temporary, archive, null);
+            else
+                File.Move(temporary, archive);
+            return staged;
+        }
+        finally
+        {
+            if (File.Exists(temporary))
+                File.Delete(temporary);
+        }
+    }
+
+    /// <summary>
+    /// Resolves every exact installed dependency before changing enabled content.
+    /// </summary>
+    /// <param name="package">The installed package being enabled.</param>
+    /// <returns>The package and its complete installed dependency chain.</returns>
+    public IReadOnlyList<InstalledModPackage> GetRequiredPackages(InstalledModPackage package)
+    {
+        Dictionary<string, InstalledModPackage> available = GetInstalled()
+            .ToDictionary(item => item.PackageID + "-" + item.Version, StringComparer.Ordinal);
+        List<InstalledModPackage> result = new();
+        HashSet<string> seen = new(StringComparer.Ordinal);
+        Stack<InstalledModPackage> pending = new();
+        pending.Push(package);
+        while (pending.Count > 0)
+        {
+            InstalledModPackage next = pending.Pop();
+            if (!seen.Add(next.PackageID))
+                continue;
+            result.Add(next);
+            foreach (string reference in next.Dependencies)
+            {
+                if (!available.TryGetValue(reference, out InstalledModPackage required))
+                    throw new InvalidOperationException(
+                        next.Name + " requires " + reference + ". Install that version first."
+                    );
+                pending.Push(required);
+            }
+        }
+        return result;
     }
 
     /// <summary>
@@ -678,6 +760,22 @@ public sealed class ModPackageStore
     {
         HashSet<string> names = new(StringComparer.OrdinalIgnoreCase);
         using (ZipArchive archive = ZipFile.OpenRead(archivePath))
+        {
+            if (archive.Entries.Count > _maximumArchiveEntries)
+                throw new InvalidDataException(
+                    "The archive contains too many entries. The limit is 100,000."
+                );
+            long remaining = _maximumExtractedBytes;
+            foreach (ZipArchiveEntry entry in archive.Entries)
+            {
+                if (entry.Length > _maximumEntryBytes || entry.Length > remaining)
+                    throw new InvalidDataException(
+                        "The archive exceeds the extraction limits: 4 GiB per file and 16 GiB in total."
+                    );
+                remaining -= entry.Length;
+            }
+            long extractedBytes = 0;
+            byte[] buffer = new byte[81920];
             foreach (ZipArchiveEntry entry in archive.Entries)
             {
                 cancellationToken.ThrowIfCancellationRequested();
@@ -741,8 +839,33 @@ public sealed class ModPackageStore
                     81920,
                     true
                 );
-                await input.CopyToAsync(output, 81920, cancellationToken).ConfigureAwait(false);
+                long written = 0;
+                int count;
+                while (
+                    (
+                        count = await input
+                            .ReadAsync(buffer, 0, buffer.Length, cancellationToken)
+                            .ConfigureAwait(false)
+                    ) > 0
+                )
+                {
+                    if (
+                        count > entry.Length - written
+                        || count > _maximumExtractedBytes - extractedBytes
+                    )
+                        throw new InvalidDataException(
+                            "The archive expands beyond its declared size or the extraction limit."
+                        );
+                    await output
+                        .WriteAsync(buffer, 0, count, cancellationToken)
+                        .ConfigureAwait(false);
+                    written += count;
+                    extractedBytes += count;
+                }
+                if (written != entry.Length)
+                    throw new InvalidDataException("An archive entry is incomplete: " + name);
             }
+        }
     }
 
     /// <summary>
@@ -779,7 +902,10 @@ public sealed class ModPackageStore
                 EnsureNotProtected(content, protectedIDs);
             if (
                 previous != null
-                && await Task.Run(() => HasLocalEdits(previous), cancellationToken)
+                && await Task.Run(
+                    () => InspectInstallation(previous, cancellationToken),
+                    cancellationToken
+                ) == InstallationState.Modified
             )
                 throw new InvalidOperationException(
                     previous.Name
@@ -1027,27 +1153,46 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
-    /// Detects changes to managed files while ignoring Unity metadata and platform desktop metadata.
+    /// Distinguishes missing files from changed or additional files before reuse or replacement.
     /// </summary>
     /// <param name="package">The prior package ownership receipt.</param>
-    /// <returns>Whether installed files differ from their recorded release.</returns>
-    private bool HasLocalEdits(InstalledModPackage package)
+    /// <param name="cancellationToken">The requested cancellation during inspection.</param>
+    /// <returns>Whether the installation is intact, incomplete, or locally modified.</returns>
+    private InstallationState InspectInstallation(
+        InstalledModPackage package,
+        CancellationToken cancellationToken
+    )
     {
-        HashSet<string> actual = new(StringComparer.OrdinalIgnoreCase);
+        HashSet<string> actual = new(StringComparer.Ordinal);
+        bool missing = false;
         foreach (InstalledModContent content in package.Content)
         {
+            cancellationToken.ThrowIfCancellationRequested();
             string folder = ResolveFolder(content.Folder);
             if (!Directory.Exists(folder))
+            {
+                missing = true;
                 continue;
+            }
             foreach (string path in EnumerateFiles(folder))
                 actual.Add(Path.GetRelativePath(_modsRoot, path).Replace('\\', '/'));
         }
-        if (!actual.SetEquals(package.Files.Select(file => file.Path)))
-            return actual.Count > 0;
-        return package.Files.Any(file =>
-            File.Exists(Path.Combine(_modsRoot, file.Path))
-            && HashFile(Path.Combine(_modsRoot, file.Path)) != file.SHA256
+        HashSet<string> expected = new(
+            package.Files.Select(file => file.Path),
+            StringComparer.Ordinal
         );
+        if (actual.Except(expected).Any())
+            return InstallationState.Modified;
+        foreach (InstalledModFile file in package.Files)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            string path = Path.Combine(_modsRoot, file.Path);
+            if (!File.Exists(path))
+                missing = true;
+            else if (HashFile(path) != file.SHA256)
+                return InstallationState.Modified;
+        }
+        return missing ? InstallationState.Missing : InstallationState.Intact;
     }
 
     /// <summary>
@@ -1418,6 +1563,16 @@ public sealed class ModPackageStore
         public string Folder;
         public string Backup;
         public bool HadPrevious;
+    }
+
+    /// <summary>
+    /// Describes whether an installation can be reused or repaired without replacing local edits.
+    /// </summary>
+    private enum InstallationState
+    {
+        Intact,
+        Missing,
+        Modified,
     }
 
     /// <summary>

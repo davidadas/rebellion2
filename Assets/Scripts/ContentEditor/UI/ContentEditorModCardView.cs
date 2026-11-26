@@ -95,11 +95,7 @@ public sealed class ContentEditorModCardView : MonoBehaviour
         author.text =
             "by "
             + entry.Author
-            + (
-                entry.IsInstalled || entry.IsDeprecated
-                    ? " · " + entry.State
-                    : string.Empty
-            );
+            + (entry.IsInstalled || entry.IsDeprecated ? " · " + entry.State : string.Empty);
         description.text = entry.Description;
         popularity.text =
             entry.Listing == null ? string.Empty : entry.DownloadCount + "\n" + entry.LikeCount;

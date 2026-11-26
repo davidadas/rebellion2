@@ -455,6 +455,23 @@ internal sealed class ContentEditorModManagerController : IDisposable
         Run(async token =>
         {
             await store.InstallAsync(listing, version, catalog, protectedIDs(), Progress, token);
+            ReadInstalled();
+            InstalledModPackage package = installed.Single(item =>
+                item.PackageID == listing.full_name
+            );
+            UserSettingsManager.TryReadContentSelection(
+                out string activePack,
+                out _,
+                out string[] disabled
+            );
+            if (
+                IsPackageEnabled(
+                    package,
+                    string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack,
+                    disabled
+                )
+            )
+                EnableRequiredAddOns(package);
             contentChanged();
             view.SetStatus(listing.name + " " + version.version_number + " installed.");
         });
@@ -535,14 +552,33 @@ internal sealed class ContentEditorModManagerController : IDisposable
             return;
         try
         {
-            UserSettingsManager.TryReadContentSelection(out _, out _, out string[] disabled);
-            string[] mods = current.Content.Select(content => content.ID).ToArray();
-            UserSettingsManager.UpdateContentSelection(
-                null,
-                null,
-                mods,
-                mods.Any(disabled.Contains)
+            UserSettingsManager.TryReadContentSelection(
+                out string activePack,
+                out _,
+                out string[] disabled
             );
+            string[] mods = current.Content.Select(content => content.ID).ToArray();
+            if (mods.Any(disabled.Contains))
+                EnableRequiredAddOns(current);
+            else
+            {
+                activePack = string.IsNullOrWhiteSpace(activePack)
+                    ? catalogDefaultPack
+                    : activePack;
+                InstalledModPackage dependent = installed.FirstOrDefault(candidate =>
+                    candidate.PackageID != current.PackageID
+                    && IsPackageEnabled(candidate, activePack, disabled)
+                    && store
+                        .GetRequiredPackages(candidate)
+                        .Any(required => required.PackageID == current.PackageID)
+                );
+                if (dependent != null)
+                    throw new InvalidOperationException(
+                        dependent.Name
+                            + " requires this add-on. Disable that package or choose another default pack first."
+                    );
+                UserSettingsManager.UpdateContentSelection(null, null, mods, false);
+            }
             RenderRows();
             RenderDetails();
             view.SetStatus("Add-on selection saved. The game will use it when content next loads.");
@@ -563,15 +599,15 @@ internal sealed class ContentEditorModManagerController : IDisposable
         {
             ContentPackDefinition pack = packs.Single(item => item.ID == id);
             ContentPackLoader.CreatePackResolver(contentRoot, id);
-            string[] mods =
-                installed
-                    .FirstOrDefault(item =>
-                        item.Content.Any(content => content.IsPack && content.ID == id)
-                    )
-                    ?.Content.Where(content => !content.IsPack)
-                    .Select(content => content.ID)
-                    .ToArray()
-                ?? Array.Empty<string>();
+            UserSettingsManager.TryReadContentSelection(out _, out _, out string[] disabled);
+            string[] mods = installed
+                .Where(item => IsPackageEnabled(item, id, disabled))
+                .SelectMany(store.GetRequiredPackages)
+                .SelectMany(item => item.Content)
+                .Where(content => !content.IsPack)
+                .Select(content => content.ID)
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
             UserSettingsManager.UpdateContentSelection(id, pack.DefaultScenarioID, mods, true);
             RenderRows();
             RenderDetails();
@@ -583,6 +619,40 @@ internal sealed class ContentEditorModManagerController : IDisposable
             RenderRows();
         }
     }
+
+    /// <summary>
+    /// Enables a package's complete dependency chain in one settings update.
+    /// </summary>
+    /// <param name="package">The package whose add-ons are being enabled.</param>
+    private void EnableRequiredAddOns(InstalledModPackage package)
+    {
+        string[] mods = store
+            .GetRequiredPackages(package)
+            .SelectMany(item => item.Content)
+            .Where(content => !content.IsPack)
+            .Select(content => content.ID)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        UserSettingsManager.UpdateContentSelection(null, null, mods, true);
+    }
+
+    /// <summary>
+    /// Checks whether a package supplies the selected pack or any enabled compatible add-on.
+    /// </summary>
+    /// <param name="package">The installed package to inspect.</param>
+    /// <param name="activePack">The selected pack identity.</param>
+    /// <param name="disabled">The add-on identities excluded from loading.</param>
+    /// <returns>Whether this package participates in the selected content.</returns>
+    private static bool IsPackageEnabled(
+        InstalledModPackage package,
+        string activePack,
+        string[] disabled
+    ) =>
+        package.Content.Any(content =>
+            content.IsPack
+                ? content.ID == activePack
+                : content.BasePackID == activePack && !disabled.Contains(content.ID)
+        );
 
     /// <summary>
     /// Confirms removal while keeping the exact selected package stable across the prompt.
