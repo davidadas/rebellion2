@@ -295,13 +295,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
             UIComponentTestHelper.InvokeLifecycle(view, "Awake");
             _controller.RenderWindows();
 
-            CollectionAssert.AreEqual(
-                new[]
-                {
-                    "Are you sure you want to stop construction of the following?",
-                    "Shield Generator",
-                },
-                GetVisibleLines(view)
+            Assert.AreEqual(
+                "Are you sure you want to stop construction of the following? Shield Generator",
+                string.Join(" ", GetVisibleLines(view))
             );
             CollectionAssert.AreEqual(
                 new[]
