@@ -8023,14 +8023,22 @@ namespace Rebellion.Tests.Gameplay
                 Action<(ISceneNode Node, Planet Origin, Planet Destination)> record
             ) => _record = record;
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Captures the scene change and runs the test's assertions.
+            /// </summary>
+            /// <param name="change">The reported node and its two locations.</param>
             public void OnNext((ISceneNode Node, Planet Origin, Planet Destination) change) =>
                 _record(change);
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Completes the recorder when its publisher ends.
+            /// </summary>
             public void OnCompleted() { }
 
-            /// <inheritdoc />
+            /// <summary>
+            /// Fails the test when the publisher reports an error.
+            /// </summary>
+            /// <param name="error">The publisher failure.</param>
             public void OnError(Exception error) => Assert.Fail(error.Message);
         }
     }
