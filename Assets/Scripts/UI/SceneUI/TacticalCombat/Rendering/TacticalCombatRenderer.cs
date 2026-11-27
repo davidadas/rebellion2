@@ -184,13 +184,11 @@ namespace Rebellion.Tactical.Rendering
                     CreateFighter(visual, assets, session);
                 else if (unit.IsBattleStation)
                     CreateStation(visual, assets, session.BattleDepth);
-                else
+                else if (
+                    GetUnitDefinition(unit) is { } definition
+                    && !string.IsNullOrWhiteSpace(definition.ModelPath)
+                )
                 {
-                    TacticalCombatUnitDefinition definition = GetUnitDefinition(unit);
-                    if (string.IsNullOrWhiteSpace(definition?.ModelPath))
-                        throw new InvalidOperationException(
-                            $"The tactical model is missing for '{unit.TypeID}'."
-                        );
                     IReadOnlyList<string> paths =
                         definition.ModelDetailPaths.Count > 0
                             ? definition.ModelDetailPaths
@@ -211,6 +209,8 @@ namespace Rebellion.Tactical.Rendering
                         visual.ModelDetails[index] = detail.transform;
                     }
                 }
+                else
+                    CreateCapitalPlaceholder(visual);
                 SetLayer(root.transform, PresentationLayers.TacticalCombat);
                 if (!unit.IsBattleStation && !unit.IsFighter)
                 {
@@ -235,7 +235,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="unit">The participant being rendered.</param>
         /// <returns>The matching definition, or null when the type has no definition.</returns>
         private TacticalCombatUnitDefinition GetUnitDefinition(CombatUnit unit) =>
-            _unitDefinitions.GetValueOrDefault(unit.TypeID);
+            _unitDefinitions.GetValueOrDefault(unit.TypeID ?? string.Empty);
 
         /// <summary>
         /// Releases screen-owned models, materials, and GPU memory.

@@ -6,6 +6,7 @@ using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 using TacticalCombatEnvironmentDefinition = global::Rebellion.Content.TacticalCombatEnvironmentDefinition;
 using TacticalCombatFighterSprites = global::Rebellion.Content.TacticalCombatFighterSprites;
 using TacticalCombatTextureOverride = global::Rebellion.Content.TacticalCombatTextureOverride;
+using TacticalCombatUnitDefinition = global::Rebellion.Content.TacticalCombatUnitDefinition;
 
 namespace Rebellion.Tactical.Rendering
 {
@@ -123,11 +124,12 @@ namespace Rebellion.Tactical.Rendering
             TacticalCombatSession session
         )
         {
-            TacticalCombatFighterSprites sprites =
-                GetUnitDefinition(visual.Unit)?.FighterSprites
-                ?? throw new InvalidOperationException(
-                    $"Fighter sprites are missing for '{visual.Unit.TypeID}'."
-                );
+            TacticalCombatFighterSprites sprites = GetUnitDefinition(visual.Unit)?.FighterSprites;
+            if (sprites == null)
+            {
+                CreatePlaceholderBillboard(visual, 0.3f);
+                return;
+            }
             int color = 4;
             if (visual.Unit.Side == session.PlayerSide)
             {
@@ -161,10 +163,17 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="battleDepth">The encounter's deployment span.</param>
         private void CreateStation(Visual visual, ContentAssets assets, float battleDepth)
         {
+            TacticalCombatUnitDefinition definition = GetUnitDefinition(visual.Unit);
             string path =
                 visual.Unit.Status == CombatUnitStatus.UnderConstruction
-                    ? GetUnitDefinition(visual.Unit).ConstructionBillboardImagePath
-                    : GetUnitDefinition(visual.Unit).BillboardImagePath;
+                    ? definition?.ConstructionBillboardImagePath
+                    : definition?.BillboardImagePath;
+            visual.StationPosition = GetSceneryPosition(battleDepth, -2, 0.2f);
+            if (string.IsNullOrWhiteSpace(path))
+            {
+                CreatePlaceholderBillboard(visual, battleDepth * 0.1f);
+                return;
+            }
             Texture2D texture =
                 assets.GetTexture(path)
                 ?? throw new InvalidOperationException(
@@ -177,7 +186,60 @@ namespace Rebellion.Tactical.Rendering
             billboard.transform.localScale = Vector3.one * (battleDepth * 0.5f);
             billboard.GetComponent<MeshRenderer>().sharedMaterial = material;
             visual.Billboard = billboard.transform;
-            visual.StationPosition = GetSceneryPosition(battleDepth, -2, 0.2f);
+        }
+
+        /// <summary>
+        /// Uses ship geometry for an on-screen contact when no capital-ship model is authored.
+        /// </summary>
+        /// <param name="visual">The owned ship visual.</param>
+        private void CreateCapitalPlaceholder(Visual visual)
+        {
+            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            marker.name = "Ship contact";
+            Collider collider = marker.GetComponent<Collider>();
+            collider.enabled = false;
+            Destroy(collider);
+            marker.transform.SetParent(visual.Root.transform, false);
+            Vector3 dimensions = ToUnity(visual.Unit.HullDimensions);
+            if (dimensions.x <= 0 || dimensions.y <= 0 || dimensions.z <= 0)
+                dimensions = new Vector3(
+                    visual.Unit.CollisionRadius,
+                    visual.Unit.HalfHeight * 2,
+                    visual.Unit.CollisionRadius * 2
+                );
+            marker.transform.localScale = dimensions;
+            marker.GetComponent<MeshRenderer>().sharedMaterial = GetPlaceholderMaterial();
+            visual.ModelDetails = new[] { marker.transform };
+        }
+
+        /// <summary>
+        /// Presents a visible contact for a fighter or station with no authored artwork.
+        /// </summary>
+        /// <param name="visual">The contact's owned visual.</param>
+        /// <param name="scale">The billboard's width in scene units.</param>
+        private void CreatePlaceholderBillboard(Visual visual, float scale)
+        {
+            GameObject billboard = CreateBillboard();
+            billboard.name = "Contact";
+            billboard.transform.SetParent(visual.Root.transform, false);
+            billboard.transform.localScale = Vector3.one * scale;
+            billboard.GetComponent<MeshRenderer>().sharedMaterial = GetPlaceholderMaterial();
+            visual.Billboard = billboard.transform;
+        }
+
+        /// <summary>
+        /// Reuses one unlit material for contacts without artwork.
+        /// </summary>
+        /// <returns>The screen-owned placeholder material.</returns>
+        private Material GetPlaceholderMaterial()
+        {
+            Texture2D texture = Texture2D.whiteTexture;
+            if (!_fighterMaterials.TryGetValue(texture, out Material material))
+            {
+                material = new Material(_fighterShader) { mainTexture = texture };
+                _fighterMaterials.Add(texture, material);
+            }
+            return material;
         }
 
         /// <summary>

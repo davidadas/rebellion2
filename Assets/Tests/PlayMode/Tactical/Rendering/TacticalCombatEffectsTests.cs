@@ -205,7 +205,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>A captured shot with a fixed ten-unit span.</returns>
         private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
         {
-            CombatUnit source = new(
+            CombatUnit source = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "source",
@@ -215,7 +215,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit target = new(
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "target",
@@ -224,10 +224,8 @@ namespace Rebellion.Tests.Tactical.Rendering
                 },
                 CombatSide.Defender,
                 1000001
-            )
-            {
-                Position = new Vector3N(10, 0, 0),
-            };
+            );
+            target.Position = new Vector3N(10, 0, 0);
             return new TacticalCombatShot(source, target, weapon, 50);
         }
 

@@ -512,7 +512,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>The captured discharge.</returns>
         private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
         {
-            CombatUnit source = new(
+            CombatUnit source = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "source",
@@ -522,7 +522,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit target = new(
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "target",

@@ -245,7 +245,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 Hyperdrive = 1,
             };
             ship.AssignName(name);
-            return new(ship, side, index);
+            return TacticalCombatDeployment.CreateUnit(ship, side, index);
         }
 
         /// <summary>
@@ -264,7 +264,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             int maximum,
             int current
         ) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = id,

@@ -171,7 +171,7 @@ namespace Rebellion.Tactical.Rendering
             if (visual.Billboard != null)
             {
                 visual.Billboard.rotation = _battleCamera.transform.rotation;
-                if (unit.IsFighter)
+                if (visual.FighterTextures != null)
                     UpdateFighter(visual);
             }
             else if (visual.ModelDetails != null)

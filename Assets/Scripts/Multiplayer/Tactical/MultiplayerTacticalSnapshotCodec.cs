@@ -22,7 +22,7 @@ namespace Rebellion.Multiplayer.Tactical
         private const int _maximumExpandedBytes = 4 * 1024 * 1024;
         private const int _headerBytes = 18;
         private const uint _magic = 0x43543252;
-        private const byte _version = 3;
+        private const byte _version = 4;
         private static readonly Encoding _utf8 = new UTF8Encoding(false, true);
         private static readonly uint[] _checksums = CreateChecksumTable();
 
@@ -325,6 +325,13 @@ namespace Rebellion.Multiplayer.Tactical
                 _writer.Write(value.WeaponRechargeSample);
                 _writer.Write(value.ShieldRechargeSample);
                 Array(value.ComponentDamage, item => _writer.Write(item), 5);
+                _writer.Write(value.HyperdriveDamage != null);
+                if (value.HyperdriveDamage != null)
+                    Array(
+                        value.HyperdriveDamage,
+                        item => _writer.Write(item),
+                        _maximumExpandedBytes / sizeof(int)
+                    );
                 Array(value.Charge, item => _writer.Write(item), 4);
                 Array(value.Ready, item => _writer.Write(item), 4);
                 _writer.Write(value.HyperspaceMilliseconds);
@@ -575,6 +582,9 @@ namespace Rebellion.Multiplayer.Tactical
                     WeaponRechargeSample = _reader.ReadSingle(),
                     ShieldRechargeSample = _reader.ReadSingle(),
                     ComponentDamage = Array(() => _reader.ReadUInt32(), 5),
+                    HyperdriveDamage = _reader.ReadBoolean()
+                        ? Array(() => _reader.ReadInt32(), _maximumExpandedBytes / sizeof(int))
+                        : null,
                     Charge = Array(() => _reader.ReadSingle(), 4),
                     Ready = Array(() => Boolean(), 4),
                     HyperspaceMilliseconds = _reader.ReadSingle(),

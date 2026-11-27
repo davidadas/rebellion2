@@ -99,6 +99,24 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         [UnityTest]
+        public IEnumerator PrepareAsync_CustomCapitalWithoutArtwork_UsesOwnedGeometryForContact()
+        {
+            TacticalCombatSession encounter = CreateEncounter(_pack.GameData);
+            CombatUnit unit = encounter.GetUnit("ALCS008");
+            unit.Unit.TypeID = "custom-ship";
+            unit.HullDimensions = new Vector3N(2, 3, 4);
+
+            yield return PrepareRenderer(encounter);
+
+            Transform contact = view
+                .Renderer.GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == "Ship contact");
+            Assert.AreEqual(unit.InstanceID, contact.parent.name);
+            Assert.AreEqual(new Vector3(2, 3, 4), contact.localScale);
+            Assert.IsTrue(contact.gameObject.activeInHierarchy);
+        }
+
+        [UnityTest]
         public IEnumerator PrepareAsync_AuthoredRoster_InstantiatesCapitalModelsFightersAndStation()
         {
             assets = new ContentAssets(_pack.FileResolver);

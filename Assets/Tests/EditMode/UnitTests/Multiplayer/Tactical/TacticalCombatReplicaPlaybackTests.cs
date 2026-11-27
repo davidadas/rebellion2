@@ -332,7 +332,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
         /// <param name="index">The tactical registration index.</param>
         /// <returns>The captured capital ship.</returns>
         private static CombatUnit CreateUnit(string id, CombatSide side, int index) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = id,
@@ -345,10 +345,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 },
                 side,
                 index
-            )
-            {
-                Heading = Vector3.UnitZ,
-                DesiredHeading = Vector3.UnitZ,
-            };
+            );
     }
 }

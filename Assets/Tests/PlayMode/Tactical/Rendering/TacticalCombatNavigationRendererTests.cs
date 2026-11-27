@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void UpdateSelection_RequestedRoute_HighlightsSelectedNavigationPoint()
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "ship",

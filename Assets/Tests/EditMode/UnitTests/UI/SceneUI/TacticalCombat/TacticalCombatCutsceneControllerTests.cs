@@ -479,7 +479,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         /// <returns>The battle after its attack run has entered the two-minute sequence.</returns>
         private static TacticalCombatSession CreateSession(bool reserveFighter = false)
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -491,7 +491,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",
@@ -508,7 +508,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                CombatUnit reserve = new(
+                CombatUnit reserve = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "reserve",

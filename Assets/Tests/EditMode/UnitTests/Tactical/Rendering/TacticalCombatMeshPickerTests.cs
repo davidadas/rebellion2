@@ -152,7 +152,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// <returns>The associated participant.</returns>
         private CombatUnit AddUnit(string id, float depth, int currentHull = 100)
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = id,

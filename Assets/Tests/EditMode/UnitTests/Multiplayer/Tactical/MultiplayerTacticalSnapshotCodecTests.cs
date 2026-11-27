@@ -279,6 +279,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 WeaponRechargeSample = 15.125f,
                 ShieldRechargeSample = 16.125f,
                 ComponentDamage = new[] { 0u, uint.MaxValue, 1u, 2u, 3u },
+                HyperdriveDamage = new[] { 1, 0, 1, 1 },
                 Charge = new[] { 0.125f, 1.25f, 10.5f, 100.75f },
                 Ready = new[] { true, false, true, false },
                 HyperspaceMilliseconds = 20.125f,
