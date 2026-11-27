@@ -383,6 +383,51 @@ namespace Rebellion.Tests.ContentEditor
                 CollectionAssert.AreEqual(before, File.ReadAllBytes(original));
         }
 
+        [TestCase(true, true)]
+        [TestCase(true, false)]
+        [TestCase(false, true)]
+        [TestCase(false, false)]
+        public void ImportAsset_LiteralAliasWithExtension_PreservesOtherPlanets(
+            bool isSource,
+            bool hasImage
+        )
+        {
+            string literal = _shared + ".png";
+            string from = isSource ? literal : _shared;
+            string to = isSource ? "Pack/Shared/Planets/actual" : literal;
+            File.Delete(Path.Combine(BaseRoot, "Shared/Planets/shared.png"));
+            if (hasImage)
+                WriteImage(
+                    BaseRoot,
+                    isSource ? "Shared/Planets/actual.png" : "Shared/Planets/shared.png",
+                    Color.red
+                );
+            string planets = Path.Combine(BaseRoot, "Data/planets.xml");
+            WriteFixtureFile("Data/planets.xml", File.ReadAllText(planets).Replace(_shared, from));
+            WriteFixtureFile(
+                ContentArtworkAliases.FileName,
+                $"<ArtworkAliases><Image From=\"{from}\" To=\"{to}\" /></ArtworkAliases>"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            string original = Resolve(project, from);
+            byte[] before = original == null ? null : File.ReadAllBytes(original);
+            string source = WriteImage(contentRoot, "Import/shared.png.jpg", Color.green);
+            ContentPackEditorField field = GetPlanet(project, "ONE").GetField("PlanetIconPath");
+
+            string imported = ContentPackEditorStorage.ImportAsset(project, source, field);
+            project.SetField(field, imported);
+
+            Assert.AreEqual("Pack/Shared/Planets/shared.png-2", imported);
+            Assert.AreEqual(from, GetPlanet(project, "TWO").GetField("PlanetIconPath").Value);
+            Assert.AreEqual(original, Resolve(project, from));
+            if (hasImage)
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(original));
+            CollectionAssert.AreEqual(
+                File.ReadAllBytes(source),
+                File.ReadAllBytes(Resolve(project, imported))
+            );
+        }
+
         /// <summary>
         /// Finds one nested planet through the project's public catalog view.
         /// </summary>

@@ -54,7 +54,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
-        public void Render_StarfighterRole_ShowsOneDropdownWithFourChoices()
+        public void Render_StarfighterRole_ShowsFourRolesAndUnclassified()
         {
             WriteFixtureFile(
                 "Data/starfighters.xml",
@@ -91,17 +91,85 @@ namespace Rebellion.Tests.ContentEditor.UI
             TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
             Assert.IsNotNull(dropdown);
             CollectionAssert.AreEqual(
-                new[] { "Interceptor", "Multirole", "Bomber", "Heavy assault" },
+                new[] { "Unclassified", "Interceptor", "Multirole", "Bomber", "Heavy assault" },
                 dropdown.options.Select(option => option.text)
             );
             Assert.AreEqual("Bomber", dropdown.options[dropdown.value].text);
             Assert.IsEmpty(control.GetComponentsInChildren<UICheckboxView>());
             Assert.AreEqual(before, field.Document.Text);
 
-            dropdown.value = 0;
+            dropdown.value = 1;
 
             Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
             Assert.IsNull(record.Element.Element("Roles"));
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("Bomber")]
+        public void Render_ReassignedStarfighterRole_CanReturnToUnclassified(string initialRole)
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + (initialRole == null ? "" : $"<Role>{initialRole}</Role>")
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject fighters = ContentPackEditorStorage.Create(
+                contentRoot,
+                "base-pack",
+                "fighters",
+                "Fighters",
+                "1.0.0"
+            );
+            ContentPackEditorRecord record = fighters
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            control.Submitted += (selected, values) => fighters.SetField(selected, values.Single());
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
+            dropdown.value = dropdown.options.FindIndex(option => option.text == "Heavy assault");
+            Assert.AreEqual("HeavyAssault", record.GetField("Role").Value);
+
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            int unclassified = dropdown.options.FindIndex(option => option.text == "Unclassified");
+            Assert.GreaterOrEqual(unclassified, 0);
+            dropdown.value = unclassified;
+
+            Assert.AreEqual(string.Empty, record.GetField("Role").Value);
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.IsNull(record.Element.Element("Roles"));
+            ContentPackEditorStorage.Save(fighters);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                fighters.PackRootPath
+            );
+            record = reopened
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual(string.Empty, record.GetField("Role").Value);
+            control.Render(
+                ContentPackEditorProjector.BuildField(reopened, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            Assert.AreEqual("Unclassified", dropdown.options[dropdown.value].text);
         }
 
         [Test]

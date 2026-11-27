@@ -1018,7 +1018,7 @@ public static class ContentPackEditorStorage
                         return aliases.Keys.Concat(aliases.Values);
                     })
                 )
-                .Select(address => Path.ChangeExtension(address, null))
+                .SelectMany(address => new[] { address, Path.ChangeExtension(address, null) })
                 .ToHashSet(StringComparer.OrdinalIgnoreCase)
             : null;
         while (

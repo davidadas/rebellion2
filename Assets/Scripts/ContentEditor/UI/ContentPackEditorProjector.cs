@@ -63,9 +63,21 @@ internal static class ContentPackEditorProjector
         IReadOnlyDictionary<string, string> images = ContentEditorPlanetArtwork.IsImageField(field)
             ? ContentEditorPlanetArtwork.GetChoices(project, field)
             : null;
+        referenceLabels ??= project.GetReferenceOptions(field);
+        if (
+            referenceLabels == null
+            && field.Record.Kind == "Starfighter"
+            && field.MemberName == "Role"
+        )
+        {
+            Dictionary<string, string> roles = new() { [string.Empty] = "Unclassified" };
+            foreach (string role in field.Choices)
+                roles[role] = ContentPackEditorField.FormatName(role);
+            referenceLabels = roles;
+        }
         return new ContentPackEditorFieldRenderData(
             field,
-            referenceLabels ?? project.GetReferenceOptions(field),
+            referenceLabels,
             () => project.GetMediaFiles(field),
             images,
             ContentEditorPlanetArtwork.IsImageField(field)
