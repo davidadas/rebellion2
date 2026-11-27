@@ -10,6 +10,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Fleets
@@ -75,7 +76,7 @@ namespace Rebellion.Tests.AI.Fleets
             new AIExecutionPhase().Execute(context);
 
             Assert.IsNotNull(defendingFleet.Movement);
-            Assert.IsTrue(resourcePlanet.IsBlockadedFor(empire.InstanceID));
+            Assert.IsTrue(BlockadeQueries.IsBlockadedFor(null, resourcePlanet, empire.InstanceID));
             Assert.AreEqual(0, context.AvailableProjectedMaintenanceHeadroom);
         }
 

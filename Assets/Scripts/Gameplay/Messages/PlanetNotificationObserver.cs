@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -15,32 +14,17 @@ namespace Rebellion.Gameplay
     /// </summary>
     public sealed class PlanetNotificationObserver : IResultObserver, IDisposable
     {
-        private readonly GameRoot _game;
-        private readonly HashSet<Planet> _changedPlanets = new();
-        private readonly HashSet<PlanetSector> _changedSectors = new();
-        private readonly HashSet<Planet> _subscribedPlanets = new();
         private readonly SmugglingCommands _smuggling;
         private readonly UprisingResolver _uprising;
         private IDisposable _subscription;
 
         /// <summary>
-        /// Gets whether changed model facts still await notification selection at the operation boundary.
-        /// </summary>
-        internal bool HasPendingChanges => _changedPlanets.Count > 0 || _changedSectors.Count > 0;
-
-        /// <summary>
         /// Connects notification selection to the existing smuggling and garrison rules.
         /// </summary>
-        /// <param name="game">The world supplying membership and support change observables.</param>
         /// <param name="smuggling">The smuggling rules and observed relationship baseline.</param>
         /// <param name="uprising">The garrison rules and observed warning baseline.</param>
-        public PlanetNotificationObserver(
-            GameRoot game,
-            SmugglingCommands smuggling,
-            UprisingResolver uprising
-        )
+        public PlanetNotificationObserver(SmugglingCommands smuggling, UprisingResolver uprising)
         {
-            _game = game ?? throw new ArgumentNullException(nameof(game));
             _smuggling = smuggling ?? throw new ArgumentNullException(nameof(smuggling));
             _uprising = uprising ?? throw new ArgumentNullException(nameof(uprising));
         }
@@ -55,10 +39,6 @@ namespace Rebellion.Gameplay
                 throw new InvalidOperationException("Planet notifications are already connected.");
             if (results == null)
                 throw new ArgumentNullException(nameof(results));
-            // Resolve the planet subscriptions once when the session is connected.
-            foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
-                SubscribePlanet(planet);
-            _game.UnitPresenceChanged += ObservePresenceChange;
             _subscription = results.ObserveAll(batch =>
             {
                 List<GameResult> notifications = HandleResults(batch);
@@ -70,16 +50,7 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Stops receiving completed changes when the session ends.
         /// </summary>
-        public void Dispose()
-        {
-            _subscription?.Dispose();
-            _game.UnitPresenceChanged -= ObservePresenceChange;
-            foreach (Planet planet in _subscribedPlanets)
-                planet.PopularSupportChanged -= ObserveSupportChange;
-            _subscribedPlanets.Clear();
-            _changedPlanets.Clear();
-            _changedSectors.Clear();
-        }
+        public void Dispose() => _subscription?.Dispose();
 
         /// <summary>
         /// Reconciles only locations whose support, ownership, or stationed forces changed.
@@ -89,55 +60,108 @@ namespace Rebellion.Gameplay
         /// <returns>New smuggling and near-uprising notification facts.</returns>
         public List<GameResult> HandleResults(IReadOnlyList<GameResult> results)
         {
-            foreach (GameResult result in results ?? Array.Empty<GameResult>())
+            if (results == null || results.Count == 0)
+                return new List<GameResult>();
+
+            HashSet<Planet> planets = new();
+            HashSet<PlanetSector> sectors = new();
+            foreach (GameResult result in results)
             {
                 switch (result)
                 {
-                    case GameObjectCreatedResult { GameObject: Planet planet }:
-                        SubscribePlanet(planet);
-                        _changedPlanets.Add(planet);
+                    case PlanetSupportChangedResult support:
+                        planets.Add(support.Planet);
+                        break;
+                    case PlanetStatChangedResult { Category: PlanetChangeCategory.Loyalty } support:
+                        planets.Add(support.Planet);
+                        break;
+                    case PlanetOwnershipChangedResult ownership:
+                        planets.Add(ownership.Planet);
+                        break;
+                    case PlanetGarrisonChangedResult garrison:
+                        planets.Add(garrison.Planet);
+                        break;
+                    case UnitOwnershipChangedResult ownership:
+                        AddCurrentLocation(ownership.Unit, planets, sectors);
+                        break;
+                    case SceneNodeActivationChangedResult activation:
+                        AddCurrentLocation(activation.Node, planets, sectors);
+                        break;
+                    case GameObjectCreatedResult created:
+                        AddCurrentLocation(created.GameObject, planets, sectors);
+                        break;
+                    case FleetFormedResult formed:
+                        AddCurrentLocation(formed.Fleet, planets, sectors);
                         break;
                     case GameObjectDeployedResult deployed:
-                        ObserveEntityChange(deployed.GameObject);
+                        AddCurrentLocation(deployed.GameObject, planets, sectors);
                         break;
                     case ManufacturingDeployedResult deployed:
-                        ObserveEntityChange(deployed.DeployedObject);
+                        AddCurrentLocation(deployed.DeployedObject, planets, sectors);
+                        break;
+                    case UnitPlacedResult placed:
+                        AddCurrentLocation(placed.Unit, planets, sectors, placed.PreviousPlanet);
                         break;
                     case GameObjectEnrouteResult moving:
-                        ObserveEntityChange(moving.GameObject);
+                        AddCurrentLocation(
+                            moving.GameObject,
+                            planets,
+                            sectors,
+                            moving.PreviousPlanet
+                        );
                         break;
                     case GameObjectEnrouteActiveResult moving:
-                        ObserveEntityChange(moving.GameObject);
+                        AddCurrentLocation(moving.GameObject, planets, sectors);
                         break;
                     case UnitArrivedResult arrived:
-                        ObserveEntityChange(arrived.Unit);
-                        _changedPlanets.Add(arrived.Destination);
+                        AddCurrentLocation(arrived.Unit, planets, sectors);
+                        planets.Add(arrived.Destination);
+                        break;
+                    case GameObjectDestroyedResult { DestroyedObject: ISceneNode node } destroyed:
+                        AddLocations(
+                            node,
+                            destroyed.Location ?? destroyed.Context as Planet,
+                            null,
+                            planets,
+                            sectors
+                        );
+                        break;
+                    case GameObjectScrappedResult { ScrappedObject: ISceneNode node } scrapped:
+                        AddLocations(node, scrapped.Context as Planet, null, planets, sectors);
+                        break;
+                    case EvacuationLossesResult evacuation:
+                        planets.Add(evacuation.Location);
+                        if (evacuation.LostShips?.Any(ship => ship.SectorSuppression > 0) == true)
+                            AddSector(evacuation.Location, planets, sectors);
                         break;
                     case PlanetUprisingStartedResult started:
-                        _changedPlanets.Add(started.Planet);
+                        planets.Add(started.Planet);
                         break;
                     case PlanetUprisingEndedResult ended:
-                        _changedPlanets.Add(ended.Planet);
+                        planets.Add(ended.Planet);
                         break;
                     case BombardmentResult { PlanetDestroyed: true } bombardment:
-                        AddSector(bombardment.Planet, _changedPlanets, _changedSectors);
+                        AddSector(bombardment.Planet, planets, sectors);
+                        break;
+                    case PlanetaryAssaultResult { Success: true } assault:
+                        planets.Add(assault.Planet);
+                        break;
+                    case SpaceCombatResult combat:
+                        planets.Add(combat.Planet);
                         break;
                 }
             }
-            if (!HasPendingChanges)
-                return new List<GameResult>();
-            foreach (PlanetSector sector in _changedSectors)
-                _changedPlanets.UnionWith(sector.GetChildren<Planet>(includeDisabled: true));
-            _changedSectors.Clear();
-            Planet[] changed = _changedPlanets
-                .Where(planet => planet != null)
-                .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
-                .ToArray();
-            _changedPlanets.Clear();
+            foreach (PlanetSector sector in sectors)
+                planets.UnionWith(sector.GetChildren<Planet>(includeDisabled: true));
+            planets.Remove(null);
             List<GameResult> notifications = new();
-            foreach (Planet planet in changed)
+            foreach (
+                Planet planet in planets.OrderBy(
+                    planet => planet.InstanceID,
+                    StringComparer.Ordinal
+                )
+            )
             {
-                SubscribePlanet(planet);
                 _smuggling.RefreshPlanet(planet, notifications);
                 _uprising.RecordGarrisonWarning(planet, notifications);
             }
@@ -165,48 +189,62 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Subscribes a live planet once, including planets created after session initialization.
+        /// Includes a unit's current location and any previous location carried by its result.
         /// </summary>
-        /// <param name="planet">The planet whose support changes must be observed.</param>
-        private void SubscribePlanet(Planet planet)
+        /// <param name="entity">The entity described by the result.</param>
+        /// <param name="planets">The affected local planets.</param>
+        /// <param name="sectors">The affected suppression sectors.</param>
+        /// <param name="previousPlanet">The planet the unit left, when applicable.</param>
+        private static void AddCurrentLocation(
+            IGameEntity entity,
+            ISet<Planet> planets,
+            ISet<PlanetSector> sectors,
+            Planet previousPlanet = null
+        )
         {
-            if (_subscribedPlanets.Add(planet))
-                planet.PopularSupportChanged += ObserveSupportChange;
+            if (entity is ISceneNode node)
+                AddLocations(
+                    node,
+                    previousPlanet,
+                    node as Planet ?? node.GetParentOfType<Planet>(),
+                    planets,
+                    sectors
+                );
         }
 
         /// <summary>
-        /// Retains only the affected planet until the enclosing operation has settled.
-        /// </summary>
-        /// <param name="planet">The planet whose support changed.</param>
-        private void ObserveSupportChange(Planet planet) => _changedPlanets.Add(planet);
-
-        /// <summary>
-        /// Captures precise old and new locations when membership or ownership changes.
+        /// Includes the old and new locations when membership or ownership changes.
         /// Suppression ships can also change garrison requirements throughout those sectors.
         /// </summary>
         /// <param name="node">The changed unit or planet.</param>
         /// <param name="origin">The previous planet, or null for a new node.</param>
         /// <param name="destination">The new planet, or null after removal.</param>
-        private void ObservePresenceChange(ISceneNode node, Planet origin, Planet destination)
+        /// <param name="planets">The affected local planets.</param>
+        /// <param name="sectors">The affected suppression sectors.</param>
+        private static void AddLocations(
+            ISceneNode node,
+            Planet origin,
+            Planet destination,
+            ISet<Planet> planets,
+            ISet<PlanetSector> sectors
+        )
         {
             if (node is PlanetSector sector)
             {
-                _changedSectors.Add(sector);
+                sectors.Add(sector);
                 return;
             }
             if (node is GalaxyMap galaxy)
             {
-                _changedSectors.UnionWith(galaxy.GetChildren<PlanetSector>(includeDisabled: true));
+                sectors.UnionWith(galaxy.GetChildren<PlanetSector>(includeDisabled: true));
                 return;
             }
             if (node is not (Planet or Building or Fleet or CapitalShip or Starfighter or Regiment))
                 return;
             if (origin == null && destination == null)
                 return;
-            if (node is Planet planet)
-                SubscribePlanet(planet);
-            _changedPlanets.Add(origin);
-            _changedPlanets.Add(destination);
+            planets.Add(origin);
+            planets.Add(destination);
             if (
                 node is CapitalShip { SectorSuppression: > 0 }
                 || node is Fleet fleet
@@ -215,21 +253,8 @@ namespace Rebellion.Gameplay
                         .Any(ship => ship.SectorSuppression > 0)
             )
             {
-                AddSector(origin, _changedPlanets, _changedSectors);
-                AddSector(destination, _changedPlanets, _changedSectors);
-            }
-        }
-
-        /// <summary>
-        /// Observes completed changes to transit or manufacturing status on an attached unit.
-        /// </summary>
-        /// <param name="entity">The unit whose readiness changed.</param>
-        private void ObserveEntityChange(IGameEntity entity)
-        {
-            if (entity is ISceneNode node)
-            {
-                Planet planet = node as Planet ?? node.GetParentOfType<Planet>();
-                ObservePresenceChange(node, planet, planet);
+                AddSector(origin, planets, sectors);
+                AddSector(destination, planets, sectors);
             }
         }
     }

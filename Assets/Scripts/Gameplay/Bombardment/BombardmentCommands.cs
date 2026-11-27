@@ -79,7 +79,7 @@ namespace Rebellion.Gameplay
                 return null;
 
             targetPlanet = liveTarget;
-            bool wasBlockaded = targetPlanet.IsBlockaded(_game);
+            bool wasBlockaded = BlockadeQueries.IsBlockaded(_game, targetPlanet);
             BombardmentResult result = new BombardmentResult
             {
                 Planet = targetPlanet,

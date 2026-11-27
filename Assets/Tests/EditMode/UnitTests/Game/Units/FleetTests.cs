@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
 namespace Rebellion.Tests.Game.Units
@@ -89,12 +90,12 @@ namespace Rebellion.Tests.Game.Units
             game.ChangeOwnership(_fleet, "FACTION2");
 
             Assert.AreEqual(0, _fleet.GetOperationalCapitalShipCount());
-            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, planet));
 
             game.ChangeOwnership(_capitalShip1, "FACTION2");
 
             Assert.AreEqual(1, _fleet.GetOperationalCapitalShipCount());
-            Assert.IsTrue(planet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, planet));
         }
 
         [Test]

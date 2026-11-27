@@ -79,7 +79,7 @@ namespace Rebellion.Gameplay
                     result?.Blockaded != true
                     || result.Planet == null
                     || result.BlockadingFleet == null
-                    || !result.Planet.IsBlockaded(_game)
+                    || !BlockadeQueries.IsBlockaded(_game, result.Planet)
                     || !handledPlanets.Add(result.Planet.InstanceID)
                 )
                     continue;
@@ -370,7 +370,14 @@ namespace Rebellion.Gameplay
                         )
                     );
             }
-            else if (officer.TryCapture(captorInstanceId, _game, _game.Random))
+            else if (
+                officer.TryCapture(
+                    captorInstanceId,
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _game.Random
+                )
+            )
             {
                 results.Add(
                     new OfficerCaptureStateResult

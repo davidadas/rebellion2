@@ -955,13 +955,15 @@ namespace Rebellion.Game.Units
         /// Attempts to place this officer in the custody of another faction.
         /// </summary>
         /// <param name="captorInstanceId">The instance ID of the capturing faction.</param>
-        /// <param name="game">The game whose clock and captive rules govern the transition.</param>
+        /// <param name="escapeInterval">The configured range between escape attempts.</param>
+        /// <param name="currentTick">The capture tick.</param>
         /// <param name="random">The simulation random stream used to arm the escape timer.</param>
         /// <param name="canEscape">Whether the officer can attempt to escape captivity.</param>
         /// <returns>True when the officer was captured; otherwise false.</returns>
         internal bool TryCapture(
             string captorInstanceId,
-            GameRoot game,
+            GameConfig.TickRangeConfig escapeInterval,
+            int currentTick,
             IRandomNumberProvider random,
             bool canEscape = true
         )
@@ -980,14 +982,14 @@ namespace Rebellion.Game.Units
             if (captureStateChanged && !CanEscape)
             {
                 CanEscape = true;
-                ScheduleEscapeAttempt(game, random, game.CurrentTick);
+                ScheduleEscapeAttempt(escapeInterval, random, currentTick);
             }
             bool escapeStateChanged = CanEscape != canEscape;
             CanEscape = canEscape;
             if (escapeStateChanged)
             {
                 if (canEscape)
-                    ScheduleEscapeAttempt(game, random, game.CurrentTick);
+                    ScheduleEscapeAttempt(escapeInterval, random, currentTick);
                 else
                     NextEscapeAttemptTick = 0;
             }
@@ -998,16 +1000,15 @@ namespace Rebellion.Game.Units
         /// Arms this officer's next escape attempt before subsequent operations consume randomness.
         /// Fixed intervals do not advance the simulation random stream.
         /// </summary>
-        /// <param name="game">The game whose clock and captive rules determine the due tick.</param>
+        /// <param name="interval">The configured range between escape attempts.</param>
         /// <param name="random">The simulation random stream.</param>
         /// <param name="previousTick">The capture tick or the preceding attempt's due tick.</param>
         internal void ScheduleEscapeAttempt(
-            GameRoot game,
+            GameConfig.TickRangeConfig interval,
             IRandomNumberProvider random,
             int previousTick
         )
         {
-            GameConfig.TickRangeConfig interval = game.Config.Captive.EscapeAttemptInterval;
             int minimum = Math.Max(0, interval.Minimum);
             int maximum = Math.Max(minimum, interval.Maximum);
             int delay = maximum > minimum ? random.NextInt(minimum, maximum + 1) : minimum;
