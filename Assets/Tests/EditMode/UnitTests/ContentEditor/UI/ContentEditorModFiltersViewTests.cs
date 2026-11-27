@@ -107,6 +107,76 @@ namespace Rebellion.Tests.ContentEditor.UI
                 );
         }
 
+        [TestCase(0.08f, 1f)]
+        [TestCase(0.5f, 1f)]
+        [TestCase(0.92f, 1f)]
+        [TestCase(0.08f, 1.75f)]
+        [TestCase(0.5f, 1.75f)]
+        [TestCase(0.92f, 1.75f)]
+        public void TogglePopup_ShortCanvasAtDifferentScales_KeepsListAndFooterOnscreen(
+            float position,
+            float scale
+        )
+        {
+            RectTransform canvas = (RectTransform)view.transform;
+            canvas.sizeDelta = new Vector2(1000, 400);
+            view.ModManager.Filters.SetOptions(
+                null,
+                Enumerable.Range(0, 40).Select(index => "Category " + index.ToString("D2"))
+            );
+            MultiSelectDropdown picker = view
+                .ModManager.Filters.GetComponentsInChildren<MultiSelectDropdown>()
+                .Single(item => item.name == "IncludeCategories");
+            Canvas.ForceUpdateCanvases();
+            RectTransform field = (RectTransform)picker.transform;
+            field.localScale = Vector3.one * scale;
+            field.position = canvas.TransformPoint(
+                new Vector3(0, Mathf.Lerp(canvas.rect.yMin, canvas.rect.yMax, position), 0)
+            );
+
+            picker.GetComponent<Button>().onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+
+            RectTransform popup = (RectTransform)
+                picker.GetComponentsInChildren<Canvas>().Single().transform;
+            Rect bounds = BoundsIn(canvas, popup);
+            Assert.That(bounds.xMin, Is.GreaterThanOrEqualTo(canvas.rect.xMin));
+            Assert.That(bounds.xMax, Is.LessThanOrEqualTo(canvas.rect.xMax));
+            Assert.That(bounds.yMin, Is.GreaterThanOrEqualTo(canvas.rect.yMin));
+            Assert.That(bounds.yMax, Is.LessThanOrEqualTo(canvas.rect.yMax));
+            ScrollAreaView scroll = picker.GetComponentInChildren<ScrollAreaView>();
+            Assert.That(scroll.ViewportHeight, Is.GreaterThanOrEqualTo(32));
+            Button clear = picker
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ClearSelection");
+            Rect footer = BoundsIn(popup, (RectTransform)clear.transform);
+            Assert.That(footer.yMin, Is.GreaterThanOrEqualTo(popup.rect.yMin));
+            Assert.That(footer.yMax, Is.LessThanOrEqualTo(popup.rect.yMax));
+        }
+
+        [Test]
+        public void TogglePopup_CanvasShrinksWhileOpen_RefitsList()
+        {
+            RectTransform canvas = (RectTransform)view.transform;
+            view.ModManager.Filters.SetOptions(
+                null,
+                Enumerable.Range(0, 40).Select(index => "Category " + index.ToString("D2"))
+            );
+            MultiSelectDropdown picker = view
+                .ModManager.Filters.GetComponentsInChildren<MultiSelectDropdown>()
+                .Single(item => item.name == "IncludeCategories");
+            picker.GetComponent<Button>().onClick.Invoke();
+
+            canvas.sizeDelta = new Vector2(1000, 400);
+            Canvas.ForceUpdateCanvases();
+
+            RectTransform popup = (RectTransform)
+                picker.GetComponentsInChildren<Canvas>().Single().transform;
+            Rect bounds = BoundsIn(canvas, popup);
+            Assert.That(bounds.yMin, Is.GreaterThanOrEqualTo(canvas.rect.yMin));
+            Assert.That(bounds.yMax, Is.LessThanOrEqualTo(canvas.rect.yMax));
+        }
+
         [Test]
         public void Read_InstallationOptionMovesToFirstPosition_KeepsItsMeaningAndActiveCount()
         {

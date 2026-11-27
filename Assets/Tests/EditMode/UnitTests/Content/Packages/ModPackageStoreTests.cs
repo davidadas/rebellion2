@@ -42,6 +42,66 @@ namespace Rebellion.Tests.Content.Packages
                 Directory.Delete(folder, true);
         }
 
+        [TestCase("<ContentPack />")]
+        [TestCase(
+            "<ContentPack xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\" />"
+        )]
+        public void GetInstalled_UnreadableLocalManifest_KeepsOtherPackagesAvailable(string xml)
+        {
+            string root = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            string invalid = Path.Combine(root, "Broken");
+            string valid = Path.Combine(root, "Valid");
+            Directory.CreateDirectory(invalid);
+            Directory.CreateDirectory(valid);
+            File.WriteAllText(Path.Combine(invalid, "pack.xml"), xml);
+            File.WriteAllText(
+                Path.Combine(valid, "pack.xml"),
+                "<ContentPack><ID>valid</ID><Version>1.0.0</Version><DisplayName>Valid</DisplayName></ContentPack>"
+            );
+
+            var installed = store.GetInstalled();
+
+            Assert.That(installed.Count, Is.EqualTo(2));
+            Assert.That(
+                installed.Single(item => item.Name == "Broken").Description,
+                Does.Contain("could not be read")
+            );
+            Assert.That(
+                installed.Single(item => item.Name == "Valid").Content.Single().ID,
+                Is.EqualTo("valid")
+            );
+        }
+
+        [Test]
+        public void GetCompatibilityIssue_ManifestBecomesNull_ReturnsIssue()
+        {
+            string root = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            string local = Path.Combine(root, "Edited");
+            Directory.CreateDirectory(local);
+            File.WriteAllText(
+                Path.Combine(local, "pack.xml"),
+                "<ContentPack xmlns:xsi=\"http://www.w3.org/2001/XMLSchema-instance\" xsi:nil=\"true\" />"
+            );
+            var package = new InstalledModPackage
+            {
+                Content = new[]
+                {
+                    new InstalledModContent
+                    {
+                        Folder = "Edited",
+                        ID = "edited",
+                        Version = "1.0.0",
+                        IsPack = true,
+                    },
+                },
+            };
+
+            Assert.That(
+                store.GetCompatibilityIssue(package, System.Array.Empty<ContentPackDefinition>()),
+                Is.Not.Empty
+            );
+        }
+
         [Test]
         public async Task RecoverInterruptedInstallations_UnchangedReceiptDuringDependencyRepair_RestoresPreviousFilesAsync()
         {

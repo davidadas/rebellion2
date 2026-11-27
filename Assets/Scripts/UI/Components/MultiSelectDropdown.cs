@@ -166,6 +166,7 @@ public sealed class MultiSelectDropdown : MonoBehaviour
         popupCanvas.sortingLayerID = root.sortingLayerID;
         popup.gameObject.SetActive(true);
         RenderRows();
+        Canvas.willRenderCanvases += RefitPopup;
         scroll.SetContentHeight(options.Length * _rowHeight, true);
         CreateBlocker(root, popupCanvas.sortingOrder - 1);
         if (Rows.Count > 0 && EventSystem.current != null)
@@ -177,15 +178,9 @@ public sealed class MultiSelectDropdown : MonoBehaviour
     /// </summary>
     private void RenderRows()
     {
-        int width = Mathf.RoundToInt(((RectTransform)transform).rect.width);
-        int height = Mathf.Min(options.Length, _visibleRows) * _rowHeight + 48;
-        UILayout.SetSourceRect(
-            popup,
-            0,
-            Mathf.RoundToInt(((RectTransform)transform).rect.height) + 4,
-            width,
-            height
-        );
+        FitPopup();
+        int width = Mathf.RoundToInt(popup.rect.width);
+        int height = Mathf.RoundToInt(popup.rect.height);
         UILayout.SetSourceRect((RectTransform)scroll.transform, 8, 8, width - 16, height - 48);
         UILayout.SetSourceRect((RectTransform)clear.transform, 8, height - 36, width - 16, 28);
         scroll.SetContentHeight(options.Length * _rowHeight);
@@ -226,10 +221,57 @@ public sealed class MultiSelectDropdown : MonoBehaviour
             }
         );
         clear.interactable = selected.Count > 0;
+    }
+
+    /// <summary>
+    /// Fits the popup above or below its field, shortening its viewport when neither side fits.
+    /// </summary>
+    /// <returns>Whether the popup's position or size changed.</returns>
+    private bool FitPopup()
+    {
+        RectTransform field = (RectTransform)transform;
         RectTransform canvas = (RectTransform)GetComponentInParent<Canvas>().rootCanvas.transform;
-        Vector3 bottom = canvas.InverseTransformPoint(popup.TransformPoint(popup.rect.min));
-        if (bottom.y < canvas.rect.yMin + 8)
-            UILayout.SetSourceRect(popup, 0, -height - 4, width, height);
+        Vector3 minimum = field.InverseTransformPoint(
+            canvas.TransformPoint(new Vector3(canvas.rect.xMin + 8, canvas.rect.yMin + 8, 0))
+        );
+        Vector3 maximum = field.InverseTransformPoint(
+            canvas.TransformPoint(new Vector3(canvas.rect.xMax - 8, canvas.rect.yMax - 8, 0))
+        );
+        float below = Mathf.Max(0, field.rect.yMin - 4 - minimum.y);
+        float above = Mathf.Max(0, maximum.y - field.rect.yMax - 4);
+        int preferred = Mathf.Min(options.Length, _visibleRows) * _rowHeight + 48;
+        bool opensBelow = preferred <= below || (preferred > above && below >= above);
+        int height = Mathf.Min(preferred, Mathf.FloorToInt(opensBelow ? below : above));
+        if (height < Mathf.Min(preferred, _rowHeight + 48))
+            height = Mathf.Min(preferred, Mathf.FloorToInt(maximum.y - minimum.y));
+        int width = Mathf.Min(
+            Mathf.RoundToInt(field.rect.width),
+            Mathf.FloorToInt(maximum.x - minimum.x)
+        );
+        float left = Mathf.Clamp(field.rect.xMin, minimum.x, maximum.x - width);
+        float top = Mathf.Clamp(
+            opensBelow ? field.rect.yMin - 4 : field.rect.yMax + 4 + height,
+            minimum.y + height,
+            maximum.y
+        );
+        int x = Mathf.RoundToInt(left - field.rect.xMin);
+        int y = Mathf.RoundToInt(field.rect.yMax - top);
+        if (
+            popup.anchoredPosition == new Vector2(x, -y)
+            && popup.rect.size == new Vector2(width, height)
+        )
+            return false;
+        UILayout.SetSourceRect(popup, x, y, width, height);
+        return true;
+    }
+
+    /// <summary>
+    /// Refits the open list after its containing layout has finished moving or scaling controls.
+    /// </summary>
+    private void RefitPopup()
+    {
+        if (IsExpanded && FitPopup())
+            RenderRows();
     }
 
     /// <summary>
@@ -343,6 +385,7 @@ public sealed class MultiSelectDropdown : MonoBehaviour
     /// </summary>
     private void Hide()
     {
+        Canvas.willRenderCanvases -= RefitPopup;
         bool expanded = IsExpanded;
         if (popup != null)
             popup.gameObject.SetActive(false);

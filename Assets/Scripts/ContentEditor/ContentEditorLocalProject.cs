@@ -59,6 +59,7 @@ internal sealed class ContentEditorLocalProject
         catch (Exception exception)
             when (exception
                     is IOException
+                        or InvalidDataException
                         or UnauthorizedAccessException
                         or ArgumentException
                         or XmlException

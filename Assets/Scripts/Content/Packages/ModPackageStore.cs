@@ -119,6 +119,7 @@ public sealed class ModPackageStore
                 catch (Exception exception)
                     when (exception
                             is IOException
+                                or InvalidDataException
                                 or InvalidOperationException
                                 or System.Xml.XmlException
                                 or FormatException
@@ -191,6 +192,7 @@ public sealed class ModPackageStore
             catch (Exception exception)
                 when (exception
                         is IOException
+                            or InvalidDataException
                             or InvalidOperationException
                             or System.Xml.XmlException
                             or ArgumentException

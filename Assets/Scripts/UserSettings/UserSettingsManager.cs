@@ -365,12 +365,12 @@ public sealed class UserSettingsManager
     /// Reads authoritative settings under the publication lock, preserving invalid files before runtime recovery.
     /// </summary>
     /// <param name="path">The shared settings file.</param>
-    /// <param name="fallback">The runtime snapshot for an invalid file, or null to reject the update.</param>
+    /// <param name="fallback">The runtime snapshot for a missing or invalid file, or null to reject invalid updates.</param>
     /// <returns>The normalized settings.</returns>
     private static UserSettings ReadSettingsForUpdate(string path, UserSettings fallback = null)
     {
         if (!File.Exists(path))
-            return CreateDefaults();
+            return fallback ?? CreateDefaults();
         UserSettings settings;
         try
         {

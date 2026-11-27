@@ -31,40 +31,45 @@ internal static class ContentEditorArtworkCutGenerator
             || crop.yMax > 1
         )
             throw new ArgumentException("Choose a crop inside the source image.");
-        Texture2D filteredSource = new(source.width, source.height, TextureFormat.RGBAFloat, true)
-        {
-            wrapMode = TextureWrapMode.Clamp,
-        };
+        int left = Mathf.FloorToInt(crop.xMin * source.width);
+        int bottom = Mathf.FloorToInt(crop.yMin * source.height);
+        int width = Mathf.CeilToInt(crop.xMax * source.width) - left;
+        int height = Mathf.CeilToInt(crop.yMax * source.height) - bottom;
+        Color[] input = Array.ConvertAll(
+            source.GetPixels(left, bottom, width, height),
+            Premultiply
+        );
+        Color[] horizontal = new Color[size.x * height];
+        float cropLeft = crop.xMin * source.width - left;
+        float cropBottom = crop.yMin * source.height - bottom;
+        float stepX = crop.width * source.width / size.x;
+        float stepY = crop.height * source.height / size.y;
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < size.x; x++)
+            horizontal[y * size.x + x] = SampleCropLine(
+                input,
+                y * width,
+                1,
+                width,
+                cropLeft + x * stepX,
+                cropLeft + (x + 1) * stepX
+            );
+        Color[] pixels = new Color[size.x * size.y];
+        for (int y = 0; y < size.y; y++)
+        for (int x = 0; x < size.x; x++)
+            pixels[y * size.x + x] = Unpremultiply(
+                SampleCropLine(
+                    horizontal,
+                    x,
+                    size.x,
+                    height,
+                    cropBottom + y * stepY,
+                    cropBottom + (y + 1) * stepY
+                )
+            );
         Texture2D output = new(size.x, size.y, TextureFormat.RGBA32, false);
         try
         {
-            filteredSource.SetPixels(Array.ConvertAll(source.GetPixels(), Premultiply));
-            filteredSource.Apply(true, false);
-            float reduction = Mathf.Max(
-                source.width * crop.width / size.x,
-                source.height * crop.height / size.y
-            );
-            float level = Mathf.Clamp(
-                Mathf.Log(Mathf.Max(1, reduction), 2),
-                0,
-                filteredSource.mipmapCount - 1
-            );
-            int lower = Mathf.FloorToInt(level);
-            int upper = Mathf.Min(lower + 1, filteredSource.mipmapCount - 1);
-            Color[] pixels = new Color[size.x * size.y];
-            for (int y = 0; y < size.y; y++)
-            for (int x = 0; x < size.x; x++)
-            {
-                float u = crop.x + (x + 0.5f) * crop.width / size.x;
-                float v = crop.y + (y + 0.5f) * crop.height / size.y;
-                pixels[y * size.x + x] = Unpremultiply(
-                    Color.Lerp(
-                        filteredSource.GetPixelBilinear(u, v, lower),
-                        filteredSource.GetPixelBilinear(u, v, upper),
-                        level - lower
-                    )
-                );
-            }
             output.SetPixels(pixels);
             output.Apply(false, false);
             return ImageConversion.EncodeToPNG(output);
@@ -72,7 +77,6 @@ internal static class ContentEditorArtworkCutGenerator
         finally
         {
             DestroyTexture(output);
-            DestroyTexture(filteredSource);
         }
     }
 
@@ -441,6 +445,46 @@ internal static class ContentEditorArtworkCutGenerator
         );
         Color filtered = Color.LerpUnclamped(lower, upper, y - bottom / width);
         return Unpremultiply(filtered);
+    }
+
+    /// <summary>
+    /// Filters a cropped pixel footprint without sampling beyond its intersecting source cells.
+    /// </summary>
+    /// <param name="pixels">The premultiplied source samples.</param>
+    /// <param name="offset">The first sample's array index.</param>
+    /// <param name="stride">The distance between adjacent samples.</param>
+    /// <param name="length">The number of samples in the cropped line.</param>
+    /// <param name="start">The footprint's first pixel edge.</param>
+    /// <param name="end">The footprint's last pixel edge.</param>
+    /// <returns>The area average when shrinking, or an interpolated sample when enlarging.</returns>
+    private static Color SampleCropLine(
+        Color[] pixels,
+        int offset,
+        int stride,
+        int length,
+        float start,
+        float end
+    )
+    {
+        if (end - start < 1)
+        {
+            float center = (start + end) * 0.5f - 0.5f;
+            int first = Mathf.FloorToInt(center);
+            return Color.Lerp(
+                pixels[offset + Mathf.Clamp(first, 0, length - 1) * stride],
+                pixels[offset + Mathf.Clamp(first + 1, 0, length - 1) * stride],
+                center - first
+            );
+        }
+        Color sum = Color.clear;
+        float total = 0;
+        for (int index = Mathf.FloorToInt(start); index < Mathf.CeilToInt(end); index++)
+        {
+            float weight = Mathf.Min(end, index + 1) - Mathf.Max(start, index);
+            sum += pixels[offset + Mathf.Clamp(index, 0, length - 1) * stride] * weight;
+            total += weight;
+        }
+        return sum / total;
     }
 
     /// <summary>

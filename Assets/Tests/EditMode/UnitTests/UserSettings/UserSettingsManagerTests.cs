@@ -59,8 +59,11 @@ namespace Rebellion.Tests.Managers
             });
         }
 
-        [Test]
-        public void Save_SettingsDamagedAfterLoading_PreservesLoadedContentAndAgreement()
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Save_SettingsUnavailableAfterLoading_PreservesLoadedContentAndAgreement(
+            bool deleted
+        )
         {
             WithSettingsFile(path =>
             {
@@ -72,7 +75,10 @@ namespace Rebellion.Tests.Managers
                 PlayerAgreement agreement = new("Agreement", "Privacy");
                 manager.AcceptAgreement(agreement);
                 const string invalid = "{broken";
-                File.WriteAllText(path, invalid);
+                if (deleted)
+                    File.Delete(path);
+                else
+                    File.WriteAllText(path, invalid);
 
                 manager.Save();
 
@@ -82,10 +88,13 @@ namespace Rebellion.Tests.Managers
                 Assert.That(saved.Content.ActiveScenarioID, Is.EqualTo("LoadedScenario"));
                 Assert.That(saved.Content.DisabledModIDs, Is.EqualTo(new[] { "Addon" }));
                 Assert.That(agreement.IsAccepted(saved), Is.True);
-                string backup = Directory
-                    .GetFiles(Path.GetDirectoryName(path), "user-settings.json.corrupt-*")
-                    .Single();
-                Assert.That(File.ReadAllText(backup), Is.EqualTo(invalid));
+                string[] backups = Directory.GetFiles(
+                    Path.GetDirectoryName(path),
+                    "user-settings.json.corrupt-*"
+                );
+                Assert.That(backups.Length, Is.EqualTo(deleted ? 0 : 1));
+                if (!deleted)
+                    Assert.That(File.ReadAllText(backups.Single()), Is.EqualTo(invalid));
             });
         }
 
