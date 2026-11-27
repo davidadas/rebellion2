@@ -13,6 +13,293 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RenderConnection_PublishingDialogIsHidden_UpdatesConnectionLabel(bool connected)
+        {
+            view.Publishing.gameObject.SetActive(false);
+
+            view.Publishing.RenderConnection(connected ? new[] { "Team" } : Array.Empty<string>());
+
+            Assert.That(view.Publishing.IsOpen, Is.False);
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ThunderstoreConnection")
+                    .GetComponentInChildren<TMP_Text>(true)
+                    .text,
+                Is.EqualTo(connected ? "Thunderstore connected" : "Connect Thunderstore…")
+            );
+        }
+
+        [Test]
+        public void SetBusy_ConnectionDialogIsHidden_KeepsCancelLabelAvailable()
+        {
+            Assert.DoesNotThrow(() => view.Connection.SetBusy(true));
+            Assert.That(
+                view.Connection.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "CloseConnection")
+                    .GetComponentInChildren<TMP_Text>(true)
+                    .text,
+                Is.EqualTo("Cancel")
+            );
+        }
+
+        [Test]
+        public void ShowProjects_ShortWindowAtHighZoom_KeepsRowsUsableInScrollablePage()
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(2000, 636);
+            view.ApplySettings(new ContentEditorSettings { Zoom = 1.75f });
+            view.ShowProjects();
+            ScrollAreaLayout[] lists = view.Projects.GetComponentsInChildren<ScrollAreaLayout>(
+                true
+            );
+            Assert.That(
+                lists.Min(list => list.ScrollArea.ViewportHeight),
+                Is.GreaterThanOrEqualTo(ContentEditorProjectRowView.Height)
+            );
+            ScrollAreaLayout page = view.GetComponentsInChildren<ScrollAreaLayout>(true)
+                .Single(list => list.name == "ProjectsPage");
+            Assert.That(
+                page.ScrollArea.ContentRoot.rect.height,
+                Is.GreaterThan(page.ScrollArea.ViewportHeight)
+            );
+        }
+
+        [Test]
+        public void HandleKeyboardShortcut_CropIsOpen_MovesSelectionWithArrowKeys()
+        {
+            string path = System.IO.Path.Combine(folder, "crop.png");
+            Texture2D source = new(128, 64);
+            try
+            {
+                System.IO.File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            view.Publishing.ShowIconCrop(path, _ => { });
+            RectTransform selection = view
+                .Publishing.ImageCrop.GetComponentsInChildren<RectTransform>()
+                .Single(rect => rect.name == "Selection");
+            float previous = selection.anchorMin.x;
+            Assert.That(
+                view.HandleKeyboardShortcut(
+                    new Event { type = EventType.KeyDown, keyCode = KeyCode.RightArrow }
+                ),
+                Is.True
+            );
+            Assert.That(selection.anchorMin.x, Is.GreaterThan(previous));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Show_ShortWindow_KeepsDialogActionsInsideWindow(bool crop)
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(2000, 636);
+            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            if (crop)
+            {
+                string path = System.IO.Path.Combine(folder, "crop.png");
+                Texture2D image = new(128, 64);
+                try
+                {
+                    System.IO.File.WriteAllBytes(path, image.EncodeToPNG());
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(image);
+                }
+                view.Publishing.ShowIconCrop(path, _ => { });
+            }
+            view.Connection.Show();
+            view.Connection.RenderConnection(Array.Empty<string>());
+            Canvas.ForceUpdateCanvases();
+            foreach (
+                Button button in view.GetComponentsInChildren<Button>()
+                    .Where(button =>
+                        button.name == "ClosePublishing"
+                        || button.name == "ContinuePublishing"
+                        || button.name == "ConnectThunderstore"
+                        || button.name == "CloseConnection"
+                        || button.name == "CancelCrop"
+                        || button.name == "ApplyCrop"
+                    )
+            )
+            {
+                var corners = new Vector3[4];
+                ((RectTransform)button.transform).GetWorldCorners(corners);
+                Assert.That(
+                    corners.All(corner =>
+                        ((RectTransform)view.transform).rect.Contains(
+                            view.transform.InverseTransformPoint(corner)
+                        )
+                    ),
+                    Is.True,
+                    button.name
+                );
+            }
+        }
+
+        [Test]
+        public void ReadPackageID_IncompleteConnectedDraft_KeepsProjectAvailableWithoutLink()
+        {
+            ContentEditorPublishingStorage.Save(
+                project,
+                new ContentEditorPublishingSettings { TeamName = "Team", PackageName = "My Pack" }
+            );
+            ContentEditorLocalProject local = ContentEditorLocalProject.Read(project.PackRootPath);
+            Assert.That(local.Error, Is.Null);
+            Assert.That(local.PackageID, Is.Null);
+        }
+
+        [Test]
+        public void ShowProjects_LocalProjectRow_FillsItsColumnAndShowsVersion()
+        {
+            view.ShowProjects();
+            view.Projects.RenderLocal(new[] { ContentEditorLocalProject.FromProject(project) });
+            Canvas.ForceUpdateCanvases();
+            ScrollAreaLayout scroll = view
+                .Projects.GetComponentsInChildren<ScrollAreaLayout>()
+                .Single(item => item.name == "LocalProjects");
+            ContentEditorProjectRowView row =
+                scroll.GetComponentInChildren<ContentEditorProjectRowView>();
+
+            Assert.That(((RectTransform)row.transform).rect.width, Is.GreaterThan(480));
+            Assert.That(
+                ((RectTransform)row.transform).rect.width,
+                Is.EqualTo(scroll.ScrollArea.ViewportWidth).Within(1)
+            );
+            Assert.That(
+                row.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "summary")
+                    .isTextOverflowing,
+                Is.False
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ZoomContent_ModPageIsSelected_PreservesPageAndOpenProjectDraft(bool library)
+        {
+            ContentEditorPage page = library ? ContentEditorPage.Library : ContentEditorPage.Browse;
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            view.ShowField(officer.GetField("EncyclopediaDescription"), null);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == "EncyclopediaDescription");
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("Uncommitted project draft");
+            view.SetWorkspaceNavigation(page);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), library, 0, true);
+
+            view.ZoomContent(-0.1f);
+
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.True);
+            Assert.That(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == page.ToString()),
+                Is.True
+            );
+            view.ShowProjects();
+            view.EditCurrentProject();
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.False);
+            Assert.That(input.gameObject.activeInHierarchy, Is.True);
+            Assert.That(input.text, Is.EqualTo("Uncommitted project draft"));
+        }
+
+        [Test]
+        public void Render_ManyCategories_SelectsMultipleKeysWithoutClosingDropdown()
+        {
+            view.SetWorkspaceNavigation(ContentEditorPage.Browse);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), false, 0, true);
+            view.ModManager.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "filterButton")
+                .onClick.Invoke();
+            MultiSelectDropdown picker = view
+                .ModManager.GetComponentsInChildren<MultiSelectDropdown>()
+                .Single(item => item.name == "IncludeCategories");
+            var choices = Enumerable
+                .Range(0, 40)
+                .ToDictionary(index => "key-" + index, index => "Category " + index.ToString("D2"));
+            string[] selected = null;
+            picker.Changed += () => selected = picker.SelectedValues.ToArray();
+            picker.SetOptions(choices, "Any category");
+            picker.GetComponent<Button>().onClick.Invoke();
+            Toggle[] options = picker.GetComponentsInChildren<Toggle>();
+
+            options[1].isOn = true;
+            options[35].isOn = true;
+
+            CollectionAssert.AreEquivalent(new[] { "key-1", "key-35" }, selected);
+            Assert.That(picker.IsExpanded, Is.True);
+        }
+
+        [TestCase("ContinuePublishing")]
+        [TestCase("ReleaseStep")]
+        [TestCase("ReviewStep")]
+        public void Show_PublishingDraftHasMissingRequirements_PreventsForwardNavigation(
+            string buttonName
+        )
+        {
+            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            Button advance = view
+                .Publishing.GetComponentsInChildren<Button>()
+                .Single(button => button.name == buttonName);
+
+            advance.onClick.Invoke();
+
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_InputField>()
+                    .Any(input => input.name == "PublishingPackageName"),
+                Is.True
+            );
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "PublishingStatus")
+                    .text,
+                Does.Contain("Package name")
+            );
+        }
+
+        [Test]
+        public void Show_UnfinishedPublishingDraft_ReopensSavedFieldsWithoutRequiringReleaseValidity()
+        {
+            var settings = new ContentEditorPublishingSettings
+            {
+                PackageName = "",
+                Description = "An unfinished listing",
+                Readme = "Notes in progress",
+                Dependencies = "Example-Required-1.2.3",
+                TeamName = "ExampleTeam",
+            };
+            ContentEditorPublishingStorage.Save(project, settings);
+            view.Publishing.Show(project.Definition, ContentEditorPublishingStorage.Load(project));
+            view
+                .Publishing.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "PublishingDescription")
+                .text = "Edited unfinished listing";
+            ContentEditorPublishingStorage.Save(project, view.Publishing.ReadSettings());
+            view.Publishing.Hide();
+
+            view.Publishing.Show(project.Definition, ContentEditorPublishingStorage.Load(project));
+
+            ContentEditorPublishingSettings reopened = view.Publishing.ReadSettings();
+            Assert.That(reopened.PackageName, Is.Empty);
+            Assert.That(reopened.Description, Is.EqualTo("Edited unfinished listing"));
+            Assert.That(reopened.Readme, Is.EqualTo("Notes in progress"));
+            CollectionAssert.AreEqual(
+                new[] { "Example-Required-1.2.3" },
+                reopened.GetDependencies()
+            );
+            Assert.That(reopened.TeamName, Is.EqualTo("ExampleTeam"));
+        }
+
         [Test]
         public void Render_ChangingSearch_ReusesTheCurrentNavigationTree()
         {

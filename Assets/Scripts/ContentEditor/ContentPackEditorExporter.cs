@@ -33,14 +33,9 @@ internal static class ContentPackEditorExporter
         string temporaryFile = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await WriteSnapshotAsync(project, staging, cancellationToken);
-            using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
-                project.ContentRootPath,
-                staging
-            );
-            ContentPackEditorStorage.Save(snapshot);
-            IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
-                snapshot,
+            IReadOnlyList<string> warnings = await WriteValidatedSnapshotAsync(
+                project,
+                staging,
                 progress,
                 cancellationToken
             );
@@ -49,9 +44,7 @@ internal static class ContentPackEditorExporter
             await WriteArchiveContentsAsync(staging, temporaryFile, cancellationToken);
             cancellationToken.ThrowIfCancellationRequested();
             CommitArchive(temporaryFile, destination);
-            return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
-                ? warnings
-                : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
+            return warnings;
         }
         finally
         {
@@ -59,6 +52,37 @@ internal static class ContentPackEditorExporter
                 File.Delete(temporaryFile);
             Directory.Delete(staging, true);
         }
+    }
+
+    /// <summary>
+    /// Freezes and validates a project for archive formats that share the same content checks.
+    /// </summary>
+    /// <param name="project">The editable source project.</param>
+    /// <param name="staging">The owned, empty staging directory.</param>
+    /// <param name="progress">The validation progress callback.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The non-blocking authoring warnings.</returns>
+    internal static async Task<IReadOnlyList<string>> WriteValidatedSnapshotAsync(
+        ContentPackEditorProject project,
+        string staging,
+        Action<string> progress,
+        CancellationToken cancellationToken
+    )
+    {
+        await WriteSnapshotAsync(project, staging, cancellationToken);
+        using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+            project.ContentRootPath,
+            staging
+        );
+        ContentPackEditorStorage.Save(snapshot);
+        IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
+            snapshot,
+            progress,
+            cancellationToken
+        );
+        return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
+            ? warnings
+            : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
     }
 
     /// <summary>
@@ -189,6 +213,12 @@ internal static class ContentPackEditorExporter
             .Where(source =>
                 !source.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
                 && !source.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
+                && !Path.GetRelativePath(root, source)
+                    .Split(Path.DirectorySeparatorChar)[0]
+                    .Equals(
+                        ContentEditorPublishingStorage.DirectoryName,
+                        StringComparison.OrdinalIgnoreCase
+                    )
                 && !Path.GetRelativePath(root, source)
                     .Replace('\\', '/')
                     .StartsWith(

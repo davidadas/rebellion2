@@ -113,3 +113,6 @@ Assets/Art/Models/MainMenu/
 
 # Workflow validation dependencies
 .github/scripts/node_modules/
+
+# Local mod downloads and installation records.
+.mod-manager/

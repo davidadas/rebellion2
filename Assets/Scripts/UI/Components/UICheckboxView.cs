@@ -1,12 +1,13 @@
 using System;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /// <summary>
 /// Presents a Boolean choice with an authored label and check mark.
 /// </summary>
-public sealed class UICheckboxView : MonoBehaviour
+public sealed class UICheckboxView : MonoBehaviour, ISelectHandler
 {
     [SerializeField]
     private Toggle toggle;
@@ -31,6 +32,13 @@ public sealed class UICheckboxView : MonoBehaviour
     public bool IsChecked => toggle?.isOn == true;
 
     public event Action<bool> ValueChanged;
+    public event Action Selected;
+
+    /// <summary>
+    /// Reports keyboard focus so a containing list can reveal the selected choice.
+    /// </summary>
+    /// <param name="eventData">The selection event.</param>
+    public void OnSelect(BaseEventData eventData) => Selected?.Invoke();
 
     /// <summary>
     /// Verifies the authored hierarchy and binds the toggle.

@@ -117,7 +117,7 @@ public static class ContentPackEditorBuild
                 Directory.Delete(embeddedPath, true);
             Directory.Move(builtPath, embeddedPath);
 #if UNITY_STANDALONE_OSX
-            UnityEditor.OSXStandalone.MacOSCodeSigning.CodeSignAppBundle(gamePlayerPath);
+            MacPlayerSigning.SignAppBundle(gamePlayerPath);
 #endif
             return embeddedPath;
         }
@@ -185,10 +185,10 @@ public static class ContentPackEditorBuild
                 new[] { ContentPackEditorPrefabBuilder.ScenePath },
                 new[] { _editorScriptingDefine }
             );
-            CopyNativeDialogNotices(target, builtPath);
+            CopyThirdPartyNotices(target, builtPath);
 #if UNITY_STANDALONE_OSX
             if (target == BuildTarget.StandaloneOSX)
-                UnityEditor.OSXStandalone.MacOSCodeSigning.CodeSignAppBundle(builtPath);
+                MacPlayerSigning.SignAppBundle(builtPath);
 #endif
             return builtPath;
         }
@@ -268,11 +268,11 @@ public static class ContentPackEditorBuild
     }
 
     /// <summary>
-    /// Includes the native dialog dependency's license and version notice with the editor player.
+    /// Includes dependency and instructional artwork notices with the editor player.
     /// </summary>
     /// <param name="target">The desktop platform.</param>
     /// <param name="playerPath">The completed editor artifact.</param>
-    private static void CopyNativeDialogNotices(BuildTarget target, string playerPath)
+    private static void CopyThirdPartyNotices(BuildTarget target, string playerPath)
     {
         string dataPath =
             target == BuildTarget.StandaloneOSX
@@ -289,6 +289,17 @@ public static class ContentPackEditorBuild
             File.ReadAllText(Path.Combine(sourcePath, "NOTICE.txt"))
                 + Environment.NewLine
                 + File.ReadAllText(Path.Combine(sourcePath, "LICENSE.txt"))
+        );
+        File.Copy(
+            Path.Combine(
+                Application.dataPath,
+                "Art",
+                "ContentEditor",
+                "Thunderstore",
+                "NOTICE.txt"
+            ),
+            Path.Combine(noticesPath, "ThunderstoreScreenshots.txt"),
+            true
         );
     }
 

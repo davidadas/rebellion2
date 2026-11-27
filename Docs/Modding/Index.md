@@ -287,6 +287,29 @@ also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a l
 
 ## Sharing a mod
 
+### Community mods
+
+Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
+choose the default pack or enable add-ons for the next game startup. **Install from file…**
+accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
+
+### Publishing a content pack
+
+Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
+description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
+base pack, under **Dependencies**.
+**Save draft** retains unfinished work; **Export ZIP…** creates a package for manual upload.
+
+For direct publishing, click the Thunderstore connection link. Create a service account in
+[your team's settings](https://thunderstore.io/settings/teams/) and paste its token. The token is
+stored in the operating system's credential store, never in the project or export. Linux requires
+libsecret and a running Secret Service. Click the connection link after restarting to reconnect.
+
+Select **Review release**, then **Publish release**. Every update needs a new content-pack version.
+If submission times out, check the package's Thunderstore page before retrying.
+
+### Sharing an add-on mod
+
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that
 folder directly into `Mods`. The installer, launcher, and application and content updaters do not
 overwrite `Mods`.
