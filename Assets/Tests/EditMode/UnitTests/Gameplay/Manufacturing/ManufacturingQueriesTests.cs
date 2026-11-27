@@ -481,18 +481,11 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(canAccept);
         }
 
-        [TestCase(false, 5, 0.89)]
-        [TestCase(true, 5, 1.0)]
-        [TestCase(false, 100, 0.0)]
-        public void GetProductionCycleIncrement_BlockadedPlanet_AppliesOrbitalPenalty(
-            bool hasIonCannon,
-            int capitalShipPenalty,
-            double expected
-        )
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetProductionCycleIncrement_BlockadedPlanet_HaltsProduction(bool hasIonCannon)
         {
             GameRoot game = CreateOrderTestGame();
-            game.Config.Blockade.CapitalShipProductionPenaltyPercent = capitalShipPenalty;
-            game.Config.Blockade.FighterProductionPenaltyPercent = 2;
 
             Planet planet = new()
             {
@@ -546,10 +539,7 @@ namespace Rebellion.Tests.Gameplay
                     }
                 );
 
-            Assert.That(
-                ManufacturingQueries.GetProductionCycleIncrement(game, planet),
-                Is.EqualTo(expected)
-            );
+            Assert.That(ManufacturingQueries.GetProductionCycleIncrement(game, planet), Is.Zero);
         }
 
         [Test]

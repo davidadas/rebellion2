@@ -23,6 +23,50 @@ namespace Rebellion.Tests.Game
         }
 
         [Test]
+        public void Deserialize_LegacyBlockadeRules_PreservesWithdrawalPenaltiesWithoutFixedLoss()
+        {
+            const string xml =
+                "<GameConfig><Blockade>"
+                + "<CapitalShipProductionPenaltyPercent>17</CapitalShipProductionPenaltyPercent>"
+                + "<FighterProductionPenaltyPercent>3</FighterProductionPenaltyPercent>"
+                + "<EvacuationLossPercent>25</EvacuationLossPercent>"
+                + "</Blockade></GameConfig>";
+
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(xml);
+
+            Assert.AreEqual(17, config.Blockade.CapitalShipWithdrawalPenaltyPercent);
+            Assert.AreEqual(3, config.Blockade.FighterWithdrawalPenaltyPercent);
+            string saved = SerializationHelper.Serialize(config);
+            StringAssert.DoesNotContain("ProductionPenaltyPercent", saved);
+            StringAssert.DoesNotContain("EvacuationLossPercent", saved);
+            GameConfig loaded = SerializationHelper.Deserialize<GameConfig>(saved);
+            Assert.AreEqual(17, loaded.Blockade.CapitalShipWithdrawalPenaltyPercent);
+            Assert.AreEqual(3, loaded.Blockade.FighterWithdrawalPenaltyPercent);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void MergeRules_LegacyBlockadeOverlay_ReplacesWithdrawalPenalty(bool inherit)
+        {
+            string baseline =
+                "<GameConfig><Blockade>"
+                + "<CapitalShipWithdrawalPenaltyPercent>5</CapitalShipWithdrawalPenaltyPercent>"
+                + "<FighterWithdrawalPenaltyPercent>2</FighterWithdrawalPenaltyPercent>"
+                + "</Blockade></GameConfig>";
+            string overlay =
+                (inherit ? "<GameConfig Inherit=\"true\">" : "<GameConfig>")
+                + "<Blockade><FighterProductionPenaltyPercent>7</FighterProductionPenaltyPercent>"
+                + "</Blockade></GameConfig>";
+
+            GameConfig config = SerializationHelper.Deserialize<GameConfig>(
+                ContentXmlOverrides.MergeRules(baseline, overlay)
+            );
+
+            Assert.AreEqual(5, config.Blockade.CapitalShipWithdrawalPenaltyPercent);
+            Assert.AreEqual(7, config.Blockade.FighterWithdrawalPenaltyPercent);
+        }
+
+        [Test]
         public void CreateCopy_EditingNestedRules_DoesNotChangeSource()
         {
             GameConfig source = CreateConfiguredRules();

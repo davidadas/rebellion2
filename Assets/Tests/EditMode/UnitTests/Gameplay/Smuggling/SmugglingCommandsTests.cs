@@ -145,6 +145,51 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void RefreshPlanet_GarrisonLoadedOntoShip_OnlyCapitalShipSuppressesSmuggling()
+        {
+            SetSupport(15, 85);
+            Regiment regiment = Active(new Regiment { InstanceID = "regiment" });
+            Starfighter fighter = Active(new Starfighter { InstanceID = "fighter" });
+            _game.AttachNode(regiment, _planet);
+            _game.AttachNode(fighter, _planet);
+            Fleet fleet = new Fleet
+            {
+                InstanceID = "fleet",
+                OwnerInstanceID = _controller.InstanceID,
+            };
+            CapitalShip ship = Active(
+                new CapitalShip
+                {
+                    InstanceID = "ship",
+                    StarfighterCapacity = 1,
+                    RegimentCapacity = 1,
+                }
+            );
+            _game.AttachNode(fleet, _planet);
+            _game.AttachNode(ship, fleet);
+            Assert.AreEqual(
+                58,
+                RefreshPlanet().OfType<PlanetStatChangedResult>().Single().NewValue
+            );
+
+            _game.MoveNode(regiment, ship);
+            _game.MoveNode(fighter, ship);
+
+            Assert.AreEqual(
+                65,
+                RefreshPlanet().OfType<PlanetStatChangedResult>().Single().NewValue
+            );
+
+            _game.MoveNode(regiment, _planet);
+            _game.MoveNode(fighter, _planet);
+
+            Assert.AreEqual(
+                58,
+                RefreshPlanet().OfType<PlanetStatChangedResult>().Single().NewValue
+            );
+        }
+
+        [Test]
         public void RefreshPlanet_PlanetDestroyingShipPresent_FullySuppressesSmuggling()
         {
             SetSupport(15, 85);
