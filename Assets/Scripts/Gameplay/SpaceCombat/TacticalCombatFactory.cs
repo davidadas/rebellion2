@@ -178,47 +178,6 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Deploys an admitted roster for local tactical combat.
-        /// </summary>
-        /// <param name="roster">The validated roster captured for this encounter.</param>
-        /// <returns>The detached battle state and its tactical session.</returns>
-        internal (ActiveBattle Battle, TacticalCombatSession Session) Create(
-            EncounterRoster roster
-        ) => CreateCore(roster, null, null, null);
-
-        /// <summary>
-        /// Deploys an admitted roster for synchronized tactical combat.
-        /// </summary>
-        /// <param name="roster">The validated roster captured for this encounter.</param>
-        /// <param name="seed">The authoritative simulation seed.</param>
-        /// <param name="scenerySeed">The separately captured presentation seed.</param>
-        /// <param name="isReplica">Whether the session is a passive view of the host battle.</param>
-        /// <returns>The detached battle state and its configured tactical session.</returns>
-        internal (ActiveBattle Battle, TacticalCombatSession Session) Create(
-            EncounterRoster roster,
-            uint seed,
-            uint scenerySeed,
-            bool isReplica
-        )
-        {
-            if (string.IsNullOrWhiteSpace(_game.LocalPlayerFactionID))
-                throw new InvalidOperationException(
-                    "Network combat requires an admitted local faction."
-                );
-            (ActiveBattle battle, TacticalCombatSession session) = CreateCore(
-                roster,
-                seed,
-                scenerySeed,
-                _game.LocalPlayerFactionID
-            );
-            if (isReplica)
-                session.ConfigureSynchronizedReplica();
-            else
-                session.ConfigureSynchronizedAuthority();
-            return (battle, session);
-        }
-
-        /// <summary>
         /// Rebuilds tactical execution around the saved participant objects and pending work.
         /// </summary>
         /// <param name="battle">The saved encounter.</param>
@@ -396,16 +355,8 @@ namespace Rebellion.Gameplay
         /// Deploys the validated roster and initializes the isolated battle clock.
         /// </summary>
         /// <param name="roster">The validated participants and admission state.</param>
-        /// <param name="seed">The explicit simulation seed, when supplied.</param>
-        /// <param name="scenerySeed">The explicit presentation seed, when supplied.</param>
-        /// <param name="localFactionID">The peer's locally controlled faction, when supplied.</param>
         /// <returns>The detached battle state and its initialized session.</returns>
-        private (ActiveBattle Battle, TacticalCombatSession Session) CreateCore(
-            EncounterRoster roster,
-            uint? seed,
-            uint? scenerySeed,
-            string localFactionID
-        )
+        internal (ActiveBattle Battle, TacticalCombatSession Session) Create(EncounterRoster roster)
         {
             Planet planet = roster.Planet;
             ActiveBattle battle = new()
@@ -455,7 +406,7 @@ namespace Rebellion.Gameplay
             List<TacticalCombatGroup> groups = new();
             TacticalCombatSide[] sides = new TacticalCombatSide[2];
             CombatSide playerSide =
-                roster.Attacker.OwnerID == (localFactionID ?? _game.Summary.PlayerFactionID)
+                roster.Attacker.OwnerID == _game.Summary.PlayerFactionID
                     ? CombatSide.Attacker
                     : CombatSide.Defender;
             for (int side = 0; side < 2; side++)
@@ -519,9 +470,7 @@ namespace Rebellion.Gameplay
                 );
             }
             groups.Sort(CompareGroupRegistration);
-            LinearCongruentialRandomProvider random = seed.HasValue
-                ? new LinearCongruentialRandomProvider(seed.Value)
-                : _createRandom();
+            LinearCongruentialRandomProvider random = _createRandom();
             TacticalCombatSession session = new TacticalCombatSession(
                 battle,
                 groups,
@@ -537,10 +486,7 @@ namespace Rebellion.Gameplay
                 ),
                 new TacticalCombatSceneryRandom(
                     random,
-                    () =>
-                        scenerySeed.HasValue
-                            ? unchecked((int)scenerySeed.Value)
-                            : TacticalCombatSeed.FromClock(_localClock())
+                    () => TacticalCombatSeed.FromClock(_localClock())
                 ),
                 personnelHostInstanceIDs: roster.PersonnelHostIDs
             );

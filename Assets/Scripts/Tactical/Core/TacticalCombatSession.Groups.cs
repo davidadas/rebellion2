@@ -35,7 +35,6 @@ namespace Rebellion.Tactical
         /// <param name="group">The new owner, or null to clear the category.</param>
         public void SetObjectGroup(CombatSide side, int category, TacticalCombatGroup group)
         {
-            RequireSimulationAuthority();
             if (group != null)
             {
                 ValidateGroup(group);
@@ -56,7 +55,6 @@ namespace Rebellion.Tactical
         /// <param name="automated">Whether tactical automation should issue its orders.</param>
         public void SetAutomated(CombatSide side, bool automated)
         {
-            RequireSimulationAuthority();
             GetSide(side).IsAutomated = automated;
             foreach (TacticalCombatGroup group in _groupsByID.Values)
                 if (group.Side == side)
@@ -125,7 +123,6 @@ namespace Rebellion.Tactical
         /// <returns>The newly registered tactical group.</returns>
         public TacticalCombatGroup CreateGroup(IReadOnlyList<CombatUnit> members)
         {
-            RequireSimulationAuthority();
             if (members == null || members.Count == 0)
                 throw new ArgumentException(
                     "A tactical group requires at least one member.",
@@ -443,7 +440,6 @@ namespace Rebellion.Tactical
         /// <param name="group">The commanded group.</param>
         private void ValidateGroup(TacticalCombatGroup group)
         {
-            RequireSimulationAuthority();
             if (
                 group == null
                 || !_groupsByID.TryGetValue(group.ID, out TacticalCombatGroup registered)

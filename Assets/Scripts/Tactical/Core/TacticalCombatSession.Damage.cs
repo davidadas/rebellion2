@@ -20,11 +20,7 @@ namespace Rebellion.Tactical
                 || !_unitsByID.TryGetValue(attackerInstanceID, out CombatUnit attacker)
             )
                 return;
-            if (_synchronizationAuthority)
-                foreach (TacticalCombatSide side in _sides)
-                    ReportFactionDestruction(victim, attacker, side.Side);
-            else
-                ReportFactionDestruction(victim, attacker, PlayerSide);
+            ReportFactionDestruction(victim, attacker, PlayerSide);
         }
 
         /// <summary>
@@ -230,8 +226,6 @@ namespace Rebellion.Tactical
         /// <returns>The rounded sum of its current contributors, without a health or participation filter.</returns>
         private float GetTractorRestraint(CombatUnit target)
         {
-            if (_synchronizationReplica)
-                return target.TractorRestraint;
             float restraint = 0;
             if (_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources))
                 foreach (CombatUnit source in sources.Values)

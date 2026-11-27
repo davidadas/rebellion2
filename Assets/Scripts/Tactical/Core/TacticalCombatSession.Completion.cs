@@ -28,12 +28,6 @@ namespace Rebellion.Tactical
                 )
             )
                 return;
-            if (_synchronizationAuthority)
-            {
-                CombatSide remote =
-                    PlayerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-                AnnounceEnding(remote);
-            }
             AnnounceEnding(PlayerSide);
             AssignSurvivors();
             _completionStarted = true;

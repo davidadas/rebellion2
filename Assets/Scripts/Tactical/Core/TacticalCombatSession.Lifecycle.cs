@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Results;
 
 namespace Rebellion.Tactical
 {
@@ -41,7 +42,6 @@ namespace Rebellion.Tactical
         /// <param name="clock">The wrapping unsigned monotonic playback clock.</param>
         public void ConfigureClockedAdvance(Func<uint> clock)
         {
-            RequireSimulationAuthority();
             if (clock == null)
                 throw new ArgumentNullException(nameof(clock));
             if (_scheduler != null)
@@ -52,13 +52,23 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
+        /// Queues a notification for the player controlling the battle.
+        /// </summary>
+        /// <param name="side">The side addressed by the notification.</param>
+        /// <param name="message">The authored notification identity.</param>
+        internal void EnqueueFactionNotification(CombatSide side, int message)
+        {
+            if (side == PlayerSide)
+                Audio.EnqueueNotification(message);
+        }
+
+        /// <summary>
         /// Advances entry and briefing frame time separately from the explicitly bound battle clock.
         /// Pausing suspends scheduler calls without resetting or stopping its supplied clock.
         /// </summary>
         /// <param name="elapsedMilliseconds">The frame interval for entry, briefing, and continuous-work admission.</param>
         public void AdvanceClocked(float elapsedMilliseconds)
         {
-            RequireSimulationAuthority();
             if (_scheduler == null)
                 throw new InvalidOperationException(
                     "The battle requires an explicit clock before clocked advancement."
@@ -70,7 +80,6 @@ namespace Rebellion.Tactical
                 CaptureBattleStationAttackReadiness(),
                 IsArriving
             );
-            AdvanceSynchronizedNotifications(elapsedMilliseconds);
             if (IsPaused)
             {
                 Selection.ProcessPendingCommands();
@@ -104,7 +113,6 @@ namespace Rebellion.Tactical
         /// <param name="elapsedMilliseconds">The elapsed frame duration.</param>
         public void Advance(float elapsedMilliseconds)
         {
-            RequireSimulationAuthority();
             if (!(elapsedMilliseconds > 0) || float.IsInfinity(elapsedMilliseconds))
             {
                 if (AdvanceArrival(elapsedMilliseconds))

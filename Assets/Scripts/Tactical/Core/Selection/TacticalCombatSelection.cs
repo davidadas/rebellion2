@@ -4,7 +4,6 @@ using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
-using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -57,13 +56,10 @@ namespace Rebellion.Tactical
         /// Attaches selection ownership to one captured tactical encounter.
         /// </summary>
         /// <param name="session">The encounter whose command and audio boundaries are used.</param>
-        /// <param name="side">The faction owning this independent selection, or the local view's side.</param>
-        public TacticalCombatSelection(TacticalCombatSession session, CombatSide? side = null)
+        public TacticalCombatSelection(TacticalCombatSession session)
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
-            _side = side ?? session.PlayerSide;
-            if (_side is not CombatSide.Attacker and not CombatSide.Defender)
-                throw new ArgumentOutOfRangeException(nameof(side));
+            _side = session.PlayerSide;
             Members = _members.AsReadOnly();
             Targets = _targets.AsReadOnly();
             Waypoints = _waypoints.AsReadOnly();
@@ -78,17 +74,6 @@ namespace Rebellion.Tactical
         public void QueueObject(CombatUnit unit, bool extend = false)
         {
             ValidateUnit(unit);
-            if (
-                RequestSynchronization(
-                    new()
-                    {
-                        Kind = TacticalCombatCommandKind.Object,
-                        UnitID = unit.InstanceID,
-                        Extend = extend,
-                    }
-                )
-            )
-                return;
             _pointers.Enqueue(new PointerCommand(unit, null, extend));
         }
 
@@ -104,17 +89,6 @@ namespace Rebellion.Tactical
                     "The navigation marker is outside this encounter.",
                     nameof(point)
                 );
-            if (
-                RequestSynchronization(
-                    new()
-                    {
-                        Kind = TacticalCombatCommandKind.Waypoint,
-                        Waypoint = new(point),
-                        Extend = extend,
-                    }
-                )
-            )
-                return;
             _pointers.Enqueue(new PointerCommand(null, point, extend));
         }
 
@@ -123,8 +97,7 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueClear()
         {
-            if (!RequestSynchronization(new() { Kind = TacticalCombatCommandKind.Clear }))
-                _pointers.Enqueue(new PointerCommand(null, null, false));
+            _pointers.Enqueue(new PointerCommand(null, null, false));
         }
 
         /// <summary>
@@ -134,12 +107,6 @@ namespace Rebellion.Tactical
         public void QueueDisplayMode(bool next)
         {
             ThrowIfDisposed();
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.DisplayMode, Next = next }
-                )
-            )
-                return;
             if (PrimaryUnit != null)
                 _displayCommands.Enqueue(new DisplayModeCommand(PrimaryUnit, next));
         }
@@ -152,12 +119,6 @@ namespace Rebellion.Tactical
         {
             if ((uint)category >= 8)
                 throw new ArgumentOutOfRangeException(nameof(category));
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.ObjectCategory, Category = category }
-                )
-            )
-                return;
             _commands.Enqueue(() => SelectObjectCategory(category));
         }
 
@@ -169,12 +130,6 @@ namespace Rebellion.Tactical
         {
             if ((uint)category >= 4)
                 throw new ArgumentOutOfRangeException(nameof(category));
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.FighterCategory, Category = category }
-                )
-            )
-                return;
             _commands.Enqueue(() => SelectFighterCategory(category));
         }
 
@@ -183,8 +138,7 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueNearestTarget()
         {
-            if (!RequestSynchronization(new() { Kind = TacticalCombatCommandKind.NearestTarget }))
-                _commands.Enqueue(SelectNearestTarget);
+            _commands.Enqueue(SelectNearestTarget);
         }
 
         /// <summary>
@@ -192,8 +146,7 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueImmediateResult()
         {
-            if (!RequestSynchronization(new() { Kind = TacticalCombatCommandKind.ImmediateResult }))
-                _commands.Enqueue(_session.ApplyImmediateResult);
+            _commands.Enqueue(_session.ApplyImmediateResult);
         }
 
         /// <summary>
@@ -201,8 +154,6 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueToggleAutomation()
         {
-            if (RequestSynchronization(new() { Kind = TacticalCombatCommandKind.ToggleAutomation }))
-                return;
             _commands.Enqueue(() =>
                 _session.SetAutomated(_side, !_session.GetSide(_side).IsAutomated)
             );
@@ -213,8 +164,6 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueWithdrawal()
         {
-            if (RequestSynchronization(new() { Kind = TacticalCombatCommandKind.Withdrawal }))
-                return;
             _commands.Enqueue(() =>
             {
                 if (
@@ -225,7 +174,7 @@ namespace Rebellion.Tactical
                     return;
                 WithdrawalStarting?.Invoke();
                 StationControlsClosed?.Invoke();
-                _session.SuspendDirectCommands(_side);
+                _session.SuspendDirectCommands();
                 _session.ApplyWithdrawal(_side);
                 WithdrawalDispatched?.Invoke();
             });
@@ -236,8 +185,6 @@ namespace Rebellion.Tactical
         /// </summary>
         public void QueueStationTarget()
         {
-            if (RequestSynchronization(new() { Kind = TacticalCombatCommandKind.StationTarget }))
-                return;
             _commands.Enqueue(() =>
             {
                 if (!_session.IsSideDirectControlEnabled(_side))
@@ -257,12 +204,6 @@ namespace Rebellion.Tactical
         {
             ThrowIfDisposed();
             if (!CanIssueCommands)
-                return;
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.Order, Order = order }
-                )
-            )
                 return;
             if (Kind == TacticalCombatSelectionKind.SingleObject)
             {
@@ -301,12 +242,6 @@ namespace Rebellion.Tactical
             ThrowIfDisposed();
             if (!CanIssueCommands)
                 return;
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.AttackMode, CloseAttack = close }
-                )
-            )
-                return;
             if (Kind == TacticalCombatSelectionKind.SingleObject)
                 _session.CreateGroup(new[] { _primary }).SetAttackMode(close);
             else if (Kind == TacticalCombatSelectionKind.MultipleObjects)
@@ -327,12 +262,6 @@ namespace Rebellion.Tactical
         {
             ThrowIfDisposed();
             if (!CanIssueCommands || Kind == TacticalCombatSelectionKind.SingleObject)
-                return;
-            if (
-                RequestSynchronization(
-                    new() { Kind = TacticalCombatCommandKind.Formation, Formation = formation }
-                )
-            )
                 return;
             if (Kind == TacticalCombatSelectionKind.MultipleObjects)
             {
