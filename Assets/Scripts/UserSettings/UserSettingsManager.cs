@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Rebellion.Util.IO;
 using Rebellion.Util.Logging;
 using UnityEngine;
@@ -17,6 +19,7 @@ public sealed class UserSettingsManager
     private readonly InputManager _inputManager;
     private readonly IAnalyticsConsentRuntime _analyticsConsentRuntime;
     private readonly string _settingsFilePathOverride;
+    private UserContentSettings _savedContent = new();
 
     /// <summary>
     /// Gets the active user settings.
@@ -153,7 +156,7 @@ public sealed class UserSettingsManager
         disabledModIDs = Array.Empty<string>();
         try
         {
-            string path = Path.Combine(UserDataPaths.Root, _settingsFileName);
+            string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
             if (!File.Exists(path))
                 return false;
 
@@ -175,12 +178,46 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
+    /// Updates only content selection from the companion toolkit without capturing runtime settings.
+    /// </summary>
+    /// <param name="packID">The selected pack, or null to retain the saved selection.</param>
+    /// <param name="scenarioID">The selected scenario when changing packs.</param>
+    /// <param name="modIDs">The add-ons whose enabled state is being changed.</param>
+    /// <param name="enabled">Whether those add-ons should be enabled.</param>
+    public static void UpdateContentSelection(
+        string packID,
+        string scenarioID,
+        string[] modIDs,
+        bool enabled
+    )
+    {
+        string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
+            {
+                UserSettings settings = ReadSettingsForUpdate(path);
+                if (packID != null)
+                {
+                    settings.Content.ActivePackID = packID;
+                    settings.Content.ActiveScenarioID = scenarioID ?? string.Empty;
+                }
+                settings.Content.SetDisabledModsForPack(
+                    modIDs,
+                    enabled ? Array.Empty<string>() : modIDs
+                );
+                return JsonUtility.ToJson(settings, true);
+            }
+        );
+    }
+
+    /// <summary>
     /// Returns the path used for user settings persistence.
     /// </summary>
     /// <returns>The absolute user settings file path.</returns>
     public string GetSettingsFilePath()
     {
-        return _settingsFilePathOverride ?? Path.Combine(UserDataPaths.Root, _settingsFileName);
+        return _settingsFilePathOverride ?? Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
     }
 
     /// <summary>
@@ -190,6 +227,7 @@ public sealed class UserSettingsManager
     public UserSettings Load()
     {
         Settings = LoadFromDisk();
+        RememberContentSelection(Settings.Content);
         Apply();
         return Settings;
     }
@@ -296,26 +334,102 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Writes user settings while preserving acceptance recorded by another running instance.
+    /// Saves runtime settings without reverting another application's content selection.
     /// </summary>
-    /// <param name="settings">The settings to write.</param>
-    /// <param name="acceptedAgreementVersion">A version explicitly accepted now, or null to retain the saved acceptance.</param>
+    /// <param name="settings">The runtime settings.</param>
+    /// <param name="acceptedAgreementVersion">An explicitly accepted agreement, if any.</param>
     private void SaveToDisk(UserSettings settings, string acceptedAgreementVersion = null)
     {
         settings ??= CreateDefaults();
         settings.Normalize();
-
         string path = GetSettingsFilePath();
+        UserSettings persisted = null;
         AtomicTextFile.UpdateAllText(
             path,
             () =>
             {
-                settings.AcceptedAgreementVersion =
-                    acceptedAgreementVersion ?? LoadFromDisk().AcceptedAgreementVersion;
-                return JsonUtility.ToJson(settings, true);
+                UserSettings latest = ReadSettingsForUpdate(path, settings);
+                persisted = JsonUtility.FromJson<UserSettings>(JsonUtility.ToJson(settings));
+                persisted.AcceptedAgreementVersion =
+                    acceptedAgreementVersion ?? latest.AcceptedAgreementVersion;
+                persisted.Content = MergeContentSelection(settings.Content, latest.Content);
+                return JsonUtility.ToJson(persisted, true);
             }
         );
+        settings.AcceptedAgreementVersion = persisted.AcceptedAgreementVersion;
+        settings.Content = persisted.Content;
+        RememberContentSelection(settings.Content);
     }
+
+    /// <summary>
+    /// Reads authoritative settings under the publication lock, preserving invalid files before runtime recovery.
+    /// </summary>
+    /// <param name="path">The shared settings file.</param>
+    /// <param name="fallback">The runtime snapshot for a missing or invalid file, or null to reject invalid updates.</param>
+    /// <returns>The normalized settings.</returns>
+    private static UserSettings ReadSettingsForUpdate(string path, UserSettings fallback = null)
+    {
+        if (!File.Exists(path))
+            return fallback ?? CreateDefaults();
+        UserSettings settings;
+        try
+        {
+            settings =
+                DeserializeSettings(AtomicTextFile.ReadAllText(path))
+                ?? throw new InvalidDataException("The user settings could not be read.");
+        }
+        catch (Exception exception)
+            when (fallback != null && exception is ArgumentException or InvalidDataException)
+        {
+            string backup = path + ".corrupt-" + Guid.NewGuid().ToString("N");
+            File.Copy(path, backup);
+            GameLogger.Warning("Invalid user settings were backed up to " + backup + ".");
+            return fallback;
+        }
+        settings.Normalize();
+        return settings;
+    }
+
+    /// <summary>
+    /// Applies local selection changes over the latest saved content preferences.
+    /// </summary>
+    /// <param name="current">This instance's pending selection.</param>
+    /// <param name="latest">The selection currently on disk.</param>
+    /// <returns>The merged next-startup selection.</returns>
+    private UserContentSettings MergeContentSelection(
+        UserContentSettings current,
+        UserContentSettings latest
+    )
+    {
+        bool changedPack =
+            current.ActivePackID != _savedContent.ActivePackID
+            || current.ActiveScenarioID != _savedContent.ActiveScenarioID;
+        HashSet<string> disabled = new(latest.DisabledModIDs, StringComparer.Ordinal);
+        disabled.ExceptWith(
+            _savedContent.DisabledModIDs.Except(current.DisabledModIDs, StringComparer.Ordinal)
+        );
+        disabled.UnionWith(
+            current.DisabledModIDs.Except(_savedContent.DisabledModIDs, StringComparer.Ordinal)
+        );
+        return new UserContentSettings
+        {
+            ActivePackID = changedPack ? current.ActivePackID : latest.ActivePackID,
+            ActiveScenarioID = changedPack ? current.ActiveScenarioID : latest.ActiveScenarioID,
+            DisabledModIDs = disabled.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+        };
+    }
+
+    /// <summary>
+    /// Records the last observed selection independently of subsequent UI edits.
+    /// </summary>
+    /// <param name="content">The successfully loaded or saved selection.</param>
+    private void RememberContentSelection(UserContentSettings content) =>
+        _savedContent = new UserContentSettings
+        {
+            ActivePackID = content.ActivePackID,
+            ActiveScenarioID = content.ActiveScenarioID,
+            DisabledModIDs = content.DisabledModIDs.ToArray(),
+        };
 
     /// <summary>
     /// Captures runtime settings into the active user settings object.

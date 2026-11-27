@@ -135,8 +135,34 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
 
             CollectionAssert.AreEqual(
-                new[] { "Factions", "Starting setup", "Pack settings" },
+                new[] { "Factions", "Interfaces", "Starting setup", "Pack settings" },
                 navigation.GetRows(string.Empty).Select(node => node.Caption)
+            );
+        }
+
+        [Test]
+        public void Render_InterfacePages_ListsSharedControlsSeparatelyFromNeutral()
+        {
+            ContentPackEditorProject project = ContentEditorTestData.CreateProject(directory);
+            ContentEditorNavigation navigation = new();
+
+            navigation.Render(project.GetCatalogs());
+
+            ContentEditorTreeNode neutral = navigation.Find(
+                ContentEditorContentSections.NeutralThemePageKey
+            );
+            Assert.IsNotNull(neutral);
+            Assert.AreEqual("Neutral", neutral.Caption);
+            CollectionAssert.Contains(navigation.Find("factions").Children, neutral);
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Main Menu",
+                    "Planet Sector Window",
+                    "Planet Window Header",
+                    "Confirmation Window",
+                },
+                navigation.Find("interfaces").Children.Select(node => node.Caption)
             );
         }
 
@@ -199,6 +225,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                     "Officer traits",
                     "Buildings",
                     "Game events",
+                    "Interfaces",
                     "Pack settings",
                 },
                 navigation.GetRows(string.Empty).Select(node => node.Caption)

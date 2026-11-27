@@ -173,7 +173,7 @@ public sealed class AppBootstrap : MonoBehaviour
             _contentPack.FileResolver,
             _strategyPreloadID
         );
-        _contentAssets = new ContentAssets(_contentPack.FileResolver);
+        _contentAssets = new ContentAssets(_contentPack.FileResolver, _contentPack.Definition);
         Texture2D cursorTexture =
             _contentAssets.GetCursor(_defaultCursorAddress)
             ?? throw new InvalidOperationException(

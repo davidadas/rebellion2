@@ -213,6 +213,39 @@ in an existing replacement retains its other authored values. `pack.xml` and `mo
 complete identity and dependency manifests. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
+Message definitions with stable `InstanceID` values inherit per report and per setting. Changing
+one report's picture keeps the other reports and its unedited text inherited. Keep an existing
+report's ID when changing its text or outcome; give a new report its own unique ID. Removing a
+report records an explicit removal so future base updates do not bring it back.
+
+Older anonymous message lists remain complete replacements, including their omissions. They are
+not automatically converted or rewritten. Explicitly reordering existing reports also retains a
+complete replacement because their lookup order affects which report is selected.
+
+### Main menu
+
+Open **Interfaces > Main Menu** to preview the default scenario's cockpit and launch controls.
+The preview starts paused. Select **Play** to see it animate. Drag a highlighted control to move
+it, or double-click its artwork to open the image or model field. The fields below the preview
+also let you edit background artwork. Replacement images for Load Game,
+Multiplayer, and Exit display as still artwork. Medallions use the selected faction's GLB.
+Galaxy size controls have separate fields for the monitor artwork and the selection icon.
+Drag a selection frame by its visible outline to position it independently of its icon.
+The **Advanced** tab lets you edit the layout XML. Zero offsets restore the generated positions.
+
+### Shared interfaces
+
+Open **Interfaces** to edit the **Planet Sector Window**, **Planet Window Header**, and
+**Confirmation Window**. Select an element in the preview to move it by dragging or nudge it with
+the arrow keys or WASD. Click an empty area to clear the selection. The planet window preview
+shows the header and its controls, including the **Header Text** position.
+
+### Cutscenes
+
+Open **Cutscenes** to edit the startup videos or a faction's videos. Each entry shows a still
+from the assigned video. Use **Replace** to choose a new video and the preview dropdown to play
+it fullscreen at a supported resolution. Click during playback to return to the editor.
+
 ### Faction and neutral themes
 
 In the Content Pack Editor, open a faction's **Colors** tab to set its primary
@@ -226,7 +259,7 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit the neutral theme.
 Double-click an outlined sector icon to open its image settings. Use
 **Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's
@@ -253,6 +286,29 @@ Image pickers reopen in the last folder you imported from. On Windows and macOS,
 also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a layer.
 
 ## Sharing a mod
+
+### Community mods
+
+Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
+choose the default pack or enable add-ons for the next game startup. **Install from file…**
+accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
+
+### Publishing a content pack
+
+Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
+description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
+base pack, under **Dependencies**.
+**Save draft** retains unfinished work; **Export ZIP…** creates a package for manual upload.
+
+For direct publishing, click the Thunderstore connection link. Create a service account in
+[your team's settings](https://thunderstore.io/settings/teams/) and paste its token. The token is
+stored in the operating system's credential store, never in the project or export. Linux requires
+libsecret and a running Secret Service. Click the connection link after restarting to reconnect.
+
+Select **Review release**, then **Publish release**. Every update needs a new content-pack version.
+If submission times out, check the package's Thunderstore page before retrying.
+
+### Sharing an add-on mod
 
 Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that
 folder directly into `Mods`. The installer, launcher, and application and content updaters do not

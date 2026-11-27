@@ -79,6 +79,7 @@ public sealed class PlanetSectorWindowController
     private readonly StrategyFleetCommandController fleetCommandController;
     private readonly Action markDirty;
     private readonly PlanetSectorWindowProjector projector;
+    private readonly PlanetSectorWindowLayout windowLayout;
     private readonly Dictionary<PlanetSectorWindowView, PlanetSectorWindowSession> sessions =
         new Dictionary<PlanetSectorWindowView, PlanetSectorWindowSession>();
     private readonly TargetingController targetingController;
@@ -108,6 +109,7 @@ public sealed class PlanetSectorWindowController
     /// <param name="getFilterMode">Returns the active galactic-information filter.</param>
     /// <param name="getSelectedFleetInstanceIds">Returns fleets selected across strategy windows.</param>
     /// <param name="getQuickOpenMapItems">Returns whether map items open on their first click.</param>
+    /// <param name="windowLayout">Optional pack-wide sector-window presentation overrides.</param>
     public PlanetSectorWindowController(
         StrategyFleetCommandController fleetCommandController,
         Func<UIContext> getUIContext,
@@ -121,7 +123,8 @@ public sealed class PlanetSectorWindowController
         Func<StrategyMissionTarget, IReadOnlyList<ISceneNode>, bool> canCreateMission,
         Func<GalacticInformationFilterMode> getFilterMode = null,
         Func<IReadOnlyCollection<string>> getSelectedFleetInstanceIds = null,
-        Func<bool> getQuickOpenMapItems = null
+        Func<bool> getQuickOpenMapItems = null,
+        PlanetSectorWindowLayout windowLayout = null
     )
     {
         this.fleetCommandController =
@@ -144,6 +147,7 @@ public sealed class PlanetSectorWindowController
         this.getSelectedFleetInstanceIds =
             getSelectedFleetInstanceIds ?? (() => Array.Empty<string>());
         this.getQuickOpenMapItems = getQuickOpenMapItems ?? (() => false);
+        this.windowLayout = windowLayout;
         projector = new PlanetSectorWindowProjector(getUIContext);
     }
 
@@ -200,6 +204,7 @@ public sealed class PlanetSectorWindowController
         }
 
         boundViews.Add(view);
+        view.ApplyLayout(windowLayout);
         sessions.Add(view, new PlanetSectorWindowSession(window));
         view.Clicked += HandlePlanetClicked;
         view.Destroyed += HandleViewDestroyed;

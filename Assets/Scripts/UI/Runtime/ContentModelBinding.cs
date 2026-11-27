@@ -46,7 +46,43 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// <summary>
     /// Gets the shared task that completes after this model is instantiated and posed.
     /// </summary>
-    public Task Ready => loadTask ??= LoadModelAsync(cancellation.Token);
+    public Task Ready => loadTask ??= LoadModelAsync(null, cancellation.Token);
+
+    /// <summary>
+    /// Loads this authored rig using the provided content source.
+    /// </summary>
+    /// <param name="cache">The model cache serving the working content.</param>
+    /// <returns>A task that completes once this model is posed.</returns>
+    public Task LoadAsync(ContentModelCache cache)
+    {
+        if (cache == null)
+            throw new ArgumentNullException(nameof(cache));
+        cancellation ??= new CancellationTokenSource();
+        return loadTask ??= LoadModelAsync(cache, cancellation.Token);
+    }
+
+    /// <summary>
+    /// Replaces the authored content address before the model begins loading.
+    /// </summary>
+    /// <param name="contentAddress">The application- or pack-relative model address.</param>
+    /// <param name="normalize">Whether to scale the replacement model to a unit diameter.</param>
+    public void SetAddress(string contentAddress, bool normalize = false)
+    {
+        if (string.IsNullOrWhiteSpace(contentAddress))
+            throw new ArgumentException(
+                "A content model address is required.",
+                nameof(contentAddress)
+            );
+        if (loadTask != null)
+        {
+            throw new InvalidOperationException(
+                "A content model address cannot change after loading has started."
+            );
+        }
+
+        address = contentAddress.Trim();
+        normalizeToUnitDiameter = normalize;
+    }
 
     /// <summary>
     /// Assigns the model address and the posing applied to it after it loads.
@@ -88,7 +124,7 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// </summary>
     private void Awake()
     {
-        cancellation = new CancellationTokenSource();
+        cancellation ??= new CancellationTokenSource();
     }
 
     /// <summary>
@@ -106,18 +142,22 @@ public sealed class ContentModelBinding : MonoBehaviour
     /// <summary>
     /// Resolves the model file from installation content, instantiates it, and applies posing.
     /// </summary>
+    /// <param name="cache">The model cache supplying this model.</param>
     /// <param name="cancellationToken">Token that cancels the load when the binding is destroyed.</param>
     /// <returns>A task representing the asynchronous operation.</returns>
-    private async Task LoadModelAsync(CancellationToken cancellationToken)
+    private async Task LoadModelAsync(ContentModelCache cache, CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(address))
             throw new MissingReferenceException($"{name} content model address is missing.");
 
         try
         {
-            ContentModelInstance loadedModel = await AppBootstrap
-                .Instance.GetContentModelCache()
-                .InstantiateAsync(address, transform, cancellationToken);
+            ContentModelCache source = cache ?? AppBootstrap.Instance.GetContentModelCache();
+            ContentModelInstance loadedModel = await source.InstantiateAsync(
+                address,
+                transform,
+                cancellationToken
+            );
             modelInstance = loadedModel;
             cancellationToken.ThrowIfCancellationRequested();
             ApplyPosing(loadedModel.ModelRoot);

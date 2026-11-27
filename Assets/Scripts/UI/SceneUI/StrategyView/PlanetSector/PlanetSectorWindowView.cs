@@ -3,12 +3,22 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /// <summary>
 /// Renders an authored planet-sector window and reports semantic planet interaction.
 /// </summary>
 public sealed class PlanetSectorWindowView : MonoBehaviour
 {
+    [SerializeField]
+    private RawImage background;
+
+    [SerializeField]
+    private RectTransform swapButton;
+
+    [SerializeField]
+    private RectTransform closeButton;
+
     [SerializeField]
     private TextMeshProUGUI sectorNameTextField;
 
@@ -44,6 +54,14 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
     private PlanetSectorStatusBar hoveredStatusBar;
     private PlanetSectorPlanetView hoveredStatusBarView;
     private WaypointRouteOverlay waypointOverlay;
+    private Color? authoredBackgroundColor;
+    private Vector2? authoredSwapPosition;
+    private Vector2? authoredClosePosition;
+
+    /// <summary>
+    /// Gets the authored window background color before pack overrides.
+    /// </summary>
+    public Color DefaultBackgroundColor => authoredBackgroundColor ?? background.color;
 
     /// <summary>
     /// Occurs when the control is clicked.
@@ -90,6 +108,49 @@ public sealed class PlanetSectorWindowView : MonoBehaviour
         PlanetSectorWindowElement,
         PointerEventData
     > Released;
+
+    /// <summary>
+    /// Applies pack-wide sector chrome and restores the prefab defaults for unset values.
+    /// </summary>
+    /// <param name="layout">The optional presentation overrides.</param>
+    public void ApplyLayout(PlanetSectorWindowLayout layout)
+    {
+        if (background != null)
+        {
+            authoredBackgroundColor ??= background.color;
+            Color color = authoredBackgroundColor.Value;
+            if (
+                !string.IsNullOrWhiteSpace(layout?.BackgroundColorHex)
+                && ColorUtility.TryParseHtmlString(
+                    "#" + layout.BackgroundColorHex.Trim().TrimStart('#'),
+                    out Color configured
+                )
+            )
+                color = new Color(configured.r, configured.g, configured.b, color.a);
+            background.color = color;
+        }
+
+        if (swapButton != null)
+        {
+            authoredSwapPosition ??= swapButton.anchoredPosition;
+            swapButton.anchoredPosition =
+                authoredSwapPosition.Value + GetButtonOffset(layout?.SwapButton);
+        }
+        if (closeButton != null)
+        {
+            authoredClosePosition ??= closeButton.anchoredPosition;
+            closeButton.anchoredPosition =
+                authoredClosePosition.Value + GetButtonOffset(layout?.CloseButton);
+        }
+    }
+
+    /// <summary>
+    /// Converts an optional source-space placement to an anchored UI offset.
+    /// </summary>
+    /// <param name="placement">The authored placement, when set.</param>
+    /// <returns>The horizontal and vertical offsets from the prefab position.</returns>
+    private static Vector2 GetButtonOffset(SourcePointLayout placement) =>
+        placement == null ? Vector2.zero : new Vector2(placement.X, -(float)placement.Y);
 
     /// <summary>
     /// Applies one complete planet-sector presentation.

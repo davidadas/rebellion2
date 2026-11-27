@@ -96,8 +96,10 @@ pointing at the current artwork; retain this file when distributing updates.
 
 Shared images with different unit destinations stay shared and are reported instead of being
 assigned to an arbitrary unit. Use **Replace file** to update every use, or explicitly import
-separate images for those slots. Missing images and differing files already occupying a destination
-stop conversion with an error so they can be repaired without losing artwork.
+separate images for those slots. If another image or layer file already occupies a destination,
+conversion preserves it and chooses an unused numbered slot filename. The stored address remains
+stable for later replacements and regeneration. Converted legacy addresses keep resolving through
+the artwork map. Missing source images still stop conversion before any files are changed.
 
 Encyclopedia statistics preserve their authored order:
 

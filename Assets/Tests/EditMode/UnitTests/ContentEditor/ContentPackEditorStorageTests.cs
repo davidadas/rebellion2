@@ -12,6 +12,74 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorStorageTests : ContentPackEditorTestBase
     {
+        [Test]
+        public void Save_OneReportPicture_ReopeningInheritsUpdatedBaseTextAndNewReports()
+        {
+            const string baseline =
+                "<MessageDefinitions><MessageDefinition><InstanceID>arrived</InstanceID><ResultType>FleetArrived</ResultType><Body>Old arrival</Body><BackgroundImage Path='base.png'/></MessageDefinition><MessageDefinition><InstanceID>abduction</InstanceID><ResultType>MissionReport</ResultType><Body>Old report</Body></MessageDefinition></MessageDefinitions>";
+            WriteFixtureFile("Data/units.xml", baseline);
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord report = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.Single(record => record.ID == "arrived");
+            ContentPackEditorField image = report
+                .GetFields()
+                .Single(field =>
+                    field.XmlElement.Name.LocalName == "BackgroundImage"
+                    && field.XmlAttributeName == "Path"
+                );
+            string source = Path.Combine(Directory.GetParent(contentRoot).FullName, "custom.png");
+            File.WriteAllBytes(source, new byte[] { 1 });
+            string address = ContentPackEditorStorage.ImportAsset(project, source);
+            project.SetField(image, address);
+
+            ContentPackEditorStorage.Save(project);
+
+            XElement authored = XElement.Load(report.Catalog.Document.TargetPath);
+            Assert.AreEqual("true", (string)authored.Attribute("Inherit"));
+            Assert.AreEqual(1, authored.Elements().Count());
+            Assert.IsFalse(authored.Descendants("Body").Any());
+            string pack = project.PackRootPath;
+            project.Dispose();
+            WriteFixtureFile(
+                "Data/units.xml",
+                baseline
+                    .Replace("Old arrival", "Corrected arrival")
+                    .Replace(
+                        "</MessageDefinitions>",
+                        "<MessageDefinition><InstanceID>target-killed</InstanceID><ResultType>MissionReport</ResultType><Outcome>TargetKilled</Outcome><Body>Target died</Body></MessageDefinition></MessageDefinitions>"
+                    )
+            );
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                pack
+            );
+            ContentPackEditorRecord[] records = reopened
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/Data/units.xml")
+                .Records.ToArray();
+
+            Assert.AreEqual(3, records.Length);
+            Assert.AreEqual(
+                "Corrected arrival",
+                records.Single(record => record.ID == "arrived").GetField("Body").Value
+            );
+            Assert.AreEqual(
+                address,
+                (string)
+                    records
+                        .Single(record => record.ID == "arrived")
+                        .Element.Element("BackgroundImage")
+                        .Attribute("Path")
+            );
+            Assert.AreEqual(
+                "Target died",
+                records.Single(record => record.ID == "target-killed").GetField("Body").Value
+            );
+        }
+
         [TestCase(0)]
         [TestCase(1)]
         [TestCase(2)]
@@ -305,6 +373,31 @@ namespace Rebellion.Tests.ContentEditor
                 expected,
                 loaded.GameData.GenerationConfig.FacilityGeneration.HQLoadouts[0].FacilityTypeIDs
             );
+        }
+
+        [Test]
+        public void Save_StartupVideoImported_PersistsThePackVideoAddress()
+        {
+            ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord manifest = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Document.Address == "Pack/pack.xml")
+                .Records.Single();
+            ContentPackEditorField field = manifest.GetField(
+                nameof(ContentPackDefinition.StartupIntroVideoPath)
+            );
+            string source = Path.Combine(contentRoot, "custom-intro.mp4");
+            File.WriteAllText(source, "fixture");
+            string address = ContentPackEditorStorage.ImportAsset(project, source, field);
+
+            project.SetField(field, address);
+            ContentPackEditorStorage.Save(project);
+
+            ContentPackDefinition reopened =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(project.PackRootPath, "pack.xml")
+                );
+            Assert.AreEqual("Pack/Assets/custom-intro.mp4", reopened.StartupIntroVideoPath);
         }
 
         [Test]

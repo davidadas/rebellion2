@@ -492,6 +492,27 @@ public static class CommonUIPrefabBuilder
     }
 
     /// <summary>
+    /// Instantiates the shared confirmation window at its authored source size for inspection.
+    /// </summary>
+    /// <param name="parent">The editor's existing window preview surface.</param>
+    internal static void CreateConfirmationArtworkPreview(Transform parent)
+    {
+        ConfirmationDialogView view = InstantiateConfirmationDialog(parent);
+        RectTransform dialogSurface = (RectTransform)view.BackgroundArtwork.transform.parent;
+        RectInt bounds = UILayout.GetSourceRect(view.BackgroundArtwork.rectTransform);
+        SetSourceRect((RectTransform)view.transform, 0, 0, bounds.width, bounds.height);
+        SetSourceRect(
+            dialogSurface,
+            -bounds.x,
+            -bounds.y,
+            _confirmationSurfaceWidth,
+            _confirmationSurfaceHeight
+        );
+        view.transform.Find("InputBlocker").gameObject.SetActive(false);
+        view.gameObject.SetActive(false);
+    }
+
+    /// <summary>
     /// Authors the full-screen confirmation layer shared by scene notices and modal requests.
     /// </summary>
     /// <param name="parent">The scene UI root outside presentation groups concealed during loading.</param>

@@ -23,6 +23,8 @@ public class FactionTheme
 
     public string SavedGameSlotIconImagePath { get; set; }
 
+    public string MainMenuMedallionModelPath { get; set; }
+
     public FactionArtworkDefaults ArtworkDefaults { get; set; }
 
     public string IntroCutscenePath { get; set; }

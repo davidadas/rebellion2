@@ -14,7 +14,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Owns responsive authored forms, field bindings, artwork and table presentation.
 /// </summary>
-public sealed class ContentEditorFormView : MonoBehaviour
+public sealed partial class ContentEditorFormView : MonoBehaviour
 {
     private const string _defaultFactionArtworkCategory = "Planet sector";
 
@@ -117,7 +117,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     private readonly List<TextMeshProUGUI> groupLabels = new List<TextMeshProUGUI>();
 
     private readonly List<ContentEditorFieldView> fieldViews = new List<ContentEditorFieldView>();
-    private readonly Dictionary<XElement, int> factionArtworkFieldTops = new();
+    private readonly Dictionary<XElement, int> artworkFieldTops = new();
 
     private readonly List<ContentEditorColorPickerView> colorPickers = new();
 
@@ -173,6 +173,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
     [SerializeField]
     private ContentEditorArtworkWindowPreview artworkDisabledWindowPreview;
 
+    [SerializeField]
+    private ContentEditorMainMenuPreview mainMenuPreviewTemplate;
+
+    private ContentEditorMainMenuPreview mainMenuPreview;
+    private readonly List<(RawImage Thumbnail, Graphic Source, Rect Bounds)> mainMenuThumbnails =
+        new();
+    private Button mainMenuPlaybackButton;
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
     private readonly Dictionary<string, Button> illustrationReuseButtons = new();
@@ -210,7 +217,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentEditorArtworkEffect,
         bool
     > ArtworkEffectRequested;
-    public event Action<ContentPackEditorField, string> PreviewRequested;
+    public event Action<ContentPackEditorField, string, Vector2Int?> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
     public event Action<string> SectionRequested;
     public event Action<
@@ -296,6 +303,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addScoreButton.onClick.AddListener(AddScore);
         artworkViewSelector.onValueChanged.AddListener(SelectFactionArtworkCategory);
         artworkSectorPreview.ArtworkOpened += OpenWindowArtwork;
+        artworkSectorPreview.ArtworkMoved += MoveWindowArtwork;
         artworkWindowPreview.ArtworkOpened += OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved += MoveWindowArtwork;
         artworkDisabledWindowPreview.ArtworkOpened += OpenWindowArtwork;
@@ -329,6 +337,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         addScoreButton.onClick.RemoveListener(AddScore);
         artworkViewSelector.onValueChanged.RemoveListener(SelectFactionArtworkCategory);
         artworkSectorPreview.ArtworkOpened -= OpenWindowArtwork;
+        artworkSectorPreview.ArtworkMoved -= MoveWindowArtwork;
         artworkWindowPreview.ArtworkOpened -= OpenWindowArtwork;
         artworkWindowPreview.ArtworkMoved -= MoveWindowArtwork;
         artworkDisabledWindowPreview.ArtworkOpened -= OpenWindowArtwork;
@@ -371,6 +380,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
     )
     {
         BindControls();
+        if (
+            value != project
+            || record?.Key != selectedRecord?.Key
+            || page?.Key != selectedPage?.Key
+            || sectionName != section
+        )
+            ContentEditorArtworkEditTarget.Select(null);
         if (record != selectedRecord)
         {
             showOutputArtworkBackground = true;
@@ -444,6 +460,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     public void Clear()
     {
+        videoStills?.Clear();
+        videoResolutions = null;
+        ClearMainMenuPreview();
         ClearSetupControls();
         ClearArtworkViewControls();
         foreach (ContentEditorFieldView field in fieldViews)
@@ -542,7 +561,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             RenderFields(false);
         }
         RectTransform rect = (RectTransform)row.transform;
-        float top = factionArtworkFieldTops.TryGetValue(field.XmlElement, out int artworkTop)
+        float top = artworkFieldTops.TryGetValue(field.XmlElement, out int artworkTop)
             ? artworkTop
             : -rect.anchoredPosition.y;
         fieldScroll.ScrollArea.AlignContentTop(top);
@@ -808,8 +827,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// </summary>
     /// <param name="field">The media field.</param>
     /// <param name="address">The selected asset.</param>
-    private void RequestPreview(ContentPackEditorField field, string address) =>
-        PreviewRequested?.Invoke(field, address);
+    /// <param name="resolution">The fullscreen video resolution, when selected.</param>
+    private void RequestPreview(
+        ContentPackEditorField field,
+        string address,
+        Vector2Int? resolution
+    ) => PreviewRequested?.Invoke(field, address, resolution);
 
     /// <summary>
     /// Publishes a field error without owning workspace notifications.
@@ -823,6 +846,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="rebind">Whether to bind new values instead of only reflowing existing controls.</param>
     private void RenderFields(bool rebind)
     {
+        if (section != ContentEditorContentSections.CutscenesSection)
+        {
+            videoStills?.Clear();
+            videoResolutions = null;
+        }
+        bool mainMenu =
+            selectedPage?.Key == ContentEditorMainMenuSettings.PageKey && section == "General";
+        if (!mainMenu)
+            ClearMainMenuPreview();
         artworkTheme = null;
         ClearSetupControls();
         ClearArtworkViewControls();
@@ -867,6 +899,31 @@ public sealed class ContentEditorFormView : MonoBehaviour
         }
         if (selectedRecord == null || section == "Advanced")
             return;
+        if (section == ContentEditorContentSections.CutscenesSection)
+        {
+            RenderCutsceneFields();
+            return;
+        }
+        if (mainMenu)
+        {
+            RenderMainMenu();
+            return;
+        }
+        if (selectedPage?.Key == ContentEditorContentSections.PlanetSectorWindowPageKey)
+        {
+            RenderPlanetSectorWindow();
+            return;
+        }
+        if (selectedPage?.Key == ContentEditorContentSections.PlanetWindowHeaderPageKey)
+        {
+            RenderPlanetWindowHeader();
+            return;
+        }
+        if (selectedPage?.Key == ContentEditorContentSections.ConfirmationWindowPageKey)
+        {
+            RenderConfirmationWindow();
+            return;
+        }
         if (selectedRecord.Kind == "PlanetSectors")
         {
             int height = PlaceLabel(
@@ -1180,7 +1237,12 @@ public sealed class ContentEditorFormView : MonoBehaviour
         return section switch
         {
             "Audio" => field.MediaType == ContentPackEditorMediaType.Audio,
-            "Artwork" => field.IsMedia && field.MediaType != ContentPackEditorMediaType.Audio,
+            "Artwork" => field.IsMedia
+                && field.MediaType != ContentPackEditorMediaType.Audio
+                && (
+                    selectedRecord.Kind != "ContentPack"
+                    || field.MediaType != ContentPackEditorMediaType.Video
+                ),
             _ => !field.IsMedia,
         };
     }
@@ -2640,6 +2702,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
             articleImages.Add(image);
         }
         RawImage preview = articleImages[imageIndex++];
+        preview.GetComponent<ContentEditorArtworkEditTarget>()?.Clear();
         imageDropTargets.Remove(preview.gameObject);
         preview.raycastTarget = false;
         preview.name = articleImageTemplate.name + "-" + imageName;
@@ -3643,10 +3706,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             })
             .Where(category => category.Fields.Length > 0)
             .ToArray();
-        int y = 4,
-            fieldIndex = 0,
-            labelIndex = 0,
-            imageIndex = 0;
+        int y = 4;
+        int labelIndex = 0;
         if (categories.Length == 0)
         {
             y += PlaceLabel(
@@ -3717,7 +3778,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 .ToArray();
         }
         else
-            renderedFields = Array.Empty<ContentPackEditorField>();
+            renderedFields = category.Fields;
 
         ContentPackEditorField[] visibleFields = category
             .Fields.Where(field => renderedFields.Any(rendered => SameField(rendered, field)))
@@ -3737,38 +3798,22 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorField[] fields = neutral
             ? visibleFields.Concat(category.Fields.Except(visibleFields)).ToArray()
             : visibleFields;
-        IReadOnlyList<string> previousSections = Array.Empty<string>();
-        for (int index = 0; index < fields.Length; index++)
-        {
-            if (
-                neutral
-                && index == visibleFields.Length
-                && visibleFields.Length > 0
-                && (sector || window)
-            )
+        var rows = fields.Select(
+            (field, index) =>
             {
-                y +=
-                    PlaceLabel("More artwork for this view", labelIndex++, 4, y, width - 8, true)
-                    + 8;
-                previousSections = Array.Empty<string>();
+                IReadOnlyList<string> sections =
+                    ContentEditorContentSections.FactionArtworkSections(field);
+                if (
+                    neutral
+                    && index >= visibleFields.Length
+                    && visibleFields.Length > 0
+                    && (sector || window)
+                )
+                    sections = sections.Prepend("More artwork for this view").ToArray();
+                return new InterfaceArtworkRow(field.Caption, field, sections: sections);
             }
-            ContentPackEditorField field = fields[index];
-            IReadOnlyList<string> sections = ContentEditorContentSections.FactionArtworkSections(
-                field
-            );
-            y = Mathf.CeilToInt(
-                PlaceSections(sections, previousSections, ref labelIndex, 4, y, width - 8)
-            );
-            previousSections = sections;
-            y = PlaceFactionArtworkField(
-                field,
-                y,
-                width,
-                ref fieldIndex,
-                ref labelIndex,
-                ref imageIndex
-            );
-        }
+        );
+        y = PlaceInterfaceArtworkRows(rows, y, width, ref labelIndex);
         fieldScroll.SetContentHeight(y + 20, !reflowingFields);
     }
 
@@ -3840,13 +3885,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="width">The available browser width.</param>
     /// <param name="labelIndex">The next reusable label.</param>
     /// <param name="neutral">Whether the page already explains editing above the sector.</param>
+    /// <param name="showWindowControls">Whether the shared window header buttons are being previewed.</param>
     /// <returns>The first position below the composed preview and its instruction.</returns>
     private int PlaceStrategyArtworkPreview(
         IReadOnlyList<ContentPackEditorField> editableFields,
         int y,
         float width,
         ref int labelIndex,
-        bool neutral
+        bool neutral,
+        bool showWindowControls = false
     )
     {
         ContentPackEditorRecord sector = catalogs
@@ -3867,7 +3914,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
         ContentPackEditorRecord theme = selectedPage.RelatedRecords.FirstOrDefault(record =>
             record.Kind == "FactionTheme"
         );
-        if (sector == null || theme == null)
+        if (sector == null || theme == null && !showWindowControls)
         {
             return y
                 + PlaceLabel(
@@ -3884,19 +3931,27 @@ public sealed class ContentEditorFormView : MonoBehaviour
         int availableWidth = Mathf.Max(1, Mathf.FloorToInt(width - 8));
         int previewWidth = Mathf.Min(520, availableWidth);
         int previewHeight = Mathf.RoundToInt(previewWidth / artworkSectorPreview.AspectRatio);
-        int x = Mathf.Max(4, Mathf.RoundToInt((width - previewWidth) * 0.5f));
-        UILayout.SetSourceRect(
-            (RectTransform)artworkSectorPreview.transform,
-            x,
+        int previewBottom = PlaceInterfacePreviewFrames(
             y,
-            previewWidth,
-            previewHeight
+            width,
+            ref labelIndex,
+            (artworkSectorPreview, new Vector2Int(previewWidth, previewHeight), null)
         );
         artworkSectorPreview.gameObject.SetActive(true);
         try
         {
-            FactionTheme factionTheme = ContentEditorPresentation.GetFactionTheme(theme);
+            FactionTheme factionTheme =
+                theme == null ? null : ContentEditorPresentation.GetFactionTheme(theme);
             PlaceStrategyBackdrop(neutral ? null : factionTheme);
+            XElement layout = GetPlanetSectorWindowLayout();
+            artworkSectorPreview.ApplyWindowLayout(
+                layout == null
+                    ? null
+                    : ContentDefinitionSerializer.DeserializeText<PlanetSectorWindowLayout>(
+                        layout.ToString(SaveOptions.DisableFormatting)
+                    )
+            );
+            artworkSectorPreview.SetWindowControlsVisible(showWindowControls);
             artworkSectorPreview.Render(project, sector, assets, factionTheme, editableFields);
         }
         catch (ArgumentException)
@@ -3914,7 +3969,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 )
                 + 12;
         }
-        y += previewHeight + 8;
+        y = previewBottom;
         if (neutral)
             return y + 16;
         return y
@@ -3927,6 +3982,361 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 false
             )
             + 16;
+    }
+
+    /// <summary>
+    /// Reads the working pack's shared sector-window overrides.
+    /// </summary>
+    /// <returns>The current layout element, when authored.</returns>
+    private XElement GetPlanetSectorWindowLayout() =>
+        catalogs
+            .FirstOrDefault(catalog => catalog.CanAddFaction)
+            ?.DocumentRecord.Element.Element(
+                nameof(ContentPackDefinition.PlanetSectorWindowLayout)
+            );
+
+    /// <summary>
+    /// Shows the actual sector window and edits its shared background and header placement.
+    /// </summary>
+    private void RenderPlanetSectorWindow()
+    {
+        previewPane.SetActive(false);
+        float width = fieldScroll.ScrollArea.ViewportWidth;
+        int label = 0;
+        int y = 4;
+        y +=
+            PlaceLabel(
+                "Click Swap or Close to select it. Drag or use the arrow keys or WASD to move it.",
+                label++,
+                4,
+                y,
+                width - 8,
+                false
+            ) + 12;
+        y = PlaceStrategyArtworkPreview(
+            Array.Empty<ContentPackEditorField>(),
+            y,
+            width,
+            ref label,
+            neutral: true,
+            showWindowControls: true
+        );
+
+        XElement layout =
+            GetPlanetSectorWindowLayout()
+            ?? new XElement(nameof(ContentPackDefinition.PlanetSectorWindowLayout));
+        foreach (RawImagePressVisual control in artworkSectorPreview.GetWindowControls())
+        {
+            string member =
+                control.name == "SwapButtonImage"
+                    ? nameof(PlanetSectorWindowLayout.SwapButton)
+                    : nameof(PlanetSectorWindowLayout.CloseButton);
+            artworkSectorPreview.BindWindowControl(
+                control,
+                CreateWindowControlPlacement(layout, member)
+            );
+        }
+
+        ContentEditorColorPickerView picker = GetColorPicker(0);
+        picker.Render(
+            ContentPackEditorField.CreateOptional(
+                selectedRecord,
+                layout,
+                nameof(PlanetSectorWindowLayout.BackgroundColorHex),
+                typeof(string),
+                "Background color"
+            ),
+            null,
+            artworkSectorPreview.DefaultBackgroundColor,
+            default,
+            (field, value) =>
+            {
+                SubmitField(field, new[] { value });
+                PlanetSectorWindowLayout updated =
+                    ContentDefinitionSerializer.DeserializeText<PlanetSectorWindowLayout>(
+                        layout.ToString(SaveOptions.DisableFormatting)
+                    );
+                artworkSectorPreview.ApplyWindowLayout(updated);
+            },
+            HandleFieldChanged,
+            ReportValidationError
+        );
+        const int cardHeight = 270;
+        picker.SetLayout(new Rect(4, y, width - 8, cardHeight));
+        y += cardHeight + 16;
+        y = PlaceWindowControlRows(artworkSectorPreview.GetWindowControls(), y, width, ref label);
+        fieldScroll.SetContentHeight(y + 20, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Displays the non-faction confirmation dialog in the standard window preview.
+    /// </summary>
+    private void RenderConfirmationWindow()
+    {
+        previewPane.SetActive(false);
+        float width = fieldScroll.ScrollArea.ViewportWidth;
+        int label = 0;
+        int top =
+            12
+            + PlaceLabel(
+                "Click to select. Drag or use the arrow keys or WASD to move. Drag the message corner to resize it.",
+                label++,
+                4,
+                4,
+                width - 8,
+                false
+            );
+        Vector2Int size = artworkWindowPreview.GetPreferredSize(
+            ContentEditorArtworkWindowPreview.ConfirmationCategory,
+            Mathf.Max(1, Mathf.FloorToInt(width - 8)),
+            GetInterfacePreviewHeight(top)
+        );
+        top = PlaceInterfacePreviewFrames(
+            top,
+            width,
+            ref label,
+            (artworkWindowPreview, size, null)
+        );
+        string artworkName = nameof(ContentPackDefinition.ConfirmationWindowArtwork);
+        XElement artwork = selectedRecord.Element.Element(artworkName) ?? new XElement(artworkName);
+        artworkWindowPreview.RenderConfirmation(
+            assets,
+            ContentDefinitionSerializer.DeserializeText<ConfirmationWindowArtwork>(
+                artwork.ToString(SaveOptions.DisableFormatting)
+            )
+        );
+        ConfirmationDialogView dialog =
+            artworkWindowPreview.GetComponentInChildren<ConfirmationDialogView>();
+        if (dialog != null)
+        {
+            XElement authored = selectedRecord.Element.Element(
+                nameof(ContentPackDefinition.ConfirmationMessageArea)
+            );
+            dialog.SetConfirmationMessageArea(ReadConfirmationMessageArea(authored));
+            RectInt defaults = dialog.AuthoredMessageArea;
+            XElement area =
+                authored
+                ?? new XElement(
+                    nameof(ContentPackDefinition.ConfirmationMessageArea),
+                    new XElement(nameof(SourceRectLayout.X), defaults.x),
+                    new XElement(nameof(SourceRectLayout.Y), defaults.y),
+                    new XElement(nameof(SourceRectLayout.Width), defaults.width),
+                    new XElement(nameof(SourceRectLayout.Height), defaults.height)
+                );
+            ContentEditorArtworkEditTarget target =
+                dialog.MessageAreaTransform.GetComponent<ContentEditorArtworkEditTarget>()
+                ?? dialog.MessageAreaTransform.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+            RectInt dialogBounds = UILayout.GetSourceRect(dialog.BackgroundArtwork.rectTransform);
+            target.BindResizableArea(
+                new ContentEditorArtworkPlacement(
+                    ContentPackEditorField.CreateOptional(
+                        selectedRecord,
+                        area,
+                        nameof(SourceRectLayout.X),
+                        typeof(int)
+                    ),
+                    ContentPackEditorField.CreateOptional(
+                        selectedRecord,
+                        area,
+                        nameof(SourceRectLayout.Y),
+                        typeof(int)
+                    )
+                ),
+                new ContentEditorArtworkPlacement(
+                    ContentPackEditorField.CreateOptional(
+                        selectedRecord,
+                        area,
+                        nameof(SourceRectLayout.Width),
+                        typeof(int)
+                    ),
+                    ContentPackEditorField.CreateOptional(
+                        selectedRecord,
+                        area,
+                        nameof(SourceRectLayout.Height),
+                        typeof(int)
+                    )
+                ),
+                dialogBounds
+            );
+            ContentPackEditorField background = ContentPackEditorField.CreateOptional(
+                selectedRecord,
+                artwork,
+                nameof(ConfirmationWindowArtwork.BackgroundImagePath),
+                typeof(string),
+                "Background"
+            );
+            artworkWindowPreview.BindArtwork(dialog.BackgroundArtwork, background, null, assets);
+            List<InterfaceArtworkRow> rows = new()
+            {
+                new(
+                    "Background",
+                    background,
+                    builtInName: dialog.BackgroundArtwork.texture.name,
+                    stockTexture: dialog.BackgroundArtwork.texture as Texture2D
+                ),
+            };
+            AddInterfaceButtonArtwork(
+                rows,
+                artwork,
+                "Yes",
+                dialog.YesArtwork,
+                dialogBounds,
+                nameof(ConfirmationWindowArtwork.YesPosition),
+                nameof(ConfirmationWindowArtwork.YesImagePath),
+                nameof(ConfirmationWindowArtwork.YesPressedImagePath)
+            );
+            AddInterfaceButtonArtwork(
+                rows,
+                artwork,
+                "No",
+                dialog.NoArtwork,
+                dialogBounds,
+                nameof(ConfirmationWindowArtwork.NoPosition),
+                nameof(ConfirmationWindowArtwork.NoImagePath),
+                nameof(ConfirmationWindowArtwork.NoPressedImagePath)
+            );
+            top = PlaceInterfaceArtworkRows(rows, top, width, ref label);
+        }
+        fieldScroll.SetContentHeight(top + 20, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Projects both artwork states from an interface button into the shared inspector.
+    /// </summary>
+    /// <param name="rows">The artwork slots to display.</param>
+    /// <param name="artwork">The pack element owning the image addresses.</param>
+    /// <param name="caption">The button's label.</param>
+    /// <param name="visual">The rendered control and its pressed state.</param>
+    /// <param name="bounds">The allowed button area.</param>
+    /// <param name="positionMember">The artwork property that stores placement.</param>
+    /// <param name="normalMember">The normal artwork property name.</param>
+    /// <param name="pressedMember">The pressed artwork property name.</param>
+    /// <param name="relativePosition">Whether placement is relative to its authored position.</param>
+    private void AddInterfaceButtonArtwork(
+        ICollection<InterfaceArtworkRow> rows,
+        XElement artwork,
+        string caption,
+        RawImagePressVisual visual,
+        RectInt bounds,
+        string positionMember,
+        string normalMember,
+        string pressedMember,
+        bool relativePosition = false
+    )
+    {
+        RawImage image = visual.GetComponent<RawImage>();
+        ContentPackEditorField normal = ContentPackEditorField.CreateOptional(
+            selectedRecord,
+            artwork,
+            normalMember,
+            typeof(string),
+            $"{caption} normal"
+        );
+        ContentPackEditorField pressed = ContentPackEditorField.CreateOptional(
+            selectedRecord,
+            artwork,
+            pressedMember,
+            typeof(string),
+            $"{caption} pressed"
+        );
+        ContentEditorArtworkPlacement position = CreateWindowControlPlacement(
+            artwork,
+            positionMember,
+            relativePosition ? default : UILayout.GetSourceRect(image.rectTransform).position
+        );
+        artworkWindowPreview.BindArtwork(
+            image,
+            normal,
+            pressed,
+            assets,
+            visual.PressedTexture,
+            new[] { position },
+            bounds: bounds
+        );
+        string[] sections = { caption };
+        Texture2D normalTexture = image.texture as Texture2D;
+        Texture2D pressedTexture = visual.PressedTexture as Texture2D;
+        rows.Add(
+            new(
+                "Normal",
+                normal,
+                builtInName: normalTexture != null ? normalTexture.name : null,
+                stockTexture: normalTexture,
+                sections: sections
+            )
+        );
+        rows.Add(
+            new(
+                "Pressed",
+                pressed,
+                builtInName: pressedTexture != null ? pressedTexture.name : null,
+                stockTexture: pressedTexture,
+                sections: sections
+            )
+        );
+    }
+
+    /// <summary>
+    /// Reads the current message rectangle from the working pack manifest.
+    /// </summary>
+    /// <param name="area">The optional authored rectangle element.</param>
+    /// <returns>The message area override, when present.</returns>
+    private static SourceRectLayout ReadConfirmationMessageArea(XElement area) =>
+        area == null
+            ? null
+            : ContentDefinitionSerializer.DeserializeText<SourceRectLayout>(
+                new XElement(nameof(SourceRectLayout), area.Elements()).ToString(
+                    SaveOptions.DisableFormatting
+                )
+            );
+
+    /// <summary>
+    /// Shows the released and pressed artwork for each distinct header button.
+    /// </summary>
+    /// <param name="controls">The controls from the authored window previews.</param>
+    /// <param name="y">The first position available for an artwork row.</param>
+    /// <param name="width">The available form width.</param>
+    /// <param name="label">The next pooled label.</param>
+    /// <returns>The position after the last artwork row.</returns>
+    private int PlaceWindowControlRows(
+        IEnumerable<RawImagePressVisual> controls,
+        int y,
+        float width,
+        ref int label
+    )
+    {
+        List<InterfaceArtworkRow> rows = new();
+        var bindings = controls
+            .Select(control => control.GetComponent<ContentPressVisualBinding>())
+            .GroupBy(binding => binding.UpAddress, StringComparer.Ordinal)
+            .Select(group => group.First());
+        foreach (ContentPressVisualBinding binding in bindings)
+        {
+            string caption = binding.name switch
+            {
+                "SwapButtonImage" => "Swap windows",
+                "CloseButtonImage" => "Close window",
+                _ => null,
+            };
+            if (caption == null)
+                continue;
+            string[] sections = { caption };
+            rows.Add(
+                new(
+                    "Normal",
+                    stockTexture: assets.GetTexture(binding.UpAddress),
+                    sections: sections
+                )
+            );
+            rows.Add(
+                new(
+                    "Pressed",
+                    stockTexture: assets.GetTexture(binding.DownAddress),
+                    sections: sections
+                )
+            );
+        }
+        return PlaceInterfaceArtworkRows(rows, y, width, ref label);
     }
 
     /// <summary>
@@ -3965,13 +4375,13 @@ public sealed class ContentEditorFormView : MonoBehaviour
         );
         int availableWidth = Mathf.Max(1, Mathf.FloorToInt(width - 8));
         const int gap = 16;
-        int availableHeight = Mathf.Max(
-            240,
-            Mathf.FloorToInt(fieldScroll.ScrollArea.ViewportHeight - y - 96)
-        );
+        int availableHeight = GetInterfacePreviewHeight(y);
         try
         {
             FactionTheme factionTheme = ContentEditorPresentation.GetFactionTheme(theme);
+            PlanetWindowHeaderLayout headerLayout = ReadPlanetWindowHeader(
+                GetPlanetWindowHeaderElement()
+            );
             if (hasConfiguredDisabledArtwork)
             {
                 Vector2Int inspectionSize = artworkWindowPreview.GetPreferredSize(
@@ -3981,12 +4391,11 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 );
                 if (inspectionSize == Vector2Int.zero)
                     return y;
-                UILayout.SetSourceRect(
-                    (RectTransform)artworkWindowPreview.transform,
-                    4,
+                PlaceInterfacePreviewFrames(
                     y,
-                    inspectionSize.x,
-                    inspectionSize.y
+                    width,
+                    ref labelIndex,
+                    (artworkWindowPreview, inspectionSize, null)
                 );
                 artworkWindowPreview.Render(
                     category,
@@ -3994,7 +4403,9 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     factionTheme,
                     assets,
                     themeFields,
-                    surfaceFields
+                    surfaceFields,
+                    theme,
+                    headerLayout: headerLayout
                 );
             }
 
@@ -4022,51 +4433,33 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     availableHeight
                 )
                 : Vector2Int.zero;
-            int previewY = y;
-            int groupWidth = previewSize.x + (hasDisabledArtwork ? gap + disabledSize.x : 0);
-            int firstColumnX = Mathf.Max(4, Mathf.RoundToInt((width - groupWidth) * 0.5f));
-            int secondColumnX = firstColumnX + previewSize.x + gap;
-            if (hasDisabledArtwork)
-            {
-                int labelHeight = PlaceLabel(
-                    "Default",
-                    labelIndex++,
-                    firstColumnX,
+            int bottom = hasDisabledArtwork
+                ? PlaceInterfacePreviewFrames(
                     y,
-                    previewSize.x,
-                    true
+                    width,
+                    ref labelIndex,
+                    (artworkWindowPreview, previewSize, "Default"),
+                    (artworkDisabledWindowPreview, disabledSize, "Disabled")
+                )
+                : PlaceInterfacePreviewFrames(
+                    y,
+                    width,
+                    ref labelIndex,
+                    (artworkWindowPreview, previewSize, null)
                 );
-                labelHeight = Mathf.Max(
-                    labelHeight,
-                    PlaceLabel("Disabled", labelIndex++, secondColumnX, y, disabledSize.x, true)
-                );
-                previewY += labelHeight + 4;
-            }
-            UILayout.SetSourceRect(
-                (RectTransform)artworkWindowPreview.transform,
-                firstColumnX,
-                previewY,
-                previewSize.x,
-                previewSize.y
-            );
             artworkWindowPreview.Render(
                 category,
                 project,
                 factionTheme,
                 assets,
                 themeFields,
-                surfaceFields
+                surfaceFields,
+                theme,
+                headerLayout: headerLayout
             );
             artworkWindowPreview.PlaceZoomControls(zoomToolbarTop, Mathf.FloorToInt(width));
             if (hasDisabledArtwork)
             {
-                UILayout.SetSourceRect(
-                    (RectTransform)artworkDisabledWindowPreview.transform,
-                    secondColumnX,
-                    previewY,
-                    disabledSize.x,
-                    disabledSize.y
-                );
                 artworkDisabledWindowPreview.Render(
                     category,
                     project,
@@ -4074,14 +4467,15 @@ public sealed class ContentEditorFormView : MonoBehaviour
                     assets,
                     themeFields,
                     surfaceFields,
-                    ContentEditorArtworkPreviewState.Disabled
+                    theme,
+                    ContentEditorArtworkPreviewState.Disabled,
+                    headerLayout
                 );
-                previewSize.y = Mathf.Max(previewSize.y, disabledSize.y);
             }
             else
                 artworkDisabledWindowPreview.Clear();
 
-            y = previewY + previewSize.y + 8;
+            y = bottom;
         }
         catch (Exception exception)
             when (exception is ArgumentException || exception is MissingMemberException)
@@ -4160,41 +4554,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             return;
         }
         selectedFactionArtworkCategory = category;
+        ContentEditorArtworkEditTarget.Select(null);
         RenderFields(true);
-    }
-
-    /// <summary>
-    /// Reveals the image field represented by an exact gameplay-window preview element.
-    /// </summary>
-    /// <param name="field">The exact field supplying the clicked rendered image.</param>
-    private void OpenWindowArtwork(ContentPackEditorField field)
-    {
-        if (field == null)
-            return;
-        ContentPackEditorField current = selectedPage?.Fields.FirstOrDefault(candidate =>
-            SameField(candidate, field) || SameFactionColor(candidate, field)
-        );
-        if (current == null)
-        {
-            AssetEditRequested?.Invoke(field);
-            return;
-        }
-        if (current.Group == nameof(FactionTheme.ColorScheme))
-        {
-            SectionRequested?.Invoke("Colors");
-            FocusColorPicker(current);
-            return;
-        }
-        string category = ContentEditorContentSections.FactionArtworkCategory(
-            current,
-            selectedPage.Key == ContentEditorContentSections.NeutralThemePageKey
-        );
-        if (category != selectedFactionArtworkCategory)
-        {
-            selectedFactionArtworkCategory = category;
-            RenderFields(true);
-        }
-        FocusField(current);
     }
 
     /// <summary>
@@ -4203,6 +4564,266 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="changes">The authored source coordinates produced by the drag.</param>
     private void MoveWindowArtwork(IReadOnlyList<ContentEditorArtworkPlacementChange> changes) =>
         ArtworkPlacementSubmitted?.Invoke(changes);
+
+    /// <summary>
+    /// Displays the full default-scenario main menu and presents the editable settings for its slots.
+    /// </summary>
+    private void RenderMainMenu()
+    {
+        previewPane.SetActive(false);
+        var factions = ContentEditorMainMenuSettings.GetLaunchFactions(project);
+        string layoutName = nameof(ContentPackDefinition.MainMenuLayout);
+        XElement layout = selectedRecord.Element.Element(layoutName) ?? new XElement(layoutName);
+        ContentEditorArtworkPlacement[] placements = ContentEditorMainMenuSettings.GetPlacements(
+            selectedRecord,
+            layout
+        );
+        string[] addresses = factions.Select(faction => faction.Model?.Value).ToArray();
+        IReadOnlyList<MainMenuArtwork.Control> controls = mainMenuPreviewTemplate.EditableControls;
+        var controlFields = controls
+            .Select(control =>
+                ContentEditorMainMenuSettings.GetControlFields(selectedRecord, layout, control)
+            )
+            .ToArray();
+        ContentPackEditorField[] media = factions
+            .Select(faction => faction.Model)
+            .Concat(
+                Enumerable.Repeat<ContentPackEditorField>(null, placements.Length - factions.Length)
+            )
+            .Concat(controlFields.Select(fields => fields.Media))
+            .Concat(
+                controlFields
+                    .Where(fields => fields.Selection != null)
+                    .Select(fields => fields.Selection)
+            )
+            .ToArray();
+        string[] mediaAddresses = media.Select(asset => asset?.Value).ToArray();
+        int width = Mathf.Max(1, Mathf.FloorToInt(fieldScroll.ScrollArea.ViewportWidth - 8));
+        int label = 0;
+        int top = 4;
+        if (factions.Length > 0)
+        {
+            int playbackWidth = Mathf.Min(width, 100);
+            int instructionHeight = PlaceLabel(
+                "Click to select. Drag or use the arrow keys or WASD to move. Double-click artwork to edit it.",
+                label++,
+                4,
+                top,
+                Mathf.Max(1, width - playbackWidth - 8),
+                false
+            );
+            if (mainMenuPreview?.Matches(assets, mediaAddresses) != true)
+            {
+                ClearMainMenuPreview();
+                mainMenuPreview = Instantiate(
+                    mainMenuPreviewTemplate,
+                    fieldScroll.ScrollArea.ContentRoot
+                );
+                mainMenuPreview.PlacementChanged += MoveWindowArtwork;
+                mainMenuPreview.ArtworkReady += RefreshMainMenuThumbnails;
+                mainMenuPreview.gameObject.SetActive(true);
+                MainMenuLayout overrides = new()
+                {
+                    Controls = controls
+                        .Select(
+                            (control, index) =>
+                                new MainMenuControlLayout
+                                {
+                                    ID = control.ID,
+                                    ImagePath = control.CanReplaceImage
+                                        ? controlFields[index].Media.Value
+                                        : null,
+                                    ModelPath =
+                                        control.Model != null
+                                            ? controlFields[index].Media.Value
+                                            : null,
+                                    SelectionImagePath = controlFields[index].Selection?.Value,
+                                }
+                        )
+                        .ToList(),
+                };
+                mainMenuPreview.Initialize(assets, addresses, overrides, mediaAddresses);
+            }
+            if (mainMenuPlaybackButton == null)
+            {
+                mainMenuPlaybackButton = Instantiate(
+                    setupUnitsTemplate,
+                    fieldScroll.ScrollArea.ContentRoot
+                );
+                mainMenuPlaybackButton.onClick.AddListener(ToggleMainMenuPlayback);
+            }
+            mainMenuPlaybackButton.GetComponentInChildren<TMP_Text>(true).text =
+                mainMenuPreview.IsPlaying ? "Pause" : "Play";
+            UILayout.SetSourceRect(
+                (RectTransform)mainMenuPlaybackButton.transform,
+                4 + width - playbackWidth,
+                top,
+                playbackWidth,
+                34
+            );
+            mainMenuPlaybackButton.gameObject.SetActive(true);
+            top += Mathf.Max(instructionHeight, 34) + 8;
+            int height = Mathf.Max(
+                1,
+                Mathf.RoundToInt(
+                    width * ((float)MainMenuLayout.ReferenceHeight / MainMenuLayout.ReferenceWidth)
+                )
+            );
+            top = PlaceInterfacePreviewFrames(
+                top,
+                fieldScroll.ScrollArea.ViewportWidth,
+                ref label,
+                (mainMenuPreview, new Vector2Int(width, height), null)
+            );
+            mainMenuPreview.Render(
+                placements
+                    .Concat(controlFields.Select(fields => fields.Placement))
+                    .Concat(
+                        controlFields
+                            .Where(fields => fields.SelectionPlacement != null)
+                            .Select(fields => fields.SelectionPlacement)
+                    )
+                    .ToArray(),
+                media,
+                OpenWindowArtwork
+            );
+        }
+
+        List<InterfaceArtworkRow> rows = new();
+        for (int slot = 0; slot < factions.Length; slot++)
+        {
+            (string name, ContentPackEditorField model) = factions[slot];
+            if (model == null)
+                continue;
+            rows.Add(
+                new(
+                    $"{name} medallion",
+                    model,
+                    mainMenuPreview.GetMedallionImage(slot),
+                    $"{name} medallion"
+                )
+            );
+        }
+        for (int index = 0; index < controls.Count; index++)
+        {
+            ContentPackEditorField art = controlFields[index].Media;
+            ContentPackEditorField selection = controlFields[index].Selection;
+            if (art == null && selection == null)
+                continue;
+            MainMenuArtwork.Control control =
+                mainMenuPreview?.EditableControls[index] ?? controls[index];
+            string[] sections = { control.Caption };
+            if (art != null)
+                rows.Add(
+                    new(art.Caption, art, control.Graphic, control.ArtworkName, sections: sections)
+                );
+            if (selection != null)
+                rows.Add(
+                    new(
+                        selection.Caption,
+                        selection,
+                        control.Selection,
+                        control.SelectionName,
+                        sections: sections
+                    )
+                );
+        }
+        top = PlaceInterfaceArtworkRows(rows, top, width, ref label);
+        RefreshMainMenuThumbnails();
+        fieldScroll.SetContentHeight(top + 20, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Registers a thumbnail that tracks the artwork shown in the running menu preview.
+    /// </summary>
+    /// <param name="asset">The authored asset field.</param>
+    /// <param name="source">The menu graphic supplying texture and crop.</param>
+    /// <param name="bounds">The thumbnail space in form coordinates.</param>
+    /// <param name="imageIndex">The next pooled thumbnail.</param>
+    private void PlaceLiveArtworkThumbnail(
+        ContentPackEditorField asset,
+        Graphic source,
+        Rect bounds,
+        ref int imageIndex
+    )
+    {
+        RawImage thumbnail = GetArtworkPreviewImage(ref imageIndex, asset.Caption);
+        mainMenuThumbnails.Add((thumbnail, source, bounds));
+        ContentEditorArtworkEditTarget editTarget =
+            thumbnail.GetComponent<ContentEditorArtworkEditTarget>()
+            ?? thumbnail.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+        editTarget.Bind(asset, field => ImportRequested?.Invoke(field), default);
+        if (asset.MediaType == ContentPackEditorMediaType.Image)
+            BindImageDropTarget(thumbnail, asset);
+    }
+
+    /// <summary>
+    /// Copies loaded artwork and atlas crop coordinates into the existing inline thumbnails.
+    /// </summary>
+    private void RefreshMainMenuThumbnails()
+    {
+        foreach ((RawImage thumbnail, Graphic source, Rect bounds) in mainMenuThumbnails)
+        {
+            Texture texture = source.mainTexture;
+            Rect uv = source is RawImage raw ? raw.uvRect : new Rect(0f, 0f, 1f, 1f);
+            if (source is Image image && image.sprite != null)
+            {
+                Rect pixels = image.sprite.rect;
+                uv = new Rect(
+                    pixels.x / texture.width,
+                    pixels.y / texture.height,
+                    pixels.width / texture.width,
+                    pixels.height / texture.height
+                );
+            }
+            thumbnail.texture = texture;
+            thumbnail.uvRect = uv;
+            thumbnail.enabled = texture != null && texture != Texture2D.whiteTexture;
+            if (!thumbnail.enabled)
+                continue;
+            Vector2 size = new(texture.width * uv.width, texture.height * uv.height);
+            float scale = Mathf.Min(bounds.width / size.x, bounds.height / size.y);
+            size *= scale;
+            SetFormRect(
+                thumbnail.rectTransform,
+                bounds.x,
+                (int)bounds.y,
+                Mathf.RoundToInt(size.x),
+                Mathf.RoundToInt(size.y)
+            );
+        }
+    }
+
+    /// <summary>
+    /// Releases the active scene when leaving the main-menu workspace.
+    /// </summary>
+    private void ClearMainMenuPreview()
+    {
+        if (mainMenuPlaybackButton)
+            mainMenuPlaybackButton.gameObject.SetActive(false);
+        if (mainMenuPreview == null)
+            return;
+        mainMenuPreview.PlacementChanged -= MoveWindowArtwork;
+        mainMenuPreview.ArtworkReady -= RefreshMainMenuThumbnails;
+        GameObject scene = mainMenuPreview.gameObject;
+        mainMenuPreview = null;
+        scene.SetActive(false);
+        if (Application.isPlaying)
+            Destroy(scene);
+        else
+            DestroyImmediate(scene);
+    }
+
+    /// <summary>
+    /// Switches the cockpit between its still frame and continuous animation.
+    /// </summary>
+    private void ToggleMainMenuPlayback()
+    {
+        mainMenuPreview.SetPlayback(!mainMenuPreview.IsPlaying);
+        mainMenuPlaybackButton.GetComponentInChildren<TMP_Text>().text = mainMenuPreview.IsPlaying
+            ? "Pause"
+            : "Play";
+    }
 
     /// <summary>
     /// Hides the artwork selector and releases composed-preview project references.
@@ -4216,7 +4837,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
             button.onClick.RemoveAllListeners();
             button.gameObject.SetActive(false);
         }
-        factionArtworkFieldTops.Clear();
+        artworkFieldTops.Clear();
+        mainMenuThumbnails.Clear();
         artworkViewSelector.gameObject.SetActive(false);
         ArtworkViewOptions = Array.Empty<string>();
         artworkSectorPreview.Clear();
@@ -4226,69 +4848,6 @@ public sealed class ContentEditorFormView : MonoBehaviour
         artworkSectorPreview.gameObject.SetActive(false);
         artworkWindowPreview.Clear();
         artworkDisabledWindowPreview.Clear();
-    }
-
-    /// <summary>
-    /// Places one faction artwork entry as a compact thumbnail-and-path row when space permits.
-    /// </summary>
-    /// <param name="field">The faction artwork field.</param>
-    /// <param name="y">The next vertical form position.</param>
-    /// <param name="width">The available browser width.</param>
-    /// <param name="fieldIndex">The next reusable field view.</param>
-    /// <param name="labelIndex">The next reusable label.</param>
-    /// <param name="imageIndex">The next reusable thumbnail.</param>
-    /// <returns>The next vertical position.</returns>
-    private int PlaceFactionArtworkField(
-        ContentPackEditorField field,
-        int y,
-        float width,
-        ref int fieldIndex,
-        ref int labelIndex,
-        ref int imageIndex
-    )
-    {
-        factionArtworkFieldTops[field.XmlElement] = y;
-        if (ContentEditorContentSections.IsAdvisorPlacementField(field))
-        {
-            string portrait =
-                field.XmlElement.Parent.Name.LocalName
-                == nameof(StrategyAdvisorTheme.ProtocolSourceLayout)
-                    ? "Advisor"
-                    : "Droid";
-            string coordinate =
-                field.MemberName == nameof(SourceRectLayout.X) ? "horizontal" : "vertical";
-            y += PlaceLabel(
-                $"{portrait} {coordinate} position",
-                labelIndex++,
-                4,
-                y,
-                width - 8,
-                false
-            );
-            return y + PlaceField(field, fieldIndex++, 4, y, Mathf.Min(200, width - 8), 0) + 10;
-        }
-        y += PlaceLabel(field.Caption, labelIndex++, 4, y, width - 8, false, field.HelpText);
-        if (width >= 900 && !field.IsMediaDirectory)
-        {
-            int rowTop = y;
-            float previewWidth = Mathf.Min(300, Mathf.Max(220, width - 640));
-            int previewBottom = PlaceArtworkImagePreview(
-                field,
-                4,
-                rowTop,
-                previewWidth,
-                300,
-                140,
-                ref imageIndex,
-                ref labelIndex
-            );
-            float fieldX = previewWidth + 16;
-            int fieldHeight = PlaceField(field, fieldIndex++, fieldX, rowTop, width - fieldX, 0);
-            return Mathf.Max(previewBottom, rowTop + fieldHeight) + 12;
-        }
-        y = PlaceArtworkImagePreview(field, 4, y, width, 360, 160, ref imageIndex, ref labelIndex);
-        y += PlaceField(field, fieldIndex++, 0, y, width, 0);
-        return y + 12;
     }
 
     /// <summary>
@@ -5499,6 +6058,7 @@ public sealed class ContentEditorFormView : MonoBehaviour
     /// <param name="referenceLabels">Optional reference choices scoped to the surrounding editor.</param>
     /// <param name="editArtwork">Opens the gameplay artwork editor when one is available.</param>
     /// <param name="hasEffectArtwork">Whether the associated effect image could be loaded.</param>
+    /// <param name="videoPreviewAddress">The effective video address for a cutscene action row.</param>
     private int PlaceField(
         ContentPackEditorField field,
         int index,
@@ -5510,7 +6070,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
         bool artworkAction = false,
         IReadOnlyDictionary<string, string> referenceLabels = null,
         Action editArtwork = null,
-        bool hasEffectArtwork = false
+        bool hasEffectArtwork = false,
+        string videoPreviewAddress = null
     )
     {
         while (fieldViews.Count <= index)
@@ -5553,6 +6114,8 @@ public sealed class ContentEditorFormView : MonoBehaviour
                 RequestPreview
             );
         Rect rect = PrepareFormRect((RectTransform)view.transform, x, y, width, height);
+        if (videoPreviewAddress != null)
+            return view.SetVideoActionLayout(rect, videoPreviewAddress, videoResolutions);
         return artworkAction
             ? view.SetArtworkActionLayout(rect, editArtwork, hasEffectArtwork)
             : view.SetLayout(rect, labelWidth);

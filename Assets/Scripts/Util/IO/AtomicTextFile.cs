@@ -9,14 +9,14 @@ namespace Rebellion.Util.IO
     /// <summary>
     /// Publishes complete text documents using owned temporary files and a destination-scoped process lease.
     /// </summary>
-    internal static class AtomicTextFile
+    public static class AtomicTextFile
     {
         /// <summary>
         /// Reads one complete published document while allowing another process to replace its file entry.
         /// </summary>
         /// <param name="path">The published document path.</param>
         /// <returns>The complete document opened by this reader.</returns>
-        internal static string ReadAllText(string path)
+        public static string ReadAllText(string path)
         {
             using FileStream stream = new FileStream(
                 path,
@@ -34,7 +34,7 @@ namespace Rebellion.Util.IO
         /// </summary>
         /// <param name="path">The destination document path.</param>
         /// <param name="contents">The complete replacement document.</param>
-        internal static void WriteAllText(string path, string contents)
+        public static void WriteAllText(string path, string contents)
         {
             string destination = Path.GetFullPath(path);
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
@@ -90,7 +90,7 @@ namespace Rebellion.Util.IO
         /// </summary>
         /// <param name="path">The destination document path.</param>
         /// <param name="getContents">Produces the complete replacement while holding the destination lease.</param>
-        internal static void UpdateAllText(string path, Func<string> getContents)
+        public static void UpdateAllText(string path, Func<string> getContents)
         {
             if (getContents == null)
                 throw new ArgumentNullException(nameof(getContents));

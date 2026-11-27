@@ -758,20 +758,6 @@ internal static class ContentEditorArtworkWindowPreviewRenderer
             );
             return;
         }
-
-        if (window.TryGetComponent(out ConfirmDialogWindowView confirm))
-        {
-            ConfirmDialogTheme windowTheme = theme.ConfirmDialogTheme;
-            confirm.Render(
-                new ConfirmDialogWindowRenderData(
-                    0,
-                    0,
-                    GetTexture(assets, windowTheme?.BackgroundImagePath),
-                    GetTexture(assets, windowTheme?.MoveTitleImagePath),
-                    new[] { "Move selected units", "to Preview system?" }
-                )
-            );
-        }
     }
 
     /// <summary>
