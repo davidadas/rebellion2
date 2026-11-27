@@ -364,6 +364,8 @@ namespace Rebellion.Game.Combat
             set => _repairMilliseconds = value;
         }
 
+        internal int QueuedBatteryCount => _batteryRechargeCount;
+
         internal float DamageControl => _damageControl;
         internal uint DamageEventCount => _damageEventCount;
 
@@ -588,20 +590,38 @@ namespace Rebellion.Game.Combat
             return _batteryReady[(int)arc] == 1;
         }
 
-        internal int QueuedBatteryCount => _batteryRechargeCount;
-
+        /// <summary>
+        /// Reads a battery by its recharge queue position.
+        /// </summary>
+        /// <param name="index">The zero-based queue position.</param>
+        /// <returns>The queued battery arc.</returns>
         internal TacticalWeaponArc GetQueuedBattery(int index) =>
             (TacticalWeaponArc)_batteryRechargeOrder[index];
 
+        /// <summary>
+        /// Stores the new charge for a battery.
+        /// </summary>
+        /// <param name="arc">The affected battery.</param>
+        /// <param name="charge">Its new charge.</param>
         internal void SetBatteryCharge(TacticalWeaponArc arc, float charge) =>
             _batteryCharge[(int)arc] = charge;
 
+        /// <summary>
+        /// Stores a battery's charge and readiness together.
+        /// </summary>
+        /// <param name="arc">The affected battery.</param>
+        /// <param name="charge">Its new charge.</param>
+        /// <param name="ready">Whether the battery can fire.</param>
         internal void SetBatteryCharge(TacticalWeaponArc arc, float charge, bool ready)
         {
             SetBatteryCharge(arc, charge);
             _batteryReady[(int)arc] = ready ? 1u : 0u;
         }
 
+        /// <summary>
+        /// Removes a battery from the recharge queue and shifts later entries forward.
+        /// </summary>
+        /// <param name="index">The completed queue position.</param>
         internal void RemoveQueuedBattery(int index)
         {
             for (int shift = index; shift < 3; shift++)

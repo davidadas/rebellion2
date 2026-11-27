@@ -7,6 +7,14 @@ namespace Rebellion.Tactical
 {
     internal sealed class TacticalCombatDamage
     {
+        internal event Action<CombatUnit, TacticalSystemEvent> SystemChangeRequested;
+        internal event Action<CombatUnit, string> LethalHit;
+        internal event Action<
+            CombatUnit,
+            TacticalWeaponType,
+            TacticalCombatImpactKind
+        > ImpactApplied;
+
         /// <summary>
         /// Gets the shield recharge available for one second and updates the fighter's stored sample.
         /// </summary>
@@ -41,14 +49,6 @@ namespace Rebellion.Tactical
             double recharge = GetShieldRecharge(unit);
             return recharge / unit.ShieldRechargeSample;
         }
-
-        internal event Action<CombatUnit, TacticalSystemEvent> SystemChangeRequested;
-        internal event Action<CombatUnit, string> LethalHit;
-        internal event Action<
-            CombatUnit,
-            TacticalWeaponType,
-            TacticalCombatImpactKind
-        > ImpactApplied;
 
         /// <summary>
         /// Recharges shields, recovers temporary delays, and requests due component repairs.

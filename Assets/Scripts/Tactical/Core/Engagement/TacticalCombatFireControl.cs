@@ -50,6 +50,15 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatFireControl
     {
+        private readonly float[,] _scores = new float[4, 3];
+        private readonly CombatUnit[,] _targets = new CombatUnit[4, 3];
+        private readonly List<CombatUnit> _neighbors = new();
+        public event Action<TacticalCombatShot> ShotRequested;
+        public event Action<CombatUnit, CombatUnit> TractorTargetRequested;
+
+        private const float _shotScale = 0.26666668f;
+        private const float _laserCapitalScale = 0.167f;
+
         /// <summary>
         /// Calculates the squadron's torpedo attack after entry and battle losses.
         /// </summary>
@@ -140,15 +149,6 @@ namespace Rebellion.Tactical
                 if (unit.IsBatteryReady(unit.GetQueuedBattery(order)))
                     unit.RemoveQueuedBattery(order);
         }
-
-        private readonly float[,] _scores = new float[4, 3];
-        private readonly CombatUnit[,] _targets = new CombatUnit[4, 3];
-        private readonly List<CombatUnit> _neighbors = new();
-        public event Action<TacticalCombatShot> ShotRequested;
-        public event Action<CombatUnit, CombatUnit> TractorTargetRequested;
-
-        private const float _shotScale = 0.26666668f;
-        private const float _laserCapitalScale = 0.167f;
 
         /// <summary>
         /// Attempts designated targets first, followed by opportunity shots at nearby fighters.

@@ -10,6 +10,15 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatMotion
     {
+        private readonly List<CombatUnit> _neighbors = new();
+        private readonly List<CombatUnit> _equalHeight = new();
+        private float _lower;
+        private float _upper;
+        private bool _hasLower;
+        private bool _hasUpper;
+        private bool _moveUp;
+        private bool _moveDown;
+
         /// <summary>
         /// Calculates the current sublight speed after command support and tractor restraint.
         /// </summary>
@@ -163,15 +172,6 @@ namespace Rebellion.Tactical
             unit.TractorPower == 0 || float.IsNaN(unit.TractorPower)
                 ? 0
                 : GetTractorContribution(unit) / unit.TractorPower;
-
-        private readonly List<CombatUnit> _neighbors = new();
-        private readonly List<CombatUnit> _equalHeight = new();
-        private float _lower;
-        private float _upper;
-        private bool _hasLower;
-        private bool _hasUpper;
-        private bool _moveUp;
-        private bool _moveDown;
 
         /// <summary>
         /// Advances one active unit, then clamps it to the battle volume and updates its index.
