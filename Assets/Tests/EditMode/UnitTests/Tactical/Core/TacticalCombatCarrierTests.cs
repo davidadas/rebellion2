@@ -150,7 +150,9 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 100,
                 StarfighterCapacity = capacity,
             };
-            return new TacticalCombatCarrier(new CombatUnit(ship, CombatSide.Attacker, 1));
+            return new TacticalCombatCarrier(
+                TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1)
+            );
         }
 
         /// <summary>
@@ -159,7 +161,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="id">The squadron identifier.</param>
         /// <returns>The captured squadron.</returns>
         private static CombatUnit CreateFighter(string id = "fighter") =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = id,

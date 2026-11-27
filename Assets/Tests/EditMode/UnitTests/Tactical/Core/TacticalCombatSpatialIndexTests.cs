@@ -46,7 +46,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical ship.</returns>
         private static CombatUnit CreateCapital(int index) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = $"ship-{index}",
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical squadron.</returns>
         private static CombatUnit CreateFighter(int index) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = $"fighter-{index}",

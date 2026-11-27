@@ -4787,6 +4787,21 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_ShipWithoutArtwork_DeploysItsAuthoredGeometry()
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateTacticalEncounter();
+            attacker.TypeID = "custom-ship";
+            attacker.PhysicalGeometry = new CapitalShipGeometry { CollisionRadius = 7 };
+
+            Assert.IsTrue(commands.CanTakeCommand);
+            TacticalCombatSession session = commands.BeginTacticalCombat();
+
+            Assert.AreEqual(7, session.GetUnit(attacker.InstanceID).CollisionRadius);
+            Assert.IsNotNull(game.ActiveBattle.GetCombatant(attacker.InstanceID));
+        }
+
+        [Test]
         public void BeginTacticalCombat_ReportCaptureFails_AllowsPreparingPendingEncounterAgain()
         {
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
@@ -5135,8 +5150,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(battle.CanWithdraw(battle.PlayerSide));
             Assert.AreEqual(0, attacker.GetOperationalHyperdrive());
             CombatUnit repaired = battle.GetUnit(attacker.InstanceID);
-            repaired.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
-            repaired.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, true);
+            TacticalCombatDamage.ApplyComponentEvent(repaired, TacticalShipSystem.Hyperdrive, true);
+            TacticalCombatDamage.ApplyComponentEvent(repaired, TacticalShipSystem.Hyperdrive, true);
             Assert.IsTrue(repaired.HasHyperdrive);
             Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
             for (int frame = 0; frame < 6000 && !battle.IsComplete; frame++)

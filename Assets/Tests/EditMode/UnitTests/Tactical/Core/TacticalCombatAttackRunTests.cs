@@ -254,7 +254,7 @@ namespace Rebellion.Tests.Tactical
             List<CombatUnit> fighters = new();
             for (int index = 0; index < count; index++)
                 fighters.Add(
-                    new CombatUnit(
+                    TacticalCombatDeployment.CreateUnit(
                         new Starfighter
                         {
                             InstanceID = "fighter" + index,
@@ -379,7 +379,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The battle after its attack run has entered the two-minute sequence.</returns>
         private static TacticalCombatSession CreateSession()
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -391,7 +391,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",

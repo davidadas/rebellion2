@@ -20,11 +20,11 @@ namespace Rebellion.Tests.Tactical
                 MaxHullStrength = 100,
                 CurrentHullStrength = 100,
             };
-            CombatUnit first = new(ship, CombatSide.Attacker, 1);
-            CombatUnit second = new(ship, CombatSide.Attacker, 1);
+            CombatUnit first = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+            CombatUnit second = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
 
             first.ApplyHullLoss(20);
-            first.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(first, TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(100, second.Hull);
             Assert.AreEqual(0, second.GetDamage(TacticalShipSystem.Engines));
@@ -50,9 +50,13 @@ namespace Rebellion.Tests.Tactical
                 Hyperdrive = primary,
             };
             fighter.BackupHyperdrive = backup;
-            CombatUnit unit = new(fighter, CombatSide.Attacker, 1);
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(fighter, CombatSide.Attacker, 1);
             for (int index = 0; index < damaged; index++)
-                unit.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+                TacticalCombatDamage.ApplyComponentEvent(
+                    unit,
+                    TacticalShipSystem.Hyperdrive,
+                    false
+                );
 
             Assert.AreEqual(expected, unit.HasHyperdrive);
         }
@@ -124,7 +128,7 @@ namespace Rebellion.Tests.Tactical
             CapitalShip ship = CreateShip();
             ship.ManufacturingStatus = ManufacturingStatus.Building;
 
-            CombatUnit unit = new(ship, CombatSide.Attacker, 1);
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
 
             Assert.AreEqual(CombatUnitStatus.Active, unit.Status);
         }
@@ -132,11 +136,17 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Proximity_MovementMagnitudeNearFloatMidpoint_RetainsMovementArithmeticPrecision()
         {
-            CombatUnit unit = new(CreateShip(), CombatSide.Attacker, 1)
-            {
-                CollisionRadius = 0,
-                Velocity = new Vector3(0.9999999403953552f, 0.00048828125f, 9.313225746154785e-10f),
-            };
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
+                CreateShip(),
+                CombatSide.Attacker,
+                1
+            );
+            unit.CollisionRadius = 0;
+            unit.Velocity = new Vector3(
+                0.9999999403953552f,
+                0.00048828125f,
+                9.313225746154785e-10f
+            );
 
             Assert.AreEqual(0.5f, TacticalCombatSpatialIndex.GetProximity(unit));
         }

@@ -775,7 +775,7 @@ namespace Rebellion.Tests.Tactical
                 List<TacticalCombatGroup> groups = new();
                 for (int index = 0; index < count; index++)
                 {
-                    CombatUnit unit = new(
+                    CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                         CreateShip("friendly-" + index, maximumHull, currentHull ?? maximumHull),
                         CombatSide.Attacker,
                         index + 1
@@ -784,7 +784,7 @@ namespace Rebellion.Tests.Tactical
                     units.Add(unit);
                     groups.Add(new TacticalCombatGroup(100 + index, new[] { unit }, Vector3.UnitZ));
                 }
-                Enemy = new CombatUnit(
+                Enemy = TacticalCombatDeployment.CreateUnit(
                     CreateShip("enemy", 1000, 1000),
                     CombatSide.Defender,
                     1000001
@@ -812,7 +812,7 @@ namespace Rebellion.Tests.Tactical
                 }
                 if (secondEnemy)
                 {
-                    SecondEnemy = new CombatUnit(
+                    SecondEnemy = TacticalCombatDeployment.CreateUnit(
                         CreateShip("other-enemy", 1000, 1000),
                         CombatSide.Defender,
                         1000003
@@ -890,7 +890,7 @@ namespace Rebellion.Tests.Tactical
             /// <param name="index">The registration key.</param>
             /// <returns>The captured fighter.</returns>
             private static CombatUnit CreateFighter(string id, CombatSide side, int index) =>
-                new(
+                TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = id,

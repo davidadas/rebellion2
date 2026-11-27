@@ -148,7 +148,7 @@ namespace Rebellion.Tests.Gameplay
             TacticalCombatSession battle = AdmitNetworkBattle(commands);
             CombatUnit combatant = battle.GetUnit(attacker.InstanceID);
             combatant.ApplyHullLoss(100);
-            combatant.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(combatant, TacticalShipSystem.Engines, false);
             TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
             Assert.AreEqual(1000, attacker.CurrentHullStrength);
             Assert.Zero(attacker.SystemDamage.Engines);

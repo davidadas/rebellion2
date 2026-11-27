@@ -58,7 +58,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit station = null;
             if (stationPresent)
             {
-                station = new CombatUnit(
+                station = TacticalCombatDeployment.CreateUnit(
                     new CapitalShip
                     {
                         InstanceID = "station",
@@ -115,7 +115,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The registration ordering.</param>
         /// <returns>The captured participant.</returns>
         private static CombatUnit CreateUnit(string id, CombatSide side, int index) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = id,

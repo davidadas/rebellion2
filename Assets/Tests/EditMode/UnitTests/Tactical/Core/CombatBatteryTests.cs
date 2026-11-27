@@ -425,7 +425,7 @@ namespace Rebellion.Tests.Tactical
         )
         {
             if (fighter)
-                return new CombatUnit(
+                return TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         MaxSquadronSize = 1,
@@ -467,7 +467,7 @@ namespace Rebellion.Tests.Tactical
                         );
                 ship.HardpointGroups.Add(group);
             }
-            return new CombatUnit(ship, CombatSide.Attacker, 0);
+            return TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 0);
         }
     }
 }

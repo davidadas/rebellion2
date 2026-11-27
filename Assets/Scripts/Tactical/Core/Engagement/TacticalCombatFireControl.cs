@@ -60,6 +60,25 @@ namespace Rebellion.Tactical
         private const float _laserCapitalScale = 0.167f;
 
         /// <summary>
+        /// Establishes the initial charge and readiness for the deployed participant's batteries.
+        /// </summary>
+        /// <param name="unit">The deployed participant.</param>
+        internal static void InitializeBatteries(CombatUnit unit)
+        {
+            bool isFighter = unit.IsFighter;
+            uint weaponDamage = isFighter ? 0 : unit.GetDamage(TacticalShipSystem.Weapons);
+            for (int index = 0; index < 4; index++)
+            {
+                TacticalWeaponArc arc = (TacticalWeaponArc)index;
+                float capacity = unit.GetBatteryCapacity(arc);
+                unit.SetBatteryCharge(arc, !isFighter && capacity > 0 ? capacity : 0, capacity > 0);
+                unit.ResetBatteryRechargePosition(arc);
+                if (!isFighter && capacity > 0 && weaponDamage >= 4)
+                    unit.ClearBattery(arc);
+            }
+        }
+
+        /// <summary>
         /// Calculates the squadron's torpedo attack after entry and battle losses.
         /// </summary>
         /// <param name="unit">The affected battle unit.</param>

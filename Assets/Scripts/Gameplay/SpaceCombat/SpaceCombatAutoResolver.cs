@@ -1844,7 +1844,7 @@ namespace Rebellion.Gameplay
                 && !IsWithdrawing
                 && PendingSuperlaserTarget == null
                 && _superlaserRechargeIterationsRemaining <= 0;
-            internal bool CanWithdrawIndependently => Ship.Hyperdrive > 0;
+            internal bool CanWithdrawIndependently => Ship.GetOperationalHyperdrive() > 0;
             internal bool IsJumpReady => _jumpIterationsRemaining <= 0;
             internal int SuperlaserRechargeIterationsRemaining =>
                 _superlaserRechargeIterationsRemaining;
@@ -2078,7 +2078,7 @@ namespace Rebellion.Gameplay
                 GameConfig.SpaceCombatConfig config,
                 CombatForce force
             )
-                : base(config.AutoResolveMinimumManeuverRatio, ship.HyperdriveCount)
+                : base(config.AutoResolveMinimumManeuverRatio, ship.GetOperationalHyperdriveCount())
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);

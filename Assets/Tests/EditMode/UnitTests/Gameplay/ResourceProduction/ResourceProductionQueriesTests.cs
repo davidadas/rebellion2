@@ -377,7 +377,10 @@ namespace Rebellion.Tests.Gameplay
                 _faction
             );
 
-            Assert.AreEqual(50, _faction.MaintenanceCapacity);
+            Assert.AreEqual(
+                50,
+                ResourceProductionQueries.GetBaseMaintenanceCapacity(_game, _faction)
+            );
             Assert.AreEqual(75, summary.MaintenanceHeadroom);
             Assert.AreEqual(75, summary.DeliveredMaintenanceHeadroom);
             Assert.AreEqual(75, summary.ProjectedMaintenanceHeadroom);
@@ -515,7 +518,10 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(-10, summary.MaintenanceHeadroom);
             Assert.AreEqual(40, summary.DeliveredMaintenanceHeadroom);
             Assert.AreEqual(90, summary.ProjectedMaintenanceHeadroom);
-            Assert.AreEqual(_faction.MaintenanceHeadroom, summary.MaintenanceHeadroom);
+            Assert.AreEqual(
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _faction),
+                summary.MaintenanceHeadroom
+            );
         }
 
         [Test]

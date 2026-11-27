@@ -16,6 +16,58 @@ namespace Rebellion.Tactical
         > ImpactApplied;
 
         /// <summary>
+        /// Applies a queued component hit or repair.
+        /// </summary>
+        /// <param name="unit">The affected participant.</param>
+        /// <param name="system">The affected component.</param>
+        /// <param name="isRepair">Whether to repair one damage level.</param>
+        internal static void ApplyComponentEvent(
+            CombatUnit unit,
+            TacticalShipSystem system,
+            bool isRepair
+        )
+        {
+            uint damage = unit.GetDamage(system);
+            if (isRepair)
+            {
+                if (unit.DamageEventCount == 0)
+                    return;
+                unit.DamageEventCount--;
+                if (system == TacticalShipSystem.Hyperdrive)
+                    ChangeDriveDamage(unit, isRepair: true);
+                else
+                    unit.SetSystemDamage(system, damage - 1);
+                return;
+            }
+
+            unit.DamageEventCount++;
+            if (system == TacticalShipSystem.Hyperdrive)
+                ChangeDriveDamage(unit, isRepair: false);
+            else
+                unit.SetSystemDamage(system, Math.Min(damage + 1, 4));
+        }
+
+        /// <summary>
+        /// Damages the first working drive or repairs the last disabled drive in equipment order.
+        /// </summary>
+        /// <param name="unit">The affected participant.</param>
+        /// <param name="isRepair">Whether the event repairs a drive.</param>
+        private static void ChangeDriveDamage(CombatUnit unit, bool isRepair)
+        {
+            for (int position = 0; position < unit.DriveSlotCount; position++)
+            {
+                int index = isRepair ? unit.DriveSlotCount - 1 - position : position;
+                if (!unit.HasHyperdriveAt(index))
+                    continue;
+                int damage = unit.GetDriveDamage(index);
+                if (isRepair ? damage <= 0 : damage != 0)
+                    continue;
+                unit.SetDriveDamage(index, isRepair ? damage - 1 : 1);
+                return;
+            }
+        }
+
+        /// <summary>
         /// Gets the shield recharge available for one second and updates the fighter's stored sample.
         /// </summary>
         /// <param name="unit">The affected battle unit.</param>

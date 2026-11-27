@@ -22,7 +22,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
         public void Plan_OperationalStationWithUnorderedCharge_QueuesSuperlaser()
         {
             CombatUnit target = CreateUnit("target", CombatSide.Attacker, 1, 20, false);
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",
@@ -105,7 +105,7 @@ namespace Rebellion.Tests.Tactical.Core.Automation
                 100000000,
                 false
             );
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "priority-fighter",
@@ -139,7 +139,11 @@ namespace Rebellion.Tests.Tactical.Core.Automation
             TacticalCombatSession session = CreateSession(20, 20, false, 4);
             CombatUnit damaged = session.GetUnit("defender-0");
             for (int damage = 0; damage < 4; damage++)
-                damaged.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                TacticalCombatDamage.ApplyComponentEvent(
+                    damaged,
+                    TacticalShipSystem.Engines,
+                    false
+                );
 
             Advance(session);
 

@@ -320,8 +320,14 @@ namespace Rebellion.Gameplay
                 );
             }
 
-            void RegisterUnit(BaseSceneNode unit, EncounterSide side, int index) =>
-                units.Add((unit, side.Side, index, RequireDefinition(unit.TypeID)));
+            void RegisterUnit(BaseSceneNode unit, EncounterSide side, int index)
+            {
+                _definitions.TryGetValue(
+                    unit.TypeID ?? string.Empty,
+                    out TacticalCombatUnitDefinition definition
+                );
+                units.Add((unit, side.Side, index, definition));
+            }
         }
 
         /// <summary>
@@ -384,6 +390,7 @@ namespace Rebellion.Gameplay
                     participant.Side,
                     participant.Index
                 );
+                unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
                 rosters[(int)participant.Side].Add(unit);
                 byID.Add(unit.InstanceID, unit);
             }
@@ -459,7 +466,9 @@ namespace Rebellion.Gameplay
                     groups,
                     forward,
                     groupIndex,
-                    unit => _definitions[unit.TypeID].FighterGroup
+                    unit =>
+                        _definitions.GetValueOrDefault(unit.TypeID ?? string.Empty)?.FighterGroup
+                        ?? 0
                 );
             }
             groups.Sort(CompareGroupRegistration);
@@ -530,18 +539,6 @@ namespace Rebellion.Gameplay
                     && facility.ProtectedUnitTypeIDs?.Contains(ship.TypeID) == true
                 );
         }
-
-        /// <summary>
-        /// Requires an authored unit definition before any battle resources or campaign state are changed.
-        /// </summary>
-        /// <param name="typeID">The participating unit type.</param>
-        /// <returns>The shared tactical definition.</returns>
-        private TacticalCombatUnitDefinition RequireDefinition(string typeID) =>
-            _definitions.TryGetValue(typeID, out TacticalCombatUnitDefinition unit)
-                ? unit
-                : throw new InvalidDataException(
-                    $"Tactical combat definition is missing for unit '{typeID}'."
-                );
 
         /// <summary>
         /// Finds the captured active carrier that hosts a selected command officer.

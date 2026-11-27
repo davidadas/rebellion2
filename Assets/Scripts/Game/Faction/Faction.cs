@@ -8,7 +8,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -164,23 +163,6 @@ namespace Rebellion.Game.Factions
         // Resource Status.
         public int RawMaterials => RawMaterialStockpile;
         public int RefinedMaterials => RefinedMaterialStockpile;
-        public int RawMaterialSupply =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMinedResources(),
-                Settings.RefinementMultiplier
-            );
-        public int RefinedMaterialSupply =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(),
-                Settings.RefinementMultiplier
-            );
-        public int MaintenanceCapacity =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(),
-                Settings.ResourceProcessingPointsPerFacility
-            );
-        public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
-        public int ProjectedMaintenanceHeadroom => GetProjectedMaintenanceHeadroom();
 
         // Fog of War.
         public FogState Fog { get; set; } = new FogState();
@@ -601,15 +583,6 @@ namespace Rebellion.Game.Factions
             GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawResourceNodes());
 
         /// <summary>
-        /// Gets the total number of available resource nodes across all owned planets.
-        /// Available resource nodes take into account external factors such as blockaded planets
-        /// or buildings still under construction that might reduce usability.
-        /// </summary>
-        /// <returns>The total number of available resource nodes.</returns>
-        public int GetTotalAvailableResourceNodes() =>
-            GetOwnedUnitsByType<Planet>().Sum(planet => planet.GetAvailableResourceNodes());
-
-        /// <summary>
         /// Gets the total number of raw mined resources across all owned planets.
         /// Raw mined resources include all resources mined, without factoring in external conditions
         /// like blockade or construction status of related buildings.
@@ -619,15 +592,6 @@ namespace Rebellion.Game.Factions
             GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawMinedResources());
 
         /// <summary>
-        /// Gets the total number of available mined resources across all owned planets.
-        /// Available mined resources consider blockaded planets or buildings under construction
-        /// that might limit resource collection.
-        /// </summary>
-        /// <returns>The total number of available mined resources.</returns>
-        public int GetTotalAvailableMinedResources() =>
-            GetOwnedUnitsByType<Planet>().Sum(planet => planet.GetAvailableMinedResources());
-
-        /// <summary>
         /// Gets the total raw refinement capacity across all owned planets.
         /// Raw refinement capacity represents the total processing capability, without considering
         /// factors like blockades or buildings under construction.
@@ -635,60 +599,6 @@ namespace Rebellion.Game.Factions
         /// <returns>The total raw refinement capacity.</returns>
         public int GetTotalRawRefinementCapacity() =>
             GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawRefinementCapacity());
-
-        /// <summary>
-        /// Gets the total available refinement capacity across all owned planets.
-        /// Available refinement capacity accounts for factors like blockaded planets or buildings
-        /// that are still under construction.
-        /// </summary>
-        /// <returns>The total available refinement capacity.</returns>
-        public int GetTotalAvailableRefinementCapacity() =>
-            GetOwnedUnitsByType<Planet>().Sum(planet => planet.GetAvailableRefinementCapacity());
-
-        /// <summary>
-        /// Calculates the total available refined capacity count (before multiplier).
-        /// This includes only resources and capacities that are available after accounting for
-        /// blockades, buildings under construction, and other limiting factors.
-        /// </summary>
-        /// <returns>The available refined capacity count.</returns>
-        public int GetTotalAvailableMaterialsRaw() =>
-            CalculateMaterialCapacity(
-                GetOwnedUnitsByType<Planet>()
-                    .Where(planet => !planet.IsResourceProductionSuspended())
-            );
-
-        /// <summary>
-        /// Totals the usable inputs at producing planets and returns the limiting capacity.
-        /// </summary>
-        /// <param name="producingPlanets">The planets with active production.</param>
-        /// <returns>The total material capacity before faction multipliers.</returns>
-        internal static int CalculateMaterialCapacity(IEnumerable<Planet> producingPlanets)
-        {
-            int resourceNodes = 0;
-            int minedResources = 0;
-            int refinementCapacity = 0;
-            foreach (Planet planet in producingPlanets)
-            {
-                checked
-                {
-                    resourceNodes += planet.GetRawResourceNodes();
-                    minedResources += planet.GetActiveMinedResources();
-                    refinementCapacity += planet.GetActiveRefinementCapacity();
-                }
-            }
-
-            return Math.Min(resourceNodes, Math.Min(minedResources, refinementCapacity));
-        }
-
-        /// <summary>
-        /// Returns maintenance capacity after committed and ordered units are accounted for.
-        /// </summary>
-        /// <returns>The projected spare maintenance capacity.</returns>
-        internal int GetProjectedMaintenanceHeadroom() =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(),
-                Settings.ResourceProcessingPointsPerFacility
-            ) - GetTotalProjectedMaintenanceCost();
 
         /// <summary>
         /// Returns all owned entities that implement IManufacturable.

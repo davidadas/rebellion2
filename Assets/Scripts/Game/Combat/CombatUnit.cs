@@ -209,9 +209,9 @@ namespace Rebellion.Game.Combat
             get => Unit?.GetDisplayName() ?? base.DisplayName;
             private set => base.DisplayName = value;
         }
-        public CombatSide Side { get; private set; }
+        public CombatSide Side { get; internal set; }
         public bool IsFighter => Unit is Starfighter;
-        private int DriveSlotCount => Unit is CapitalShip ship ? ship.Hyperdrives.Length : 2;
+        internal int DriveSlotCount => Unit is CapitalShip ship ? ship.Hyperdrives.Length : 2;
         public bool IsBattleStation => Unit is CapitalShip { CanDestroyPlanets: true };
         public int InitialSquadronSize => (Unit as Starfighter)?.CurrentSquadronSize ?? 0;
         public float InitialHull =>
@@ -239,7 +239,7 @@ namespace Rebellion.Game.Combat
 
         public float CommandBudget { get; internal set; }
         public float MaximumTurnRate { get; internal set; }
-        public int Index { get; private set; }
+        public int Index { get; internal set; }
         public string TractorTargetID { get; internal set; }
         public Vector3 DesiredMovement { get; internal set; }
         public Vector3 DesiredHeading { get; internal set; }
@@ -362,7 +362,14 @@ namespace Rebellion.Game.Combat
         internal int QueuedBatteryCount => _batteryRechargeCount;
 
         internal float DamageControl => _damageControl;
-        internal uint DamageEventCount => _damageEventCount;
+
+        [PersistableIgnore]
+        internal uint DamageEventCount
+        {
+            get => _damageEventCount;
+            set => _damageEventCount = value;
+        }
+        internal bool HasComponentDamage => Unit is CapitalShip || _fighterDamage != null;
 
         /// <summary>
         /// Captures the campaign unit state used for the duration of one battle.
@@ -416,106 +423,6 @@ namespace Rebellion.Game.Combat
                         && fighter.CurrentSquadronSize > 0
                     );
                 FighterCapacity = ship.StarfighterCapacity - fighterCount + activeFighterCount;
-            }
-        }
-
-        /// <summary>
-        /// Creates tactical simulation state over an independently copied campaign unit.
-        /// </summary>
-        /// <param name="sourceUnit">The campaign unit to copy into battle.</param>
-        /// <param name="side">The participant's encounter side.</param>
-        /// <param name="index">The unique battle registration identifier.</param>
-        public CombatUnit(BaseSceneNode sourceUnit, CombatSide side, int index)
-        {
-            CaptureSource(sourceUnit);
-            InitializeTacticalState(side, index);
-        }
-
-        /// <summary>
-        /// Initializes combat pools and equipment from the battle-owned ship copy.
-        /// </summary>
-        /// <param name="side">The battle side assigned at deployment.</param>
-        /// <param name="index">The unit's registration order.</param>
-        internal void InitializeTacticalState(CombatSide side, int index)
-        {
-            BaseSceneNode battleUnit = Unit;
-            CapitalShip ship = battleUnit as CapitalShip;
-            ship?.InstallLegacyEquipment();
-            Starfighter fighter = battleUnit as Starfighter;
-            bool isFighter = fighter != null;
-            bool isBattleStation = ship?.CanDestroyPlanets == true;
-            bool isUnderConstruction =
-                isBattleStation && ship.ManufacturingStatus != ManufacturingStatus.Complete;
-            float maximumHull = isFighter ? fighter.MaxSquadronSize * 8 : ship.MaxHullStrength;
-            float initialHull = isFighter
-                ? fighter.CurrentSquadronSize * 8
-                : ship.CurrentHullStrength;
-            float maximumShields = isFighter
-                ? fighter.ShieldStrength * fighter.MaxSquadronSize
-                : ship.MaxShieldStrength;
-            float weaponRecharge = isFighter ? 0 : ship.WeaponRecharge;
-            float shieldRecharge = isFighter ? 0 : ship.ShieldRechargeRate;
-            float sublightSpeed = isFighter ? fighter.SublightSpeed : ship.SublightSpeed;
-            float maneuverability = isFighter ? fighter.Agility : ship.Maneuverability;
-            float tractorBeamPower = isFighter ? 0 : ship.TractorBeamPower;
-            float damageControl = isFighter ? 0 : ship.DamageControl;
-
-            Side = side;
-            Index = index;
-            CarrierID = CarrierSourceUnitInstanceID;
-            InitializeCombatPools(
-                maximumHull,
-                initialHull,
-                maximumShields,
-                weaponRecharge,
-                shieldRecharge,
-                sublightSpeed,
-                maneuverability,
-                tractorBeamPower,
-                CountInstalledHyperdrives(),
-                damageControl
-            );
-            InitializeBatteries(IsFighter ? 0 : GetDamage(TacticalShipSystem.Weapons), IsFighter);
-            CapitalShipGeometry geometry = ship?.PhysicalGeometry;
-            MaximumTurnRate = geometry?.MaximumTurnRate ?? 0;
-            HalfHeight = IsFighter
-                ? 0.3f
-                : geometry?.HalfHeight ?? CapitalShipGeometry.DefaultHalfHeight;
-            CollisionRadius = IsFighter
-                ? 1.2f
-                : geometry?.CollisionRadius ?? CapitalShipGeometry.DefaultCollisionRadius;
-            Heading = Vector3.UnitZ;
-            CommandBudget = 1;
-            if (geometry is { HullWidth: > 0, HullDepth: > 0 })
-                HullDimensions = new Vector3(
-                    geometry.HullWidth,
-                    geometry.HullHeight,
-                    geometry.HullDepth
-                );
-            DesiredHeading = Heading;
-            Status =
-                IsFighter && CarrierSourceUnitInstanceID != null && !HasHyperdrive
-                    ? CombatUnitStatus.Docked
-                : isUnderConstruction ? CombatUnitStatus.UnderConstruction
-                : CombatUnitStatus.Active;
-        }
-
-        /// <summary>
-        /// Resets and charges each live battery in tactical arc order.
-        /// </summary>
-        /// <param name="weaponDamage">The initial number of disabled weapon systems.</param>
-        /// <param name="isFighter">Whether the participant is a fighter squadron.</param>
-        private void InitializeBatteries(uint weaponDamage, bool isFighter)
-        {
-            for (int index = 0; index < _batteryCharge.Length; index++)
-            {
-                TacticalWeaponArc arc = (TacticalWeaponArc)index;
-                float capacity = GetBatteryCapacity(arc);
-                _batteryCharge[index] = !isFighter && capacity > 0 ? capacity : 0;
-                _batteryReady[index] = capacity > 0 ? 1u : 0u;
-                _batteryRechargeOrder[index] = -1;
-                if (!isFighter && capacity > 0 && weaponDamage >= 4)
-                    ClearBattery(arc);
             }
         }
 
@@ -728,7 +635,7 @@ namespace Rebellion.Game.Combat
         /// <param name="maximumShields">The complete shield pool.</param>
         /// <param name="weaponRechargeRate">The capital ship's weapon recharge rate.</param>
         /// <param name="shieldRechargeRate">The capital ship's shield recharge rate.</param>
-        /// <param name="sublightSpeed">The unit's sublight engine rating.</param>
+        /// <param name="movementBudget">The unit's initial movement budget.</param>
         /// <param name="maneuverability">The unit's maneuverability rating.</param>
         /// <param name="tractorPower">The unit's tractor beam strength.</param>
         /// <param name="hyperdrives">The number of installed hyperdrives.</param>
@@ -739,55 +646,39 @@ namespace Rebellion.Game.Combat
             float maximumShields,
             float weaponRechargeRate,
             float shieldRechargeRate,
-            float sublightSpeed,
+            float movementBudget,
             float maneuverability,
             float tractorPower,
             uint hyperdrives,
             float damageControlRating
         )
         {
-            bool isFighter = IsFighter;
             AttackDelay = MovementDelay = _repairMilliseconds = 0;
             _damageEventCount = 0;
             MaximumHull = maximumHull;
             Hull = currentHull;
             _shieldLimit = maximumShields;
             Shields = maximumShields;
-            _weaponRecharge = isFighter ? 0.25f : (float)((double)weaponRechargeRate * 3.75f);
-            _shieldRecharge = isFighter ? 1 : shieldRechargeRate;
-            _movementBudget = isFighter
-                ? (float)((double)sublightSpeed * 0.4f)
-                : (float)((double)sublightSpeed * 0.4f * 0.6f);
+            _weaponRecharge = weaponRechargeRate;
+            _shieldRecharge = shieldRechargeRate;
+            _movementBudget = movementBudget;
             _turnBonus = maneuverability;
             _tractorBudget = tractorPower;
             _hyperdriveCount = hyperdrives;
             _damageControl = damageControlRating;
-            if (_unit is CapitalShip || _fighterDamage != null)
-            {
-                // Existing weapon damage does not seed repair work; later weapon hits add events.
-                _damageEventCount =
-                    GetDamage(TacticalShipSystem.Engines)
-                    + GetDamage(TacticalShipSystem.Shields)
-                    + GetDamage(TacticalShipSystem.Hyperdrive)
-                    + GetDamage(TacticalShipSystem.TractorBeam);
-            }
         }
 
         /// <summary>
         /// Captures the component damage for the campaign in the ship's equipment order.
         /// </summary>
         /// <returns>The component damage to commit with the battle result.</returns>
-        public CapitalShipSystemDamage CaptureDamage() =>
-            new()
-            {
-                Shields = (int)GetDamage(TacticalShipSystem.Shields),
-                Weapons = (int)GetDamage(TacticalShipSystem.Weapons),
-                TractorBeam = (int)GetDamage(TacticalShipSystem.TractorBeam),
-                Engines = (int)GetDamage(TacticalShipSystem.Engines),
-                HyperdriveDamage = DistributeDriveDamage(
-                    (int)GetDamage(TacticalShipSystem.Hyperdrive)
-                ),
-            };
+        public CapitalShipSystemDamage CaptureDamage() => ComponentDamage.CreateCopy();
+
+        /// <summary>
+        /// Copies the damage recorded at each drive position.
+        /// </summary>
+        /// <returns>The independent drive damage array.</returns>
+        internal int[] CaptureDriveDamage() => (int[])ComponentDamage.HyperdriveDamage.Clone();
 
         /// <summary>
         /// Checks whether the captured unit has a drive at the given position.
@@ -810,7 +701,7 @@ namespace Rebellion.Game.Combat
         /// Counts the drives installed per the captured equipment.
         /// </summary>
         /// <returns>The number of valid drives in equipment order.</returns>
-        private uint CountInstalledHyperdrives()
+        internal uint CountInstalledHyperdrives()
         {
             uint count = 0;
             for (int index = 0; index < DriveSlotCount; index++)
@@ -884,28 +775,6 @@ namespace Rebellion.Game.Combat
                 ) / _hyperdriveCount;
 
         /// <summary>
-        /// Applies a queued component hit or repair.
-        /// </summary>
-        /// <param name="system">The affected component.</param>
-        /// <param name="isRepair">Whether to repair one damage level.</param>
-        public void ApplyComponentEvent(TacticalShipSystem system, bool isRepair)
-        {
-            uint damage = GetDamage(system);
-            if (isRepair)
-            {
-                if (_damageEventCount == 0)
-                    return;
-                _damageEventCount--;
-                SetDamage(system, damage - 1);
-                return;
-            }
-
-            _damageEventCount++;
-            uint limit = system == TacticalShipSystem.Hyperdrive ? _hyperdriveCount : 4;
-            SetDamage(system, Math.Min(damage + 1, limit));
-        }
-
-        /// <summary>
         /// Applies the temporary delays from a queued ion disruption.
         /// </summary>
         /// <param name="attackDelay">The additional attack delay in seconds.</param>
@@ -949,6 +818,36 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
+        /// Clears a battery's stored recharge position during deployment.
+        /// </summary>
+        /// <param name="arc">The affected battery.</param>
+        internal void ResetBatteryRechargePosition(TacticalWeaponArc arc) =>
+            _batteryRechargeOrder[(int)arc] = -1;
+
+        /// <summary>
+        /// Gets stored damage at one drive position.
+        /// </summary>
+        /// <param name="index">The affected drive slot.</param>
+        /// <returns>The damage stored at that slot.</returns>
+        internal int GetDriveDamage(int index) => ComponentDamage.GetHyperdriveDamage(index);
+
+        /// <summary>
+        /// Stores damage at one drive position.
+        /// </summary>
+        /// <param name="index">The affected drive slot.</param>
+        /// <param name="damage">The new damage there.</param>
+        internal void SetDriveDamage(int index, int damage) =>
+            ComponentDamage.SetHyperdriveDamage(index, damage);
+
+        /// <summary>
+        /// Sets the damage recorded for a component system.
+        /// </summary>
+        /// <param name="system">The affected component.</param>
+        /// <param name="damage">The new damage level.</param>
+        internal void SetSystemDamage(TacticalShipSystem system, uint damage) =>
+            ComponentDamage.SetCombatDamage(system, unchecked((int)damage));
+
+        /// <summary>
         /// Writes a damage level into the shared ship-component state.
         /// </summary>
         /// <param name="system">The affected ship system.</param>
@@ -961,17 +860,23 @@ namespace Rebellion.Game.Combat
                     retainTotal: true
                 );
             else
-                ComponentDamage.SetCombatDamage(system, unchecked((int)damage));
+                SetSystemDamage(system, damage);
         }
 
         /// <summary>
         /// Restores the ordered component damage values from persisted battle state.
         /// </summary>
         /// <param name="damage">Damage in tactical system registration order.</param>
-        internal void RestoreComponentDamage(uint[] damage)
+        /// <param name="driveDamage">Exact damage by drive position when recorded.</param>
+        internal void RestoreComponentDamage(uint[] damage, int[] driveDamage = null)
         {
             for (int system = 0; system < damage.Length; system++)
-                SetDamage((TacticalShipSystem)system, damage[system]);
+            {
+                if (system == (int)TacticalShipSystem.Hyperdrive && driveDamage != null)
+                    ComponentDamage.HyperdriveDamage = (int[])driveDamage.Clone();
+                else
+                    SetDamage((TacticalShipSystem)system, damage[system]);
+            }
         }
     }
 }

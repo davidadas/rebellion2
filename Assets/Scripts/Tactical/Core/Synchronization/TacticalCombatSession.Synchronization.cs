@@ -455,6 +455,7 @@ namespace Rebellion.Tactical
                     .Range(0, 5)
                     .Select(index => unit.GetDamage((TacticalShipSystem)index))
                     .ToArray(),
+                HyperdriveDamage = unit.CaptureDriveDamage(),
                 Charge = Enumerable
                     .Range(0, 4)
                     .Select(index => unit.GetBatteryCharge((TacticalWeaponArc)index))

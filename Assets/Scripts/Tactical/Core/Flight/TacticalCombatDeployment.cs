@@ -7,6 +7,7 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 
 namespace Rebellion.Tactical
 {
@@ -76,6 +77,20 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
+        /// Creates a detached participant and applies the standard deployment rules.
+        /// </summary>
+        /// <param name="source">The campaign ship or squadron.</param>
+        /// <param name="side">The owning side in this encounter.</param>
+        /// <param name="index">The registration order.</param>
+        /// <returns>The initialized battle participant.</returns>
+        internal static CombatUnit CreateUnit(BaseSceneNode source, CombatSide side, int index)
+        {
+            CombatUnit unit = CombatUnit.Create(source);
+            InitializeUnit(unit, null, side, index);
+            return unit;
+        }
+
+        /// <summary>
         /// Initializes the detached participant with its tactical registration and ship equipment.
         /// </summary>
         /// <param name="unit">The battle participant being evaluated or updated.</param>
@@ -89,13 +104,84 @@ namespace Rebellion.Tactical
             int index
         )
         {
-            if (unit.Unit is CapitalShip ship)
-                definition.MigrateCapitalShip(ship);
-            else if (unit.Unit is Starfighter fighter)
-                fighter.MigrateBackupHyperdrive(definition.BackupHyperdrive);
+            BaseSceneNode battleUnit = unit.Unit;
+            CapitalShip ship = battleUnit as CapitalShip;
+            Starfighter fighter = battleUnit as Starfighter;
+            if (ship != null)
+            {
+                definition?.MigrateCapitalShip(ship);
+                ship.InstallLegacyEquipment();
+            }
+            else
+                fighter.MigrateBackupHyperdrive(definition?.BackupHyperdrive ?? 0);
 
-            unit.InitializeTacticalState(side, index);
-            unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
+            bool isFighter = fighter != null;
+            bool isBattleStation = ship?.CanDestroyPlanets == true;
+            bool isUnderConstruction =
+                isBattleStation && ship.ManufacturingStatus != ManufacturingStatus.Complete;
+            float maximumHull = isFighter ? fighter.MaxSquadronSize * 8 : ship.MaxHullStrength;
+            float initialHull = isFighter
+                ? fighter.CurrentSquadronSize * 8
+                : ship.CurrentHullStrength;
+            float maximumShields = isFighter
+                ? fighter.ShieldStrength * fighter.MaxSquadronSize
+                : ship.MaxShieldStrength;
+            float weaponRecharge = isFighter ? 0.25f : (float)((double)ship.WeaponRecharge * 3.75f);
+            float shieldRecharge = isFighter ? 1 : ship.ShieldRechargeRate;
+            float movementBudget = isFighter
+                ? (float)((double)fighter.SublightSpeed * 0.4f)
+                : (float)((double)ship.SublightSpeed * 0.4f * 0.6f);
+            float maneuverability = isFighter ? fighter.Agility : ship.Maneuverability;
+            float tractorBeamPower = isFighter ? 0 : ship.TractorBeamPower;
+            float damageControl = isFighter ? 0 : ship.DamageControl;
+
+            unit.Side = side;
+            unit.Index = index;
+            unit.CarrierID = unit.CarrierSourceUnitInstanceID;
+            unit.InitializeCombatPools(
+                maximumHull,
+                initialHull,
+                maximumShields,
+                weaponRecharge,
+                shieldRecharge,
+                movementBudget,
+                maneuverability,
+                tractorBeamPower,
+                unit.CountInstalledHyperdrives(),
+                damageControl
+            );
+            if (unit.HasComponentDamage)
+            {
+                // Existing weapon damage does not seed repair work; later weapon hits add events.
+                unit.DamageEventCount =
+                    unit.GetDamage(TacticalShipSystem.Engines)
+                    + unit.GetDamage(TacticalShipSystem.Shields)
+                    + unit.GetDamage(TacticalShipSystem.Hyperdrive)
+                    + unit.GetDamage(TacticalShipSystem.TractorBeam);
+            }
+            TacticalCombatFireControl.InitializeBatteries(unit);
+            CapitalShipGeometry geometry = ship?.PhysicalGeometry;
+            unit.MaximumTurnRate = geometry?.MaximumTurnRate ?? 0;
+            unit.HalfHeight = isFighter
+                ? 0.3f
+                : geometry?.HalfHeight ?? CapitalShipGeometry.DefaultHalfHeight;
+            unit.CollisionRadius = isFighter
+                ? 1.2f
+                : geometry?.CollisionRadius ?? CapitalShipGeometry.DefaultCollisionRadius;
+            unit.Heading = Vector3.UnitZ;
+            unit.CommandBudget = 1;
+            if (geometry is { HullWidth: > 0, HullDepth: > 0 })
+                unit.HullDimensions = new Vector3(
+                    geometry.HullWidth,
+                    geometry.HullHeight,
+                    geometry.HullDepth
+                );
+            unit.DesiredHeading = unit.Heading;
+            unit.Status =
+                isFighter && unit.CarrierSourceUnitInstanceID != null && !unit.HasHyperdrive
+                    ? CombatUnitStatus.Docked
+                : isUnderConstruction ? CombatUnitStatus.UnderConstruction
+                : CombatUnitStatus.Active;
         }
 
         /// <summary>

@@ -45,7 +45,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
-            CombatUnit target = new(
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "target",
@@ -55,10 +55,8 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 1000001
-            )
-            {
-                Position = group.Formation.Position,
-            };
+            );
+            target.Position = group.Formation.Position;
             float attack = 1;
 
             float metric = TacticalCombatTargeting.GetTargetMetric(group, target, ref attack);
@@ -72,7 +70,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit attacker = CreateUnit("attacker", CombatSide.Attacker, 1, 0, false);
             TacticalCombatGroup group = new(10, new[] { attacker }, Vector3.UnitZ);
-            CombatUnit target = new(
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "target",
@@ -154,7 +152,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_RecoveryCompletedFighter_ExcludesItsAttackBudget()
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "recovered",
@@ -235,7 +233,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void AssessStrength_OperationalEmpireStation_AddsItsFixedAttackBudget()
         {
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",

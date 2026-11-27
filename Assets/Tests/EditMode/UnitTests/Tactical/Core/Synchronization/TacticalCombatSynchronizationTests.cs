@@ -151,8 +151,8 @@ namespace Rebellion.Tests.Tactical
             };
             replica.Damage.SystemChangeRequested += (_, _) => localRequests++;
             replica.SystemChanged += (_, _) => localApplications++;
-            source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
-            source.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(source, TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(source, TacticalShipSystem.Engines, false);
             TacticalCombatSnapshot damaged = authority.CaptureSnapshot(1);
             ApplyCapturedProjection(replica, damaged);
             long localDraws = replicaRandom.CallCount;
@@ -791,7 +791,7 @@ namespace Rebellion.Tests.Tactical
             bool reserveFighter = false
         )
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -803,7 +803,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",
@@ -823,7 +823,7 @@ namespace Rebellion.Tests.Tactical
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                CombatUnit reserve = new(
+                CombatUnit reserve = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "reserve",
@@ -1024,7 +1024,10 @@ namespace Rebellion.Tests.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 20, 20, 20, 20, 100 });
-            return new(ship, side, index) { Heading = heading, DesiredHeading = heading };
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(ship, side, index);
+            unit.Heading = heading;
+            unit.DesiredHeading = heading;
+            return unit;
         }
 
         /// <summary>

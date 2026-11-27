@@ -706,7 +706,11 @@ namespace Rebellion.Tactical
                     }
                     else
                     {
-                        source.ApplyComponentEvent(change.System, change.IsRepair);
+                        TacticalCombatDamage.ApplyComponentEvent(
+                            source,
+                            change.System,
+                            change.IsRepair
+                        );
                         if (
                             !change.IsRepair
                             && change.System == TacticalShipSystem.TractorBeam

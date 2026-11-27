@@ -156,7 +156,8 @@ namespace Rebellion.Content
         internal void MigrateCapitalShip(CapitalShip ship)
         {
             ship.ApplyLegacyDriveRating(BackupHyperdrive);
-            bool largeHull = PresentationIndex == 21;
+            // Earlier packs identify this classic hull by its unit type.
+            bool largeHull = ship.TypeID == "CSEM014";
             ship.PhysicalGeometry ??= new CapitalShipGeometry
             {
                 CollisionRadius = largeHull ? 19 : CapitalShipGeometry.DefaultCollisionRadius,

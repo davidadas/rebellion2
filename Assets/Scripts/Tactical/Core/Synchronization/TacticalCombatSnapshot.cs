@@ -57,6 +57,7 @@ namespace Rebellion.Tactical.Synchronization
         public float WeaponRechargeSample;
         public float ShieldRechargeSample;
         public uint[] ComponentDamage = new uint[5];
+        public int[] HyperdriveDamage;
         public float[] Charge = new float[4];
         public bool[] Ready = new bool[4];
         public float HyperspaceMilliseconds;

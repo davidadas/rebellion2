@@ -73,10 +73,22 @@ namespace Rebellion.Tests.Game.Combat
                     new Hyperdrive { Rating = 1 },
                 },
             };
-            CombatUnit combatant = new(source, CombatSide.Attacker, 1);
+            CombatUnit combatant = TacticalCombatDeployment.CreateUnit(
+                source,
+                CombatSide.Attacker,
+                1
+            );
 
-            combatant.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, isRepair: false);
-            combatant.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, isRepair: false);
+            TacticalCombatDamage.ApplyComponentEvent(
+                combatant,
+                TacticalShipSystem.Hyperdrive,
+                isRepair: false
+            );
+            TacticalCombatDamage.ApplyComponentEvent(
+                combatant,
+                TacticalShipSystem.Hyperdrive,
+                isRepair: false
+            );
 
             Assert.IsTrue(combatant.HasHyperdrive);
             CollectionAssert.AreEqual(
@@ -84,7 +96,11 @@ namespace Rebellion.Tests.Game.Combat
                 combatant.CaptureDamage().HyperdriveDamage
             );
 
-            combatant.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, isRepair: false);
+            TacticalCombatDamage.ApplyComponentEvent(
+                combatant,
+                TacticalShipSystem.Hyperdrive,
+                isRepair: false
+            );
 
             Assert.IsFalse(combatant.HasHyperdrive);
             CollectionAssert.AreEqual(
@@ -107,11 +123,23 @@ namespace Rebellion.Tests.Game.Combat
                 },
                 SystemDamage = new CapitalShipSystemDamage { Engines = 1 },
             };
-            CombatUnit combatant = new(source, CombatSide.Attacker, 1);
+            CombatUnit combatant = TacticalCombatDeployment.CreateUnit(
+                source,
+                CombatSide.Attacker,
+                1
+            );
             CapitalShip battleShip = (CapitalShip)combatant.Unit;
 
-            combatant.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, isRepair: false);
-            combatant.ApplyComponentEvent(TacticalShipSystem.Engines, isRepair: true);
+            TacticalCombatDamage.ApplyComponentEvent(
+                combatant,
+                TacticalShipSystem.Hyperdrive,
+                isRepair: false
+            );
+            TacticalCombatDamage.ApplyComponentEvent(
+                combatant,
+                TacticalShipSystem.Engines,
+                isRepair: true
+            );
 
             Assert.AreEqual(0, battleShip.SystemDamage.GetHyperdriveDamage(0));
             Assert.AreEqual(1, battleShip.SystemDamage.GetHyperdriveDamage(1));
@@ -152,7 +180,7 @@ namespace Rebellion.Tests.Game.Combat
                 PrimaryWeaponArc.Fore,
                 999
             );
-            combatant.InitializeTacticalState(CombatSide.Attacker, 1);
+            TacticalCombatDeployment.InitializeUnit(combatant, null, CombatSide.Attacker, 1);
             CombatUnit unit = combatant;
 
             Assert.AreEqual("Entry name", unit.DisplayName);
@@ -188,7 +216,7 @@ namespace Rebellion.Tests.Game.Combat
             fighter.CurrentSquadronSize = 0;
             fighter.LaserCannon = 0;
             fighter.ShieldStrength = 0;
-            combatant.InitializeTacticalState(CombatSide.Attacker, 1);
+            TacticalCombatDeployment.InitializeUnit(combatant, null, CombatSide.Attacker, 1);
             CombatUnit unit = combatant;
 
             Assert.IsTrue(unit.IsFighter);
