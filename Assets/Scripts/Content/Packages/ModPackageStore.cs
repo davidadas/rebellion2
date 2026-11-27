@@ -1401,7 +1401,7 @@ public sealed class ModPackageStore
     /// <param name="installed">The current library, including managed and manually installed mods.</param>
     /// <param name="packCopies">The packs installed directly in the content root.</param>
     /// <param name="protectedIDs">Content currently in use by the caller.</param>
-    private static void EnsurePackageCanBeRemoved(
+    private void EnsurePackageCanBeRemoved(
         InstalledModPackage current,
         IReadOnlyList<InstalledModPackage> installed,
         IEnumerable<InstalledModContent> packCopies,
@@ -1419,13 +1419,72 @@ public sealed class ModPackageStore
         var otherContent = installed
             .Where(item => item.PackageID != current.PackageID)
             .SelectMany(item => item.Content)
-            .Concat(packCopies)
             .ToArray();
+        var possiblePackDependents = otherContent.Concat(packCopies).ToArray();
+        ContentModDefinition[] otherMods = current.Content.All(content => content.IsPack)
+            ? Array.Empty<ContentModDefinition>()
+            : otherContent
+                .Where(content => !content.IsPack)
+                .Select(content => ReadInstalledMod(content.Folder))
+                .OfType<ContentModDefinition>()
+                .ToArray();
         foreach (InstalledModContent content in current.Content)
         {
             EnsureNotProtected(content, protectedIDs);
-            EnsureNoPackDependents(content, otherContent);
+            EnsureNoPackDependents(content, possiblePackDependents);
+            if (!content.IsPack && ReadInstalledMod(content.Folder) is ContentModDefinition mod)
+                EnsureNoModDependents(mod, otherMods);
         }
+    }
+
+    /// <summary>
+    /// Reads the live manifest for an installed add-on, since a receipt can predate rule edits.
+    /// </summary>
+    /// <param name="folder">The installed add-on's folder name.</param>
+    /// <returns>The manifest, or null if the installation does not have a valid manifest.</returns>
+    private ContentModDefinition ReadInstalledMod(string folder)
+    {
+        try
+        {
+            return ContentFileResolver.ReadValidatedMod(ResolveFolder(folder));
+        }
+        catch (Exception exception)
+            when (ContentFileResolver.IsInvalidModDefinitionException(exception))
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Protects an add-on that is the only installed release satisfying another mod's requirement.
+    /// </summary>
+    /// <param name="content">The release to remove.</param>
+    /// <param name="installed">The readable add-on manifests outside the package being removed.</param>
+    private static void EnsureNoModDependents(
+        ContentModDefinition content,
+        IEnumerable<ContentModDefinition> installed
+    )
+    {
+        ContentModDefinition[] compatible = installed
+            .Where(mod =>
+                mod.BasePackID == content.BasePackID
+                && mod.BasePackVersion == content.BasePackVersion
+            )
+            .ToArray();
+        ContentModDefinition dependent = compatible.FirstOrDefault(mod =>
+            mod.ID != content.ID
+            && mod.Requires.Any(requirement =>
+                requirement.MatchesRelease(content.ID, content.Version)
+                && !compatible.Any(other => requirement.MatchesRelease(other.ID, other.Version))
+            )
+        );
+        if (dependent != null)
+            throw new InvalidOperationException(
+                dependent.DisplayName
+                    + " requires "
+                    + content.DisplayName
+                    + ". Remove that mod first."
+            );
     }
 
     /// <summary>

@@ -857,7 +857,7 @@ public sealed class ContentFileResolver
     /// </summary>
     /// <param name="exception">The failure raised while reading one definition.</param>
     /// <returns><see langword="true"/> when discovery can safely skip the definition.</returns>
-    private static bool IsInvalidModDefinitionException(Exception exception)
+    internal static bool IsInvalidModDefinitionException(Exception exception)
     {
         return exception
             is InvalidDataException

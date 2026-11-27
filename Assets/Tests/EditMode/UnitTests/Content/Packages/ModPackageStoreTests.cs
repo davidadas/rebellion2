@@ -373,6 +373,27 @@ namespace Rebellion.Tests.Content.Packages
         }
 
         [Test]
+        public void Uninstall_RequiredNativeMod_LeavesItInstalled()
+        {
+            string dependency = WriteLocalMod("colors", "1.0.0", "");
+            WriteLocalMod(
+                "layout",
+                "2.0.0",
+                "<Requires><Mod><ID>colors</ID><Version>1.0.0</Version></Mod></Requires>"
+            );
+            InstalledModPackage selected = store
+                .GetInstalled()
+                .Single(item => item.Name == "colors");
+
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                store.Uninstall(selected, Array.Empty<string>())
+            );
+
+            StringAssert.Contains("layout requires colors", error.Message);
+            Assert.IsTrue(File.Exists(Path.Combine(dependency, "pack.xml")));
+        }
+
+        [Test]
         public async Task Uninstall_IntactAddOn_KeepsItsExactReleaseAvailableForSavesAsync()
         {
             string source = Path.Combine(folder, "add-on-source");
@@ -572,6 +593,17 @@ namespace Rebellion.Tests.Content.Packages
         /// <typeparam name="T">The expected exception type.</typeparam>
         /// <param name="action">The asynchronous operation.</param>
         /// <returns>The expected exception.</returns>
+        private string WriteLocalMod(string id, string version, string rules)
+        {
+            string root = Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRoot), id);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(
+                Path.Combine(root, "pack.xml"),
+                $"""<ContentPackage Type="Mod"><ID>{id}</ID><DisplayName>{id}</DisplayName><Version>{version}</Version><BasePackID>base</BasePackID><BasePackVersion>1.0.0</BasePackVersion>{rules}</ContentPackage>"""
+            );
+            return root;
+        }
+
         private static async Task<T> ExpectFailureAsync<T>(Func<Task> action)
             where T : Exception
         {

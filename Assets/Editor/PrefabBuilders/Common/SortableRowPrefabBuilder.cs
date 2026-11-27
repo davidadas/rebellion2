@@ -10,14 +10,14 @@ using static MenuPrefabBuilder;
 /// </summary>
 internal static class SortableRowPrefabBuilder
 {
-    private const string PrefabPath = "Assets/Prefabs/UI/Common/SortableRow.prefab";
+    private const string _prefabPath = "Assets/Prefabs/UI/Common/SortableRow.prefab";
 
     /// <summary>
     /// Builds the row's single shared hierarchy and binds its controls.
     /// </summary>
     internal static void Rebuild()
     {
-        var root = new GameObject(
+        GameObject root = new GameObject(
             "SortableRow",
             typeof(RectTransform),
             typeof(Image),
@@ -25,18 +25,18 @@ internal static class SortableRowPrefabBuilder
         );
         try
         {
-            var row = root.GetComponent<SortableRowView>();
+            SortableRowView row = root.GetComponent<SortableRowView>();
             row.targetGraphic = root.GetComponent<Image>();
             ColorBlock colors = row.colors;
             colors.disabledColor = colors.normalColor;
             row.colors = colors;
-            var gripObject = new GameObject(
+            GameObject gripObject = new GameObject(
                 "ReorderGrip",
                 typeof(RectTransform),
                 typeof(CardReorderGrip)
             );
             gripObject.transform.SetParent(row.transform, false);
-            var grip = gripObject.GetComponent<CardReorderGrip>();
+            CardReorderGrip grip = gripObject.GetComponent<CardReorderGrip>();
             grip.raycastTarget = false;
             AssignReference(row, "grip", grip);
 
@@ -64,12 +64,12 @@ internal static class SortableRowPrefabBuilder
             AssignReference(row, "version", version);
             AssignReference(row, "details", details);
 
-            var trailing = new GameObject("TrailingControl", typeof(RectTransform));
+            GameObject trailing = new GameObject("TrailingControl", typeof(RectTransform));
             trailing.transform.SetParent(row.transform, false);
             AssignReference(row, "trailing", trailing.GetComponent<RectTransform>());
             row.Place(0, 0, 320);
-            Directory.CreateDirectory(Path.GetDirectoryName(PrefabPath));
-            PrefabUtility.SaveAsPrefabAsset(root, PrefabPath);
+            Directory.CreateDirectory(Path.GetDirectoryName(_prefabPath));
+            PrefabUtility.SaveAsPrefabAsset(root, _prefabPath);
         }
         finally
         {
@@ -84,8 +84,8 @@ internal static class SortableRowPrefabBuilder
     /// <returns>The prefab instance available for styling and binding.</returns>
     internal static SortableRowView Create(Transform parent)
     {
-        var prefab = AssetDatabase.LoadAssetAtPath<GameObject>(PrefabPath);
-        var root = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
+        GameObject root = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
         return root.GetComponent<SortableRowView>();
     }
 

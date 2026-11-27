@@ -5,11 +5,12 @@ content can therefore be changed without rebuilding the game.
 
 ## Creating a mod
 
-A Rebellion 2 mod is a folder containing a `mod.xml` definition and a `Content` folder. It can
+A Rebellion 2 mod is a folder containing a `pack.xml` manifest and a `Content` folder. It can
 replace art, audio, video, configuration, or game-data files without rebuilding the game.
 
-In the Content Pack Editor, choose **File > New mod** and pick the era it works with. A mod
-saved in the default location appears in **Options > Mods**. Select **Apply** there to activate it.
+In the Content Pack Editor, choose **File > New > Mod / content pack** and pick the era it works
+with. A mod saved in the default location appears in **Options > Mods**. Select **Apply** to
+activate it.
 Use **Export** to share a ZIP. A content pack that adds units, factions, or scenarios uses this
 same mod workflow. **Open project** supports both mods and eras.
 
@@ -43,21 +44,23 @@ When developing from the Unity project, use `Assets/Mods`.
 ### 2. Create the mod definition
 
 Create a new folder directly inside `Mods`. For this example, create `ModExample`, then add a
-`mod.xml` file containing:
+`pack.xml` file containing:
 
 ```xml
-<ContentModDefinition>
+<ContentPackage Type="Mod">
   <ID>mod-example</ID>
   <Version>1.0.0</Version>
   <DisplayName>Mod Example</DisplayName>
   <BasePackID>classic-galactic-civil-war</BasePackID>
   <BasePackVersion>1.0.0</BasePackVersion>
-</ContentModDefinition>
+</ContentPackage>
 ```
 
 `ID` is the stable identifier stored in saves, `Version` identifies the installed revision, and
 `DisplayName` is shown in the game. `BasePackID` and `BasePackVersion` identify the exact content
 pack release the mod supports.
+
+Existing mods with a `mod.xml` manifest continue to load.
 
 Use `Requires` for dependencies. Give each required mod an `ID` and optionally a `Version`.
 `LoadAfter` and `LoadBefore` take mod IDs and set the order when those mods are enabled.
@@ -73,13 +76,13 @@ Use `Requires` for dependencies. Give each required mod an `ID` and optionally a
 
 ### 3. Add replacement content
 
-Create a `Content` folder beside `mod.xml`. Inside it, reproduce the path of every original file
+Create a `Content` folder beside the manifest. Inside it, reproduce the path of each file
 the mod replaces. For example:
 
 ```text
 Mods/
   ModExample/
-    mod.xml
+    pack.xml
     Content/
       Pack/
         Factions/
@@ -142,7 +145,7 @@ Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears 
 
 Use the switch to enable or disable the mod, then select **Apply**. The game reloads the selected
 content and returns to the main menu without closing. If the mod does not appear, confirm that
-`mod.xml` is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
+the manifest is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
 active content pack. Invalid definitions are skipped without preventing other mods from loading; the
 game log identifies the invalid file and reason.
 
@@ -160,26 +163,26 @@ Each mod project needs its own ID. If multiple active folders declare the same I
 lists the folders and blocks the copies from loading for new games. A save can still load a unique
 match for its recorded version. If that version appears in multiple folders, keep one copy and retry.
 
-Mods can also register campaigns and factions with `ExtendsPack` set to `true` in `mod.xml`.
+Mods can also register campaigns and factions with `ExtendsPack` set to `true` in their manifest.
 Use a sparse `Content/Pack/pack.xml` to add paths under `ScenarioPaths` or `FactionPaths`.
 Keep the base pack's identity in the base manifest. Registered campaigns appear under **Scenario**
 in Custom Game when there is more than one available.
 
 ## Creating an era
 
-Choose **New project** in **Projects** when players should select your content pack as its own
+Choose **New project > Era** in **Projects** when players should select your content pack as its own
 game setup. Pick a base pack. The editor saves your changes in the new project's folder.
 Export records every inherited release in `pack.xml`, starting with the immediate parent.
 
 ```xml
-<ContentPack>
+<ContentPackage Type="Era">
   <ID>example-derived-pack</ID>
   <BasePackID>example-base-pack</BasePackID>
   <InheritedPacks>
     <Pack ID="example-base-pack" Version="1.0.0" />
   </InheritedPacks>
   <!-- The remaining pack definition is omitted here. -->
-</ContentPack>
+</ContentPackage>
 ```
 
 Files present in the derived pack override files at the same `Pack/` address. Missing files fall
@@ -245,8 +248,8 @@ sources, conversion backups, and revisions owned by other open projects. Files l
 editor versions or interrupted sessions are not automatically deleted.
 
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
-in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
-complete identity and dependency manifests. Packs using setting overlays require game and editor
+in an existing replacement retains its other authored values. The package manifest carries the
+complete identity and dependency information. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
 
 Message definitions with stable `InstanceID` values inherit per report and per setting. Changing
@@ -346,7 +349,7 @@ If submission times out, check the package's Thunderstore page before retrying.
 
 ### Sharing an add-on mod
 
-Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that
+Package the mod folder containing its manifest and `Content`. Players install it by extracting that
 folder directly into `Mods`. The installer, launcher, and application and content updaters do not
 overwrite `Mods`.
 

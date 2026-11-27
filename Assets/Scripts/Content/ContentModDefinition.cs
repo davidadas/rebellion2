@@ -117,6 +117,15 @@ public sealed class ContentModRequirement
     public string ID => _id;
 
     public string Version => _version;
+
+    /// <summary>
+    /// Checks whether a mod release satisfies this requirement.
+    /// </summary>
+    /// <param name="id">The available mod ID.</param>
+    /// <param name="version">The available mod version.</param>
+    /// <returns>Whether the mod has the requested ID and any required version.</returns>
+    internal bool MatchesRelease(string id, string version) =>
+        ID == id && (string.IsNullOrEmpty(Version) || Version == version);
 }
 
 /// <summary>

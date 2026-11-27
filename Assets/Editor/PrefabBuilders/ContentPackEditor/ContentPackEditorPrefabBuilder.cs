@@ -2059,7 +2059,8 @@ public static class ContentPackEditorPrefabBuilder
         Image overlay = Surface("ModLoadOrder", parent, new Color(0, 0, 0, 0.68f));
         Stretch(overlay.rectTransform);
         overlay.raycastTarget = true;
-        var view = overlay.gameObject.AddComponent<ContentEditorModOrderView>();
+        ContentEditorModOrderView view =
+            overlay.gameObject.AddComponent<ContentEditorModOrderView>();
         Image surface = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
         RectTransform panel = surface.rectTransform;
         panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);

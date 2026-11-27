@@ -305,8 +305,7 @@ public static class ContentModLoadOrder
             {
                 ContentModRequirement missing = mod.Requires.FirstOrDefault(requirement =>
                     !selected.TryGetValue(requirement.ID, out ContentModDefinition dependency)
-                    || !string.IsNullOrEmpty(requirement.Version)
-                        && dependency.Version != requirement.Version
+                    || !requirement.MatchesRelease(dependency.ID, dependency.Version)
                 );
                 if (missing == null)
                     continue;
