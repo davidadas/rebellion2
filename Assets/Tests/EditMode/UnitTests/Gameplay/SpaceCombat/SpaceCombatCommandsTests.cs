@@ -4662,12 +4662,7 @@ namespace Rebellion.Tests.Gameplay
                 .ToArray();
             foreach (CapitalShip ship in ships)
                 ConfigureDeploymentCapital(ship, 0, 0, 10, 10);
-            ships[1]
-                .SetPrimaryWeaponStrength(
-                    PrimaryWeaponType.Turbolaser,
-                    (PrimaryWeaponArc)CapitalShip.PrimaryWeaponRangeIndex,
-                    20
-                );
+            ships[1].SetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser, 20);
             ships[1].SystemDamage.Weapons = 4;
             ships[0].SublightSpeed = 8;
             ships[2].SublightSpeed = 8;
