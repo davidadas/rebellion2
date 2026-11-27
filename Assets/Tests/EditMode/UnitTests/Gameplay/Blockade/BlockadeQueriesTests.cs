@@ -309,13 +309,13 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void IsBlockaded_RestoredCampaign_UsesCampaignRulesAfterSessionStarts()
+        public void IsBlockaded_RestoredCampaign_UsesCampaignRulesBeforeAndAfterSessionStarts()
         {
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(
                 SerializationHelper.Serialize(_game)
             );
             Planet restoredPlanet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(restored, restoredPlanet));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(restored, restoredPlanet));
 
             using GameSession runtime = new(restored, _catalog);
 

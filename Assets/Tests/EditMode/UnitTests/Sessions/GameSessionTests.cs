@@ -4061,6 +4061,7 @@ namespace Rebellion.Tests.Gameplay
                 ShieldRechargeRate = 0,
                 WeaponRecharge = Math.Max(weaponPower, 0),
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
             };
 
             if (weaponPower > 0)

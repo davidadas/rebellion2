@@ -680,7 +680,17 @@ namespace Rebellion.Game.Combat
         /// Captures the component damage for the campaign in the ship's equipment order.
         /// </summary>
         /// <returns>The component damage to commit with the battle result.</returns>
-        public CapitalShipSystemDamage CaptureDamage() => ComponentDamage.CreateCopy();
+        public CapitalShipSystemDamage CaptureDamage()
+        {
+            CapitalShipSystemDamage damage = ComponentDamage.CreateCopy();
+            int[] drives = damage.HyperdriveDamage;
+            if (drives.Length < DriveSlotCount)
+            {
+                Array.Resize(ref drives, DriveSlotCount);
+                damage.HyperdriveDamage = drives;
+            }
+            return damage;
+        }
 
         /// <summary>
         /// Copies the damage recorded at each drive position.
