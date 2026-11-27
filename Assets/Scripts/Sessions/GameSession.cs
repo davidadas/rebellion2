@@ -104,11 +104,7 @@ namespace Rebellion.Gameplay
         {
             _gameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
             _canExecuteCommands = canExecuteCommands;
-            Pipeline = new GameResultPipeline(
-                () => Results,
-                () => MessageObserver,
-                results => GetService<SpaceCombatAftermath>().HandleResults(results)
-            );
+            Pipeline = new GameResultPipeline(() => Results, () => MessageObserver);
             Tick = new GameTickProcessor(Pipeline);
             _commands = new SimulationCommandQueue(() =>
                 Tick.CanAcceptPlayerActions

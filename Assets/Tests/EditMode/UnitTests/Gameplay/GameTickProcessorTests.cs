@@ -29,6 +29,7 @@ namespace Rebellion.Tests.Gameplay
             IEnumerable<GameResult>,
             bool,
             Func<IReadOnlyList<GameResult>>,
+            Func<IReadOnlyList<GameResult>, List<GameResult>>,
             List<GameResult>
         > _processResults;
 
@@ -41,8 +42,8 @@ namespace Rebellion.Tests.Gameplay
             _game = TestGame.Create(TestConfig.Create());
             _game.SetGameSpeed(TickSpeed.Fast);
             _session = new GameSession(_game, TestGameData.Create(_game.Config));
-            _processResults = (results, _, collectPending) =>
-                _session.Pipeline.ProcessResults(results, false, collectPending);
+            _processResults = (results, _, collectPending, afterReactions) =>
+                _session.Pipeline.ProcessResults(results, false, collectPending, afterReactions);
             _tick = CreateTickProcessor();
         }
 
@@ -222,7 +223,7 @@ namespace Rebellion.Tests.Gameplay
         public void ProcessTick_ResultDeliveryThrows_ReleasesBusyGuard()
         {
             InvalidOperationException expected = new("delivery failure");
-            _processResults = (_, _, _) => throw expected;
+            _processResults = (_, _, _, _) => throw expected;
             _tick = CreateTickProcessor();
 
             InvalidOperationException actual = Assert.Throws<InvalidOperationException>(

@@ -335,7 +335,12 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <returns>The settled results available to the assertions.</returns>
         private List<GameResult> Publish() =>
-            _session.Pipeline.ProcessResults(new[] { _result }, false);
+            _session.Pipeline.ProcessResults(
+                new[] { _result },
+                processMessages: false,
+                collectPending: null,
+                afterReactions: _session.GetService<SpaceCombatAftermath>().HandleResults
+            );
 
         /// <summary>
         /// Detects the prepared hostile fleets as a human encounter awaiting a command choice.
