@@ -4,6 +4,20 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
+using System.Xml.Linq;
+using Rebellion.Util.IO;
+using Rebellion.Util.Serialization;
+
+/// <summary>
+/// Identifies a mod's authored dependency or relative placement rule.
+/// </summary>
+internal enum ContentEditorModRule
+{
+    Requires,
+    LoadBefore,
+    LoadAfter,
+}
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -12,6 +26,119 @@ public static class ContentPackEditorStorage
 {
     private const string _defaultGameConfigAddress = "Pack/Shared/Data/game-config.xml";
     private const string _packDefinitionAddress = "Pack/pack.xml";
+
+    /// <summary>
+    /// Lists the IDs already selected for one rule on the working mod.
+    /// </summary>
+    /// <param name="mod">The authored mod manifest.</param>
+    /// <param name="rule">The rule being edited.</param>
+    /// <returns>The mod IDs recorded under the rule.</returns>
+    internal static IReadOnlyList<string> GetModRuleIDs(
+        ContentModDefinition mod,
+        ContentEditorModRule rule
+    ) =>
+        rule switch
+        {
+            ContentEditorModRule.Requires => mod.Requires.Select(item => item.ID).ToArray(),
+            ContentEditorModRule.LoadBefore => mod.LoadBefore,
+            ContentEditorModRule.LoadAfter => mod.LoadAfter,
+            _ => throw new ArgumentOutOfRangeException(nameof(rule)),
+        };
+
+    /// <summary>
+    /// Updates one mod rule and prepares the reloaded project against its proposed dependencies.
+    /// </summary>
+    /// <param name="project">The current working mod.</param>
+    /// <param name="rule">The rule being changed.</param>
+    /// <param name="ids">The selected mod IDs.</param>
+    /// <returns>A replacement project loaded with the verified dependency configuration.</returns>
+    internal static ContentPackEditorProject SaveModRule(
+        ContentPackEditorProject project,
+        ContentEditorModRule rule,
+        IEnumerable<string> ids
+    )
+    {
+        string path = ContentPackageManifest.Find(project.ProjectRootPath, ContentPackageType.Mod);
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, path);
+        if (!ContentEditorPaths.Contains(project.ProjectRootPath, path))
+            throw new IOException("The package manifest resolves outside its project folder.");
+
+        var baseline = GetModRuleIDs(project.Mod, rule).ToHashSet(StringComparer.Ordinal);
+        ContentPackEditorProject replacement = null;
+        try
+        {
+            AtomicTextFile.UpdateAllText(
+                path,
+                () =>
+                {
+                    string original = AtomicTextFile.ReadAllText(path);
+                    var source = new XmlDocument();
+                    source.LoadXml(original);
+                    ContentModDefinition current = ContentFileResolver.ReadModDefinition(source);
+                    if (
+                        current.ID != project.ID
+                        || current.Version != project.Version
+                        || current.BasePackID != project.Mod.BasePackID
+                        || current.BasePackVersion != project.Mod.BasePackVersion
+                        || !baseline.SetEquals(GetModRuleIDs(current, rule))
+                    )
+                        throw new IOException(
+                            "The mod manifest changed on disk. Reopen the project before editing its load rules."
+                        );
+
+                    XElement root = XElement.Parse(original);
+                    XElement existing = root.Element(rule.ToString());
+                    XElement updated = new(
+                        rule.ToString(),
+                        ids.Select(id =>
+                            rule == ContentEditorModRule.Requires
+                                ? existing
+                                    ?.Elements("Mod")
+                                    .FirstOrDefault(item => (string)item.Element("ID") == id)
+                                    ?? new XElement("Mod", new XElement("ID", id))
+                                : new XElement("ModID", id)
+                        )
+                    );
+                    existing?.Remove();
+                    if (updated.HasElements)
+                        root.Add(updated);
+                    string proposed = root.ToString();
+                    source.LoadXml(proposed);
+                    ContentModDefinition mod = ContentFileResolver.ReadModDefinition(source);
+                    string contradictory = mod.LoadBefore.FirstOrDefault(id =>
+                        mod.LoadAfter.Contains(id)
+                        || mod.Requires.Any(requirement => requirement.ID == id)
+                    );
+                    if (contradictory != null)
+                        throw new InvalidDataException(
+                            $"This mod cannot load both before and after {contradictory}."
+                        );
+                    ContentFileResolver resolver = ContentPackLoader.CreateModFolderResolver(
+                        project.ContentRootPath,
+                        project.ProjectRootPath,
+                        mod
+                    );
+                    ContentPackDefinition definition = ContentPackLoader.ReadModPackDefinition(
+                        resolver
+                    );
+                    replacement = new ContentPackEditorProject(
+                        resolver,
+                        definition,
+                        CreateDocuments(resolver, definition, project.PackRootPath),
+                        project.ProjectRootPath,
+                        mod
+                    );
+                    return proposed;
+                }
+            );
+            return replacement;
+        }
+        catch
+        {
+            replacement?.Dispose();
+            throw;
+        }
+    }
 
     /// <summary>
     /// Opens one installed pack through its inheritance chain.
@@ -45,10 +172,30 @@ public static class ContentPackEditorStorage
     public static ContentPackEditorProject OpenFolder(string contentRootPath, string packRootPath)
     {
         ContentEditorPaths.VerifyWritableLocation(contentRootPath, packRootPath);
-        ContentPackDefinition definition =
-            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                Path.Combine(packRootPath, "pack.xml")
+        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.GamePack);
+        if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
+        {
+            ContentModDefinition mod = ContentFileResolver.ReadValidatedMod(packRootPath);
+            ContentFileResolver modResolver = ContentPackLoader.CreateModFolderResolver(
+                contentRootPath,
+                packRootPath,
+                mod
             );
+            ContentPackDefinition effective = ContentPackLoader.ReadModPackDefinition(modResolver);
+            string writablePack = Path.Combine(packRootPath, "Content", "Pack");
+            ContentEditorPaths.VerifyWritableLocation(contentRootPath, writablePack);
+            if (!ContentEditorPaths.Contains(packRootPath, writablePack))
+                throw new IOException("The mod's content resolves outside its project folder.");
+            return new ContentPackEditorProject(
+                modResolver,
+                effective,
+                CreateDocuments(modResolver, effective, writablePack),
+                packRootPath,
+                mod
+            );
+        }
+        ContentPackDefinition definition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
         ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
             contentRootPath,
             packRootPath,
@@ -58,6 +205,41 @@ public static class ContentPackEditorStorage
             resolver,
             definition,
             CreateDocuments(resolver, definition)
+        );
+    }
+
+    /// <summary>
+    /// Records the author's classification without changing the rest of the manifest.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content used to guard writable paths.</param>
+    /// <param name="folder">The working project folder.</param>
+    /// <param name="type">The role chosen by the author.</param>
+    internal static void SetPackageType(
+        string contentRootPath,
+        string folder,
+        ContentPackageType type
+    )
+    {
+        string path = ContentPackageManifest.Find(folder);
+        ContentEditorPaths.VerifyWritableLocation(contentRootPath, folder);
+        ContentEditorPaths.VerifyWritableLocation(contentRootPath, path);
+        if (!ContentEditorPaths.Contains(folder, path))
+            throw new IOException("The package manifest resolves outside its project folder.");
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
+            {
+                if (ContentPackageManifest.ReadType(path) != ContentPackageType.Unknown)
+                    throw new InvalidOperationException(
+                        "The project type has already been set. Reopen the project."
+                    );
+                XDocument manifest = XDocument.Parse(
+                    AtomicTextFile.ReadAllText(path),
+                    LoadOptions.PreserveWhitespace
+                );
+                ContentPackageManifest.SetType(manifest.Root, type);
+                return manifest.ToString(SaveOptions.DisableFormatting);
+            }
         );
     }
 
@@ -98,6 +280,7 @@ public static class ContentPackEditorStorage
     /// <param name="packID">The new stable identifier.</param>
     /// <param name="displayName">The new display name.</param>
     /// <param name="version">The initial version.</param>
+    /// <param name="asMod">Whether to create a stackable mod.</param>
     /// <returns>The newly opened project.</returns>
     public static ContentPackEditorProject CreateInFolder(
         string contentRootPath,
@@ -105,7 +288,8 @@ public static class ContentPackEditorStorage
         string packRootPath,
         string packID,
         string displayName,
-        string version
+        string version,
+        bool asMod = false
     )
     {
         ValidateIdentity(packID, displayName, version);
@@ -125,37 +309,68 @@ public static class ContentPackEditorStorage
             File.Exists(packRoot)
             || directoryExisted && Directory.EnumerateFileSystemEntries(packRoot).Any()
         )
-            throw new IOException("Choose a new or empty content-pack folder.");
+            throw new IOException("Choose a new or empty project folder.");
         foreach (string inheritedRoot in baseResolver.PackRootPaths)
         {
             if (ContentEditorPaths.Contains(inheritedRoot, packRoot))
-                throw new IOException(
-                    "Choose a working folder outside the inherited content pack."
-                );
+                throw new IOException("Choose a working folder outside the base game pack.");
         }
         if (
             ContentPackLoader
                 .DiscoverPacks(contentRootPath)
                 .Any(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal))
         )
-            throw new InvalidDataException($"A content pack already declares ID '{packID}'.");
+            throw new InvalidDataException($"A game pack already declares ID '{packID}'.");
 
-        ContentPackDefinition definition = CloneDefinition(
-            baseDefinition,
-            packID.Trim(),
-            displayName.Trim(),
-            version.Trim()
+        string[] themePaths = ContentPackLoader
+            .ReadThemePaths(baseResolver, baseDefinition)
+            .ToArray();
+        ValidateNeutralTheme(
+            themePaths.Select(path => ContentXmlOverrides.Load(baseResolver, "Pack/" + path))
         );
+        string manifestPath = Path.Combine(packRoot, ContentPackageManifest.FileName);
+        bool ownsManifest = false;
         try
         {
             Directory.CreateDirectory(packRoot);
-            ContentDefinitionSerializer.Serialize(Path.Combine(packRoot, "pack.xml"), definition);
+            if (asMod)
+            {
+                using FileStream output = new FileStream(manifestPath, FileMode.CreateNew);
+                ownsManifest = true;
+                using StringWriter xml = new StringWriter();
+                new GameSerializer(typeof(ContentModDefinition)).Serialize(
+                    xml,
+                    ContentModDefinition.Create(
+                        packID.Trim(),
+                        version.Trim(),
+                        displayName.Trim(),
+                        baseDefinition
+                    )
+                );
+                XElement manifest = XElement.Parse(xml.ToString());
+                ContentPackageManifest.SetType(manifest, ContentPackageType.Mod);
+                manifest.Save(output);
+            }
+            else
+            {
+                ContentDefinitionSerializer.Serialize(
+                    manifestPath,
+                    CloneDefinition(
+                        baseDefinition,
+                        packID.Trim(),
+                        displayName.Trim(),
+                        version.Trim(),
+                        themePaths
+                    ),
+                    usePackageManifest: true
+                );
+                ownsManifest = true;
+            }
             return OpenFolder(contentRootPath, packRoot);
         }
         catch
         {
-            string manifestPath = Path.Combine(packRoot, "pack.xml");
-            if (File.Exists(manifestPath))
+            if (ownsManifest && File.Exists(manifestPath))
                 File.Delete(manifestPath);
             if (
                 !directoryExisted
@@ -172,10 +387,12 @@ public static class ContentPackEditorStorage
     /// </summary>
     /// <param name="resolver">The selected pack's layered resolver.</param>
     /// <param name="definition">The selected pack manifest.</param>
+    /// <param name="modPackRoot">The mod's writable pack scope, when editing a mod.</param>
     /// <returns>The editable documents.</returns>
     internal static List<ContentPackEditorDocument> CreateDocuments(
         ContentFileResolver resolver,
-        ContentPackDefinition definition
+        ContentPackDefinition definition,
+        string modPackRoot = null
     )
     {
         IEnumerable<string> addresses = GetReferencedDocumentAddresses(resolver, definition)
@@ -184,16 +401,22 @@ public static class ContentPackEditorStorage
         List<ContentPackEditorDocument> result = addresses
             .Select(address =>
             {
-                string relativePath = address[5..];
+                string targetPath = Path.GetFullPath(
+                    address[5..],
+                    modPackRoot ?? resolver.PackRootPath
+                );
                 string sourcePath =
                     address == _packDefinitionAddress
-                        ? Path.Combine(resolver.PackRootPath, "pack.xml")
+                        ? modPackRoot != null
+                        && resolver.Mods.Last().ExtendsPack
+                        && File.Exists(targetPath)
+                            ? targetPath
+                            : Path.Combine(resolver.PackRootPath, "pack.xml")
                         : resolver.ResolveFile(address)
                             ?? throw new FileNotFoundException(
                                 $"Content document not found: {address}"
                             );
-                string targetPath = Path.GetFullPath(relativePath, resolver.PackRootPath);
-                return OpenDocument(resolver, address, sourcePath, targetPath);
+                return OpenDocument(resolver, address, sourcePath, targetPath, modPackRoot != null);
             })
             .ToList();
         if (
@@ -209,7 +432,12 @@ public static class ContentPackEditorStorage
                     new ContentPackEditorDocument(
                         _defaultGameConfigAddress,
                         defaultRules,
-                        Path.Combine(resolver.PackRootPath, "Shared", "Data", "game-config.xml"),
+                        Path.Combine(
+                            modPackRoot ?? resolver.PackRootPath,
+                            "Shared",
+                            "Data",
+                            "game-config.xml"
+                        ),
                         File.ReadAllText(defaultRules),
                         defaults,
                         resolver
@@ -246,13 +474,13 @@ public static class ContentPackEditorStorage
         AddDocumentAddress(addresses, definition.GameEventsPath);
         AddDocumentAddress(addresses, definition.MessageDefinitionsPath);
         AddDocumentAddress(addresses, definition.EncyclopediaEntriesPath);
-        AddDocumentAddress(addresses, definition.NeutralThemePath);
         if (
             string.IsNullOrWhiteSpace(definition.GameConfigPath)
             && resolver.ResolveFile(_defaultGameConfigAddress) != null
         )
             addresses.Add(_defaultGameConfigAddress);
 
+        var factions = new List<ContentFactionDefinition>();
         foreach (string path in definition.FactionPaths)
         {
             string address = AddDocumentAddress(addresses, path);
@@ -265,8 +493,16 @@ public static class ContentPackEditorStorage
             AddDocumentAddress(addresses, faction.SpecialForcesPath);
             AddDocumentAddress(addresses, faction.OfficersPath);
             AddDocumentAddress(addresses, faction.EncyclopediaEntriesPath);
-            AddDocumentAddress(addresses, faction.ThemePath);
+            factions.Add(faction);
         }
+        foreach (
+            string path in ContentPackLoader.ResolveThemePaths(
+                definition,
+                factions,
+                path => ContentXmlOverrides.Load(resolver, "Pack/" + path)
+            )
+        )
+            AddDocumentAddress(addresses, path);
 
         foreach (string path in definition.ScenarioPaths)
         {
@@ -322,14 +558,30 @@ public static class ContentPackEditorStorage
     /// <param name="address">The logical document address.</param>
     /// <param name="sourcePath">The highest existing source.</param>
     /// <param name="targetPath">The local override destination.</param>
+    /// <param name="isMod">Whether the pack manifest inherits from the selected base pack.</param>
     /// <returns>The editor document with its inherited baseline.</returns>
     private static ContentPackEditorDocument OpenDocument(
         ContentFileResolver resolver,
         string address,
         string sourcePath,
-        string targetPath
+        string targetPath,
+        bool isMod
     )
     {
+        if (isMod && address == _packDefinitionAddress)
+        {
+            string inherited = ContentPackLoader.ReadModPackManifest(resolver, targetPath);
+            return new ContentPackEditorDocument(
+                address,
+                sourcePath,
+                targetPath,
+                File.ReadAllText(sourcePath),
+                inherited,
+                resolver
+                    .ResolveFileLayers(address)
+                    .ToDictionary(path => path, File.ReadAllText, StringComparer.Ordinal)
+            );
+        }
         Dictionary<string, string> sources = resolver
             .ResolveFileLayers(address)
             .ToDictionary(path => path, File.ReadAllText, StringComparer.Ordinal);
@@ -372,12 +624,14 @@ public static class ContentPackEditorStorage
     /// <param name="packID">The new pack identifier.</param>
     /// <param name="displayName">The new display name.</param>
     /// <param name="version">The new version.</param>
+    /// <param name="themePaths">The effective theme paths of the base pack.</param>
     /// <returns>The derived manifest.</returns>
     private static ContentPackDefinition CloneDefinition(
         ContentPackDefinition source,
         string packID,
         string displayName,
-        string version
+        string version,
+        IEnumerable<string> themePaths
     )
     {
         return new ContentPackDefinition
@@ -393,6 +647,8 @@ public static class ContentPackEditorStorage
             MainMenuLayout = source.MainMenuLayout,
             PlanetSectorWindowLayout = source.PlanetSectorWindowLayout,
             PlanetWindowHeaderLayout = source.PlanetWindowHeaderLayout,
+            ConfirmationMessageArea = source.ConfirmationMessageArea,
+            ConfirmationWindowArtwork = source.ConfirmationWindowArtwork,
             GameConfigPath = source.GameConfigPath,
             PlanetSectorsPath = source.PlanetSectorsPath,
             BuildingsPath = source.BuildingsPath,
@@ -400,7 +656,7 @@ public static class ContentPackEditorStorage
             GameEventsPath = source.GameEventsPath,
             MessageDefinitionsPath = source.MessageDefinitionsPath,
             EncyclopediaEntriesPath = source.EncyclopediaEntriesPath,
-            NeutralThemePath = source.NeutralThemePath,
+            ThemePaths = themePaths.ToList(),
             FactionPaths = new List<string>(source.FactionPaths),
             ScenarioPaths = new List<string>(source.ScenarioPaths),
             Preloads = source.Preloads.ConvertAll(preload => new ContentPreloadDefinition
@@ -978,11 +1234,7 @@ public static class ContentPackEditorStorage
             throw new FileNotFoundException("The selected media file does not exist.", source);
         if (!directoryAddress.StartsWith("Pack/", StringComparison.Ordinal))
             throw new ArgumentException("Import requires a folder inside your pack.");
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            project.ContentRootPath,
-            project.PackRootPath,
-            project.Definition
-        );
+        ContentFileResolver resolver = project.CreateResolver();
         resolver.ResolveFile(directoryAddress);
         string directory = Path.GetFullPath(directoryAddress[5..], project.PackRootPath);
         ContentEditorPaths.VerifyWritePath(project, directory);
@@ -1025,6 +1277,33 @@ public static class ContentPackEditorStorage
             VerifyUnchangedTarget(document);
         }
         project.ArtworkConversionReport = ContentEditorArtworkConversion.Convert(project);
+        ContentPackEditorDocument manifest = project.AllDocuments.Single(document =>
+            document.Address == _packDefinitionAddress
+        );
+        ContentPackDefinition nextDefinition =
+            ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(manifest.Text);
+        ValidateIdentity(nextDefinition.ID, nextDefinition.DisplayName, nextDefinition.Version);
+        ContentFileResolver nextResolver = project.CreateResolver(nextDefinition);
+        bool baseChanged = !string.Equals(
+            project.Definition.BasePackID,
+            nextDefinition.BasePackID,
+            StringComparison.Ordinal
+        );
+        nextDefinition = NormalizeThemePaths(
+            project,
+            manifest,
+            nextDefinition,
+            nextResolver,
+            baseChanged
+        );
+        if (project.Mod != null && manifest.IsDirty)
+        {
+            if (!project.Mod.ExtendsPack)
+                throw new InvalidDataException(
+                    "Set ExtendsPack in the package manifest to edit campaign settings."
+                );
+            ContentPackLoader.ValidateModPackOverlay(manifest.AuthoredText);
+        }
         ContentPackEditorDocument[] dirtyDocuments = project
             .AllDocuments.Where(document => document.IsDirty)
             .ToArray();
@@ -1034,23 +1313,6 @@ public static class ContentPackEditorStorage
             ContentEditorPaths.VerifyWritePath(project, document.TargetPath);
             VerifyUnchangedTarget(document);
         }
-        ContentPackDefinition nextDefinition =
-            ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
-                project
-                    .AllDocuments.Single(document => document.Address == _packDefinitionAddress)
-                    .Text
-            );
-        ValidateIdentity(nextDefinition.ID, nextDefinition.DisplayName, nextDefinition.Version);
-        ContentFileResolver nextResolver = ContentPackLoader.CreateFolderResolver(
-            project.ContentRootPath,
-            project.PackRootPath,
-            nextDefinition
-        );
-        bool baseChanged = !string.Equals(
-            project.Definition.BasePackID,
-            nextDefinition.BasePackID,
-            StringComparison.Ordinal
-        );
         ContentPackEditorSaveRecovery recovery = project.BeginDocumentSave(dirtyDocuments);
         IReadOnlyList<ContentPackEditorDocument> refreshed = null;
         try
@@ -1082,19 +1344,86 @@ public static class ContentPackEditorStorage
     }
 
     /// <summary>
+    /// Requires one Neutral theme and stores upgraded theme registrations with the pack.
+    /// </summary>
+    /// <param name="project">The working project.</param>
+    /// <param name="manifest">Its authored pack manifest or overlay.</param>
+    /// <param name="definition">The current effective pack definition.</param>
+    /// <param name="resolver">The content layers to use after saving.</param>
+    /// <param name="baseChanged">Whether unchanged documents must use new inherited sources.</param>
+    /// <returns>The effective pack definition after migration.</returns>
+    private static ContentPackDefinition NormalizeThemePaths(
+        ContentPackEditorProject project,
+        ContentPackEditorDocument manifest,
+        ContentPackDefinition definition,
+        ContentFileResolver resolver,
+        bool baseChanged
+    )
+    {
+        Dictionary<string, ContentPackEditorDocument> documents = project.AllDocuments.ToDictionary(
+            document => document.Address,
+            StringComparer.Ordinal
+        );
+        Func<string, string> readDocument = path =>
+        {
+            string address = "Pack/" + path.Replace('\\', '/');
+            if (documents.TryGetValue(address, out ContentPackEditorDocument document))
+            {
+                if (document.IsRemoved)
+                    throw new FileNotFoundException("Content document not found: " + address);
+                if (!baseChanged || document.IsDirty)
+                    return document.Text;
+            }
+            return ContentXmlOverrides.Load(resolver, address);
+        };
+        string[] paths = ContentPackLoader
+            .ResolveThemePaths(
+                definition,
+                definition.FactionPaths.Select(path =>
+                    ContentDefinitionSerializer.DeserializeText<ContentFactionDefinition>(
+                        readDocument(path)
+                    )
+                ),
+                readDocument
+            )
+            .ToArray();
+        ValidateNeutralTheme(paths.Select(readDocument));
+
+        if (
+            project.Mod != null
+            && !ContentDefinitionSerializer.HasLegacyThemePath(
+                XElement.Parse(manifest.AuthoredText)
+            )
+        )
+            return definition;
+        XElement root = XElement.Parse(manifest.Text);
+        if (!ContentDefinitionSerializer.SetThemePaths(root, paths))
+            return definition;
+        project.SetMigratedManifestText(manifest, root.ToString());
+        return ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(manifest.Text);
+    }
+
+    /// <summary>
+    /// Requires one Neutral theme across all registered theme documents before writing the pack.
+    /// </summary>
+    /// <param name="themeDocuments">The effective XML of the registered theme documents.</param>
+    private static void ValidateNeutralTheme(IEnumerable<string> themeDocuments)
+    {
+        if (
+            themeDocuments.SelectMany(FactionThemes.ReadFactionIDs).Count(FactionThemes.IsNeutral)
+            != 1
+        )
+            throw new InvalidDataException("A game pack must define exactly one Neutral theme.");
+    }
+
+    /// <summary>
     /// Creates an asset store for this pack's current inheritance chain.
     /// </summary>
     /// <param name="project">The workspace whose content layers are requested.</param>
     /// <returns>The owned asset store.</returns>
     public static ContentAssets CreateAssets(ContentPackEditorProject project)
     {
-        return new ContentAssets(
-            ContentPackLoader.CreateFolderResolver(
-                project.ContentRootPath,
-                project.PackRootPath,
-                project.Definition
-            )
-        );
+        return new ContentAssets(project.CreateResolver());
     }
 
     /// <summary>

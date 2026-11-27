@@ -35,7 +35,8 @@ public sealed class ContentPackEditorCatalog
     public bool CanAddUnit => ContentEditorUnitFactory.CanCreate(recordName);
     public bool CanAddEvent => recordName == "GameEvent";
     public bool CanAddTrait => recordName == "Trait";
-    public bool CanAddFaction => xml.Root.Name.LocalName == "ContentPack";
+    public bool CanAddFaction =>
+        xml.Root.Name.LocalName is "ContentPack" or ContentPackageManifest.RootName;
     public bool CanDuplicate =>
         recordName != null
         && recordName != "Faction"
@@ -691,7 +692,7 @@ public sealed class ContentPackEditorCatalog
             "SpecialForces" => "Special forces",
             "CapitalShips" => "Capital ships",
             "Regiments" => "Troops",
-            "ContentPack" => "Pack settings",
+            "ContentPack" or ContentPackageManifest.RootName => "Pack settings",
             "GameGenerationConfig" => "Starting setup",
             "GameConfig" => "Rules",
             "FactionThemes" => "Interface",

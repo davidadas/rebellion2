@@ -410,7 +410,7 @@ namespace Rebellion.Tests.ContentEditor
             string manifestPath = Path.Combine(contentRoot, "Packs", "BasePack", "pack.xml");
             ContentPackDefinition definition =
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifestPath);
-            definition.NeutralThemePath = "Data/theme.xml";
+            definition.ThemePaths = new() { "Data/theme.xml" };
             ContentDefinitionSerializer.Serialize(manifestPath, definition);
             WriteFixtureFile("Advisor/Audio/existing.wav", "fixture");
             string source = Path.Combine(
@@ -801,6 +801,10 @@ namespace Rebellion.Tests.ContentEditor
                 "<Units><Unit ID=\"base\" /></Units>"
             );
             File.WriteAllText(Path.Combine(nextRoot, "Data", "new.xml"), "<NewEntries />");
+            File.Copy(
+                Path.Combine(contentRoot, "Packs", "BasePack", "Data", "neutral.xml"),
+                Path.Combine(nextRoot, "Data", "neutral.xml")
+            );
             ContentPackEditorDocument manifest = project.Documents.Single(document =>
                 document.Address == "Pack/pack.xml"
             );

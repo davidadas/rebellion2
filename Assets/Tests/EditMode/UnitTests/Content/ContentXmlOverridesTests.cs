@@ -32,6 +32,29 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Merge_IndependentScenarioRegistrations_KeepsBoth()
+        {
+            string baseline =
+                "<ContentPack><ScenarioPaths><Path>standard.xml</Path></ScenarioPaths></ContentPack>";
+            string first =
+                "<ContentPack Inherit='true'><ScenarioPaths><Path>first.xml</Path></ScenarioPaths></ContentPack>";
+            string second =
+                "<ContentPack Inherit='true'><ScenarioPaths><Path>second.xml</Path></ScenarioPaths></ContentPack>";
+
+            string result = ContentXmlOverrides.Merge(
+                ContentXmlOverrides.Merge(baseline, first),
+                second
+            );
+
+            Assert.That(
+                ContentDefinitionSerializer
+                    .DeserializeText<ContentPackDefinition>(result)
+                    .ScenarioPaths,
+                Is.EqualTo(new[] { "standard.xml", "first.xml", "second.xml" })
+            );
+        }
+
+        [Test]
         public void Update_OneMessagePicture_WritesOnlyThatSettingAndIdentity()
         {
             string baseline = Messages(

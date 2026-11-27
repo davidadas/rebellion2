@@ -73,6 +73,149 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Resolve_SavedOrderDiffersFromFolders_PreservesWinningAsset()
+        {
+            GameMetadata metadata = CreateMetadata(_fixturePack);
+            metadata.ModIDs = new[] { "later", "earlier" };
+            metadata.ModVersions = new[] { "1.0.0", "1.0.0" };
+            string mods = Path.Combine(_directory, "Mods");
+            try
+            {
+                WriteMod(mods, "earlier");
+                WriteMod(mods, "later");
+                WriteMod(mods, "newly-installed");
+
+                SaveContentSelection selection = SaveContentResolver.Resolve(
+                    _fixturePack,
+                    metadata
+                );
+
+                Assert.That(selection.Pack.MatchesContentIdentity(metadata), Is.True);
+                Assert.That(
+                    File.ReadAllText(selection.Pack.FileResolver.ResolveFile("Pack/overlap.txt")),
+                    Is.EqualTo("earlier")
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
+        public void Resolve_DuplicateIDWithDifferentVersions_LoadsTheSavedVersion()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            GameMetadata metadata = CreateMetadata(_fixturePack);
+            metadata.ModIDs = new[] { "rebalance" };
+            metadata.ModVersions = new[] { "2.0.0" };
+            try
+            {
+                WriteMod(mods, "rebalance", folderName: "first-copy");
+                WriteMod(mods, "rebalance", "2.0.0", folderName: "second-copy");
+
+                ContentPack selected = SaveContentResolver.Resolve(_fixturePack, metadata).Pack;
+
+                Assert.That(
+                    File.ReadAllText(selected.FileResolver.ResolveFile("Pack/overlap.txt")),
+                    Is.EqualTo("2.0.0")
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Resolve_MultipleCopiesOfSavedVersion_ReportsEveryMatchingFolder(
+            bool archiveSecond
+        )
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            GameMetadata metadata = CreateMetadata(_fixturePack);
+            metadata.ModIDs = new[] { "rebalance" };
+            metadata.ModVersions = new[] { "1.0.0" };
+            try
+            {
+                WriteMod(mods, "rebalance", folderName: "first-copy");
+                WriteMod(
+                    archiveSecond ? Path.Combine(mods, ".versions") : mods,
+                    "rebalance",
+                    folderName: "second-copy"
+                );
+
+                var error = Assert.Throws<InvalidOperationException>(() =>
+                    SaveContentResolver.Resolve(_fixturePack, metadata)
+                );
+
+                Assert.That(error.Message, Does.Contain("first-copy").And.Contain("second-copy"));
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
+        public void Resolve_OlderModReleaseIsRetained_LoadsItsFiles()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            GameMetadata metadata = CreateMetadata(_fixturePack);
+            metadata.ModIDs = new[] { "rebalance" };
+            metadata.ModVersions = new[] { "1.0.0" };
+            try
+            {
+                WriteMod(mods, "rebalance", "2.0.0");
+                WriteMod(Path.Combine(mods, ".versions"), "rebalance");
+
+                ContentPack selected = SaveContentResolver.Resolve(_fixturePack, metadata).Pack;
+
+                Assert.That(selected.MatchesContentIdentity(metadata), Is.True);
+                Assert.That(
+                    File.ReadAllText(selected.FileResolver.ResolveFile("Pack/overlap.txt")),
+                    Is.EqualTo("rebalance")
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
+        public void Resolve_OlderPackReleaseIsRetained_UsesItsExactVersion()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            ContentPack retained = TestPackFixture.Install(
+                Path.Combine(_directory, "RetainedContent")
+            );
+            ContentPackDefinition previous = retained.Definition;
+            previous.Version = "0.9.0";
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(retained.PackRootPath, "pack.xml"),
+                previous
+            );
+            string archive = Path.Combine(mods, ".versions");
+            Directory.CreateDirectory(archive);
+            Directory.Move(retained.PackRootPath, Path.Combine(archive, "previous-pack"));
+            try
+            {
+                GameMetadata metadata = CreateMetadata(_fixturePack);
+                metadata.PackVersion = "0.9.0";
+
+                ContentPack selected = SaveContentResolver.Resolve(_fixturePack, metadata).Pack;
+
+                Assert.That(selected.MatchesContentIdentity(metadata), Is.True);
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
         public void Resolve_DifferentPackVersion_ThrowsInvalidOperationException()
         {
             ContentPack activePack = _fixturePack;
@@ -94,6 +237,35 @@ namespace Rebellion.Tests.Content
 
             Assert.Throws<InvalidOperationException>(() =>
                 SaveContentResolver.Resolve(activePack, metadata)
+            );
+        }
+
+        /// <summary>
+        /// Creates one compatible test mod with a version-specific replacement file.
+        /// </summary>
+        /// <param name="mods">The active or retained mod directory.</param>
+        /// <param name="id">The saved mod identity.</param>
+        /// <param name="version">The installed version.</param>
+        /// <param name="folderName">An optional directory name distinct from the mod ID.</param>
+        private void WriteMod(
+            string mods,
+            string id,
+            string version = "1.0.0",
+            string folderName = null
+        )
+        {
+            string folder = Path.Combine(mods, folderName ?? id);
+            string files = Path.Combine(folder, "Content", "Pack");
+            Directory.CreateDirectory(files);
+            File.WriteAllText(
+                Path.Combine(folder, "mod.xml"),
+                $"<ContentModDefinition><ID>{id}</ID><DisplayName>{id}</DisplayName><Version>{version}</Version>"
+                    + $"<BasePackID>{_fixturePack.Definition.ID}</BasePackID>"
+                    + $"<BasePackVersion>{_fixturePack.Definition.Version}</BasePackVersion></ContentModDefinition>"
+            );
+            File.WriteAllText(
+                Path.Combine(files, "overlap.txt"),
+                version == "1.0.0" ? id : version
             );
         }
 

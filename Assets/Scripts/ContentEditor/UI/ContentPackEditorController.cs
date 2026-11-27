@@ -88,6 +88,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.Connection.CancelRequested += CancelPublishingOperation;
         view.Publishing.CancelRequested += CancelPublishingOperation;
         view.ValidateRequested += ValidatePack;
+        view.ModRuleRequested += ShowModRule;
         view.MapLayoutRequested += ArrangeMap;
         view.UndoRequested += Undo;
         view.RedoRequested += Redo;
@@ -142,12 +143,18 @@ public sealed class ContentPackEditorController : MonoBehaviour
             {
                 if (packPathIndex + 1 >= arguments.Length)
                     throw new ArgumentException("A content-pack folder must follow -packPath.");
-                OpenProject(
-                    ContentPackEditorStorage.OpenFolder(
-                        contentRootPath,
-                        arguments[packPathIndex + 1]
-                    )
-                );
+                string folder = arguments[packPathIndex + 1];
+                if (settings.AlphaNoticeAcknowledged)
+                    OpenWorkingFolder(folder);
+                else
+                    view.ShowAlphaNotice(() =>
+                        RunOperation(() =>
+                        {
+                            settingsManager.AcknowledgeAlphaNotice();
+                            OpenWorkingFolder(folder);
+                        })
+                    );
+                return;
             }
             if (packPathIndex < 0)
             {
@@ -265,6 +272,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.Connection.CancelRequested -= CancelPublishingOperation;
             view.Publishing.CancelRequested -= CancelPublishingOperation;
             view.ValidateRequested -= ValidatePack;
+            view.ModRuleRequested -= ShowModRule;
             view.MapLayoutRequested -= ArrangeMap;
             view.UndoRequested -= Undo;
             view.RedoRequested -= Redo;
@@ -427,12 +435,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="displayName">The new display name.</param>
     /// <param name="version">The initial version.</param>
     /// <param name="folder">The new working folder.</param>
+    /// <param name="asMod">Whether to create a stackable mod.</param>
     private void CreatePack(
         string basePackID,
         string packID,
         string displayName,
         string version,
-        string folder
+        string folder,
+        bool asMod
     )
     {
         ContinueAfterChanges(() =>
@@ -443,7 +453,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     Path.Combine(folder, packID),
                     packID,
                     displayName,
-                    version
+                    version,
+                    asMod: asMod
                 )
             )
         );
@@ -452,12 +463,34 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <summary>
     /// Opens a working pack independently of the installation directory.
     /// </summary>
-    /// <param name="folder">The folder containing pack.xml.</param>
+    /// <param name="folder">The folder containing the package manifest.</param>
     private void OpenFolder(string folder)
     {
-        ContinueAfterChanges(() =>
-            OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder))
-        );
+        ContinueAfterChanges(() => OpenWorkingFolder(folder));
+    }
+
+    /// <summary>
+    /// Opens a working package after the author supplies any missing package type.
+    /// </summary>
+    /// <param name="folder">The folder containing the package manifest.</param>
+    /// <param name="afterOpen">An optional action to perform after a successful open.</param>
+    private void OpenWorkingFolder(string folder, Action afterOpen = null)
+    {
+        ContentEditorPaths.VerifyWritableLocation(contentRootPath, folder);
+        string manifest = ContentPackageManifest.Find(folder, ContentPackageType.GamePack);
+        if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Unknown)
+        {
+            view.ChoosePackageType(type =>
+                RunOperation(() =>
+                {
+                    ContentPackEditorStorage.SetPackageType(contentRootPath, folder, type);
+                    OpenWorkingFolder(folder, afterOpen);
+                })
+            );
+            return;
+        }
+        OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder));
+        afterOpen?.Invoke();
     }
 
     /// <summary>
@@ -468,7 +501,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (!view.CanUseProjects)
             return;
-        if (project?.PackRootPath == folder)
+        if (project?.ProjectRootPath == folder)
             view.EditCurrentProject();
         else
             OpenFolder(folder);
@@ -482,16 +515,12 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (!view.CanUseProjects)
             return;
-        if (project?.PackRootPath == folder)
+        if (project?.ProjectRootPath == folder)
         {
             ShowPublishing();
             return;
         }
-        ContinueAfterChanges(() =>
-        {
-            OpenProject(ContentPackEditorStorage.OpenFolder(contentRootPath, folder));
-            ShowPublishing();
-        });
+        ContinueAfterChanges(() => OpenWorkingFolder(folder, ShowPublishing));
     }
 
     /// <summary>
@@ -506,8 +535,8 @@ public sealed class ContentPackEditorController : MonoBehaviour
             string folder = ContentEditorFileDialog.OpenFolder(mods);
             if (string.IsNullOrEmpty(folder))
                 return;
-            if (!File.Exists(Path.Combine(folder, "pack.xml")))
-                throw new ArgumentException("Choose a content pack folder.");
+            if (!ContentPackageManifest.Exists(folder))
+                throw new ArgumentException("Choose a folder with a package manifest.");
             OpenFolder(folder);
         });
     }
@@ -2030,7 +2059,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     /// <param name="value">The project to open.</param>
     private void OpenProject(ContentPackEditorProject value)
     {
-        bool differentProject = project?.PackRootPath != value.PackRootPath;
+        bool differentProject = project?.ProjectRootPath != value.ProjectRootPath;
         ContentAssets replacement = ContentPackEditorStorage.CreateAssets(value);
         ContentAssets previous = assets;
         try
@@ -2096,7 +2125,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             OpenProject(project);
         else
             view.RefreshProjectState();
-        view.RenderStatus("Content pack saved. " + project.ArtworkConversionReport, false);
+        view.RenderStatus("Project saved. " + project.ArtworkConversionReport, false);
     }
 
     /// <summary>
@@ -2118,13 +2147,59 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 view.RenderValidationErrors(fieldErrors);
                 return;
             }
-            view.RenderStatus("Validating content pack. Press Escape to cancel.", false);
+            view.RenderStatus("Validating project. Press Escape to cancel.", false);
             IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
                 project,
                 ReportValidationProgress,
                 cancellationToken
             );
-            view.RenderValidationResult("Content pack validated successfully.", warnings);
+            view.RenderValidationResult("Project validated successfully.", warnings);
+        });
+    }
+
+    /// <summary>
+    /// Shows a mod's requirement or relative placement rule using compatible installed targets.
+    /// </summary>
+    /// <param name="rule">The author rule selected from Mod settings.</param>
+    private void ShowModRule(ContentEditorModRule rule)
+    {
+        RunOperation(() =>
+        {
+            if (project?.Mod == null)
+                return;
+            string title = rule switch
+            {
+                ContentEditorModRule.Requires => "Required mods",
+                ContentEditorModRule.LoadBefore => "Load this mod before",
+                ContentEditorModRule.LoadAfter => "Load this mod after",
+                _ => throw new ArgumentOutOfRangeException(nameof(rule)),
+            };
+            var choices = ContentPackLoader
+                .DiscoverCompatibleMods(contentRootPath, project.Mod.BasePackID)
+                .Where(mod => mod.ID != project.ID)
+                .ToDictionary(mod => mod.ID, mod => mod.DisplayName, StringComparer.Ordinal);
+            IReadOnlyList<string> current = ContentPackEditorStorage.GetModRuleIDs(
+                project.Mod,
+                rule
+            );
+            view.ShowModRuleChoices(
+                title,
+                choices,
+                current,
+                selection =>
+                {
+                    string[] selected = selection
+                        .OrderBy(id => id, StringComparer.Ordinal)
+                        .ToArray();
+                    if (current.ToHashSet(StringComparer.Ordinal).SetEquals(selected))
+                        return;
+                    ContinueAfterChanges(() =>
+                    {
+                        OpenProject(ContentPackEditorStorage.SaveModRule(project, rule, selected));
+                        view.RenderStatus("Mod settings saved.", false);
+                    });
+                }
+            );
         });
     }
 
@@ -2155,17 +2230,14 @@ public sealed class ContentPackEditorController : MonoBehaviour
     {
         if (project == null)
             return Array.Empty<string>();
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            contentRootPath,
-            project.PackRootPath,
-            project.Definition
-        );
+        ContentFileResolver resolver = project.CreateResolver();
         return resolver
             .PackRootPaths.Select(path =>
                 ContentDefinitionSerializer
                     .Deserialize<ContentPackDefinition>(Path.Combine(path, "pack.xml"))
                     .ID
             )
+            .Concat(resolver.Mods.Select(mod => mod.ID))
             .ToArray();
     }
 
@@ -2189,7 +2261,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             if (project?.IsInstalled != false || !view.CommitFields())
                 return;
             ContentEditorPublishingSettings settings = ContentEditorPublishingStorage.Load(project);
-            view.Publishing.Show(project.Definition, settings);
+            view.Publishing.Show(project, settings);
             view.Publishing.Dependencies.SetCatalog(packageStore.Catalog.Read());
             view.Publishing.RenderConnection(publisher.Teams);
             publishedPackageUrl = null;
@@ -2199,29 +2271,25 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
-    /// Opens shared account controls and checks saved credentials only after an explicit user request.
+    /// Checks saved credentials on request and opens account controls when needed.
     /// </summary>
     private async void ShowThunderstoreConnection()
     {
         if (this.operation.IsRunning)
             return;
+        bool manageAccount = publisher.Teams.Length > 0;
         await RunOperationAsync(
             async cancellationToken =>
             {
                 view.RenderThunderstoreConnection("checking connection…");
                 try
                 {
-                    bool connected = await publisher.RestoreAsync(cancellationToken);
+                    await publisher.RestoreAsync(cancellationToken);
                     if (this == null)
                         return;
                     view.Publishing.RenderConnection(publisher.Teams);
                     RenderThunderstoreConnection();
-                    view.Connection.Show();
-                    view.Connection.RenderConnection(publisher.Teams);
-                    if (!connected)
-                    {
-                        view.Connection.ShowStatus("Paste a token to connect this device.");
-                    }
+                    view.Connection.ShowAfterVerification(publisher.Teams, manageAccount);
                 }
                 catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
                 {
@@ -2514,7 +2582,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 if (!view.CommitFields())
                     return;
                 ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
-                settings.Validate(project.Definition);
+                settings.Validate(project.ID, project.Version);
                 if (!publisher.Teams.Contains(settings.TeamName, StringComparer.Ordinal))
                     throw new InvalidOperationException(
                         "Connect Thunderstore and choose a publishing team."
@@ -2537,7 +2605,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     publishedPackageUrl = ThunderstorePublisher.GetPackageUrl(
                         settings.TeamName,
                         settings.PackageName,
-                        project.Definition.Version
+                        project.Version
                     );
                     view.Publishing.SetPublished(true);
                     Progress<float> progress = new Progress<float>(value =>
@@ -2554,7 +2622,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                         archive,
                         settings.TeamName,
                         settings.PackageName,
-                        project.Definition.Version,
+                        project.Version,
                         progress,
                         cancellationToken
                     );
@@ -2567,7 +2635,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                                 + "/"
                                 + settings.PackageName
                                 + " "
-                                + project.Definition.Version
+                                + project.Version
                                 + ".",
                             warnings
                         );
@@ -2591,10 +2659,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
         await RunOperationAsync(async cancellationToken =>
         {
             ContentEditorPublishingSettings settings = view.Publishing.ReadSettings();
-            settings.Validate(project.Definition);
+            settings.Validate(project.ID, project.Version);
             string destination = ContentEditorFileDialog.SaveFile(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                settings.PackageName + "-" + project.Definition.Version + ".zip",
+                settings.PackageName + "-" + project.Version + ".zip",
                 new[] { ".zip" }
             );
             if (string.IsNullOrEmpty(destination))
@@ -2623,22 +2691,19 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return;
             string filePath = ContentEditorFileDialog.SaveFile(
                 Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                project.Definition.ID + ".zip",
+                project.ID + ".zip",
                 new[] { ".zip" }
             );
             if (string.IsNullOrEmpty(filePath))
                 return;
-            view.RenderStatus(
-                "Validating and exporting content pack. Press Escape to cancel.",
-                false
-            );
+            view.RenderStatus("Validating and exporting. Press Escape to cancel.", false);
             IReadOnlyList<string> warnings = await ContentPackEditorExporter.WriteArchiveAsync(
                 project,
                 filePath,
                 ReportValidationProgress,
                 cancellationToken
             );
-            view.RenderValidationResult("Content pack exported to " + filePath, warnings);
+            view.RenderValidationResult("Exported to " + filePath, warnings);
         });
     }
 

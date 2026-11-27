@@ -74,12 +74,18 @@ internal static class ContentEditorPaths
     /// </summary>
     /// <param name="project">The owner of the write.</param>
     /// <param name="path">The proposed file or directory.</param>
-    internal static void VerifyWritePath(ContentPackEditorProject project, string path)
+    /// <param name="projectFolder">Whether the file lives beside the project manifest.</param>
+    internal static void VerifyWritePath(
+        ContentPackEditorProject project,
+        string path,
+        bool projectFolder = false
+    )
     {
-        VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
+        string root = projectFolder ? project.ProjectRootPath : project.PackRootPath;
+        VerifyWritableLocation(project.ContentRootPath, root);
         VerifyWritableLocation(project.ContentRootPath, path);
-        if (!Contains(project.PackRootPath, path))
-            throw new IOException("The destination resolves outside your working content pack.");
+        if (!Contains(root, path))
+            throw new IOException("The destination resolves outside the writable project folder.");
     }
 
     /// <summary>

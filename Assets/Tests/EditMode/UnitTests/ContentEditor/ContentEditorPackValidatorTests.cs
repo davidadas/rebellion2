@@ -349,9 +349,7 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [TestCase("FNALL1", "missing", "FNALL1")]
-        [TestCase("FNALL1", "DEFAULT", "default theme")]
         [TestCase("FNEMP1", "FNALL1", "FNALL1")]
-        [TestCase("DEFAULT", "missing", "DEFAULT")]
         public async Task ValidateAsync_InvalidThemeKeys_RejectsBeforeOpeningTheUiAsync(
             string previous,
             string replacement,

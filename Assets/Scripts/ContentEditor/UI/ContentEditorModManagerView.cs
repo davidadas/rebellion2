@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
@@ -10,6 +11,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
 {
+    private const int _sectionHeadingHeight = 36;
+
     [SerializeField]
     private RectTransform panel;
 
@@ -113,6 +116,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI resultCount;
 
     [SerializeField]
+    private TextMeshProUGUI modsHeading;
+
+    [SerializeField]
+    [FormerlySerializedAs("erasHeading")]
+    private TextMeshProUGUI gamePacksHeading;
+
+    [SerializeField]
     private TextMeshProUGUI emptyResults;
 
     [SerializeField]
@@ -142,10 +152,17 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     [SerializeField]
     private RectTransform defaultPackDescription;
 
+    [SerializeField]
+    private Button loadOrderButton;
+
+    [SerializeField]
+    private ContentEditorModOrderView modOrder;
+
     private float contentZoom = 1;
     private int inlineFilterHeight;
     private string[] activePackIDs = Array.Empty<string>();
     private bool library;
+    private int libraryModCount;
     private SelectableListView<ContentEditorModCardView, ContentEditorModEntry> packageList;
     private IReadOnlyList<ContentEditorModCardView> Rows =>
         packageList?.Rows ?? Array.Empty<ContentEditorModCardView>();
@@ -161,6 +178,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private bool busy;
 
     internal event Action<string> ActivePackRequested;
+    internal event Action LoadOrderRequested;
     internal event Action RefreshRequested;
     internal event Action ImportRequested;
     internal event Action CloseRequested;
@@ -232,6 +250,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || clearSearchButton == null
             || resetButton == null
             || resultCount == null
+            || modsHeading == null
+            || gamePacksHeading == null
             || emptyResults == null
             || creator == null
             || popularity == null
@@ -239,9 +259,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || categories == null
             || packageState == null
             || iconInitials == null
+            || loadOrderButton == null
+            || modOrder == null
         )
             throw new MissingReferenceException(name + " has incomplete mod-manager controls.");
         activePack.onValueChanged.AddListener(SelectActivePack);
+        loadOrderButton.onClick.AddListener(RequestLoadOrder);
         refreshButton.onClick.AddListener(Refresh);
         importButton.onClick.AddListener(Import);
         closeButton.onClick.AddListener(Close);
@@ -366,13 +389,27 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         filters.SetWidth(width);
         UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, filters.Height);
         int packWidth = Mathf.Min(440, Mathf.FloorToInt(width * 0.45f));
+        const int orderWidth = 128;
         UILayout.SetSourceRect((RectTransform)defaultPackControls.transform, 0, 112, width, 72);
-        UILayout.SetSourceRect(defaultPackDescription, 0, 0, width - packWidth - 24, 72);
+        UILayout.SetSourceRect(
+            defaultPackDescription,
+            0,
+            0,
+            Mathf.Max(1, width - packWidth - orderWidth - 36),
+            72
+        );
         UILayout.SetSourceRect(
             (RectTransform)activePack.transform,
-            width - packWidth,
+            width - packWidth - orderWidth - 12,
             0,
             packWidth,
+            44
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)loadOrderButton.transform,
+            width - orderWidth,
+            0,
+            orderWidth,
             44
         );
         resultCount.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
@@ -390,7 +427,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <summary>
     /// Hides the manager after its controller has canceled pending network work.
     /// </summary>
-    internal void Hide() => gameObject.SetActive(false);
+    internal void Hide()
+    {
+        modOrder.Close();
+        gameObject.SetActive(false);
+    }
 
     /// <summary>
     /// Returns to the editor unless an installation must first finish or be canceled.
@@ -421,6 +462,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         bool resetScroll
     )
     {
+        library = installed;
+        libraryModCount = installed ? items.Count(entry => !entry.IsGamePack) : 0;
         LayoutResults(items.Count, resetScroll);
         packageList.Render(
             items,
@@ -438,9 +481,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                     InstallPackage,
                     FindIcon(entry.IconUrl)
                 ),
-            (entry, _) => entry.ID == selectedPackageID
+            installed ? null : (entry, _) => entry.ID == selectedPackageID
         );
-        library = installed;
         pageTitle.text = installed ? "Library" : "Browse";
         defaultPackControls.SetActive(installed);
         search.gameObject.SetActive(!installed);
@@ -451,14 +493,27 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             filterPanel.SetActive(false);
         importButton.gameObject.SetActive(installed && !browseLocked);
         LayoutResults(items.Count, resetScroll);
-        string noun = total == 1 ? " mod" : " mods";
+        if (installed && !browseLocked && !detailOverlay.activeSelf)
+        {
+            ContentEditorModCardView selected = Rows.FirstOrDefault(row =>
+                row.gameObject.activeSelf && row.Entry.ID == selectedPackageID
+            );
+            if (selected != null)
+            {
+                RectTransform rect = (RectTransform)selected.transform;
+                packages.ScrollArea.RevealContentRect(-rect.anchoredPosition.y, rect.rect.height);
+                SelectableListRowView.FocusRowForNavigation(packages.transform, true, selected);
+            }
+        }
+        resultCount.gameObject.SetActive(!installed);
+        string noun = total == 1 ? " package" : " packages";
         resultCount.text =
             items.Count == total ? total + noun : items.Count + " of " + total + noun;
         emptyResults.gameObject.SetActive(items.Count == 0);
         emptyResults.text =
             total == 0 && installed
-                ? "No mods installed yet.\n\nBrowse community mods or install a mod ZIP from your computer."
-                : "No mods found.\n\nTry a shorter search or clear your filters.";
+                ? "No content installed yet.\n\nBrowse community content or install a ZIP from your computer."
+                : "No packages found.\n\nTry a shorter search or clear your filters.";
         UpdateClearControls();
         RequestIcons();
     }
@@ -474,7 +529,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         int expandedTop =
             176 + Mathf.CeilToInt(((RectTransform)filterPanel.transform).rect.height) + 56;
         int contentTop =
-            library ? 248
+            library ? 212
             : hasFilters ? expandedTop
             : 216;
         bool hasStatus = !string.IsNullOrEmpty(status.text);
@@ -517,8 +572,23 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             Mathf.FloorToInt(panel.rect.width),
             160
         );
+        modsHeading.gameObject.SetActive(library && libraryModCount > 0);
+        gamePacksHeading.gameObject.SetActive(library && count > libraryModCount);
+        int modsHeight = modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
+        int gamePacksHeight = gamePacksHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
+        int widthAvailable = Mathf.FloorToInt(packages.ScrollArea.ViewportWidth);
+        UILayout.SetSourceRect(modsHeading.rectTransform, 0, 0, widthAvailable, 28);
+        UILayout.SetSourceRect(
+            gamePacksHeading.rectTransform,
+            0,
+            modsHeight + libraryModCount * _cardHeight,
+            widthAvailable,
+            28
+        );
         packages.SetContentHeight(
             inlineFilterHeight
+                + modsHeight
+                + gamePacksHeight
                 + (
                     inlineFilterHeight > 0 && count == 0
                         ? 208
@@ -534,10 +604,25 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             rect.sizeDelta = new Vector2(width, _cardHeight - 16);
             rect.anchoredPosition = new Vector2(
                 index % _columns * (width + 16),
-                -inlineFilterHeight - (index / _columns) * _cardHeight
+                -GetCardTop(index)
             );
         }
     }
+
+    /// <summary>
+    /// Locates a card in the same coordinate space as the scroll viewport and section headings.
+    /// </summary>
+    /// <param name="index">The ordered card slot.</param>
+    /// <returns>The distance from the content root's top edge.</returns>
+    private int GetCardTop(int index) =>
+        inlineFilterHeight
+        + (index / _columns) * _cardHeight
+        + (modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0)
+        + (
+            gamePacksHeading.gameObject.activeSelf && index >= libraryModCount
+                ? _sectionHeadingHeight
+                : 0
+        );
 
     /// <summary>
     /// Lists installed packs without changing the saved default during rendering.
@@ -550,13 +635,31 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         activePack.ClearOptions();
         activePack.AddOptions(
             packs.Count == 0
-                ? new List<string> { "No content packs installed" }
+                ? new List<string> { "No game packs installed" }
                 : packs.Select(pack => pack.DisplayName).ToList()
         );
         activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
         activePack.RefreshShownValue();
         activePack.interactable = !busy && packs.Count > 0;
+        loadOrderButton.interactable = activePack.interactable;
     }
+
+    /// <summary>
+    /// Opens the focused editor for the enabled order of the current game pack.
+    /// </summary>
+    /// <param name="gamePack">The default game pack name shown in the library.</param>
+    /// <param name="mods">The currently applied stack.</param>
+    /// <param name="apply">The action that saves the proposed order.</param>
+    internal void ShowLoadOrder(
+        string gamePack,
+        IReadOnlyList<ContentModDefinition> mods,
+        Action<IReadOnlyList<string>> apply
+    ) => modOrder.Show(gamePack, mods, apply);
+
+    /// <summary>
+    /// Requests the load order for the library's current game pack.
+    /// </summary>
+    private void RequestLoadOrder() => LoadOrderRequested?.Invoke();
 
     /// <summary>
     /// Requests the default pack explicitly chosen by the player.
@@ -603,7 +706,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         detailContent.SetActive(entry != null);
         emptyDetails.gameObject.SetActive(entry == null);
         heading.text = entry?.Name ?? "Select a package";
-        creator.text = entry == null ? string.Empty : "by " + entry.Author;
+        creator.text = string.IsNullOrEmpty(entry?.Author) ? string.Empty : "by " + entry.Author;
         popularity.text = entry?.Popularity ?? string.Empty;
         updated.text =
             entry?.Listing == null
@@ -836,6 +939,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         sorting.interactable = !browseLocked;
         versions.interactable = !browseLocked;
         activePack.interactable = !value && activePackIDs.Length > 0;
+        loadOrderButton.interactable = activePack.interactable;
         closeButton.gameObject.SetActive(browseLocked);
         importButton.gameObject.SetActive(library && !browseLocked);
         refreshButton.GetComponentInChildren<TMP_Text>(true).text =
@@ -912,8 +1016,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         return Rows.Where(
                 (row, index) =>
                     row.gameObject.activeSelf
-                    && inlineFilterHeight + index / _columns * _cardHeight < bottom
-                    && inlineFilterHeight + (index / _columns + 1) * _cardHeight > top
+                    && GetCardTop(index) < bottom
+                    && GetCardTop(index) + _cardHeight > top
             )
             .Select(row => row.Entry?.IconUrl)
             .Append(detailOverlay.activeSelf ? selectedIconUrl : null)
@@ -958,16 +1062,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Opens installation feedback and requests the latest release for the chosen package.
+    /// Starts installation from the card while keeping the current results visible.
     /// </summary>
     /// <param name="id">The package to install or update.</param>
     private void InstallPackage(string id)
     {
-        HideFilters();
-        detailOverlay.SetActive(true);
-        detailOverlay.transform.SetAsLastSibling();
+        selectedPackageID = id;
         QuickInstallRequested?.Invoke(id);
-        RequestIcons();
     }
 
     /// <summary>
@@ -1084,6 +1185,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         if (!IsOpen)
             return false;
+        if (modOrder.TryCancel())
+            return true;
         if (filters.TryCancel())
             return true;
         foreach (TMP_Dropdown dropdown in new[] { sorting, versions })
@@ -1131,6 +1234,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         if (bound)
         {
             activePack.onValueChanged.RemoveListener(SelectActivePack);
+            loadOrderButton.onClick.RemoveListener(RequestLoadOrder);
             refreshButton.onClick.RemoveListener(Refresh);
             importButton.onClick.RemoveListener(Import);
             closeButton.onClick.RemoveListener(Close);

@@ -97,7 +97,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     private bool _busy;
     private Texture2D _iconTexture;
     private string _iconPath;
-    private ContentPackDefinition _definition;
+    private (string ID, string Version, string BasePackID) _release;
     private bool _bound;
     private int _step;
 
@@ -215,12 +215,12 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     /// <summary>
     /// Opens the publishing workflow without changing the pack's canonical identity or version.
     /// </summary>
-    /// <param name="definition">The pack whose current snapshot will be released.</param>
+    /// <param name="project">The project whose current snapshot will be released.</param>
     /// <param name="settings">The saved publishing draft.</param>
-    internal void Show(ContentPackDefinition definition, ContentEditorPublishingSettings settings)
+    internal void Show(ContentPackEditorProject project, ContentEditorPublishingSettings settings)
     {
         BindControls();
-        _definition = definition;
+        _release = (project.ID, project.Version, project.BasePackID);
         _preferredTeam = settings.TeamName;
         RenderConnection(_teams);
         _packageName.SetTextWithoutNotify(settings.PackageName ?? string.Empty);
@@ -229,8 +229,8 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         _readme.SetTextWithoutNotify(settings.Readme ?? string.Empty);
         _dependencies.Show(settings.GetDependencies());
         _changelog.SetTextWithoutNotify(settings.Changelog ?? string.Empty);
-        _version.SetTextWithoutNotify(definition.Version);
-        _identity.text = definition.DisplayName + " · Content pack";
+        _version.SetTextWithoutNotify(_release.Version);
+        _identity.text = project.DisplayName + (project.Mod == null ? " · Game pack" : " · Mod");
         SetIcon(settings.IconPath, null);
         ShowStatus(string.Empty);
         SetStep(0);
@@ -373,7 +373,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             if (step > 1)
             {
                 invalidStep = 1;
-                settings.ValidateRelease(_definition);
+                settings.ValidateRelease(_release.ID, _release.Version);
             }
             return true;
         }
@@ -462,15 +462,15 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
     /// </summary>
     private void RenderPreview()
     {
-        if (_definition == null)
+        if (_release.ID == null)
             return;
-        string basePack = string.IsNullOrEmpty(_definition.BasePackID)
-            ? "Standalone content pack"
-            : "Requires " + _definition.BasePackID;
+        string basePack = string.IsNullOrEmpty(_release.BasePackID)
+            ? "Standalone game pack"
+            : "Requires " + _release.BasePackID;
         _preview.text =
             _packageName.text
             + "\n\nVersion "
-            + _definition.Version
+            + _release.Version
             + "\n\n"
             + _description.text
             + "\n\n"
@@ -481,12 +481,12 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             "Package\n"
             + _packageName.text
             + " · "
-            + _definition.Version
-            + "\n\nRequired base pack\n"
-            + (string.IsNullOrEmpty(_definition.BasePackID) ? "None" : _definition.BasePackID)
+            + _release.Version
+            + "\n\nRequired game pack\n"
+            + (string.IsNullOrEmpty(_release.BasePackID) ? "None" : _release.BasePackID)
             + "\n\nRequired Thunderstore packages\n"
             + dependencies
-            + "\n\nIncludes your pack files, icon, readme, and release notes."
+            + "\n\nIncludes your project files, icon, readme, and release notes."
             + "\nContent validation runs before publishing or export.";
     }
 

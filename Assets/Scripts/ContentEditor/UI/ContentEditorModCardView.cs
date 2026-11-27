@@ -75,10 +75,11 @@ public sealed class ContentEditorModCardView : SelectableListRowView
             : requiresInstallation ? "Install"
             : "Manage";
         caption.text = entry.Name;
-        author.text =
-            "by "
-            + entry.Author
-            + (entry.IsInstalled || entry.IsDeprecated ? " · " + entry.State : string.Empty);
+        author.text = string.IsNullOrEmpty(entry.Author)
+            ? entry.State
+            : "by "
+                + entry.Author
+                + (entry.IsInstalled || entry.IsDeprecated ? " · " + entry.State : string.Empty);
         description.text = entry.Description;
         popularity.text =
             entry.Listing == null ? string.Empty : entry.DownloadCount + "\n" + entry.LikeCount;

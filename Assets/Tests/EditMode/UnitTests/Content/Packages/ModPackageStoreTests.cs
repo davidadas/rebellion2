@@ -176,6 +176,65 @@ namespace Rebellion.Tests.Content.Packages
         }
 
         [Test]
+        public async Task InstallAsync_DeepArtworkPath_RestoresArtworkFromCachedReleaseAsync()
+        {
+            const string name = "DeepArtwork";
+            const string artwork = "Factions/Alliance/Missions/Abduction/encyclopedia.png";
+            const string nativeFolder = "Content/Packs/DeepArtwork/";
+            const string artworkData = "Fixture artwork";
+            string archivePath = Path.Combine(folder, "deep-artwork.zip");
+            using (ZipArchive archive = ZipFile.Open(archivePath, ZipArchiveMode.Create))
+            {
+                using (var manifest = new StreamWriter(archive.CreateEntry("manifest.json").Open()))
+                    manifest.Write("{\"name\":\"DeepArtwork\",\"version_number\":\"1.0.0\"}");
+                using (
+                    var pack = new StreamWriter(
+                        archive.CreateEntry(nativeFolder + "pack.xml").Open()
+                    )
+                )
+                    pack.Write(
+                        "<ContentPack><ID>DeepArtwork</ID><DisplayName>DeepArtwork</DisplayName><Version>1.0.0</Version></ContentPack>"
+                    );
+                using var image = new StreamWriter(
+                    archive.CreateEntry(nativeFolder + artwork).Open()
+                );
+                image.Write(artworkData);
+            }
+            await store.InstallLocalAsync(
+                archivePath,
+                Array.Empty<string>(),
+                null,
+                CancellationToken.None
+            );
+            InstalledModPackage receipt = store.GetInstalled().Single();
+            var package = new ThunderstorePackage
+            {
+                name = name,
+                owner = "Fixture",
+                full_name = receipt.PackageID,
+                versions = new[]
+                {
+                    new ThunderstorePackageVersion
+                    {
+                        version_number = receipt.Version,
+                        file_size = new FileInfo(archivePath).Length,
+                        dependencies = Array.Empty<string>(),
+                    },
+                },
+            };
+            string installedImage = Path.Combine(
+                ContentFileResolver.ResolveModsRootPath(contentRoot),
+                name,
+                artwork
+            );
+            File.Delete(installedImage);
+
+            await InstallAsync(package);
+
+            Assert.That(File.ReadAllText(installedImage), Is.EqualTo(artworkData));
+        }
+
+        [Test]
         public async Task InstallAsync_PartiallyMissingDependency_RestoresMissingFilesAsync()
         {
             var (dependency, parent) = await InstallDependencyPairAsync();
@@ -303,13 +362,70 @@ namespace Rebellion.Tests.Content.Packages
             };
             await InstallAsync(root, dependency, parent);
 
-            CollectionAssert.AreEquivalent(
+            CollectionAssert.AreEqual(
                 new[] { dependency.full_name, parent.full_name, root.full_name },
                 store
                     .GetRequiredPackages(
                         store.GetInstalled().Single(item => item.PackageID == root.full_name)
                     )
                     .Select(item => item.PackageID)
+            );
+        }
+
+        [Test]
+        public void Uninstall_RequiredNativeMod_LeavesItInstalled()
+        {
+            string dependency = WriteLocalMod("colors", "1.0.0", "");
+            WriteLocalMod(
+                "layout",
+                "2.0.0",
+                "<Requires><Mod><ID>colors</ID><Version>1.0.0</Version></Mod></Requires>"
+            );
+            InstalledModPackage selected = store
+                .GetInstalled()
+                .Single(item => item.Name == "colors");
+
+            var error = Assert.Throws<InvalidOperationException>(() =>
+                store.Uninstall(selected, Array.Empty<string>())
+            );
+
+            StringAssert.Contains("layout requires colors", error.Message);
+            Assert.IsTrue(File.Exists(Path.Combine(dependency, "pack.xml")));
+        }
+
+        [Test]
+        public async Task Uninstall_IntactAddOn_KeepsItsExactReleaseAvailableForSavesAsync()
+        {
+            string source = Path.Combine(folder, "add-on-source");
+            string payload = Path.Combine(source, "Content", "Pack");
+            Directory.CreateDirectory(payload);
+            File.WriteAllText(
+                Path.Combine(source, "mod.xml"),
+                "<ContentModDefinition><ID>retired</ID><DisplayName>Retired</DisplayName><Version>1.0.0</Version><BasePackID>base</BasePackID><BasePackVersion>1.0.0</BasePackVersion></ContentModDefinition>"
+            );
+            File.WriteAllText(Path.Combine(payload, "payload.txt"), "Retained artwork data");
+            string archive = Path.Combine(folder, "retired.zip");
+            ZipFile.CreateFromDirectory(source, archive);
+            await store.InstallLocalAsync(
+                archive,
+                Array.Empty<string>(),
+                null,
+                CancellationToken.None
+            );
+
+            store.Uninstall(store.GetInstalled().Single(), Array.Empty<string>());
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                contentRoot,
+                Path.Combine(contentRoot, "Packs", "base"),
+                "base",
+                "1.0.0",
+                appliedModIDs: new[] { "retired" },
+                appliedModVersions: new[] { "1.0.0" }
+            );
+            Assert.That(
+                File.ReadAllText(resolver.ResolveFile("Pack/payload.txt")),
+                Is.EqualTo("Retained artwork data")
             );
         }
 
@@ -372,6 +488,125 @@ namespace Rebellion.Tests.Content.Packages
             Assert.IsEmpty(store.GetInstalled());
         }
 
+        [Test]
+        public async Task RemoveConflictingInstallation_UnpackedCopy_AllowsInstallingNewVersionAsync()
+        {
+            string existing = WritePackCopy("SeparateFolder", "Duplicate", "0.9.0");
+            File.WriteAllText(Path.Combine(existing, "artwork.txt"), "Existing artwork");
+            string archive = CreateArchive("Duplicate");
+            var conflict = await ExpectFailureAsync<ModPackageStore.InstallationConflict>(() =>
+                store.InstallLocalAsync(
+                    archive,
+                    Array.Empty<string>(),
+                    null,
+                    CancellationToken.None
+                )
+            );
+
+            store.RemoveConflictingInstallation(conflict, Array.Empty<string>());
+            await store.InstallLocalAsync(
+                archive,
+                Array.Empty<string>(),
+                null,
+                CancellationToken.None
+            );
+
+            string recovered = Directory
+                .EnumerateFiles(
+                    Path.Combine(Path.GetDirectoryName(store.Catalog.CachePath), "removed"),
+                    "artwork.txt",
+                    SearchOption.AllDirectories
+                )
+                .Single();
+            Assert.That(File.ReadAllText(recovered), Is.EqualTo("Existing artwork"));
+            Assert.That(Directory.Exists(existing), Is.False);
+            Assert.That(store.GetInstalled().Single().Version, Is.EqualTo("1.0.0"));
+        }
+
+        [Test]
+        public async Task InstallLocalAsync_DefaultPackConflict_DoesNotOfferRemovalAsync()
+        {
+            string existing = WritePackCopy("DefaultFolder", "Default", "0.9.0");
+            File.WriteAllText(
+                Path.Combine(contentRoot, "catalog.xml"),
+                "<ContentCatalog><ActivePackID>Default</ActivePackID></ContentCatalog>"
+            );
+            string archive = CreateArchive("Default");
+
+            var exception = await ExpectFailureAsync<InvalidOperationException>(() =>
+                store.InstallLocalAsync(
+                    archive,
+                    Array.Empty<string>(),
+                    null,
+                    CancellationToken.None
+                )
+            );
+
+            Assert.That(exception, Is.Not.InstanceOf<ModPackageStore.InstallationConflict>());
+            Assert.That(Directory.Exists(existing), Is.True);
+        }
+
+        [Test]
+        public async Task RemoveConflictingInstallation_CopyIsNowInUse_LeavesCopyInstalledAsync()
+        {
+            string existing = WritePackCopy("SeparateFolder", "Duplicate", "0.9.0");
+            string archive = CreateArchive("Duplicate");
+            var conflict = await ExpectFailureAsync<ModPackageStore.InstallationConflict>(() =>
+                store.InstallLocalAsync(
+                    archive,
+                    Array.Empty<string>(),
+                    null,
+                    CancellationToken.None
+                )
+            );
+
+            Assert.Throws<InvalidOperationException>(() =>
+                store.RemoveConflictingInstallation(conflict, new[] { "Duplicate" })
+            );
+            Assert.That(Directory.Exists(existing), Is.True);
+        }
+
+        [Test]
+        public async Task InstallLocalAsync_PackCopyHasDependent_DoesNotOfferRemovalAsync()
+        {
+            string existing = WritePackCopy("SeparateFolder", "Duplicate", "0.9.0");
+            WritePackCopy("ExpansionFolder", "Expansion", "1.0.0", "Duplicate");
+            string archive = CreateArchive("Duplicate");
+
+            var exception = await ExpectFailureAsync<InvalidOperationException>(() =>
+                store.InstallLocalAsync(
+                    archive,
+                    Array.Empty<string>(),
+                    null,
+                    CancellationToken.None
+                )
+            );
+
+            Assert.That(exception.Message, Does.Contain("requires"));
+            Assert.That(exception, Is.Not.InstanceOf<ModPackageStore.InstallationConflict>());
+            Assert.That(Directory.Exists(existing), Is.True);
+        }
+
+        /// <summary>
+        /// Writes a local mod manifest to the fixture library.
+        /// </summary>
+        /// <param name="id">The installed mod ID.</param>
+        /// <param name="version">The installed mod version.</param>
+        /// <param name="rules">The optional manifest rules.</param>
+        /// <returns>The local mod folder.</returns>
+        private string WriteLocalMod(string id, string version, string rules)
+        {
+            string root = Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRoot), id);
+            Directory.CreateDirectory(root);
+            File.WriteAllText(
+                Path.Combine(root, "pack.xml"),
+                $"<ContentPackage Type=\"Mod\"><ID>{id}</ID><DisplayName>{id}</DisplayName>"
+                    + $"<Version>{version}</Version><BasePackID>base</BasePackID>"
+                    + $"<BasePackVersion>1.0.0</BasePackVersion>{rules}</ContentPackage>"
+            );
+            return root;
+        }
+
         /// <summary>
         /// Awaits an expected failure without blocking Unity's continuation queue.
         /// </summary>
@@ -391,6 +626,42 @@ namespace Rebellion.Tests.Content.Packages
             }
             Assert.Fail("Expected " + typeof(T).Name);
             return null;
+        }
+
+        /// <summary>
+        /// Installs a fixture game pack directly in the pack directory.
+        /// </summary>
+        /// <param name="name">The pack folder name.</param>
+        /// <param name="id">The pack ID.</param>
+        /// <param name="version">The pack version.</param>
+        /// <param name="basePackID">The optional inherited pack ID.</param>
+        /// <returns>The installed pack folder.</returns>
+        private string WritePackCopy(
+            string name,
+            string id,
+            string version,
+            string basePackID = null
+        )
+        {
+            string catalog = Path.Combine(contentRoot, "catalog.xml");
+            if (!File.Exists(catalog))
+                File.WriteAllText(
+                    catalog,
+                    "<ContentCatalog><ActivePackID>Default</ActivePackID></ContentCatalog>"
+                );
+            string existing = Path.Combine(contentRoot, "Packs", name);
+            Directory.CreateDirectory(existing);
+            ContentDefinitionSerializer.Serialize(
+                Path.Combine(existing, "pack.xml"),
+                new ContentPackDefinition
+                {
+                    ID = id,
+                    DisplayName = id,
+                    Version = version,
+                    BasePackID = basePackID,
+                }
+            );
+            return existing;
         }
 
         /// <summary>

@@ -140,6 +140,40 @@ namespace Rebellion.Tests.ContentEditor.Publishing
         }
 
         [Test]
+        public async Task WriteArchiveAsync_StackableMod_UsesItsOwnReleaseIdentityAsync()
+        {
+            using ContentPackEditorProject baseline = CreateLoadableProject();
+            using ContentPackEditorProject mod = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                baseline.BasePackID,
+                Path.Combine(contentRoot, "authoring-mod"),
+                "release-mod",
+                "Release mod",
+                "3.2.1",
+                asMod: true
+            );
+            ContentEditorPublishingSettings settings = CreateSettings(mod);
+            ContentEditorPublishingStorage.Save(mod, settings);
+            string destination = Path.Combine(contentRoot, "mod-release.zip");
+
+            await ThunderstorePackageExporter.WriteArchiveAsync(mod, settings, destination);
+
+            using ZipArchive archive = ZipFile.OpenRead(destination);
+            using Stream packageManifest = archive.GetEntry("Mods/release-mod/pack.xml").Open();
+            Assert.That(
+                System.Xml.Linq.XElement.Load(packageManifest).Attribute("Type")?.Value,
+                Is.EqualTo("Mod")
+            );
+            Assert.That(
+                archive.Entries.Any(entry => entry.FullName.Contains(".publishing")),
+                Is.False
+            );
+            using var manifestReader = new StreamReader(archive.GetEntry("manifest.json").Open());
+            Manifest manifest = JsonUtility.FromJson<Manifest>(manifestReader.ReadToEnd());
+            Assert.That(manifest.version_number, Is.EqualTo("3.2.1"));
+        }
+
+        [Test]
         public async Task WriteArchiveAsync_NestedDestination_RejectsWritingInsideWorkingProjectAsync()
         {
             using ContentPackEditorProject project = CreateLoadableProject();
@@ -173,7 +207,7 @@ namespace Rebellion.Tests.ContentEditor.Publishing
             }
             return new ContentEditorPublishingSettings
             {
-                PackageName = project.Definition.ID.Replace('-', '_'),
+                PackageName = project.ID.Replace('-', '_'),
                 Description = "Sample content",
                 WebsiteUrl = "https://example.com",
                 Changelog = "Release notes",

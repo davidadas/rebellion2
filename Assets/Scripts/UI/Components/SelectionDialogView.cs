@@ -42,6 +42,13 @@ public sealed class SelectionDialogView : MonoBehaviour, ICancelable
     private Action<IReadOnlyDictionary<string, int>> accepted;
     private bool quantities;
     private bool bound;
+    private (
+        float PanelHeight,
+        float ListHeight,
+        Vector2 Error,
+        Vector2 Apply,
+        Vector2 Cancel
+    ) layout;
     public bool IsOpen => gameObject.activeSelf;
 
     /// <summary>
@@ -73,6 +80,13 @@ public sealed class SelectionDialogView : MonoBehaviour, ICancelable
         search.onValueChanged.AddListener(Filter);
         apply.onClick.AddListener(Apply);
         cancel.onClick.AddListener(Hide);
+        layout = (
+            ((RectTransform)apply.transform.parent).rect.height,
+            ((RectTransform)scroll.transform).rect.height,
+            error.rectTransform.anchoredPosition,
+            ((RectTransform)apply.transform).anchoredPosition,
+            ((RectTransform)cancel.transform).anchoredPosition
+        );
         bound = true;
     }
 
@@ -98,12 +112,14 @@ public sealed class SelectionDialogView : MonoBehaviour, ICancelable
     /// <param name="current">The currently selected quantities.</param>
     /// <param name="confirmed">The callback receiving an accepted draft.</param>
     /// <param name="quantityLabel">The quantity column title, or null for a set selection.</param>
+    /// <param name="compact">Whether to fit the initial number of options.</param>
     public void Show(
         string title,
         IReadOnlyDictionary<string, string> choices,
         IReadOnlyDictionary<string, int> current,
         Action<IReadOnlyDictionary<string, int>> confirmed,
-        string quantityLabel = null
+        string quantityLabel = null,
+        bool compact = false
     )
     {
         Bind();
@@ -124,8 +140,39 @@ public sealed class SelectionDialogView : MonoBehaviour, ICancelable
         search.SetTextWithoutNotify(string.Empty);
         gameObject.SetActive(true);
         transform.SetAsLastSibling();
+        FitList(compact);
         scroll.SetContentHeight(0, true);
         Render();
+    }
+
+    /// <summary>
+    /// Fits the visible options at open time and keeps the footer stable while searching.
+    /// </summary>
+    /// <param name="compact">Whether the picker should use a shorter panel.</param>
+    private void FitList(bool compact)
+    {
+        RectTransform panel = (RectTransform)apply.transform.parent;
+        RectTransform list = (RectTransform)scroll.transform;
+        float listHeight = compact
+            ? Mathf.Min(
+                layout.ListHeight,
+                Mathf.Max(2, options.Length) * ((RectTransform)rowTemplate.transform).rect.height
+            )
+            : layout.ListHeight;
+        float reduction = layout.ListHeight - listHeight;
+        panel.SetSizeWithCurrentAnchors(
+            RectTransform.Axis.Vertical,
+            layout.PanelHeight - reduction
+        );
+        list.SetSizeWithCurrentAnchors(RectTransform.Axis.Vertical, listHeight);
+        Vector2 offset = Vector2.up * reduction;
+        error.rectTransform.anchoredPosition = layout.Error + offset;
+        ((RectTransform)apply.transform).anchoredPosition = layout.Apply + offset;
+        ((RectTransform)cancel.transform).anchoredPosition = layout.Cancel + offset;
+        if (compact)
+            UILayout.FitPanel(panel);
+        else
+            panel.localScale = Vector3.one;
     }
 
     /// <summary>

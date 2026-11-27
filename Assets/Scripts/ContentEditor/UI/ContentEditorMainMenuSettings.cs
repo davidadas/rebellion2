@@ -165,18 +165,12 @@ internal static class ContentEditorMainMenuSettings
             {
                 string id = element.Value;
                 ContentPackEditorRecord faction = records.FirstOrDefault(record =>
-                    record.Kind == "Faction"
-                    && record.Element.Element("ID")?.Value == id
-                    && record.Element.Element("ThemePath") != null
+                    record.Kind == "Faction" && record.Element.Element("ID")?.Value == id
                 );
-                string themePath = faction?.Element.Element("ThemePath")?.Value;
-                ContentPackEditorRecord theme = string.IsNullOrWhiteSpace(themePath)
-                    ? null
-                    : catalogs
-                        .FirstOrDefault(catalog =>
-                            catalog.Document.Address == "Pack/" + themePath.Replace('\\', '/')
-                        )
-                        ?.Records.FirstOrDefault(record => record.Kind == nameof(FactionTheme));
+                ContentPackEditorRecord theme = ContentEditorPresentation.GetFactionThemeRecord(
+                    catalogs,
+                    faction
+                );
                 ContentPackEditorField model =
                     theme == null
                         ? null

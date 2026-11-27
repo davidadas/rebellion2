@@ -72,7 +72,7 @@ internal sealed class ContentEditorProjectsController : IDisposable
             return;
         try
         {
-            settings.RememberProject(project.PackRootPath);
+            settings.RememberProject(project.ProjectRootPath);
             view.ShowLocalStatus(string.Empty);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -94,7 +94,7 @@ internal sealed class ContentEditorProjectsController : IDisposable
         string[] discovered;
         try
         {
-            discovered = store.GetUnmanagedPackFolders();
+            discovered = store.GetUnmanagedProjectFolders();
         }
         catch (Exception exception)
             when (exception

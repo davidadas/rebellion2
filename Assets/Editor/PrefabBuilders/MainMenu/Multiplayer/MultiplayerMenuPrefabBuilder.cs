@@ -108,7 +108,7 @@ public static class MultiplayerMenuPrefabBuilder
         Button[] sortButtons =
         {
             SortHeader(page, "Game", "GAME \u25b2", new RectInt(70, 161, 350, 24)),
-            SortHeader(page, "Content", "CONTENT PACK", new RectInt(432, 161, 290, 24)),
+            SortHeader(page, "Content", "GAME PACK", new RectInt(432, 161, 290, 24)),
             SortHeader(page, "Players", "PLAYERS", new RectInt(762, 161, 90, 24)),
             SortHeader(page, "Access", "ACCESS", new RectInt(870, 161, 64, 24)),
         };
@@ -258,7 +258,7 @@ public static class MultiplayerMenuPrefabBuilder
         );
         password.contentType = TMP_InputField.ContentType.Password;
         Bind(view, "hostPasswordInput", password);
-        Label(dialog, "CONTENT PACK", new RectInt(26, 210, 581, 21), 12, _muted);
+        Label(dialog, "GAME PACK", new RectInt(26, 210, 581, 21), 12, _muted);
         Bind(
             view,
             "contentPackDropdown",

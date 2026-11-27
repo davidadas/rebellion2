@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Xml.Serialization;
+using Rebellion.Util.Serialization;
 
 /// <summary>
 /// Selects the active content pack and scenario from an external content root.
@@ -26,11 +27,20 @@ public sealed class ContentPackDefinition
     // The built-in video used when the pack's opening crawl slot is empty.
     public const string DefaultOpeningCrawlVideoPath = "Application/Boot/Videos/opening-crawl";
 
+    internal bool UsesPackageManifest { get; set; }
+
     [XmlElement]
     public string ID { get; set; }
 
     [XmlElement]
     public string BasePackID { get; set; }
+
+    /// <summary>
+    /// Gets or sets the exact inherited releases, in order from the immediate parent.
+    /// </summary>
+    [XmlArray]
+    [XmlArrayItem("Pack")]
+    public List<ContentPackDependency> InheritedPacks { get; set; }
 
     [XmlElement]
     public string Version { get; set; }
@@ -95,8 +105,12 @@ public sealed class ContentPackDefinition
     [XmlElement]
     public string EncyclopediaEntriesPath { get; set; }
 
-    [XmlElement]
-    public string NeutralThemePath { get; set; }
+    internal string LegacyNeutralThemePath { get; set; }
+
+    [XmlArray]
+    [XmlArrayItem("Path")]
+    [PersistableReadAlias("NeutralThemePath", Deprecated = true)]
+    public List<string> ThemePaths { get; set; } = new List<string>();
 
     [XmlArray]
     [XmlArrayItem("Path")]
@@ -110,6 +124,12 @@ public sealed class ContentPackDefinition
     [XmlArrayItem("Preload")]
     public List<ContentPreloadDefinition> Preloads { get; set; } =
         new List<ContentPreloadDefinition>();
+
+    /// <summary>
+    /// Omits an empty registration list from serialized pack manifests.
+    /// </summary>
+    /// <returns>Whether the pack explicitly registers themes.</returns>
+    public bool ShouldSerializeThemePaths() => ThemePaths.Count > 0;
 }
 
 /// <summary>
@@ -213,6 +233,18 @@ public sealed class MainMenuControlLayout
     public string SelectionImagePath { get; set; }
     public int SelectionX { get; set; }
     public int SelectionY { get; set; }
+}
+
+/// <summary>
+/// Identifies an exact inherited content pack release.
+/// </summary>
+public sealed class ContentPackDependency
+{
+    [XmlAttribute]
+    public string ID { get; set; }
+
+    [XmlAttribute]
+    public string Version { get; set; }
 }
 
 /// <summary>

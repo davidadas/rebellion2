@@ -375,6 +375,51 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void OpenActive_InvalidAppliedRules_RecoversToTheCleanPack()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "startup-mod-" + Guid.NewGuid());
+            try
+            {
+                ContentPack original = TestPackFixture.Install(Path.Combine(directory, "Content"));
+                string mod = Path.Combine(directory, "Mods", "invalid-rules");
+                string rules = Path.Combine(mod, "Content", "Application", "Rules");
+                Directory.CreateDirectory(rules);
+                File.WriteAllText(
+                    Path.Combine(mod, "mod.xml"),
+                    "<ContentModDefinition><ID>invalid-rules</ID><Version>1.0.0</Version>"
+                        + "<DisplayName>Invalid rules</DisplayName>"
+                        + $"<BasePackID>{original.Definition.ID}</BasePackID>"
+                        + $"<BasePackVersion>{original.Definition.Version}</BasePackVersion></ContentModDefinition>"
+                );
+                File.WriteAllText(
+                    Path.Combine(rules, "game.xml"),
+                    "<GameConfig Inherit='true'><Combat><Bombardment>"
+                        + "<StrikeRollMinimum>3</StrikeRollMinimum><StrikeRollMaximum>2</StrikeRollMaximum>"
+                        + "</Bombardment></Combat></GameConfig>"
+                );
+                string recovery = null;
+
+                ContentPack recovered = ContentPackLoader.OpenActive(
+                    original.ContentRootPath,
+                    original.Definition.ID,
+                    original.Scenario.ID,
+                    getModLoadOrder: _ => new[] { "invalid-rules" },
+                    reportRecovery: message => recovery = message,
+                    getModVersions: _ => new[] { "1.0.0" }
+                );
+
+                Assert.That(recovered.FileResolver.Mods, Is.Empty);
+                Assert.That(recovered.Definition.ID, Is.EqualTo(original.Definition.ID));
+                Assert.That(recovery, Does.Contain("strike roll minimum must not exceed"));
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void CreatePackResolver_AuthoredPackInMods_UsesLocalOverridesAndInheritedFiles()
         {
             string directory = Path.Combine(
@@ -404,6 +449,53 @@ namespace Rebellion.Tests.Content
                     "base officers",
                     File.ReadAllText(Path.Combine(baseRoot, "Data", "officers.xml"))
                 );
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
+        public void CreatePackResolver_PublishedGrandparentVersion_UsesRetainedRelease()
+        {
+            string directory = Path.Combine(Path.GetTempPath(), "pinned-packs-" + Guid.NewGuid());
+            string contentRoot = Path.Combine(directory, "Content");
+            string grandparent = WritePackDefinition(
+                contentRoot,
+                "Grandparent",
+                "grandparent",
+                null
+            );
+            string parent = WritePackDefinition(contentRoot, "Parent", "parent", "grandparent");
+            string child = WritePackDefinition(contentRoot, "Child", "child", "parent");
+            var manifest = XDocument.Load(Path.Combine(child, "pack.xml"));
+            manifest.Root.Add(
+                XElement.Parse(
+                    "<InheritedPacks><Pack ID='parent' Version='1.0.0'/>"
+                        + "<Pack ID='grandparent' Version='1.0.0'/></InheritedPacks>"
+                )
+            );
+            manifest.Save(Path.Combine(child, "pack.xml"));
+            string retained = Path.Combine(directory, "Mods", ".versions", "grandparent-1.0.0");
+            Directory.CreateDirectory(Path.GetDirectoryName(retained));
+            Directory.Move(grandparent, retained);
+            WritePackDefinition(contentRoot, "Grandparent", "grandparent", null);
+            string update = Path.Combine(grandparent, "pack.xml");
+            var updatedManifest = XDocument.Load(update);
+            updatedManifest.Root.SetElementValue("Version", "1.1.0");
+            updatedManifest.Save(update);
+            string original = WriteFile(retained, "Data/ships.xml", "old ships");
+            WriteFile(grandparent, "Data/ships.xml", "new ships");
+            try
+            {
+                ContentFileResolver resolver = ContentPackLoader.CreatePackResolver(
+                    contentRoot,
+                    "child"
+                );
+
+                Assert.That(resolver.PackRootPaths, Is.EqualTo(new[] { child, parent, retained }));
+                Assert.That(resolver.ResolveFile("Pack/Data/ships.xml"), Is.EqualTo(original));
             }
             finally
             {

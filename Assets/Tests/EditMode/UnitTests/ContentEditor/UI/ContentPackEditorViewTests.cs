@@ -44,6 +44,23 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(true, false, false)]
+        [TestCase(false, false, true)]
+        [TestCase(true, true, true)]
+        public void ShowAfterVerification_ConnectionRequest_OpensOnlySetupOrManagement(
+            bool verified,
+            bool manageAccount,
+            bool opensDialog
+        )
+        {
+            view.Connection.ShowAfterVerification(
+                verified ? new[] { "Team" } : Array.Empty<string>(),
+                manageAccount
+            );
+
+            Assert.That(view.Connection.IsOpen, Is.EqualTo(opensDialog));
+        }
+
         [Test]
         public void ShowProjects_ShortWindowAtHighZoom_KeepsRowsUsableInScrollablePage()
         {
@@ -78,7 +95,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             {
                 UnityEngine.Object.DestroyImmediate(source);
             }
-            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
             view.Publishing.ShowIconCrop(path, _ => { });
             RectTransform selection = view
                 .Publishing.ImageCrop.GetComponentsInChildren<RectTransform>()
@@ -98,7 +115,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         public void Show_ShortWindow_KeepsDialogActionsInsideWindow(bool crop)
         {
             ((RectTransform)view.transform).sizeDelta = new Vector2(2000, 636);
-            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
             if (crop)
             {
                 string path = System.IO.Path.Combine(folder, "crop.png");
@@ -181,6 +198,39 @@ namespace Rebellion.Tests.ContentEditor.UI
 
         [TestCase(true)]
         [TestCase(false)]
+        public void ShowProjects_OpenWorkingProject_MarksItsRowForEditing(bool asMod)
+        {
+            using ContentPackEditorProject working = ContentPackEditorStorage.CreateInFolder(
+                project.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                System.IO.Path.Combine(folder, "working-project"),
+                "active-project-row",
+                "Active project row",
+                "1.0.0",
+                asMod
+            );
+            view.ShowProjects();
+            view.Projects.RenderLocal(new[] { ContentEditorLocalProject.FromProject(working) });
+            view.Projects.SetCurrentProject(working);
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorProjectRowView row = view
+                .Projects.GetComponentsInChildren<ContentEditorProjectRowView>()
+                .Single(item =>
+                    item.GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == working.DisplayName)
+                );
+            TMP_Text[] captions = row.GetComponentsInChildren<TMP_Text>();
+
+            Assert.That(
+                captions.Single(label => label.name == "summary").text,
+                Does.EndWith("Open now")
+            );
+            Assert.That(captions.Select(label => label.text), Does.Contain("Edit"));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
         public void ZoomContent_ModPageIsSelected_PreservesPageAndOpenProjectDraft(bool library)
         {
             ContentEditorPage page = library ? ContentEditorPage.Library : ContentEditorPage.Browse;
@@ -247,7 +297,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             string buttonName
         )
         {
-            view.Publishing.Show(project.Definition, new ContentEditorPublishingSettings());
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
             Button advance = view
                 .Publishing.GetComponentsInChildren<Button>()
                 .Single(button => button.name == buttonName);
@@ -279,7 +329,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 TeamName = "ExampleTeam",
             };
             ContentEditorPublishingStorage.Save(project, settings);
-            view.Publishing.Show(project.Definition, ContentEditorPublishingStorage.Load(project));
+            view.Publishing.Show(project, ContentEditorPublishingStorage.Load(project));
             view
                 .Publishing.GetComponentsInChildren<TMP_InputField>()
                 .Single(input => input.name == "PublishingDescription")
@@ -287,7 +337,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentEditorPublishingStorage.Save(project, view.Publishing.ReadSettings());
             view.Publishing.Hide();
 
-            view.Publishing.Show(project.Definition, ContentEditorPublishingStorage.Load(project));
+            view.Publishing.Show(project, ContentEditorPublishingStorage.Load(project));
 
             ContentEditorPublishingSettings reopened = view.Publishing.ReadSettings();
             Assert.That(reopened.PackageName, Is.Empty);

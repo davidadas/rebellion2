@@ -14,12 +14,16 @@ internal sealed class ContentEditorModEntry
     internal ContentPackDefinition IncludedPack { get; }
     internal bool IsActivePack { get; }
     internal bool IsInstalled => Installation != null || IncludedPack != null;
+    internal bool IsGamePack =>
+        IncludedPack != null || Installation?.Content.Any(content => content.IsPack) == true;
     internal string CompatibilityIssue { get; }
     internal string ID => Listing?.full_name ?? Installation?.PackageID ?? IncludedPack.ID;
     internal string Name => Listing?.name ?? Installation?.Name ?? IncludedPack.DisplayName;
-    internal string Author => Listing?.owner ?? Installation?.Author ?? "Included with Rebellion 2";
+    internal string Author => Listing?.owner ?? Installation?.Author ?? string.Empty;
     internal string Description =>
-        Listing?.Latest.description ?? Installation?.Description ?? "Installed content pack.";
+        Listing?.Latest.description
+        ?? Installation?.Description
+        ?? (IncludedPack == null ? string.Empty : "Version " + IncludedPack.Version);
     internal string Version =>
         Installation?.Version
         ?? Listing?.Latest.version_number
@@ -45,8 +49,8 @@ internal sealed class ContentEditorModEntry
         && latest > installed;
     internal string State =>
         !string.IsNullOrEmpty(CompatibilityIssue) ? "Needs attention"
-        : IsActivePack ? "Default content pack"
-        : IncludedPack != null ? "Included with the game"
+        : IsActivePack ? "Default game pack"
+        : IncludedPack != null ? "Installed"
         : HasUpdate ? "Update available"
         : Installation != null
             ? Installation.Local ? "Local"

@@ -160,7 +160,7 @@ public static class MenuPrefabBuilder
             (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent)
         ).GetComponent<RectTransform>();
         root.name = "ContentRoot";
-        root.localScale = new Vector3(0.719f, 0.719f, 1f);
+        root.localScale = new Vector3(UILayout.MenuContentScale, UILayout.MenuContentScale, 1f);
         header = FindRequiredChild<TextMeshProUGUI>(root, "HeaderTextField");
         header.text = heading;
         pageTitle = FindRequiredChild<TextMeshProUGUI>(root, "PageTitleTextField");

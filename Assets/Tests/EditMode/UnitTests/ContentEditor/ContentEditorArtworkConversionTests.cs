@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -862,6 +863,75 @@ namespace Rebellion.Tests.ContentEditor
                 Directory.Exists(Path.Combine(staging, ContentEditorAssetChange.EditorDirectory))
             );
             Assert.IsTrue(File.Exists(Path.Combine(staging, address[5..] + ".png")));
+        }
+
+        [Test]
+        public async Task WriteArchiveAsync_ModWithLegacyArtwork_ExcludesPrivateRevisionsAsync()
+        {
+            CreateLoadableProject();
+            ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(contentRoot, "Working", "artwork-mod"),
+                "artwork-mod",
+                "Artwork mod",
+                "1.0.0",
+                asMod: true
+            );
+            WriteLegacy(
+                project,
+                GetField(project),
+                "Pack/Assets/legacy.png",
+                CreateImage(Color.red)
+            );
+            string history = Path.Combine(
+                project.PackRootPath,
+                ContentEditorAssetChange.EditorDirectory,
+                "History"
+            );
+            Directory.CreateDirectory(history);
+            File.WriteAllText(Path.Combine(history, "revision"), "Private revision");
+            string archivePath = Path.Combine(contentRoot, "artwork-mod.zip");
+
+            await ContentPackEditorExporter.WriteArchiveAsync(project, archivePath);
+
+            using ZipArchive archive = ZipFile.OpenRead(archivePath);
+            Assert.That(
+                archive.Entries.Select(entry => entry.FullName),
+                Has.None.Contains(ContentEditorAssetChange.EditorDirectory)
+            );
+            Assert.That(
+                archive.GetEntry("Content/Pack/" + ContentArtworkAliases.FileName),
+                Is.Not.Null
+            );
+        }
+
+        [Test]
+        public void Save_ModWithInheritedLegacyArtwork_KeepsTheBaseReference()
+        {
+            const string inherited = "Pack/Assets/base-image.png";
+            WriteFixtureFile(
+                "Factions/Fixture/Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + $"<DisplayImagePath>{inherited}</DisplayImagePath></Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Factions/Fixture/Data/starfighters.xml"
+            );
+            WriteFixtureFile(inherited[5..], "base image");
+            ContentPackEditorProject project = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(contentRoot, "Working", "artwork-mod"),
+                "artwork-mod",
+                "Artwork mod",
+                "1.0.0",
+                asMod: true
+            );
+
+            ContentPackEditorStorage.Save(project);
+
+            Assert.That(GetField(project, "FIGHTER").Value, Is.EqualTo(inherited));
         }
 
         [Test]

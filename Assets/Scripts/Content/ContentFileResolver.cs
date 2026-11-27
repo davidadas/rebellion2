@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Xml;
+using Rebellion.Game;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 
@@ -15,15 +16,15 @@ public sealed class ContentFileResolver
     private const string _packScopeName = "Pack";
     private const string _applicationAddressPrefix = _applicationScopeName + "/";
     private const string _packAddressPrefix = _packScopeName + "/";
-    private const string _modDefinitionFileName = "mod.xml";
-    private const string _packDefinitionFileName = "pack.xml";
     private const string _modContentDirectoryName = "Content";
     private const string _modsDirectoryName = "Mods";
+    private const string _versionsDirectoryName = ".versions";
     private static readonly string[] _artworkExtensions = { ".png", ".jpg", ".jpeg" };
 
     private readonly IReadOnlyList<string> modContentRoots;
     private readonly IReadOnlyList<string> packRoots;
     private readonly Dictionary<string, Dictionary<string, string>> artworkAliases;
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> overrideWarnings;
 
     public string ContentRootPath { get; }
 
@@ -47,6 +48,27 @@ public sealed class ContentFileResolver
     public IReadOnlyList<ContentModIssue> ModIssues { get; }
 
     /// <summary>
+    /// Reports overlapping writes for the active mod list without scanning files during startup.
+    /// </summary>
+    /// <returns>Override warnings keyed by the mod whose edits are superseded.</returns>
+    internal IReadOnlyDictionary<string, IReadOnlyList<string>> DescribeModOverrides() =>
+        overrideWarnings ??= ContentModOverrides.Describe(Mods, modContentRoots);
+
+    /// <summary>
+    /// Reads and validates the manifest at the root of a mod project.
+    /// </summary>
+    /// <param name="modRoot">The directory containing the mod manifest.</param>
+    /// <returns>The validated manifest.</returns>
+    public static ContentModDefinition ReadValidatedMod(string modRoot)
+    {
+        ContentModDefinition definition = ReadModDefinition(
+            ContentPackageManifest.Find(modRoot, ContentPackageType.Mod)
+        );
+        ValidateDefinition(definition);
+        return definition;
+    }
+
+    /// <summary>
     /// Gets the user-content directory beside the installed Content directory.
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
@@ -58,6 +80,19 @@ public sealed class ContentFileResolver
                 ?? throw new InvalidOperationException("The content root has no parent directory."),
             _modsDirectoryName
         );
+    }
+
+    /// <summary>
+    /// Enumerates retained releases without making them active for new games.
+    /// </summary>
+    /// <param name="contentRootPath">The installed Content directory.</param>
+    /// <returns>The folders containing older package versions.</returns>
+    internal static IEnumerable<string> GetArchivedPackageFolders(string contentRootPath)
+    {
+        string root = Path.Combine(ResolveModsRootPath(contentRootPath), _versionsDirectoryName);
+        return Directory.Exists(root)
+            ? Directory.EnumerateDirectories(root)
+            : Enumerable.Empty<string>();
     }
 
     /// <summary>
@@ -112,6 +147,12 @@ public sealed class ContentFileResolver
     /// <param name="basePackVersion">The selected base pack version.</param>
     /// <param name="disabledModIDs">Mod IDs to discover without loading.</param>
     /// <param name="fallbackPackRootPaths">Inherited pack roots in nearest-to-farthest order.</param>
+    /// <param name="saved">The exact mod IDs, versions, and order recorded by a save.</param>
+    /// <param name="workingModRoot">An explicit project to load with just its requirements.</param>
+    /// <param name="preferredModOrder">The ordered mod IDs, or null to use legacy folder order.</param>
+    /// <param name="appliedModIDs">The active IDs when opening an already applied selection.</param>
+    /// <param name="appliedModVersions">The recorded versions in applied order, if available.</param>
+    /// <param name="workingModOverride">A proposed manifest to validate in the working folder.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
@@ -119,49 +160,61 @@ public sealed class ContentFileResolver
         string basePackID,
         string basePackVersion,
         IEnumerable<string> disabledModIDs = null,
-        IEnumerable<string> fallbackPackRootPaths = null
+        IEnumerable<string> fallbackPackRootPaths = null,
+        GameMetadata saved = null,
+        string workingModRoot = null,
+        IReadOnlyList<string> preferredModOrder = null,
+        IReadOnlyList<string> appliedModIDs = null,
+        IReadOnlyList<string> appliedModVersions = null,
+        ContentModDefinition workingModOverride = null
     )
     {
         string modsRoot = ResolveModsRootPath(contentRootPath);
-        if (!Directory.Exists(modsRoot))
-            return new ContentFileResolver(
-                contentRootPath,
-                packRootPath,
-                fallbackPackRootPaths: fallbackPackRootPaths
-            );
-
-        List<string> contentRoots = new List<string>();
-        List<ContentModDefinition> definitions = new List<ContentModDefinition>();
-        List<ContentModDefinition> availableDefinitions = new List<ContentModDefinition>();
+        var installations = new List<(ContentModDefinition Mod, string Root)>();
         List<ContentModIssue> issues = new List<ContentModIssue>();
         HashSet<string> disabledIDs = new HashSet<string>(
             disabledModIDs ?? Enumerable.Empty<string>(),
             StringComparer.Ordinal
         );
-        HashSet<string> ids = new HashSet<string>(StringComparer.Ordinal);
-        foreach (
-            string modRoot in Directory
+        IEnumerable<string> folders = Directory.Exists(modsRoot)
+            ? Directory
                 .EnumerateDirectories(modsRoot)
                 .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
-        )
+            : Enumerable.Empty<string>();
+        ContentModDefinition workingMod = null;
+        if (workingModRoot != null)
         {
-            string definitionPath = Path.Combine(modRoot, _modDefinitionFileName);
-            if (!File.Exists(definitionPath))
+            workingModRoot = Path.GetFullPath(workingModRoot);
+            workingMod = workingModOverride ?? ReadValidatedMod(workingModRoot);
+            folders = new[] { workingModRoot }.Concat(
+                folders.Where(path =>
+                    !string.Equals(Path.GetFullPath(path), workingModRoot, StringComparison.Ordinal)
+                )
+            );
+        }
+        foreach (string modRoot in folders)
+        {
+            if (!ContentPackageManifest.Exists(modRoot))
             {
-                if (File.Exists(Path.Combine(modRoot, _packDefinitionFileName)))
+                if (Path.GetFileName(modRoot) == _versionsDirectoryName)
                     continue;
 
                 string folderName = Path.GetFileName(modRoot);
-                const string message = "Content mod definition 'mod.xml' was not found.";
+                const string message = "Package manifest 'pack.xml' or 'mod.xml' was not found.";
                 issues.Add(new ContentModIssue(folderName, folderName, message));
                 GameLogger.Warning($"Skipping content mod folder '{modRoot}': {message}");
                 continue;
             }
 
             ContentModDefinition definition = null;
+            string definitionPath = null;
             try
             {
-                definition = ReadModDefinition(definitionPath);
+                definitionPath = ContentPackageManifest.Find(modRoot, ContentPackageType.Mod);
+                if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.GamePack)
+                    continue;
+                definition =
+                    modRoot == workingModRoot ? workingMod : ReadModDefinition(definitionPath);
                 if (string.IsNullOrWhiteSpace(definition.BasePackID))
                     ValidateDefinition(definition);
                 if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
@@ -177,13 +230,19 @@ public sealed class ContentFileResolver
                 )
                     continue;
                 ValidateDefinition(definition);
-                if (!ids.Add(definition.ID))
-                    throw new InvalidDataException(
-                        $"Multiple content mods declare ID '{definition.ID}'."
-                    );
+                string contentRoot = Path.Combine(modRoot, _modContentDirectoryName);
+                string packOverlay = ResolveModPath(contentRoot, "Pack/pack.xml");
+                if (definition.ExtendsPack && File.Exists(packOverlay))
+                    ContentPackLoader.ValidateModPackOverlay(File.ReadAllText(packOverlay));
+                if (definition.ID == workingMod?.ID && modRoot != workingModRoot)
+                    continue;
+                ContentArtworkAliases.Load(Path.Combine(contentRoot, _packScopeName));
+                installations.Add((definition, modRoot));
             }
             catch (Exception exception) when (IsInvalidModDefinitionException(exception))
             {
+                if (string.Equals(modRoot, workingModRoot, StringComparison.Ordinal))
+                    throw;
                 string folderName = Path.GetFileName(modRoot);
                 string id = string.IsNullOrWhiteSpace(definition?.ID) ? folderName : definition.ID;
                 string displayName = string.IsNullOrWhiteSpace(definition?.DisplayName)
@@ -191,24 +250,80 @@ public sealed class ContentFileResolver
                     : definition.DisplayName;
                 issues.Add(new ContentModIssue(id, displayName, exception.Message));
                 GameLogger.Warning(
-                    $"Skipping invalid content mod definition '{definitionPath}': {exception.Message}"
+                    $"Skipping invalid content mod definition '{definitionPath ?? modRoot}': {exception.Message}"
                 );
                 continue;
             }
+        }
 
-            availableDefinitions.Add(definition);
-            if (!disabledIDs.Contains(definition.ID))
+        var appliedIDs = appliedModIDs?.ToHashSet(StringComparer.Ordinal);
+        var availableDefinitions = new List<ContentModDefinition>();
+        var rootsByID = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var group in installations.GroupBy(entry => entry.Mod.ID, StringComparer.Ordinal))
+        {
+            var copies = group.ToArray();
+            if (copies.Length > 1)
             {
-                definitions.Add(definition);
-                contentRoots.Add(Path.Combine(modRoot, _modContentDirectoryName));
+                string foldersWithVersions = string.Join(
+                    ", ",
+                    copies.Select(copy => $"{Path.GetFileName(copy.Root)} ({copy.Mod.Version})")
+                );
+                string message =
+                    $"Multiple folders use mod ID '{group.Key}': {foldersWithVersions}. Keep one active copy. Use Mods/.versions to keep older releases of the same mod.";
+                issues.Add(
+                    new ContentModIssue(
+                        group.Key,
+                        group.Key,
+                        message,
+                        blocksSelection: !disabledIDs.Contains(group.Key)
+                            && appliedIDs?.Contains(group.Key) != false,
+                        isDuplicate: true
+                    )
+                );
+                GameLogger.Warning(message);
+                continue;
             }
+            var entry = copies[0];
+            availableDefinitions.Add(entry.Mod);
+            rootsByID.Add(entry.Mod.ID, Path.Combine(entry.Root, _modContentDirectoryName));
+        }
+
+        IReadOnlyList<ContentModDefinition> active;
+        if (saved == null && appliedModVersions == null)
+        {
+            IReadOnlyList<ContentModDefinition> requested =
+                workingMod == null
+                    ? availableDefinitions
+                        .Where(mod =>
+                            !disabledIDs.Contains(mod.ID) && appliedIDs?.Contains(mod.ID) != false
+                        )
+                        .ToArray()
+                    : SelectWorkingMods(workingMod, availableDefinitions);
+            active = ContentModLoadOrder.Resolve(requested, issues, preferredModOrder);
+            if (workingMod != null && !active.Any(mod => mod.ID == workingMod.ID))
+                throw new InvalidOperationException(
+                    issues.FirstOrDefault(issue => issue.ID == workingMod.ID)?.Message
+                        ?? $"Could not load {workingMod.DisplayName}."
+                );
+        }
+        else
+        {
+            active = SelectExactMods(
+                contentRootPath,
+                basePackID,
+                basePackVersion,
+                saved != null ? saved.ModIDs : appliedModIDs,
+                saved != null ? saved.ModVersions : appliedModVersions,
+                installations,
+                rootsByID
+            );
         }
 
         return new ContentFileResolver(
             contentRootPath,
             packRootPath,
-            contentRoots,
-            definitions,
+            active.Select(mod => rootsByID[mod.ID]),
+            active,
             availableDefinitions,
             issues,
             fallbackPackRootPaths
@@ -225,6 +340,15 @@ public sealed class ContentFileResolver
     {
         string normalizedAddress = NormalizeAddress(address);
         return ResolveFile(normalizedAddress, extensions, null);
+    }
+
+    /// <summary>
+    /// Checks that the active layers do not create a cycle in artwork resolution.
+    /// </summary>
+    internal void ValidateArtworkAliases()
+    {
+        foreach (string address in artworkAliases.Values.SelectMany(layer => layer.Keys).Distinct())
+            ResolveFile(address, _artworkExtensions, null);
     }
 
     /// <summary>
@@ -306,6 +430,151 @@ public sealed class ContentFileResolver
             .Where(File.Exists)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+    }
+
+    /// <summary>
+    /// Finds manifest overlays contributed by opted-in mods in application order.
+    /// </summary>
+    /// <returns>The existing mod-owned pack manifest overlays.</returns>
+    internal IEnumerable<string> ResolveModPackOverlays()
+    {
+        for (int index = 0; index < Mods.Count; index++)
+        {
+            if (!Mods[index].ExtendsPack)
+                continue;
+            string path = ResolveModPath(modContentRoots[index], "Pack/pack.xml");
+            if (File.Exists(path))
+                yield return path;
+        }
+    }
+
+    /// <summary>
+    /// Selects a working mod and recursively collects its installed requirements.
+    /// </summary>
+    /// <param name="workingMod">The explicit project.</param>
+    /// <param name="available">Compatible installations, including the project.</param>
+    /// <returns>The installed requirements and the working mod in discovery order.</returns>
+    private static IReadOnlyList<ContentModDefinition> SelectWorkingMods(
+        ContentModDefinition workingMod,
+        IReadOnlyList<ContentModDefinition> available
+    )
+    {
+        var byID = available.ToDictionary(mod => mod.ID, StringComparer.Ordinal);
+        var selected = new HashSet<string>(StringComparer.Ordinal);
+        var pending = new Stack<string>();
+        pending.Push(workingMod.ID);
+        while (pending.Count > 0)
+        {
+            string id = pending.Pop();
+            if (selected.Add(id) && byID.TryGetValue(id, out ContentModDefinition mod))
+                foreach (ContentModRequirement requirement in mod.Requires)
+                    pending.Push(requirement.ID);
+        }
+        return available.Where(mod => selected.Contains(mod.ID)).ToArray();
+    }
+
+    /// <summary>
+    /// Selects the exact installed or retained releases in recorded order.
+    /// </summary>
+    /// <param name="contentRootPath">The installation whose retained versions can be used.</param>
+    /// <param name="basePackID">The save's selected pack.</param>
+    /// <param name="basePackVersion">The required pack version.</param>
+    /// <param name="ids">The recorded mod IDs.</param>
+    /// <param name="versions">The recorded mod versions.</param>
+    /// <param name="installations">All compatible installations, including duplicate IDs.</param>
+    /// <param name="rootsByID">Receives the roots of the exact releases selected by the save.</param>
+    /// <returns>The exact recorded mod stack.</returns>
+    private static IReadOnlyList<ContentModDefinition> SelectExactMods(
+        string contentRootPath,
+        string basePackID,
+        string basePackVersion,
+        IReadOnlyList<string> ids,
+        IReadOnlyList<string> versions,
+        IReadOnlyList<(ContentModDefinition Mod, string Root)> installations,
+        IDictionary<string, string> rootsByID
+    )
+    {
+        ids ??= Array.Empty<string>();
+        versions ??= Array.Empty<string>();
+        if (ids.Count != versions.Count)
+            throw new InvalidDataException("The selected mod IDs and versions do not match.");
+        if (ids.Count == 0)
+            return Array.Empty<ContentModDefinition>();
+
+        var releases = new List<(ContentModDefinition Mod, string Root)>(installations);
+        var knownReleases = installations
+            .Select(entry => (entry.Mod.ID, entry.Mod.Version))
+            .ToHashSet();
+        var archived = GetArchivedPackageFolders(contentRootPath)
+            .Select(path => (Path: path, Managed: false))
+            .Concat(
+                ModPackageStore
+                    .GetRetainedReleaseFolders(contentRootPath)
+                    .Select(path => (Path: path, Managed: true))
+            );
+        foreach (var (folder, managed) in archived)
+        {
+            if (!ContentPackageManifest.Exists(folder))
+                continue;
+            try
+            {
+                string path = ContentPackageManifest.Find(folder, ContentPackageType.Mod);
+                if (ContentPackageManifest.ReadType(path) == ContentPackageType.GamePack)
+                    continue;
+                ContentModDefinition mod = ReadModDefinition(path);
+                ValidateDefinition(mod);
+                if (mod.BasePackID == basePackID && mod.BasePackVersion == basePackVersion)
+                {
+                    bool newRelease = knownReleases.Add((mod.ID, mod.Version));
+                    if (!managed || newRelease)
+                        releases.Add((mod, folder));
+                }
+            }
+            catch (Exception exception) when (IsInvalidModDefinitionException(exception))
+            {
+                GameLogger.Warning($"Skipping retained mod at '{folder}': {exception.Message}");
+            }
+        }
+        var selected = new List<ContentModDefinition>(ids.Count);
+        var byID = releases.ToLookup(entry => entry.Mod.ID, StringComparer.Ordinal);
+        for (int index = 0; index < ids.Count; index++)
+        {
+            string id = ids[index];
+            string version = versions[index];
+            var copies = byID[id].Where(entry => entry.Mod.Version == version).ToArray();
+            if (copies.Length > 1)
+                throw new InvalidOperationException(
+                    $"The selection requires mod '{id}' version '{version}', but more than one copy was found: "
+                        + string.Join(
+                            ", ",
+                            copies
+                                .Select(copy => copy.Root)
+                                .OrderBy(path => path, StringComparer.Ordinal)
+                        )
+                        + ". Keep one copy of that version and try again."
+                );
+            if (copies.Length == 0)
+            {
+                string found = byID.Contains(id)
+                    ? " Available versions: "
+                        + string.Join(
+                            ", ",
+                            byID[id]
+                                .Select(entry => entry.Mod.Version)
+                                .Distinct(StringComparer.Ordinal)
+                        )
+                        + "."
+                    : string.Empty;
+                throw new InvalidOperationException(
+                    $"The selection requires mod '{id}' version '{version}', which is not installed."
+                        + found
+                );
+            }
+            var entry = copies[0];
+            selected.Add(entry.Mod);
+            rootsByID[id] = Path.Combine(entry.Root, _modContentDirectoryName);
+        }
+        return selected;
     }
 
     /// <summary>
@@ -519,15 +788,31 @@ public sealed class ContentFileResolver
     /// <returns>The deserialized definition.</returns>
     public static ContentModDefinition ReadModDefinition(string definitionPath)
     {
+        using XmlReader reader = XmlReader.Create(definitionPath);
+        var document = new XmlDocument();
+        document.Load(reader);
+        return ReadModDefinition(document);
+    }
+
+    /// <summary>
+    /// Reads and validates an authored or proposed mod manifest.
+    /// </summary>
+    /// <param name="document">The manifest XML, with either supported root.</param>
+    /// <returns>The parsed mod definition.</returns>
+    public static ContentModDefinition ReadModDefinition(XmlDocument document)
+    {
+        XmlElement root = document.DocumentElement;
+        if (
+            ContentPackageManifest.ReadType(root.Name, root.GetAttribute("Type"))
+            != ContentPackageType.Mod
+        )
+            throw new InvalidDataException("The package manifest must declare Type=\"Mod\".");
         GameSerializer serializer = new(
             typeof(ContentModDefinition),
-            new GameSerializerSettings { RootName = nameof(ContentModDefinition) }
+            new GameSerializerSettings { RootName = root.Name }
         );
-        using FileStream stream = File.OpenRead(definitionPath);
-        return serializer.Deserialize(stream) as ContentModDefinition
-            ?? throw new InvalidDataException(
-                "Failed to deserialize content mod: " + definitionPath
-            );
+        return serializer.Deserialize(document) as ContentModDefinition
+            ?? throw new InvalidDataException("Failed to deserialize content mod.");
     }
 
     /// <summary>
@@ -544,6 +829,14 @@ public sealed class ContentFileResolver
             definition.BasePackVersion,
             nameof(definition.BasePackVersion)
         );
+        foreach (ContentModRequirement requirement in definition.Requires)
+            ValidateRequiredDefinitionField(requirement?.ID, "Requires/Mod/ID");
+        foreach (
+            string id in definition
+                .LoadAfter.Concat(definition.LoadBefore)
+                .Concat(definition.IncompatibleWith)
+        )
+            ValidateRequiredDefinitionField(id, "ModID");
     }
 
     /// <summary>
@@ -564,7 +857,7 @@ public sealed class ContentFileResolver
     /// </summary>
     /// <param name="exception">The failure raised while reading one definition.</param>
     /// <returns><see langword="true"/> when discovery can safely skip the definition.</returns>
-    private static bool IsInvalidModDefinitionException(Exception exception)
+    internal static bool IsInvalidModDefinitionException(Exception exception)
     {
         return exception
             is InvalidDataException

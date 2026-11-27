@@ -49,7 +49,7 @@ internal sealed class GameContentBinding
                 _contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray()
             );
             throw new InvalidOperationException(
-                $"Save requires content pack '{summary.PackID}' version '{summary.PackVersion}' "
+                $"Save requires game pack '{summary.PackID}' version '{summary.PackVersion}' "
                     + $"scenario '{summary.ScenarioID}' with mods [{requiredMods}], but "
                     + $"'{_contentPack.Definition.ID}' version '{_contentPack.Definition.Version}' "
                     + $"scenario '{_contentPack.Scenario.ID}' with mods [{activeMods}] is active."
@@ -86,7 +86,7 @@ internal sealed class GameContentBinding
             );
             if (template == null)
                 throw new InvalidOperationException(
-                    $"Loaded faction '{faction.InstanceID}' is missing from the active content pack."
+                    $"Loaded faction '{faction.InstanceID}' is missing from the active game pack."
                 );
 
             FactionSettings settings = overrides.TryGetValue(
@@ -135,7 +135,7 @@ internal sealed class GameContentBinding
                 )
             )
                 throw new InvalidOperationException(
-                    $"Faction modifier '{modifier.FactionID}' is missing from the active content pack."
+                    $"Faction modifier '{modifier.FactionID}' is missing from the active game pack."
                 );
             if (overrides.ContainsKey(modifier.FactionID))
                 throw new InvalidOperationException(

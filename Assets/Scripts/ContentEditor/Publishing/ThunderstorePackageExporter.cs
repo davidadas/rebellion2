@@ -31,19 +31,16 @@ internal static class ThunderstorePackageExporter
     )
     {
         cancellationToken.ThrowIfCancellationRequested();
-        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
-        settings.Validate(project.Definition);
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.ProjectRootPath);
+        settings.Validate(project.ID, project.Version);
         byte[] icon = ContentEditorPublishingStorage.ReadIcon(settings.IconPath);
-        string manifest = JsonUtility.ToJson(
-            new Manifest(settings, project.Definition.Version),
-            true
-        );
+        string manifest = JsonUtility.ToJson(new Manifest(settings, project.Version), true);
         string readme = settings.Readme;
         string changelog = settings.Changelog;
-        string packID = project.Definition.ID;
+        string packID = project.ID;
         destination = Path.GetFullPath(destination);
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, destination);
-        if (ContentEditorPaths.Contains(project.PackRootPath, destination))
+        if (ContentEditorPaths.Contains(project.ProjectRootPath, destination))
             throw new IOException("Choose an output outside the working content-pack folder.");
         string staging = Path.Combine(
             Path.GetTempPath(),
@@ -55,6 +52,7 @@ internal static class ThunderstorePackageExporter
         {
             string snapshot = Path.Combine(staging, "Mods", packID);
             Directory.CreateDirectory(snapshot);
+            string packRoot = ContentPackEditorExporter.GetSnapshotPackRoot(project, snapshot);
             IReadOnlyList<string> warnings =
                 await ContentPackEditorExporter.WriteValidatedSnapshotAsync(
                     project,
@@ -98,14 +96,7 @@ internal static class ThunderstorePackageExporter
                 foreach (
                     string source in Directory
                         .EnumerateFiles(snapshot, "*", SearchOption.AllDirectories)
-                        .Where(source =>
-                            !Path.GetRelativePath(snapshot, source)
-                                .Replace('\\', '/')
-                                .StartsWith(
-                                    ContentEditorAssetChange.EditorDirectory + "/",
-                                    StringComparison.Ordinal
-                                )
-                        )
+                        .Where(source => !ContentPackEditorExporter.IsEditorFile(packRoot, source))
                 )
                 {
                     cancellationToken.ThrowIfCancellationRequested();

@@ -149,10 +149,14 @@ namespace Rebellion.Tests.ContentEditor
                     GameEventsPath = "Data/units.xml",
                     MessageDefinitionsPath = "Data/units.xml",
                     EncyclopediaEntriesPath = "Data/units.xml",
-                    NeutralThemePath = "Data/units.xml",
+                    ThemePaths = new() { "Data/neutral.xml" },
                 }
             );
             File.WriteAllText(Path.Combine(packRoot, "Data", "units.xml"), "<Units />");
+            File.WriteAllText(
+                Path.Combine(packRoot, "Data", "neutral.xml"),
+                "<FactionThemes><FactionTheme><FactionInstanceID>DEFAULT</FactionInstanceID></FactionTheme></FactionThemes>"
+            );
         }
     }
 }

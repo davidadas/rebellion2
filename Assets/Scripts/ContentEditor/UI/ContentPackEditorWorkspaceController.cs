@@ -115,7 +115,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         if (layout == null)
             throw new ArgumentNullException(nameof(layout));
         ContentPackEditorProject current =
-            Project ?? throw new InvalidOperationException("Open a content pack first.");
+            Project ?? throw new InvalidOperationException("Open a project first.");
         Vector2Int[] positions = await Task.Run(
             () =>
                 RectangleLayout.Arrange(
@@ -196,7 +196,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             return;
 
         ContentPackEditorProject current =
-            Project ?? throw new InvalidOperationException("Open a content pack first.");
+            Project ?? throw new InvalidOperationException("Open a project first.");
         using (current.BeginEdit("Move interface artwork"))
         {
             foreach (ContentEditorArtworkPlacementChange change in changes)

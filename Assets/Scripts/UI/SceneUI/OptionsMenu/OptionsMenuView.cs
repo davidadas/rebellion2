@@ -9,7 +9,7 @@ using UnityEngine.UI;
 /// <summary>
 /// Displays the Options menu.
 /// </summary>
-public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
+public sealed partial class OptionsMenuView : MonoBehaviour, IContentInitializable
 {
     private static readonly Color _activeTabColor = new Color(0.875f, 0.910f, 0.941f);
     private static readonly Color _inactiveTabColor = new Color(0.573f, 0.635f, 0.706f);
@@ -29,6 +29,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private readonly List<Image> _bindingSecondaryBadgeImages = new List<Image>();
     private readonly List<Image> _bindingRestoreImages = new List<Image>();
     private readonly List<OptionsToggleRowView> _modRows = new List<OptionsToggleRowView>();
+    private readonly List<SortableRowView> _modCards = new List<SortableRowView>();
     private readonly HashSet<Button> _wiredBadges = new HashSet<Button>();
 
     [Header("Frame")]
@@ -223,7 +224,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private ScrollAreaView _modsScrollArea;
 
     [SerializeField]
-    private OptionsToggleRowView _modRowTemplate;
+    private SortableRowView _modRowTemplate;
 
     [SerializeField]
     private TextMeshProUGUI _modsStatusTextField;
@@ -268,6 +269,7 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     public event Action<IdleBarLocation> IdleBarLocationRequested;
     public event Action<GameLaunchSpeed> GameLaunchSpeedRequested;
     public event Action<int> ModToggleRequested;
+    internal event Action<string, int> ModMoveRequested;
     public event Action<int> ContentPackStepRequested;
     public event Action<string> AutosaveIntervalChanged;
     public event Action<string> AutosavesToKeepChanged;
@@ -342,6 +344,8 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
             _saveListView.CancelRename();
         if (data.ActiveTab != OptionsMenuTab.UserInterface && _idleBarLocationDropdown.IsExpanded)
             _idleBarLocationDropdown.Hide();
+        if (data.ActiveTab != OptionsMenuTab.Mods || !data.ShowModsTab)
+            CancelModOrdering();
         RenderTabs(data.ActiveTab, data.ShowModsTab);
         RenderFooter(data);
         switch (data.ActiveTab)
@@ -601,52 +605,98 @@ public sealed class OptionsMenuView : MonoBehaviour, IContentInitializable
     private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
     {
         _contentPackChoice.Render(data.ContentPackLabel);
-        int loadedCount = data.Mods.Count(mod => mod.Loaded);
         int errorCount = data.Mods.Count(mod => mod.HasError);
+        int orderedCount = data.Mods.Count(mod => mod.LoadOrder > 0);
         string status =
             data.Mods.Count == 0 ? "NO COMPATIBLE MODS FOUND"
-            : errorCount > 0
-                ? $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED - {errorCount} {(errorCount == 1 ? "ERROR" : "ERRORS")}"
-            : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
+            : errorCount == 1 ? "1 ERROR"
+            : errorCount > 1 ? $"{errorCount} ERRORS"
+            : string.Empty;
         UILayout.SetTextContent(_modsStatusTextField, status);
+        _modsStatusTextField.gameObject.SetActive(status.Length != 0);
 
-        for (int index = 0; index < data.Mods.Count; index++)
+        CancelModOrdering();
+        _sortableModCount = orderedCount > 1 ? orderedCount : 0;
+        RectInt template = UILayout.GetSourceRect(_modRowTemplate.Rect);
+        int y =
+            status.Length == 0
+                ? 0
+                : UILayout.GetSourceRect(_modsStatusTextField.rectTransform).height
+                    + SortableRowView.Gap;
+        int rowIndex = 0;
+        foreach (
+            var entry in data
+                .Mods.Select((mod, index) => (Mod: mod, Index: index))
+                .OrderBy(entry => entry.Mod.LoadOrder == 0 ? int.MaxValue : entry.Mod.LoadOrder)
+        )
         {
-            OptionsToggleRowView row = GetModRow(index);
-            OptionsModRow mod = data.Mods[index];
-            UILayout.SetSourcePosition(row.transform as RectTransform, 0, index * 20);
-            if (mod.HasError)
-                row.RenderError(mod.DisplayName);
+            SortableRowView bar = GetModCard(rowIndex);
+            OptionsToggleRowView toggle = _modRows[rowIndex++];
+            OptionsModRow mod = entry.Mod;
+            string details = string.Join(
+                "\n",
+                new[]
+                {
+                    mod.ErrorMessage,
+                    mod.Enabled && !mod.Loaded && !mod.HasError ? "Pending Apply" : string.Empty,
+                    mod.Details,
+                }.Where(text => !string.IsNullOrEmpty(text))
+            );
+            bar.Render(
+                mod.ID,
+                mod.DisplayName,
+                mod.Version,
+                details,
+                mod.LoadOrder > 0 && orderedCount > 1
+            );
+            toggle.SetOptionIndex(entry.Index);
+            if (!mod.CanToggle && mod.HasError)
+                toggle.RenderError(mod.DisplayName);
             else
-                row.Render(mod.Enabled, mod.DisplayName);
-            row.gameObject.SetActive(true);
-        }
-        for (int index = data.Mods.Count; index < _modRows.Count; index++)
-            _modRows[index].gameObject.SetActive(false);
+                toggle.Render(mod.Enabled);
 
-        _modsScrollArea.SetContentHeight(data.Mods.Count * 20, 20, resetScroll);
+            y += bar.Place(template.x, y, template.width, ModEnableWidth) + SortableRowView.Gap;
+            bar.gameObject.SetActive(true);
+        }
+
+        for (int index = rowIndex; index < _modCards.Count; index++)
+            _modCards[index].gameObject.SetActive(false);
+
+        _modsScrollArea.SetContentHeight(
+            Mathf.Max(0, y - SortableRowView.Gap),
+            SortableRowView.RowHeight + SortableRowView.Gap,
+            resetScroll,
+            preserveScrollOffset: true
+        );
+        RestoreModRowFocus();
     }
 
     /// <summary>
-    /// Gets or creates a reusable mod-toggle row for one displayed index.
+    /// Gets or creates the shared bar and its Options enable control for a displayed index.
     /// </summary>
-    /// <param name="index">The required displayed mod index.</param>
-    /// <returns>The reusable mod-toggle row.</returns>
-    private OptionsToggleRowView GetModRow(int index)
+    /// <param name="index">The displayed mod index.</param>
+    /// <returns>The reusable sortable bar.</returns>
+    private SortableRowView GetModCard(int index)
     {
-        while (_modRows.Count <= index)
+        if (index == _modCards.Count)
         {
-            OptionsToggleRowView row = Instantiate(_modRowTemplate, _modsScrollArea.ContentRoot);
-            row.name = $"ModRow{_modRows.Count + 1}";
-            row.SetOptionIndex(_modRows.Count);
+            SortableRowView bar = Instantiate(_modRowTemplate, _modsScrollArea.ContentRoot);
+            bar.name = $"ModRow{index + 1}";
+            var toggle = bar.Trailing.GetComponentInChildren<OptionsToggleRowView>(true);
             if (_contentAssets != null)
-                row.InitializeContent(_contentAssets);
+                toggle.InitializeContent(_contentAssets);
             if (_bound)
-                row.ToggleRequested += HandleModToggle;
-            _modRows.Add(row);
+                toggle.ToggleRequested += HandleModToggle;
+            bar.SetArtwork(_rowIdleSprite, _rowActiveSprite);
+            bar.DragStarted += input => BeginModDrag(bar, input);
+            bar.Dragged += input => _modDrag?.PointAt(bar.Rect, input.position);
+            bar.DragEnded += input => EndModDrag(bar, input);
+            bar.onClick.AddListener(() => ShowModMoveMenu(bar));
+            _modCards.Add(bar);
+            _modRows.Add(toggle);
         }
 
-        return _modRows[index];
+        return _modCards[index];
     }
 
     /// <summary>

@@ -20,11 +20,7 @@ internal static class ContentEditorArtworkConversion
     internal static string Convert(ContentPackEditorProject project)
     {
         Dictionary<string, string> aliases = ContentArtworkAliases.Load(project.PackRootPath);
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            project.ContentRootPath,
-            project.PackRootPath,
-            project.Definition
-        );
+        ContentFileResolver resolver = project.CreateResolver();
         HashSet<string> reservedAddresses = aliases
             .Keys.Concat(
                 resolver

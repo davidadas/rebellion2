@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -20,6 +21,7 @@ public sealed class ModPackageStore
     private const long _maximumExtractedBytes = 16L * 1024 * 1024 * 1024;
     private const long _maximumEntryBytes = 4L * 1024 * 1024 * 1024;
     private readonly string _contentRoot;
+    private readonly string _packsRoot;
     private readonly string _modsRoot;
     private readonly string _stateRoot;
     private readonly ThunderstoreClient _client;
@@ -35,11 +37,36 @@ public sealed class ModPackageStore
     public ModPackageStore(string contentRoot, ThunderstoreClient client)
     {
         _contentRoot = Path.GetFullPath(contentRoot);
+        _packsRoot = Path.Combine(_contentRoot, "Packs");
         _modsRoot = ContentFileResolver.ResolveModsRootPath(contentRoot);
-        _stateRoot = Path.Combine(Directory.GetParent(_modsRoot).FullName, ".mod-manager");
+        _stateRoot = ResolveStateRoot(_modsRoot);
         _client = client ?? throw new ArgumentNullException(nameof(client));
         Catalog = new ThunderstoreCatalog(_stateRoot, _client);
     }
+
+    /// <summary>
+    /// Lists intact native releases retained by a completed manager transaction.
+    /// </summary>
+    /// <param name="contentRoot">The installation whose package history is needed.</param>
+    /// <returns>The folders available for exact-version loading.</returns>
+    internal static IEnumerable<string> GetRetainedReleaseFolders(string contentRoot)
+    {
+        string root = Path.Combine(
+            ResolveStateRoot(ContentFileResolver.ResolveModsRootPath(contentRoot)),
+            "retained"
+        );
+        return Directory.Exists(root)
+            ? Directory.EnumerateDirectories(root)
+            : Enumerable.Empty<string>();
+    }
+
+    /// <summary>
+    /// Locates the manager state beside the active Mods directory.
+    /// </summary>
+    /// <param name="modsRoot">The active Mods directory.</param>
+    /// <returns>The manager's state directory.</returns>
+    private static string ResolveStateRoot(string modsRoot) =>
+        Path.Combine(Directory.GetParent(modsRoot).FullName, ".mod-manager");
 
     /// <summary>
     /// Restores or completes an interrupted filesystem publication before presenting installed content.
@@ -50,10 +77,10 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
-    /// Finds native pack folders in Mods that are not owned by an installation receipt.
+    /// Finds native project folders in Mods that are not owned by an installation receipt.
     /// </summary>
-    /// <returns>The existing pack folders not owned by an installation receipt.</returns>
-    public string[] GetUnmanagedPackFolders()
+    /// <returns>The existing project folders not owned by an installation receipt.</returns>
+    public string[] GetUnmanagedProjectFolders()
     {
         HashSet<string> managed = new(
             ReadRegistry()
@@ -65,8 +92,7 @@ public sealed class ModPackageStore
             ? Directory
                 .EnumerateDirectories(_modsRoot)
                 .Where(folder =>
-                    !managed.Contains(Path.GetFileName(folder))
-                    && File.Exists(Path.Combine(folder, "pack.xml"))
+                    !managed.Contains(Path.GetFileName(folder)) && HasDefinition(folder)
                 )
                 .OrderBy(folder => folder, StringComparer.Ordinal)
                 .ToArray()
@@ -92,13 +118,7 @@ public sealed class ModPackageStore
             )
             {
                 string name = Path.GetFileName(folder);
-                if (
-                    managed.Contains(name)
-                    || (
-                        !File.Exists(Path.Combine(folder, "pack.xml"))
-                        && !File.Exists(Path.Combine(folder, "mod.xml"))
-                    )
-                )
+                if (managed.Contains(name) || !HasDefinition(folder))
                     continue;
                 try
                 {
@@ -168,7 +188,7 @@ public sealed class ModPackageStore
                 ? null
                 : packs.FirstOrDefault(pack => pack.ID == content.BasePackID);
             if (!string.IsNullOrEmpty(content.BasePackID) && basis == null)
-                return "Requires " + content.BasePackID + ". Install that content pack first.";
+                return "Requires " + content.BasePackID + ". Install that game pack first.";
             if (
                 basis != null
                 && !string.IsNullOrEmpty(content.BasePackVersion)
@@ -253,7 +273,10 @@ public sealed class ModPackageStore
                 var staged = await PrepareReleaseAsync(
                     item.Package,
                     item.Version,
-                    Path.Combine(transaction, "prepared", HashText(item.Package.full_name)),
+                    Path.Combine(
+                        transaction,
+                        prepared.Count.ToString(CultureInfo.InvariantCulture)
+                    ),
                     progress,
                     cancellationToken
                 );
@@ -353,31 +376,51 @@ public sealed class ModPackageStore
     /// Resolves every exact installed dependency before changing enabled content.
     /// </summary>
     /// <param name="package">The installed package being enabled.</param>
-    /// <returns>The package and its complete installed dependency chain.</returns>
+    /// <returns>The package and its complete installed dependency chain in dependency order.</returns>
     public IReadOnlyList<InstalledModPackage> GetRequiredPackages(InstalledModPackage package)
     {
         Dictionary<string, InstalledModPackage> available = GetInstalled()
             .ToDictionary(item => item.PackageID + "-" + item.Version, StringComparer.Ordinal);
         List<InstalledModPackage> result = new();
         HashSet<string> seen = new(StringComparer.Ordinal);
-        Stack<InstalledModPackage> pending = new();
-        pending.Push(package);
-        while (pending.Count > 0)
-        {
-            InstalledModPackage next = pending.Pop();
-            if (!seen.Add(next.PackageID))
-                continue;
-            result.Add(next);
-            foreach (string reference in next.Dependencies)
-            {
-                if (!available.TryGetValue(reference, out InstalledModPackage required))
-                    throw new InvalidOperationException(
-                        next.Name + " requires " + reference + ". Install that version first."
-                    );
-                pending.Push(required);
-            }
-        }
+        HashSet<string> visiting = new(StringComparer.Ordinal);
+        VisitInstalledRequirement(package, available, seen, visiting, result);
         return result;
+    }
+
+    /// <summary>
+    /// Places each installed dependency ahead of the package that uses it.
+    /// </summary>
+    /// <param name="package">The installed package being visited.</param>
+    /// <param name="available">All installed exact package releases.</param>
+    /// <param name="seen">The packages already in the result.</param>
+    /// <param name="visiting">The current dependency path.</param>
+    /// <param name="result">The dependency-first accumulation.</param>
+    private static void VisitInstalledRequirement(
+        InstalledModPackage package,
+        IReadOnlyDictionary<string, InstalledModPackage> available,
+        ISet<string> seen,
+        ISet<string> visiting,
+        ICollection<InstalledModPackage> result
+    )
+    {
+        if (seen.Contains(package.PackageID))
+            return;
+        if (!visiting.Add(package.PackageID))
+            throw new InvalidDataException(
+                "The installed packages contain a dependency cycle at " + package.PackageID + "."
+            );
+        foreach (string reference in package.Dependencies)
+        {
+            if (!available.TryGetValue(reference, out InstalledModPackage required))
+                throw new InvalidOperationException(
+                    package.Name + " requires " + reference + ". Install that version first."
+                );
+            VisitInstalledRequirement(required, available, seen, visiting, result);
+        }
+        visiting.Remove(package.PackageID);
+        seen.Add(package.PackageID);
+        result.Add(package);
     }
 
     /// <summary>
@@ -401,7 +444,7 @@ public sealed class ModPackageStore
         {
             var staged = await PrepareAsync(
                 archive,
-                Path.Combine(transaction, "prepared", "local"),
+                Path.Combine(transaction, "0"),
                 null,
                 null,
                 cancellationToken
@@ -430,6 +473,51 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
+    /// Moves the existing installation identified by an install conflict to recovery storage.
+    /// </summary>
+    /// <param name="conflict">The exact conflict reported during installation.</param>
+    /// <param name="protectedContentIDs">Content currently in use by the caller.</param>
+    /// <returns>The native content removed from the library.</returns>
+    public InstalledModContent[] RemoveConflictingInstallation(
+        InstallationConflict conflict,
+        IReadOnlyCollection<string> protectedContentIDs
+    )
+    {
+        if (!conflict.InPacksDirectory)
+        {
+            Uninstall(conflict.Existing, protectedContentIDs);
+            return conflict.Existing.Content;
+        }
+
+        using FileStream lease = AcquireLease();
+        InstalledModContent expected = conflict.Existing.Content.Single();
+        ValidateFolderName(expected.Folder);
+        string source = Path.Combine(_packsRoot, expected.Folder);
+        EnsureNoLinks(_packsRoot);
+        EnsureNoLinks(source);
+        if (!HasDefinition(source))
+            throw new InvalidOperationException("The existing copy has already been removed.");
+        InstalledModContent current = ReadContent(source);
+        if (current.ID != expected.ID || current.Version != expected.Version)
+            throw new InvalidOperationException(
+                "The existing copy has changed. Try installing again."
+            );
+        EnsureNotProtected(current, protectedContentIDs);
+        EnsureNotDefaultPack(current);
+        EnsureNoPackDependents(
+            current,
+            GetInstalled().SelectMany(package => package.Content).Concat(ReadPackCopies())
+        );
+
+        string removed = Path.Combine(_stateRoot, "removed");
+        EnsureNoLinks(removed);
+        string recovery = Path.Combine(removed, Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(recovery);
+        Directory.Move(source, Path.Combine(recovery, expected.Folder));
+        return conflict.Existing.Content;
+    }
+
+    /// <summary>
     /// Removes one package while preserving its files in a recovery folder and retaining its archives.
     /// </summary>
     /// <param name="package">The exact installed package selected by the player.</param>
@@ -441,32 +529,15 @@ public sealed class ModPackageStore
     {
         using FileStream lease = AcquireLease();
         Registry registry = ReadRegistry();
+        IReadOnlyList<InstalledModPackage> installed = GetInstalled();
         InstalledModPackage current =
-            GetInstalled().SingleOrDefault(item => item.PackageID == package.PackageID)
+            installed.SingleOrDefault(item => item.PackageID == package.PackageID)
             ?? throw new InvalidOperationException(
                 "This package is no longer installed. Refresh the list."
             );
-        string reference = current.PackageID + "-" + current.Version;
-        InstalledModPackage dependent = registry.Packages.FirstOrDefault(item =>
-            item.PackageID != current.PackageID && item.Dependencies.Contains(reference)
-        );
-        if (dependent != null)
-            throw new InvalidOperationException(
-                dependent.Name + " requires this package. Remove that package first."
-            );
-        foreach (InstalledModContent content in current.Content)
-        {
-            EnsureNotProtected(content, protectedContentIDs);
-            if (
-                GetInstalled()
-                    .Where(item => item.PackageID != current.PackageID)
-                    .SelectMany(item => item.Content)
-                    .Any(item => item.BasePackID == content.ID)
-            )
-                throw new InvalidOperationException(
-                    "Another installed content pack requires " + content.DisplayName + "."
-                );
-        }
+        if (current.Version != package.Version)
+            throw new InvalidOperationException("The existing copy has changed. Refresh the list.");
+        EnsurePackageCanBeRemoved(current, installed, ReadPackCopies(), protectedContentIDs);
         string transaction = CreateTransaction();
         try
         {
@@ -480,7 +551,13 @@ public sealed class ModPackageStore
                 replacement,
                 current.Content.Select(content => (content.Folder, (string)null)),
                 transaction,
-                true
+                true,
+                InspectInstallation(current, CancellationToken.None) == InstallationState.Intact
+                    ? current.Content.ToDictionary(
+                        content => content.Folder,
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                    : null
             );
         }
         finally
@@ -807,7 +884,12 @@ public sealed class ModPackageStore
     )
     {
         var packages = prepared.ToArray();
+        IReadOnlyList<InstalledModPackage> installed = GetInstalled();
+        InstalledModContent[] packCopies = ReadPackCopies().ToArray();
         HashSet<string> folders = new(StringComparer.OrdinalIgnoreCase);
+        var retained = new Dictionary<string, InstalledModContent>(
+            StringComparer.OrdinalIgnoreCase
+        );
         foreach (var item in packages)
         {
             InstalledModPackage previous = registry.Packages.SingleOrDefault(package =>
@@ -819,39 +901,64 @@ public sealed class ModPackageStore
                 )
             )
                 EnsureNotProtected(content, protectedIDs);
-            if (
-                previous != null
-                && await Task.Run(
+            if (previous != null)
+            {
+                InstallationState state = await Task.Run(
                     () => InspectInstallation(previous, cancellationToken),
                     cancellationToken
-                ) == InstallationState.Modified
-            )
-                throw new InvalidOperationException(
-                    previous.Name
-                        + " has local edits. Make a working copy or uninstall it before replacing this package."
                 );
+                if (state == InstallationState.Modified)
+                {
+                    EnsurePackageCanBeRemoved(previous, installed, packCopies, protectedIDs);
+                    throw new InstallationConflict(previous, previous.Name + " has local edits.");
+                }
+                if (state == InstallationState.Intact)
+                    foreach (InstalledModContent old in previous.Content)
+                        if (!item.Receipt.Content.Any(next => ReleaseKey(next) == ReleaseKey(old)))
+                            retained.Add(old.Folder, old);
+            }
             foreach (InstalledModContent content in item.Receipt.Content)
             {
                 if (!folders.Add(content.Folder))
                     throw new InvalidDataException(
                         "Two packages install to the same content folder: " + content.Folder
                     );
-                if (
-                    GetInstalled()
-                        .Where(existing => existing.PackageID != item.Receipt.PackageID)
-                        .SelectMany(existing => existing.Content)
-                        .Any(existing => existing.ID == content.ID)
-                    || Directory.Exists(Path.Combine(_contentRoot, "Packs"))
-                        && Directory
-                            .EnumerateDirectories(Path.Combine(_contentRoot, "Packs"))
-                            .Where(HasDefinition)
-                            .Any(path => ReadContent(path).ID == content.ID)
-                )
-                    throw new InvalidOperationException(
-                        "Another installed content folder already declares "
-                            + content.ID
-                            + ". It will not be overwritten."
+                InstalledModContent copy = packCopies.FirstOrDefault(existing =>
+                    existing.ID == content.ID
+                );
+                if (copy != null)
+                {
+                    EnsureNotDefaultPack(copy);
+                    EnsureNoPackDependents(
+                        copy,
+                        installed.SelectMany(package => package.Content).Concat(packCopies)
                     );
+                    throw new InstallationConflict(
+                        new InstalledModPackage
+                        {
+                            Name = copy.DisplayName,
+                            Version = copy.Version,
+                            Content = new[] { copy },
+                        },
+                        copy.DisplayName + " is already installed.",
+                        inPacksDirectory: true
+                    );
+                }
+                InstalledModPackage conflicting = installed.FirstOrDefault(existing =>
+                    existing.PackageID != previous?.PackageID
+                    && existing.Content.Any(entry =>
+                        entry.ID == content.ID
+                        || entry.Folder.Equals(content.Folder, StringComparison.OrdinalIgnoreCase)
+                    )
+                );
+                if (conflicting != null)
+                {
+                    EnsurePackageCanBeRemoved(conflicting, installed, packCopies, protectedIDs);
+                    throw new InstallationConflict(
+                        conflicting,
+                        conflicting.Name + " is already installed."
+                    );
+                }
                 string destination = ResolveFolder(content.Folder);
                 if (
                     Directory.Exists(destination)
@@ -907,7 +1014,7 @@ public sealed class ModPackageStore
         }
         cancellationToken.ThrowIfCancellationRequested();
         progress?.Invoke("Installing prepared packages", 1);
-        PublishFolders(replacement, changes, transaction, false);
+        PublishFolders(replacement, changes, transaction, false, retained);
     }
 
     /// <summary>
@@ -917,11 +1024,13 @@ public sealed class ModPackageStore
     /// <param name="folders">Each affected folder and its prepared replacement, or null for removal.</param>
     /// <param name="transaction">The transaction's owned staging directory.</param>
     /// <param name="retainPrevious">Whether removed content must remain available for manual recovery.</param>
+    /// <param name="retainedReleases">Verified native releases needed for exact-version restoration.</param>
     private void PublishFolders(
         Registry replacement,
         IEnumerable<(string Folder, string Source)> folders,
         string transaction,
-        bool retainPrevious
+        bool retainPrevious,
+        IReadOnlyDictionary<string, InstalledModContent> retainedReleases
     )
     {
         var changes = folders.ToArray();
@@ -946,6 +1055,14 @@ public sealed class ModPackageStore
                         Folder = change.Folder,
                         Backup = HashText(change.Folder),
                         HadPrevious = Directory.Exists(destination),
+                        RetainedRelease =
+                            retainedReleases != null
+                            && retainedReleases.TryGetValue(
+                                change.Folder,
+                                out InstalledModContent release
+                            )
+                                ? ReleaseKey(release)
+                                : null,
                     };
                 })
                 .ToArray(),
@@ -1036,10 +1153,12 @@ public sealed class ModPackageStore
                     Directory.Move(backup, destination);
             }
         }
-        else if (journal.RetainPrevious)
+        else
         {
             foreach (FolderChange change in journal.Changes)
             {
+                if (!journal.RetainPrevious && string.IsNullOrEmpty(change.RetainedRelease))
+                    continue;
                 ValidateFolderName(change.Folder);
                 if (!Regex.IsMatch(change.Backup ?? string.Empty, "^[A-F0-9]{64}$"))
                     throw new InvalidDataException(
@@ -1049,6 +1168,23 @@ public sealed class ModPackageStore
                 if (!Directory.Exists(backup))
                     continue;
                 EnsureNoLinks(backup);
+                if (!string.IsNullOrEmpty(change.RetainedRelease))
+                {
+                    if (!Regex.IsMatch(change.RetainedRelease, "^[A-F0-9]{64}$"))
+                        throw new InvalidDataException(
+                            "A retained release has an invalid recovery path."
+                        );
+                    string retained = Path.Combine(_stateRoot, "retained", change.RetainedRelease);
+                    EnsureNoLinks(retained);
+                    if (!Directory.Exists(retained))
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(retained));
+                        Directory.Move(backup, retained);
+                        continue;
+                    }
+                }
+                if (!journal.RetainPrevious)
+                    continue;
                 string recovery = Path.Combine(
                     _stateRoot,
                     "removed",
@@ -1123,19 +1259,17 @@ public sealed class ModPackageStore
     /// <returns>The native content identity and its requirements.</returns>
     private static InstalledModContent ReadContent(string folder)
     {
-        bool packExists = File.Exists(Path.Combine(folder, "pack.xml"));
-        bool modExists = File.Exists(Path.Combine(folder, "mod.xml"));
-        if (packExists == modExists)
+        string manifest = ContentPackageManifest.Find(folder);
+        ContentPackageType type = ContentPackageManifest.ReadType(manifest);
+        if (type == ContentPackageType.Unknown)
             throw new InvalidDataException(
-                "Each content folder must contain exactly one pack.xml or mod.xml definition."
+                "Set the project type in the content editor before installing it."
             );
         InstalledModContent content;
-        if (packExists)
+        if (type == ContentPackageType.GamePack)
         {
             ContentPackDefinition pack =
-                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                    Path.Combine(folder, "pack.xml")
-                );
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
             content = new InstalledModContent
             {
                 ID = pack.ID,
@@ -1147,9 +1281,7 @@ public sealed class ModPackageStore
         }
         else
         {
-            ContentModDefinition mod = ContentFileResolver.ReadModDefinition(
-                Path.Combine(folder, "mod.xml")
-            );
+            ContentModDefinition mod = ContentFileResolver.ReadModDefinition(manifest);
             content = new InstalledModContent
             {
                 ID = mod.ID,
@@ -1182,9 +1314,7 @@ public sealed class ModPackageStore
     /// </summary>
     /// <param name="folder">The candidate directory.</param>
     /// <returns>Whether a supported definition exists.</returns>
-    private static bool HasDefinition(string folder) =>
-        File.Exists(Path.Combine(folder, "pack.xml"))
-        || File.Exists(Path.Combine(folder, "mod.xml"));
+    private static bool HasDefinition(string folder) => ContentPackageManifest.Exists(folder);
 
     /// <summary>
     /// Enumerates ordinary content files without following symbolic links.
@@ -1234,6 +1364,143 @@ public sealed class ModPackageStore
     {
         ValidateFolderName(folder);
         return Path.Combine(_modsRoot, folder);
+    }
+
+    /// <summary>
+    /// Reads copies installed directly under the content pack root.
+    /// </summary>
+    /// <returns>The native definitions with their current folder names.</returns>
+    private IEnumerable<InstalledModContent> ReadPackCopies()
+    {
+        if (!Directory.Exists(_packsRoot))
+            yield break;
+        foreach (string folder in Directory.EnumerateDirectories(_packsRoot).Where(HasDefinition))
+        {
+            InstalledModContent content = ReadContent(folder);
+            content.Folder = Path.GetFileName(folder);
+            yield return content;
+        }
+    }
+
+    /// <summary>
+    /// Protects the catalog's fallback pack from removal.
+    /// </summary>
+    /// <param name="content">The existing content involved in the conflict.</param>
+    private void EnsureNotDefaultPack(InstalledModContent content)
+    {
+        if (content.ID == ContentPackLoader.GetDefaultPackID(_contentRoot))
+            throw new InvalidOperationException(
+                content.DisplayName + " is required by the game and cannot be removed."
+            );
+    }
+
+    /// <summary>
+    /// Verifies that an installed package can be detached from the library.
+    /// </summary>
+    /// <param name="current">The package whose files would be removed.</param>
+    /// <param name="installed">The current library, including managed and manually installed mods.</param>
+    /// <param name="packCopies">The packs installed directly in the content root.</param>
+    /// <param name="protectedIDs">Content currently in use by the caller.</param>
+    private void EnsurePackageCanBeRemoved(
+        InstalledModPackage current,
+        IReadOnlyList<InstalledModPackage> installed,
+        IEnumerable<InstalledModContent> packCopies,
+        IReadOnlyCollection<string> protectedIDs
+    )
+    {
+        string reference = current.PackageID + "-" + current.Version;
+        InstalledModPackage dependent = installed.FirstOrDefault(item =>
+            item.PackageID != current.PackageID && item.Dependencies.Contains(reference)
+        );
+        if (dependent != null)
+            throw new InvalidOperationException(
+                dependent.Name + " requires this package. Remove that package first."
+            );
+        var otherContent = installed
+            .Where(item => item.PackageID != current.PackageID)
+            .SelectMany(item => item.Content)
+            .ToArray();
+        var possiblePackDependents = otherContent.Concat(packCopies).ToArray();
+        ContentModDefinition[] otherMods = current.Content.All(content => content.IsPack)
+            ? Array.Empty<ContentModDefinition>()
+            : otherContent
+                .Where(content => !content.IsPack)
+                .Select(content => ReadInstalledMod(content.Folder))
+                .OfType<ContentModDefinition>()
+                .ToArray();
+        foreach (InstalledModContent content in current.Content)
+        {
+            EnsureNotProtected(content, protectedIDs);
+            EnsureNoPackDependents(content, possiblePackDependents);
+            if (!content.IsPack && ReadInstalledMod(content.Folder) is ContentModDefinition mod)
+                EnsureNoModDependents(mod, otherMods);
+        }
+    }
+
+    /// <summary>
+    /// Reads the live manifest for an installed add-on, since a receipt can predate rule edits.
+    /// </summary>
+    /// <param name="folder">The installed add-on's folder name.</param>
+    /// <returns>The manifest, or null if the installation does not have a valid manifest.</returns>
+    private ContentModDefinition ReadInstalledMod(string folder)
+    {
+        try
+        {
+            return ContentFileResolver.ReadValidatedMod(ResolveFolder(folder));
+        }
+        catch (Exception exception)
+            when (ContentFileResolver.IsInvalidModDefinitionException(exception))
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Protects an add-on that is the only installed release satisfying another mod's requirement.
+    /// </summary>
+    /// <param name="content">The release to remove.</param>
+    /// <param name="installed">The readable add-on manifests outside the package being removed.</param>
+    private static void EnsureNoModDependents(
+        ContentModDefinition content,
+        IEnumerable<ContentModDefinition> installed
+    )
+    {
+        ContentModDefinition[] compatible = installed
+            .Where(mod =>
+                mod.BasePackID == content.BasePackID
+                && mod.BasePackVersion == content.BasePackVersion
+            )
+            .ToArray();
+        ContentModDefinition dependent = compatible.FirstOrDefault(mod =>
+            mod.ID != content.ID
+            && mod.Requires.Any(requirement =>
+                requirement.MatchesRelease(content.ID, content.Version)
+                && !compatible.Any(other => requirement.MatchesRelease(other.ID, other.Version))
+            )
+        );
+        if (dependent != null)
+            throw new InvalidOperationException(
+                dependent.DisplayName
+                    + " requires "
+                    + content.DisplayName
+                    + ". Remove that mod first."
+            );
+    }
+
+    /// <summary>
+    /// Protects a pack from removal while other installed content inherits from it.
+    /// </summary>
+    /// <param name="content">The existing content that would be removed.</param>
+    /// <param name="installed">The other content currently installed.</param>
+    private static void EnsureNoPackDependents(
+        InstalledModContent content,
+        IEnumerable<InstalledModContent> installed
+    )
+    {
+        if (installed.Any(item => item.BasePackID == content.ID))
+            throw new InvalidOperationException(
+                "Another installed package requires " + content.DisplayName + "."
+            );
     }
 
     /// <summary>
@@ -1379,12 +1646,17 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
-    /// Creates a transaction directory owned exclusively by this operation.
+    /// Creates a transaction directory with a compact name to leave room for nested archive paths.
     /// </summary>
     /// <returns>The created staging and recovery directory.</returns>
     private string CreateTransaction()
     {
-        string path = Path.Combine(_stateRoot, "transactions", Guid.NewGuid().ToString("N"));
+        string id = Convert
+            .ToBase64String(Guid.NewGuid().ToByteArray())
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
+        string path = Path.Combine(_stateRoot, "transactions", id);
         Directory.CreateDirectory(path);
         return path;
     }
@@ -1439,6 +1711,25 @@ public sealed class ModPackageStore
     }
 
     /// <summary>
+    /// Identifies one immutable native release across reinstallations and downgrades.
+    /// </summary>
+    /// <param name="content">The verified installed release.</param>
+    /// <returns>A stable key for its retained directory.</returns>
+    private static string ReleaseKey(InstalledModContent content) =>
+        HashText(
+            string.Concat(
+                new[]
+                {
+                    content.IsPack.ToString(),
+                    content.ID,
+                    content.Version,
+                    content.BasePackID,
+                    content.BasePackVersion,
+                }.Select(value => $"{value?.Length ?? 0}:{value}")
+            )
+        );
+
+    /// <summary>
     /// Retains enough filesystem intent to recover an interrupted installation.
     /// </summary>
     [Serializable]
@@ -1459,6 +1750,7 @@ public sealed class ModPackageStore
         public string Folder;
         public string Backup;
         public bool HadPrevious;
+        public string RetainedRelease;
     }
 
     /// <summary>
@@ -1479,6 +1771,34 @@ public sealed class ModPackageStore
     {
         public string Revision = string.Empty;
         public InstalledModPackage[] Packages = Array.Empty<InstalledModPackage>();
+    }
+
+    /// <summary>
+    /// Identifies the existing installation that must be removed before a package can be installed.
+    /// </summary>
+    public sealed class InstallationConflict : InvalidOperationException
+    {
+        internal InstalledModPackage Existing { get; }
+        internal bool InPacksDirectory { get; }
+        public string Name => Existing.Name;
+        public string Version => Existing.Version;
+
+        /// <summary>
+        /// Records the exact installation that blocked the operation.
+        /// </summary>
+        /// <param name="existing">The existing package or native copy.</param>
+        /// <param name="message">The reason the installation stopped.</param>
+        /// <param name="inPacksDirectory">Whether the copy is installed directly in Packs.</param>
+        internal InstallationConflict(
+            InstalledModPackage existing,
+            string message,
+            bool inPacksDirectory = false
+        )
+            : base(message)
+        {
+            Existing = existing;
+            InPacksDirectory = inPacksDirectory;
+        }
     }
 
     /// <summary>

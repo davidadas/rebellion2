@@ -25,7 +25,10 @@ public sealed class ContentPackEditorRecord
         ?? Element.Element("ID")?.Value
         ?? Element.Attribute("ID")?.Value
         ?? Element.Name.LocalName;
-    public string Kind => Element.Name.LocalName;
+    public string Kind =>
+        Element.Name.LocalName == ContentPackageManifest.RootName
+            ? "ContentPack"
+            : Element.Name.LocalName;
     public string Key =>
         Catalog.Document.Address
         + "#"

@@ -28,6 +28,9 @@ public sealed class OptionsModRow
     public bool Loaded { get; }
     public string ErrorMessage { get; }
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
+    public bool CanToggle { get; }
+    public int LoadOrder { get; }
+    public string Details { get; }
 
     /// <summary>
     /// Creates a loaded-mod row.
@@ -38,21 +41,30 @@ public sealed class OptionsModRow
     /// <param name="enabled">Whether the player wants the mod enabled after restarting.</param>
     /// <param name="loaded">Whether the mod is loaded in the current process.</param>
     /// <param name="errorMessage">The reason the mod could not be loaded, if any.</param>
+    /// <param name="loadOrder">The one-based position in the pending load order.</param>
+    /// <param name="details">Overrides from other enabled mods.</param>
+    /// <param name="canToggleWithoutVersion">Whether the row manages an ambiguous installed ID.</param>
     public OptionsModRow(
         string id,
         string version,
         string displayName,
         bool enabled = true,
         bool loaded = true,
-        string errorMessage = ""
+        string errorMessage = "",
+        int loadOrder = 0,
+        string details = "",
+        bool canToggleWithoutVersion = false
     )
     {
         ID = id ?? string.Empty;
         Version = version ?? string.Empty;
+        CanToggle = canToggleWithoutVersion || Version.Length != 0;
         DisplayName = displayName ?? string.Empty;
         Enabled = enabled;
         Loaded = loaded;
         ErrorMessage = errorMessage ?? string.Empty;
+        LoadOrder = loadOrder;
+        Details = details ?? string.Empty;
     }
 }
 

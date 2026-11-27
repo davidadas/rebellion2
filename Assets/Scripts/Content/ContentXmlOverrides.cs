@@ -57,6 +57,31 @@ public static class ContentXmlOverrides
         text != null && (bool?)XElement.Parse(text).Attribute(_inherit) == true;
 
     /// <summary>
+    /// Finds settings addressed by two sparse overlays to the same document.
+    /// </summary>
+    /// <param name="earlier">The lower-priority authored overlay.</param>
+    /// <param name="later">The higher-priority authored overlay.</param>
+    /// <returns>The affected setting paths and higher-priority scalar values, when present.</returns>
+    internal static IEnumerable<(string Path, string Value)> GetOverlappingSettings(
+        string earlier,
+        string later
+    )
+    {
+        string[] lower = GetEdits(XElement.Parse(earlier), string.Empty)
+            .Select(edit => edit.Path)
+            .ToArray();
+        foreach (var edit in GetEdits(XElement.Parse(later), string.Empty))
+            if (
+                lower.Any(path =>
+                    path == edit.Path
+                    || path.StartsWith(edit.Path + "/", StringComparison.Ordinal)
+                    || edit.Path.StartsWith(path + "/", StringComparison.Ordinal)
+                )
+            )
+                yield return edit;
+    }
+
+    /// <summary>
     /// Resolves either legacy sparse rules or explicit setting directives over their defaults.
     /// </summary>
     /// <param name="defaults">The applicable resolved rules defaults.</param>
@@ -544,7 +569,10 @@ public static class ContentXmlOverrides
     /// <returns>The identity member name, or null for an ordered item.</returns>
     private static XName IdentityName(XElement element)
     {
-        string name = IdentityMemberName(element.Name.LocalName);
+        string name =
+            element.Name == "Preload" && element.Parent?.Parent?.Name == "ContentPack"
+                ? "ID"
+                : IdentityMemberName(element.Name.LocalName);
         return name != null && (element.Element(name) != null || element.Attribute(name) != null)
             ? name
             : null;
@@ -580,10 +608,58 @@ public static class ContentXmlOverrides
     /// <returns>The identity, or null for an ordered item.</returns>
     private static string Identity(XElement element)
     {
+        if (IsPackRegistration(element))
+            return element.Value;
         XName name = IdentityName(element);
         return name == null
             ? null
             : (string)element.Element(name) ?? (string)element.Attribute(name);
+    }
+
+    /// <summary>
+    /// Lists the paths to explicitly authored values, removals, and whole collections.
+    /// </summary>
+    /// <param name="element">The authored branch to inspect.</param>
+    /// <param name="parent">The path of its containing branch.</param>
+    /// <returns>The setting paths and scalar values under the branch.</returns>
+    private static IEnumerable<(string Path, string Value)> GetEdits(
+        XElement element,
+        string parent
+    )
+    {
+        string key = Identity(element);
+        string path = parent + "/" + element.Name.LocalName;
+        if (key != null)
+            path += "[" + Uri.EscapeDataString(key) + "]";
+        if (
+            element.Parent != null
+            && (
+                (bool?)element.Attribute(_remove) == true
+                || !element.HasElements
+                || IsAtomicCollection(element)
+            )
+        )
+        {
+            string value =
+                !element.HasElements && (bool?)element.Attribute(_remove) != true
+                    ? element.Value
+                    : null;
+            yield return (path, value);
+            yield break;
+        }
+        foreach (
+            XAttribute attribute in element
+                .Attributes()
+                .Where(attribute =>
+                    IsValueAttribute(attribute) && attribute.Name != IdentityName(element)
+                )
+        )
+            yield return (path + "/@" + attribute.Name.LocalName, attribute.Value);
+        foreach (XName removed in RemovedAttributes(element))
+            yield return (path + "/@" + removed.LocalName, null);
+        foreach (XElement child in element.Elements().Where(child => !IsIdentity(child)))
+        foreach (var edit in GetEdits(child, path))
+            yield return edit;
     }
 
     /// <summary>
@@ -593,6 +669,8 @@ public static class ContentXmlOverrides
     /// <returns>The record selector.</returns>
     private static XElement IdentityElement(XElement element)
     {
+        if (IsPackRegistration(element))
+            return new XElement(element.Name, element.Value);
         XElement result = new XElement(element.Name);
         XName key = IdentityName(element);
         if (key != null)
@@ -602,6 +680,16 @@ public static class ContentXmlOverrides
                 result.SetAttributeValue(key, (string)element.Attribute(key));
         return result;
     }
+
+    /// <summary>
+    /// Recognizes pack manifest entries whose paths identify their registration.
+    /// </summary>
+    /// <param name="element">The list item to inspect.</param>
+    /// <returns>True for faction and scenario registrations.</returns>
+    private static bool IsPackRegistration(XElement element) =>
+        element.Name == "Path"
+        && element.Parent?.Parent?.Name == "ContentPack"
+        && element.Parent.Name.LocalName is "FactionPaths" or "ScenarioPaths" or "ThemePaths";
 
     /// <summary>
     /// Checks whether a member is its containing record's identity selector.
