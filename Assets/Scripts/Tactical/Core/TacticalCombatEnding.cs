@@ -1,3 +1,5 @@
+using Rebellion.Game.Combat;
+
 namespace Rebellion.Tactical
 {
     /// <summary>
@@ -82,6 +84,36 @@ namespace Rebellion.Tactical
             _empireOutlastedAlliance = allianceInactive && !empireInactive;
 
             return true;
+        }
+
+        /// <summary>
+        /// Captures the admitted terminal interval, if the battle is ending.
+        /// </summary>
+        /// <returns>The ending state, or null while the forces are still fighting.</returns>
+        internal ActiveBattle.EndingState CaptureState() =>
+            _assessmentCaptured
+                ? new()
+                {
+                    AllianceWithdrew = _allianceWithdrew,
+                    EmpireWithdrew = _empireWithdrew,
+                    AllianceOutlastedEmpire = _allianceOutlastedEmpire,
+                    EmpireOutlastedAlliance = _empireOutlastedAlliance,
+                    RemainingMilliseconds = RemainingMilliseconds,
+                }
+                : null;
+
+        /// <summary>
+        /// Continues the terminal interval without assessing the forces again.
+        /// </summary>
+        /// <param name="state">The saved terminal interval.</param>
+        internal void RestoreState(ActiveBattle.EndingState state)
+        {
+            _assessmentCaptured = true;
+            _allianceWithdrew = state.AllianceWithdrew;
+            _empireWithdrew = state.EmpireWithdrew;
+            _allianceOutlastedEmpire = state.AllianceOutlastedEmpire;
+            _empireOutlastedAlliance = state.EmpireOutlastedAlliance;
+            RemainingMilliseconds = state.RemainingMilliseconds;
         }
 
         /// <summary>

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -40,6 +41,7 @@ namespace Rebellion.Tactical
         private uint _activeIDSeed = 1;
         private uint _pendingIDSeed = 1;
         private bool _disposed;
+        private ActiveBattle.NotificationQueue _loadedQueue;
 
         public bool Enabled { get; set; } = true;
 
@@ -103,6 +105,7 @@ namespace Rebellion.Tactical
         public uint Enqueue(int messageID, bool loop = false)
         {
             ThrowIfDisposed();
+            ResumePlayback();
             uint timestamp = _clock();
             uint queueID = _nextQueueID = unchecked(_nextQueueID + 1);
             if (!Enabled || messageID < 0 || messageID >= _messageCount)
@@ -139,6 +142,7 @@ namespace Rebellion.Tactical
         public void Update()
         {
             ThrowIfDisposed();
+            ResumePlayback();
             LinkedListNode<Notification> node = _active.First;
             while (node != null)
             {
@@ -180,6 +184,115 @@ namespace Rebellion.Tactical
                 node = next;
             }
         }
+
+        /// <summary>
+        /// Captures notification queues with timestamps relative to their presentation clock.
+        /// </summary>
+        /// <returns>The notification state to rebind when the loaded view is ready.</returns>
+        internal ActiveBattle.NotificationQueue CaptureState()
+        {
+            uint now = _clock();
+            ActiveBattle.NotificationQueue state = new()
+            {
+                Enabled = Enabled,
+                NextID = _nextQueueID,
+                ActiveIDSeed = _activeIDSeed,
+                PendingIDSeed = _pendingIDSeed,
+            };
+            foreach (Notification notification in _active)
+                state.Active.Add(SaveNotification(notification, now));
+            foreach (Notification notification in _pending)
+                state.Pending.Add(SaveNotification(notification, now));
+            return state;
+        }
+
+        /// <summary>
+        /// Defers playback rebinding until the first notification operation of the loaded view.
+        /// </summary>
+        /// <param name="state">The saved notification queues.</param>
+        internal void RestoreState(ActiveBattle.NotificationQueue state)
+        {
+            _loadedQueue = state;
+            Enabled = state.Enabled;
+            _nextQueueID = state.NextID;
+            _activeIDSeed = state.ActiveIDSeed;
+            _pendingIDSeed = state.PendingIDSeed;
+        }
+
+        /// <summary>
+        /// Copies one queue entry without selecting an audio variant.
+        /// </summary>
+        /// <param name="notification">The current notification.</param>
+        /// <param name="now">The current clock sample.</param>
+        /// <returns>The cue and any active playback position.</returns>
+        private static ActiveBattle.NotificationState SaveNotification(
+            Notification notification,
+            uint now
+        ) =>
+            new()
+            {
+                QueueID = notification.QueueID,
+                MessageID = notification.Definition.MessageID,
+                AgeMilliseconds = unchecked(now - notification.Created),
+                Loop = notification.Loop,
+                VariantIndex = notification.VariantIndex,
+                PlaybackSample =
+                    notification.Playback?.IsPlaying == true
+                        ? (
+                            notification.Playback as ITacticalCombatNotificationPosition
+                        )?.PositionSamples
+                            ?? 0
+                        : null,
+            };
+
+        /// <summary>
+        /// Restores existing cue handles without advancing the shared random stream.
+        /// </summary>
+        private void ResumePlayback()
+        {
+            if (_loadedQueue == null)
+                return;
+
+            ActiveBattle.NotificationQueue state = _loadedQueue;
+            _loadedQueue = null;
+            uint now = _clock();
+            foreach (ActiveBattle.NotificationState active in state.Active)
+            {
+                Notification notification = RestoreNotification(active, now);
+                if (active.PlaybackSample is int sample)
+                {
+                    TacticalCombatSoundClip clip = notification.Definition.Variants[
+                        active.VariantIndex
+                    ];
+                    notification.Started = true;
+                    notification.Playback = string.IsNullOrEmpty(clip.Path)
+                        ? null
+                        : _play(clip, notification.Loop);
+                    if (notification.Playback is ITacticalCombatNotificationPosition position)
+                        position.PositionSamples = sample;
+                }
+                _active.AddLast(notification);
+            }
+            foreach (ActiveBattle.NotificationState pending in state.Pending)
+                _pending.AddLast(RestoreNotification(pending, now));
+        }
+
+        /// <summary>
+        /// Resolves a stored bank and aligns its age with the loaded view's clock.
+        /// </summary>
+        /// <param name="state">The saved notification.</param>
+        /// <param name="now">The loaded presentation clock sample.</param>
+        /// <returns>The restored queue entry.</returns>
+        private Notification RestoreNotification(ActiveBattle.NotificationState state, uint now) =>
+            new(
+                state.QueueID,
+                _definitions[state.MessageID],
+                unchecked(now - state.AgeMilliseconds),
+                state.Loop
+            )
+            {
+                VariantIndex = state.VariantIndex,
+            };
 
         /// <summary>
         /// Reports whether an owned active record remains started after its latest playback refresh.
@@ -253,6 +366,7 @@ namespace Rebellion.Tactical
             if (record.Started)
                 return false;
             record.Started = true;
+            record.VariantIndex = index;
             record.Playback = string.IsNullOrEmpty(clip.Path) ? null : _play(clip, record.Loop);
             return true;
         }
@@ -372,6 +486,7 @@ namespace Rebellion.Tactical
             public uint Created { get; }
             public bool Loop { get; }
             public bool Started { get; set; }
+            public int VariantIndex { get; set; }
             public ITacticalCombatNotificationPlayback Playback { get; set; }
 
             /// <summary>

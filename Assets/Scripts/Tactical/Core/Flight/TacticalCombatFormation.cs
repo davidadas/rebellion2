@@ -7,16 +7,6 @@ using Rebellion.Tactical.Synchronization;
 namespace Rebellion.Tactical
 {
     /// <summary>
-    /// Identifies a group's spatial formation.
-    /// </summary>
-    public enum TacticalCombatFormationKind
-    {
-        Surround,
-        Line,
-        Direct,
-    }
-
-    /// <summary>
     /// Owns a group's moving reference point, member offsets, and collision recovery vectors.
     /// </summary>
     public sealed class TacticalCombatFormation
@@ -63,6 +53,80 @@ namespace Rebellion.Tactical
             StableUpdates = state.StableUpdates;
             _memberOrder.Clear();
             _memberOrder.AddRange(members);
+        }
+
+        /// <summary>
+        /// Captures the marker and its assigned offsets at a save boundary.
+        /// </summary>
+        /// <returns>The existing layout and movement state.</returns>
+        internal ActiveBattle.FormationState CaptureState() =>
+            new()
+            {
+                Kind = Kind,
+                Position = Position,
+                PreviousPosition = _previousPosition,
+                Heading = Heading,
+                Velocity = Velocity,
+                LastMovement = _lastMovement,
+                SpacingFloor = _spacingFloor,
+                SurroundScale = _surroundScale,
+                MinimumMovementSpeed = _minimumMovementSpeed,
+                TurnRate = TurnRate,
+                CurrentCount = _currentCount,
+                MaximumCount = _maximumCount,
+                StableUpdates = StableUpdates,
+                Members = _memberOrder.ConvertAll(unit =>
+                {
+                    Member member = _members[unit];
+                    return new ActiveBattle.FormationState.FormationMember
+                    {
+                        UnitID = unit.InstanceID,
+                        Offset = member.Offset,
+                        Recovery = member.Recovery,
+                        HasRecovery = member.HasRecovery,
+                    };
+                }),
+            };
+
+        /// <summary>
+        /// Restores the assigned layout without rebasing or recalculating member offsets.
+        /// </summary>
+        /// <param name="state">The stored marker and formation members.</param>
+        /// <param name="getUnit">Resolves identities into the loaded battle roster.</param>
+        internal void RestoreState(
+            ActiveBattle.FormationState state,
+            Func<string, CombatUnit> getUnit
+        )
+        {
+            Kind = state.Kind;
+            Position = state.Position;
+            _previousPosition = state.PreviousPosition;
+            Heading = state.Heading;
+            Velocity = state.Velocity;
+            _lastMovement = state.LastMovement;
+            _spacingFloor = state.SpacingFloor;
+            _surroundScale = state.SurroundScale;
+            _minimumMovementSpeed = state.MinimumMovementSpeed;
+            TurnRate = state.TurnRate;
+            _currentCount = state.CurrentCount;
+            _maximumCount = state.MaximumCount;
+            StableUpdates = state.StableUpdates;
+            _members.Clear();
+            _memberOrder.Clear();
+            foreach (ActiveBattle.FormationState.FormationMember member in state.Members)
+            {
+                CombatUnit unit = getUnit(member.UnitID);
+                _memberOrder.Add(unit);
+                _members.Add(
+                    unit,
+                    new Member
+                    {
+                        Offset = member.Offset,
+                        Recovery = member.Recovery,
+                        HasRecovery = member.HasRecovery,
+                    }
+                );
+            }
         }
 
         /// <summary>

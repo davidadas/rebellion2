@@ -82,7 +82,7 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatSide side = CreateSide(CreateHost(), 0, 0, route: 1001);
             side.BeginWithdrawal();
             Assert.IsFalse(side.AdvanceWithdrawal(1000));
-            Assert.AreEqual(TacticalCombatSide.DeparturePhase.Waiting, side.WithdrawalPhase);
+            Assert.AreEqual(CombatWithdrawalPhase.Waiting, side.WithdrawalPhase);
             Assert.AreEqual(1, side.WithdrawalMilliseconds);
         }
 
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Tactical
             side.BeginWithdrawal();
             Assert.IsTrue(side.AdvanceWithdrawal(1000));
             Assert.IsFalse(side.AdvanceWithdrawal(1000));
-            Assert.AreEqual(TacticalCombatSide.DeparturePhase.Departing, side.WithdrawalPhase);
+            Assert.AreEqual(CombatWithdrawalPhase.Departing, side.WithdrawalPhase);
         }
 
         /// <summary>

@@ -901,6 +901,7 @@ namespace Rebellion.Util.Serialization
             {
                 return ReadScalar(objType, reader);
             }
+            objType = Nullable.GetUnderlyingType(objType) ?? objType;
             reader.MoveToContent();
             if (objType == typeof(Point))
             {

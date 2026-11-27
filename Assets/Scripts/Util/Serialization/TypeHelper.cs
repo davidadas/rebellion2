@@ -242,6 +242,10 @@ namespace Rebellion.Util.Serialization
                 return ((TimeSpan)value).ToString("c");
             if (type == typeof(Guid))
                 return ((Guid)value).ToString("D");
+            if (value is float single)
+                return single.ToString("R", CultureInfo.InvariantCulture);
+            if (value is double real)
+                return real.ToString("R", CultureInfo.InvariantCulture);
             if (IsScalar(type) && value is IFormattable formattable)
                 return formattable.ToString(null, CultureInfo.InvariantCulture);
 

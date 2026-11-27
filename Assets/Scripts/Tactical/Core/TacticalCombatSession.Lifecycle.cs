@@ -25,7 +25,7 @@ namespace Rebellion.Tactical
         /// <param name="entry">The view sequence that releases battle admission.</param>
         public void BeginArrival(ITacticalCombatEntry entry)
         {
-            if (_arrival != null || SystemTime != 3)
+            if (_arrival != null || WasRestored || SystemTime != 3)
                 throw new InvalidOperationException(
                     "Arrival can only begin once before combat starts."
                 );
@@ -48,7 +48,7 @@ namespace Rebellion.Tactical
                 throw new InvalidOperationException(
                     "The battle clock must be bound before advancement."
                 );
-            _scheduler = new TacticalCombatScheduler(clock, new SchedulerSteps(this));
+            _scheduler = new TacticalCombatScheduler(clock, new SchedulerSteps(this), _clockState);
         }
 
         /// <summary>
@@ -120,7 +120,8 @@ namespace Rebellion.Tactical
                 _usesFrameClock = true;
                 _scheduler = new TacticalCombatScheduler(
                     () => unchecked((uint)(ulong)_elapsedFrameClock),
-                    new SchedulerSteps(this)
+                    new SchedulerSteps(this),
+                    _clockState
                 );
             }
             _elapsedFrameClock += elapsedMilliseconds;

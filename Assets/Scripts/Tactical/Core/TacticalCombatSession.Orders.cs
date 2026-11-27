@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Tactical.Synchronization;
+using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
 {
@@ -390,24 +391,35 @@ namespace Rebellion.Tactical
             if (order == TacticalCombatOrder.AttackBattleStation)
             {
                 DetachAttackRun(group);
-                TacticalCombatAttackRun run = new(
-                    group,
-                    _random,
-                    () => GetSide(group.Side).GetCommandBudget(true),
-                    GetSide(PlayerSide).FactionIndex
-                );
-                run.StateChangeRequested += RequestAttackRunState;
-                run.MovieRequested += RequestAttackRunMovie;
-                run.OrderRequested += SetOrder;
-                run.UnitDestroyed += Destroy;
-                run.UnitParticipationChanged += _spatial.Update;
-                run.NotificationRequested += RequestAttackRunNotification;
-                if (_synchronizationAuthority)
-                    run.ConfigureSynchronizedNotifications(RouteSynchronizedAttackNotification);
-                group.AttackRun = run;
+                TacticalCombatAttackRun run = CreateAttackRun(group);
                 ActiveAttackRun = run;
                 AttackRunChanged?.Invoke(run);
             }
+        }
+
+        /// <summary>
+        /// Connects a new or resumed attack run to the gameplay owners of its mutations.
+        /// </summary>
+        /// <param name="group">The fighter group performing the attack.</param>
+        /// <returns>The group-owned attack run.</returns>
+        private TacticalCombatAttackRun CreateAttackRun(TacticalCombatGroup group)
+        {
+            TacticalCombatAttackRun run = new(
+                group,
+                _random,
+                () => GetSide(group.Side).GetCommandBudget(true),
+                GetSide(PlayerSide).FactionIndex
+            );
+            run.StateChangeRequested += RequestAttackRunState;
+            run.MovieRequested += RequestAttackRunMovie;
+            run.OrderRequested += SetOrder;
+            run.UnitDestroyed += Destroy;
+            run.UnitParticipationChanged += _spatial.Update;
+            run.NotificationRequested += RequestAttackRunNotification;
+            if (_synchronizationAuthority)
+                run.ConfigureSynchronizedNotifications(RouteSynchronizedAttackNotification);
+            group.AttackRun = run;
+            return run;
         }
 
         /// <summary>

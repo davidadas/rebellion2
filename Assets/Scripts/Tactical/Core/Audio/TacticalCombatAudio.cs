@@ -264,4 +264,12 @@ namespace Rebellion.Tactical
         /// </summary>
         void Stop();
     }
+
+    /// <summary>
+    /// Restores the position of a previously selected audio variant.
+    /// </summary>
+    internal interface ITacticalCombatNotificationPosition
+    {
+        int PositionSamples { get; set; }
+    }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
 {

@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.AI;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay.GameEvents;
@@ -100,6 +101,9 @@ namespace Rebellion.Gameplay
             List<GameResult>
         > _processResults;
         private readonly Action<List<GameResult>> _processMessages;
+        private readonly GameResultPipeline _pipeline;
+        private IReadOnlyList<ActiveBattle.DeferredMessage> _restoredMessages;
+        private MessageObserver _messageObserver;
         private readonly List<GameResult> _deferredMessageResults = new();
         private AIDirector _aiDirector;
         private ITickProcessor _captive;
@@ -129,6 +133,10 @@ namespace Rebellion.Gameplay
 
         public bool IsSettled => _tickState == TickExecutionState.Idle;
         public bool IsBusy => _tickInProgress || !IsSettled;
+        internal bool CanCaptureTacticalCombat =>
+            !_tickInProgress
+            && _tickState == TickExecutionState.AwaitingCombatDecision
+            && _spaceCombatCommands.CanCaptureTacticalCombat;
         internal Func<bool> CanStartTick { get; set; }
 
         /// <summary>
@@ -138,7 +146,7 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Gets whether a player operation can run outside an active incremental simulation step.
-        /// A pending combat decision accepts its resolving operation while remaining unsaveable.
+        /// A pending combat decision accepts the operation that resolves it.
         /// </summary>
         public bool CanAcceptPlayerActions => !_tickInProgress;
 
@@ -151,6 +159,16 @@ namespace Rebellion.Gameplay
 
         public event Action CombatDecisionRequired;
         internal event Action CombatResumed;
+
+        /// <summary>
+        /// Creates the campaign tick scheduler over the session's result and message delivery owners.
+        /// </summary>
+        /// <param name="pipeline">The session's existing result pipeline.</param>
+        internal GameTickProcessor(GameResultPipeline pipeline)
+            : this(pipeline.ProcessResults, pipeline.ProcessMessageReactions)
+        {
+            _pipeline = pipeline;
+        }
 
         /// <summary>
         /// Creates tick scheduling with the existing result-release boundaries.
@@ -192,6 +210,7 @@ namespace Rebellion.Gameplay
             _movementCommands = services.GetService<MovementCommands>();
             _fogOfWarObserver = services.GetService<FogOfWarObserver>();
             _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
+            _messageObserver = services.GetService<MessageObserver>();
             _blockadeTransitionResolver = new BlockadeTransitionResolver(_game);
             _messages = new MessageTickProcessor();
             _advisorAutomation = new AdvisorAutomationTickProcessor(
@@ -226,6 +245,7 @@ namespace Rebellion.Gameplay
         internal void Reset()
         {
             _deferredMessageResults.Clear();
+            _restoredMessages = null;
             _tickState = TickExecutionState.Idle;
         }
 
@@ -608,7 +628,14 @@ namespace Rebellion.Gameplay
                     return completedCombat;
                 }
 
-                _processMessages(TakeDeferredMessageResults());
+                List<GameResult> messageResults = TakeDeferredMessageResults();
+                if (_restoredMessages?.Count > 0)
+                {
+                    _pipeline.ProcessMessageReactions(messageResults, _restoredMessages);
+                    _restoredMessages = null;
+                }
+                else
+                    _processMessages(messageResults);
                 IEnumerator remainingTick = ProcessRemainingTickPhases().GetEnumerator();
                 try
                 {
@@ -635,6 +662,33 @@ namespace Rebellion.Gameplay
         /// advancing the game tick.
         /// </summary>
         internal void ReconcileLoadedState()
+        {
+            if (_spaceCombatCommands.RestoreSavedTacticalCombat())
+            {
+                _restoredMessages = _game.ActiveBattle.DeferredMessages;
+                BeginPendingCombatDecision();
+                return;
+            }
+
+            ReconcilePendingEncounters();
+        }
+
+        /// <summary>
+        /// Captures the active battle and pending campaign message deliveries before serialization.
+        /// </summary>
+        internal void CaptureTacticalCombat()
+        {
+            _spaceCombatCommands.CaptureTacticalCombat();
+            List<ActiveBattle.DeferredMessage> messages =
+                _restoredMessages == null ? new() : new(_restoredMessages);
+            messages.AddRange(_messageObserver.CaptureDeferredMessages(_deferredMessageResults));
+            _game.ActiveBattle.DeferredMessages = messages;
+        }
+
+        /// <summary>
+        /// Reconciles fleet encounters in a loaded strategy save.
+        /// </summary>
+        private void ReconcilePendingEncounters()
         {
             BlockadeTransitions blockadeTransitions = new();
             List<GameResult> combatResults = ProcessSpaceCombatEncounters(blockadeTransitions);

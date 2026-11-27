@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
@@ -16,6 +17,7 @@ using Rebellion.Gameplay;
 using Rebellion.Generation;
 using Rebellion.Multiplayer;
 using Rebellion.PlayerRequests;
+using Rebellion.Tactical;
 using LogAssert = global::UnityEngine.TestTools.LogAssert;
 using LogType = global::UnityEngine.LogType;
 using Regex = global::System.Text.RegularExpressions.Regex;
@@ -1019,6 +1021,181 @@ namespace Rebellion.Tests.Managers
             Assert.IsFalse(saved);
             Assert.IsFalse(File.Exists(_saveGameManager.GetSaveFilePath("pending_combat")));
             Assert.AreEqual(40, game.CurrentTick);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public async Task SaveGameAsync_TacticalEncounter_ResumesBattleAndSuspendedTickAsync(
+            bool replaceSession
+        )
+        {
+            EnableTacticalContent();
+            GameRoot game = CreateContestedGame();
+            Planet planet = game.GetSceneNodeByInstanceID<Planet>("PLANET");
+            Fleet arriving = game.GetSceneNodeByInstanceID<Fleet>("ALLIANCE_FLEET");
+            arriving.Movement = TestMovement.Create(transitTicks: 1);
+            game.Summary.PlayerFactionID = arriving.OwnerInstanceID;
+            foreach (CapitalShip ship in game.GetSceneNodesByType<CapitalShip>())
+            {
+                ship.TypeID =
+                    ship.OwnerInstanceID == arriving.OwnerInstanceID ? "ALCS008" : "CSEM006";
+                ship.Hyperdrive = 1;
+                ship.SublightSpeed = 50;
+                ship.MaxHullStrength = ship.CurrentHullStrength = 1000;
+                ship.WeaponRecharge = 1000;
+                if (ship.OwnerInstanceID == arriving.OwnerInstanceID)
+                    ship.SetPrimaryWeapon(
+                        PrimaryWeaponType.Turbolaser,
+                        5000,
+                        5000,
+                        5000,
+                        5000,
+                        1000
+                    );
+            }
+
+            GameSession session = _sessionManager.StartGame(game);
+            session.Tick.ProcessTick();
+            SpaceCombatCommands commands = session.GetService<SpaceCombatCommands>();
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.IsNull(arriving.Movement);
+            Assert.IsFalse(_sessionManager.CanSave);
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            CombatUnit attacker = battle.GetUnit("ALLIANCE_FLEET_SHIP");
+            CombatUnit target = battle.GetUnit("EMPIRE_FLEET_SHIP");
+            battle.SetTarget(battle.GetGroup(attacker), target);
+            battle.Advance(50);
+            battle.Advance(50);
+            battle.IsPaused = true;
+
+            Assert.IsTrue(_sessionManager.CanSave);
+            Assert.IsFalse(session.CanCaptureSettledState);
+            Assert.IsTrue(await _sessionManager.SaveGameAsync("in_combat", "In Combat"));
+            int tick = game.CurrentTick;
+            int battleTime = battle.SystemTime;
+            string location = planet.InstanceID;
+            Assert.IsNotEmpty(game.ActiveBattle.DeferredMessages);
+            Assert.AreEqual(
+                0,
+                game.GetFactionByOwnerInstanceID(arriving.OwnerInstanceID)
+                    .Messages[MessageType.Fleet]
+                    .Count(message => message.ResultType == MessageResultType.FleetArrived)
+            );
+
+            SpaceCombatResult uninterrupted = FinishTacticalBattle(session, battle);
+            if (replaceSession)
+            {
+                _sessionManager.EndGame();
+                session = _sessionManager.StartLoadedGame(
+                    _saveGameManager.LoadGameData("in_combat")
+                );
+            }
+            else
+            {
+                Assert.IsTrue(await _sessionManager.LoadGameAsync("in_combat"));
+                Assert.AreSame(session, _sessionManager.GetActiveGameSession());
+            }
+
+            int completedTicks = 0;
+            session.Tick.TickCompleted += () => completedTicks++;
+            GameRoot restored = session.Game;
+            battle = session.GetService<SpaceCombatCommands>().ActiveTacticalCombat;
+            Assert.IsNotNull(battle);
+            Assert.IsTrue(battle.WasRestored);
+            Assert.IsTrue(battle.IsPaused);
+            Assert.IsFalse(session.Tick.IsSettled);
+            Assert.AreEqual(battleTime, battle.SystemTime);
+            Assert.AreEqual(location, restored.ActiveBattle.PlanetInstanceID);
+            Assert.AreEqual(tick, restored.CurrentTick);
+
+            SpaceCombatResult resumed = FinishTacticalBattle(session, battle);
+            Assert.AreEqual(uninterrupted.Winner, resumed.Winner);
+            Assert.AreEqual(uninterrupted.IterationsCompleted, resumed.IterationsCompleted);
+            CollectionAssert.AreEqual(
+                uninterrupted.ShipDamage.Select(damage =>
+                    (damage.Ship.InstanceID, damage.HullAfter)
+                ),
+                resumed.ShipDamage.Select(damage => (damage.Ship.InstanceID, damage.HullAfter))
+            );
+            Assert.IsNull(restored.ActiveBattle);
+            Assert.IsTrue(session.Tick.IsSettled);
+            Assert.AreEqual(tick, restored.CurrentTick);
+            Assert.AreEqual(1, completedTicks);
+            Faction recipient = restored.GetFactionByOwnerInstanceID(arriving.OwnerInstanceID);
+            Assert.AreEqual(
+                1,
+                recipient
+                    .Messages[MessageType.Fleet]
+                    .Count(message => message.ResultType == MessageResultType.FleetArrived)
+            );
+        }
+
+        /// <summary>
+        /// Advances the isolated battle and applies its result through the normal campaign tick.
+        /// </summary>
+        /// <param name="session">The session awaiting its battle result.</param>
+        /// <param name="battle">The current tactical encounter.</param>
+        /// <returns>The committed result.</returns>
+        private static SpaceCombatResult FinishTacticalBattle(
+            GameSession session,
+            TacticalCombatSession battle
+        )
+        {
+            battle.IsPaused = false;
+            for (int frame = 0; frame < 3600 && !battle.IsComplete; frame++)
+                battle.Advance(50);
+            Assert.IsTrue(battle.IsComplete);
+            return session.Tick.CompleteTacticalCombat(battle);
+        }
+
+        /// <summary>
+        /// Installs the test pack's synthetic ships, combat rules, and one deferred arrival message.
+        /// </summary>
+        private void EnableTacticalContent()
+        {
+            ContentPack source = _contentPack;
+            GameDataCatalog data = source.GameData;
+            GameConfig rules = TacticalTestData.ConfigureCampaignRules(
+                data.GameConfig.CreateCopy()
+            );
+            GameDataCatalog tactical = TacticalTestData.CreateCatalog(rules);
+            _contentPack = new ContentPack(
+                source.ContentRootPath,
+                source.PackRootPath,
+                source.FileResolver,
+                source.Definition,
+                source.Scenario,
+                source.Factions,
+                new GameDataCatalog(
+                    rules,
+                    data.GenerationConfig,
+                    data.Factions,
+                    data.PlanetSectors,
+                    data.Buildings,
+                    tactical.CapitalShips,
+                    tactical.Starfighters,
+                    data.Regiments,
+                    data.SpecialForces,
+                    data.Officers,
+                    data.GameEvents,
+                    data.MessageDefinitions.Append(
+                            new MessageDefinition
+                            {
+                                ResultType = MessageResultType.FleetArrived,
+                                MessageType = MessageType.Fleet,
+                                Subject = "Fleet arrived",
+                                Body = "{fleet} reached {system}.",
+                            }
+                        )
+                        .ToArray(),
+                    data.EncyclopediaEntries,
+                    data.FactionThemes,
+                    data.OfficerTraits,
+                    tactical.TacticalCombat
+                ),
+                new Dictionary<string, ContentPreloadManifest>()
+            );
+            _sessionManager = new GameSessionManager(_contentPack, _saveGameManager);
         }
 
         [Test]

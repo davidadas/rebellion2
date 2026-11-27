@@ -16,6 +16,11 @@ namespace Rebellion.Util.Random
         private uint _state;
 
         /// <summary>
+        /// Gets the current stream state, which can seed the next draw after loading a save.
+        /// </summary>
+        public uint State => _state;
+
+        /// <summary>
         /// Starts a reproducible random stream from a captured seed.
         /// </summary>
         /// <param name="seed">The initial stream state.</param>

@@ -381,10 +381,7 @@ namespace Rebellion.Tactical
                     || !IsSynchronizedSide(state.Side)
                     || !sides.Add(state.Side)
                     || state.HasWithdrawalPhase
-                        && !Enum.IsDefined(
-                            typeof(TacticalCombatSide.DeparturePhase),
-                            state.WithdrawalPhase
-                        )
+                        && !Enum.IsDefined(typeof(CombatWithdrawalPhase), state.WithdrawalPhase)
                 )
                     throw new ArgumentException(
                         "The combat faction projection is invalid.",

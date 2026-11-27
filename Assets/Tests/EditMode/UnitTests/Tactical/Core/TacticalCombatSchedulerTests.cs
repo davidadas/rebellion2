@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 
@@ -60,6 +61,45 @@ namespace Rebellion.Tests.Tactical
             );
             Assert.AreEqual(4, scheduler.Progress);
             Assert.AreEqual(8, scheduler.SystemTime);
+        }
+
+        [TestCase(1000u)]
+        [TestCase(uint.MaxValue - 3500)]
+        public void Advance_ReloadedClock_KeepsDispatchOrderingAcrossProviderEpochs(
+            uint startingClock
+        )
+        {
+            ManualClock uninterruptedClock = new(startingClock);
+            Steps uninterruptedSteps = new();
+            ActiveBattle battle = new() { Clock = new ActiveBattle.ClockState() };
+            TacticalCombatScheduler uninterrupted = CreateRunning(
+                uninterruptedClock,
+                uninterruptedSteps,
+                battle.Clock
+            );
+            uninterruptedClock.Advance(1007);
+            uninterrupted.Advance(1);
+
+            ActiveBattle loaded = SerializationHelper.Deserialize<ActiveBattle>(
+                SerializationHelper.Serialize(battle)
+            );
+            ManualClock newClock = new(638);
+            Steps resumedSteps = new();
+            TacticalCombatScheduler resumed = new(newClock.Read, resumedSteps, loaded.Clock);
+            uninterruptedSteps.Events.Clear();
+            uninterruptedSteps.Movement.Clear();
+
+            foreach (uint elapsed in new uint[] { 0, 50, 500, 900, 0, 25, 1200, 0 })
+            {
+                uninterruptedClock.Advance(elapsed);
+                newClock.Advance(elapsed);
+                Assert.AreEqual(uninterrupted.Advance(elapsed), resumed.Advance(elapsed));
+            }
+
+            Assert.AreEqual(uninterrupted.Progress, resumed.Progress);
+            Assert.AreEqual(uninterrupted.SystemTime, resumed.SystemTime);
+            CollectionAssert.AreEqual(uninterruptedSteps.Events, resumedSteps.Events);
+            CollectionAssert.AreEqual(uninterruptedSteps.Movement, resumedSteps.Movement);
         }
 
         [Test]
@@ -233,10 +273,19 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="clock">The manually controlled millisecond provider.</param>
         /// <param name="steps">The recorded encounter callbacks.</param>
+        /// <param name="state">The battle state when testing serialization.</param>
         /// <returns>The scheduler at the first admitted movement progress interval.</returns>
-        private static TacticalCombatScheduler CreateRunning(ManualClock clock, Steps steps)
+        private static TacticalCombatScheduler CreateRunning(
+            ManualClock clock,
+            Steps steps,
+            ActiveBattle.ClockState state = null
+        )
         {
-            TacticalCombatScheduler scheduler = new(clock.Read, steps);
+            TacticalCombatScheduler scheduler = new(
+                clock.Read,
+                steps,
+                state ?? new ActiveBattle.ClockState()
+            );
             scheduler.Advance(0);
             scheduler.Advance(0);
             for (int tick = 0; tick < 3; tick++)

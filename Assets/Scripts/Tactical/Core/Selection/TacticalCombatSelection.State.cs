@@ -9,6 +9,49 @@ namespace Rebellion.Tactical
     public sealed partial class TacticalCombatSelection
     {
         /// <summary>
+        /// Captures the settled input context while the actual orders remain owned by the battle.
+        /// </summary>
+        /// <returns>The saved selection.</returns>
+        internal ActiveBattle.SelectionState CaptureState() =>
+            new()
+            {
+                Kind = Kind,
+                GroupID = Group?.ID,
+                Category = Category,
+                PrimaryWaypoint = PrimaryWaypoint,
+                PrimaryID = _primary?.InstanceID,
+                InspectedID = _inspected?.InstanceID,
+                NotificationID = _notification,
+                Members = _members.ConvertAll(unit => unit.InstanceID),
+                Targets = _targets.ConvertAll(unit => unit.InstanceID),
+                Waypoints = new(_waypoints),
+                Groups = _groups.ConvertAll(group => group.ID),
+            };
+
+        /// <summary>
+        /// Rebinds the selected context without issuing new input or restarting its notification.
+        /// </summary>
+        /// <param name="state">The saved selection.</param>
+        /// <param name="getGroup">Resolves registered groups in the loaded encounter.</param>
+        internal void RestoreState(
+            ActiveBattle.SelectionState state,
+            Func<int, TacticalCombatGroup> getGroup
+        )
+        {
+            Kind = state.Kind;
+            Group = state.GroupID is int groupID ? getGroup(groupID) : null;
+            Category = state.Category;
+            PrimaryWaypoint = state.PrimaryWaypoint;
+            _primary = _session.GetUnit(state.PrimaryID);
+            _inspected = _session.GetUnit(state.InspectedID);
+            _notification = state.NotificationID;
+            _members.AddRange(state.Members.Select(_session.GetUnit));
+            _targets.AddRange(state.Targets.Select(_session.GetUnit));
+            _waypoints.AddRange(state.Waypoints);
+            _groups.AddRange(state.Groups.Select(getGroup));
+        }
+
+        /// <summary>
         /// Resolves contextual nearest-object selection, preferring capital objects before fighters.
         /// </summary>
         private void SelectNearestTarget()

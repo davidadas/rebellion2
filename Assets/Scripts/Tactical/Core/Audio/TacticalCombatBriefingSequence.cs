@@ -1,4 +1,6 @@
 using System;
+using Rebellion.Game.Combat;
+using BriefingStage = Rebellion.Game.Combat.ActiveBattle.BriefingStage;
 
 namespace Rebellion.Tactical
 {
@@ -145,14 +147,27 @@ namespace Rebellion.Tactical
             _previousAdmission = admission;
         }
 
-        private enum BriefingStage
+        /// <summary>
+        /// Captures the sequence's cursor so loading does not replay the opening briefing.
+        /// </summary>
+        /// <returns>The saved briefing state.</returns>
+        internal ActiveBattle.BriefingState CaptureState() =>
+            new()
+            {
+                Stage = _stage,
+                RemainingMilliseconds = _remainingMilliseconds,
+                PreviousAdmission = _previousAdmission,
+            };
+
+        /// <summary>
+        /// Restores the sequence cursor without requesting an audio cue.
+        /// </summary>
+        /// <param name="state">The saved briefing state.</param>
+        internal void RestoreState(ActiveBattle.BriefingState state)
         {
-            Opening,
-            Station,
-            Protection,
-            FighterBalance,
-            ObservingAdmission,
-            WaitingForAdmission,
+            _stage = state.Stage;
+            _remainingMilliseconds = state.RemainingMilliseconds;
+            _previousAdmission = state.PreviousAdmission;
         }
     }
 }
