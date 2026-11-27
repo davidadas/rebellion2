@@ -5,6 +5,7 @@ using System.IO.Compression;
 using System.Text;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
 
@@ -25,6 +26,15 @@ namespace Rebellion.Multiplayer.Tactical
         private const byte _version = 4;
         private static readonly Encoding _utf8 = new UTF8Encoding(false, true);
         private static readonly uint[] _checksums = CreateChecksumTable();
+
+        // Keep the established projectile codes independent of the equipment enum's values.
+        private static readonly HardpointWeaponType[] _wireWeapons =
+        {
+            HardpointWeaponType.LaserCannon,
+            HardpointWeaponType.IonCannon,
+            HardpointWeaponType.Turbolaser,
+            HardpointWeaponType.TorpedoLauncher,
+        };
 
         /// <summary>
         /// Encodes one independently decodable complete projection.
@@ -84,6 +94,44 @@ namespace Rebellion.Multiplayer.Tactical
             TacticalCombatEvent[] effects = decoder.Array(decoder.Effect, 65536);
             RequireEnd(stream);
             return effects;
+        }
+
+        /// <summary>
+        /// Gets the existing wire code for the projectile, or the unused zero value for other events.
+        /// </summary>
+        /// <param name="effect">The event being encoded.</param>
+        /// <returns>The versioned projectile code.</returns>
+        private static int EncodeWeapon(TacticalCombatEvent effect)
+        {
+            if (
+                effect.Weapon == HardpointWeaponType.None
+                && effect.Kind
+                    is not (TacticalCombatEventKind.Shot or TacticalCombatEventKind.Impact)
+            )
+                return 0;
+
+            int code = Array.IndexOf(_wireWeapons, effect.Weapon);
+            return code >= 0
+                ? code
+                : throw new InvalidDataException("The tactical weapon type is invalid.");
+        }
+
+        /// <summary>
+        /// Restores an equipment weapon type from the existing projectile code.
+        /// </summary>
+        /// <param name="code">The versioned projectile code.</param>
+        /// <param name="kind">The event that supplied the code.</param>
+        /// <returns>The projectile weapon, or None for an unused value.</returns>
+        private static HardpointWeaponType DecodeWeapon(int code, TacticalCombatEventKind kind)
+        {
+            if (
+                code == 0
+                && kind is not (TacticalCombatEventKind.Shot or TacticalCombatEventKind.Impact)
+            )
+                return HardpointWeaponType.None;
+            if ((uint)code >= _wireWeapons.Length)
+                throw new InvalidDataException("The tactical weapon code is invalid.");
+            return _wireWeapons[code];
         }
 
         /// <summary>
@@ -435,7 +483,7 @@ namespace Rebellion.Multiplayer.Tactical
                 _writer.Write((int)value.Kind);
                 ID(value.SourceID);
                 ID(value.TargetID);
-                _writer.Write((int)value.Weapon);
+                _writer.Write(EncodeWeapon(value));
                 _writer.Write((int)value.Impact);
                 _writer.Write(value.Strength);
                 _writer.Write(value.Enabled);
@@ -678,13 +726,15 @@ namespace Rebellion.Multiplayer.Tactical
             /// Reads one effect through its explicit field schema.
             /// </summary>
             /// <returns>The detached effect.</returns>
-            internal TacticalCombatEvent Effect() =>
-                new()
+            internal TacticalCombatEvent Effect()
+            {
+                TacticalCombatEventKind kind = (TacticalCombatEventKind)_reader.ReadInt32();
+                return new TacticalCombatEvent
                 {
-                    Kind = (TacticalCombatEventKind)_reader.ReadInt32(),
+                    Kind = kind,
                     SourceID = ID(),
                     TargetID = ID(),
-                    Weapon = (TacticalWeaponType)_reader.ReadInt32(),
+                    Weapon = DecodeWeapon(_reader.ReadInt32(), kind),
                     Impact = (TacticalCombatImpactKind)_reader.ReadInt32(),
                     Strength = _reader.ReadSingle(),
                     Enabled = Boolean(),
@@ -693,6 +743,7 @@ namespace Rebellion.Multiplayer.Tactical
                     HasRecipient = Boolean(),
                     Recipient = (CombatSide)_reader.ReadInt32(),
                 };
+            }
 
             /// <summary>
             /// Reads one vector through its explicit field schema.

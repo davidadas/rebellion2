@@ -1,4 +1,5 @@
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.UI;
 using UnityEngine;
 using TacticalCombatEffectKind = global::Rebellion.Content.TacticalCombatEffectKind;
@@ -60,7 +61,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="impact">The affected surface or destruction transition.</param>
         public void ShowImpact(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact
         )
         {

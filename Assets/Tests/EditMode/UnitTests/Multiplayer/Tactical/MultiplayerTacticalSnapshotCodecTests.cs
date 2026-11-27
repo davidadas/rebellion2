@@ -5,6 +5,7 @@ using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Multiplayer.Tactical;
@@ -103,6 +104,37 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                     JsonUtility.ToJson(decoded[index]),
                     Is.EqualTo(JsonUtility.ToJson(effects[index]))
                 );
+        }
+
+        [TestCase(HardpointWeaponType.LaserCannon, 0)]
+        [TestCase(HardpointWeaponType.IonCannon, 1)]
+        [TestCase(HardpointWeaponType.Turbolaser, 2)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, 3)]
+        public void EncodeEffects_ProjectileType_PreservesEstablishedWireCode(
+            HardpointWeaponType weapon,
+            int expectedCode
+        )
+        {
+            TacticalCombatEvent fired = new()
+            {
+                Kind = TacticalCombatEventKind.Shot,
+                Weapon = weapon,
+            };
+            byte[] payload = MultiplayerTacticalSnapshotCodec.EncodeEffects(new[] { fired });
+            using MemoryStream envelope = new(payload);
+            envelope.Position = 18;
+            using GZipStream content = new(envelope, CompressionMode.Decompress);
+            using BinaryReader reader = new(content);
+
+            Assert.AreEqual(1, reader.ReadInt32());
+            Assert.AreEqual((int)TacticalCombatEventKind.Shot, reader.ReadInt32());
+            Assert.AreEqual(-1, reader.ReadInt32());
+            Assert.AreEqual(-1, reader.ReadInt32());
+            Assert.AreEqual(expectedCode, reader.ReadInt32());
+            Assert.AreEqual(
+                weapon,
+                MultiplayerTacticalSnapshotCodec.DecodeEffects(payload).Single().Weapon
+            );
         }
 
         [TestCase(0)]
@@ -217,7 +249,10 @@ namespace Rebellion.Tests.Multiplayer.Tactical
             using MemoryStream envelope = new();
             using BinaryWriter writer = new(envelope);
             writer.Write(0x43543252u);
-            writer.Write((byte)1);
+            byte[] emptyEffects = MultiplayerTacticalSnapshotCodec.EncodeEffects(
+                Array.Empty<TacticalCombatEvent>()
+            );
+            writer.Write(emptyEffects[4]);
             writer.Write((byte)2);
             writer.Write(raw.Length);
             writer.Write((int)compressed.Length);
@@ -400,7 +435,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Kind = (TacticalCombatEventKind)1,
                 SourceID = "\u96ea-unit",
                 TargetID = "\u96ea-unit",
-                Weapon = (TacticalWeaponType)4,
+                Weapon = HardpointWeaponType.TorpedoLauncher,
                 Impact = (TacticalCombatImpactKind)5,
                 Strength = 6.125f,
                 Enabled = false,

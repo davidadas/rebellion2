@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
@@ -71,7 +72,7 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="impact">The surface reached by the simulation's damage calculation.</param>
         public void ShowImpact(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact
         )
         {
@@ -80,13 +81,16 @@ namespace Rebellion.Tactical.Rendering
             (TacticalCombatEffectKind Kind, int Priority) effect = impact switch
             {
                 TacticalCombatImpactKind.Destroyed => (TacticalCombatEffectKind.Destruction, 128),
-                TacticalCombatImpactKind.Shield => weapon == TacticalWeaponType.IonCannon
+                TacticalCombatImpactKind.Shield => weapon == HardpointWeaponType.IonCannon
                     ? (TacticalCombatEffectKind.IonShieldHit, 4)
                     : (TacticalCombatEffectKind.ShieldHit, 8),
                 _ => weapon switch
                 {
-                    TacticalWeaponType.IonCannon => (TacticalCombatEffectKind.IonHullHit, 16),
-                    TacticalWeaponType.Torpedo => (TacticalCombatEffectKind.TorpedoHullHit, 64),
+                    HardpointWeaponType.IonCannon => (TacticalCombatEffectKind.IonHullHit, 16),
+                    HardpointWeaponType.TorpedoLauncher => (
+                        TacticalCombatEffectKind.TorpedoHullHit,
+                        64
+                    ),
                     _ => (TacticalCombatEffectKind.HullHit, 32),
                 },
             };

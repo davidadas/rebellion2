@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using UnityEngine;
 using ShadowCastingMode = global::UnityEngine.Rendering.ShadowCastingMode;
 
@@ -64,15 +65,15 @@ namespace Rebellion.Tactical.Rendering
             float length;
             switch (shot.Weapon)
             {
-                case TacticalWeaponType.IonCannon:
+                case HardpointWeaponType.IonCannon:
                     length = shot.Strength >= 32 ? 1 : 0.4f;
                     variant = shot.Strength >= 32 ? 2 : 0;
                     break;
-                case TacticalWeaponType.Torpedo:
+                case HardpointWeaponType.TorpedoLauncher:
                     length = 0.2f;
                     variant = shot.Strength >= 12.8f ? 2 : 0;
                     break;
-                case TacticalWeaponType.Turbolaser:
+                case HardpointWeaponType.Turbolaser:
                     if (shot.Strength >= 34.666668f)
                     {
                         length = split ? 0.75f : 1;
@@ -88,8 +89,8 @@ namespace Rebellion.Tactical.Rendering
             }
             int color = shot.Weapon switch
             {
-                TacticalWeaponType.IonCannon => 2,
-                TacticalWeaponType.Torpedo => 3,
+                HardpointWeaponType.IonCannon => 2,
+                HardpointWeaponType.TorpedoLauncher => 3,
                 _ => factionIndex == 1 ? 1 : 0,
             };
             Beam beam = Acquire();
@@ -99,7 +100,7 @@ namespace Rebellion.Tactical.Rendering
                 _meshes[variant],
                 _materials[color],
                 length,
-                shot.Weapon == TacticalWeaponType.Torpedo ? 2 : 1,
+                shot.Weapon == HardpointWeaponType.TorpedoLauncher ? 2 : 1,
                 false,
                 null
             );

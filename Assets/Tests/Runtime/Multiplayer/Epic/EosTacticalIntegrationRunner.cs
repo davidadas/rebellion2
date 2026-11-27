@@ -10,6 +10,7 @@ using Rebellion.Game;
 using Rebellion.Game.Combat;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Tactical;
@@ -1163,7 +1164,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="impact">The observed impact kind.</param>
         private void HandleImpact(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact
         )
         {

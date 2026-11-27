@@ -2,6 +2,7 @@ using System;
 using System.Threading.Tasks;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical;
 using UnityEngine;
 
@@ -44,7 +45,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// <param name="impact">The affected surface or destruction.</param>
         private void HandleImpact(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact
         ) => _view.Renderer.ShowImpact(unit, weapon, impact);
 

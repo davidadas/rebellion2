@@ -8,6 +8,7 @@ using NUnit.Framework;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
@@ -380,7 +381,7 @@ namespace Rebellion.Tests.Tactical.Rendering
 
                 CombatUnit source = guest.GetUnit("CSEM006");
                 view.Renderer.ShowShot(
-                    new TacticalCombatShot(source, rendered, TacticalWeaponType.LaserCannon, 50),
+                    new TacticalCombatShot(source, rendered, HardpointWeaponType.LaserCannon, 50),
                     1
                 );
                 view.Renderer.AdvanceEffects(.5f);
@@ -688,7 +689,7 @@ namespace Rebellion.Tests.Tactical.Rendering
 
             view.Renderer.ShowImpact(
                 unit,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 TacticalCombatImpactKind.Shield
             );
             view.Renderer.ShowDestruction(unit);
@@ -851,7 +852,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             Assert.That(billboardPosition.sqrMagnitude, Is.GreaterThan(1));
 
             view.Renderer.ShowShot(
-                new TacticalCombatShot(source, station, TacticalWeaponType.LaserCannon, 1),
+                new TacticalCombatShot(source, station, HardpointWeaponType.LaserCannon, 1),
                 0
             );
             view.Renderer.AdvanceEffects(.5f);
@@ -950,7 +951,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             view.Renderer.Focus(unit);
             view.Renderer.ShowImpact(
                 unit,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Shield
             );
             view.Renderer.AdvanceEffects(0);
@@ -965,14 +966,14 @@ namespace Rebellion.Tests.Tactical.Rendering
             Assert.IsFalse(impact.enabled);
             view.Renderer.ShowImpact(
                 unit,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Shield
             );
             Assert.IsFalse(impact.enabled);
             view.Renderer.Focus(unit);
             view.Renderer.ShowImpact(
                 unit,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Hull
             );
             view.Renderer.AdvanceEffects(0);
@@ -993,7 +994,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             Vector3 cameraPosition = view.Renderer.Camera.transform.position;
             view.Renderer.ShowImpact(
                 previous,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Shield
             );
             encounter.Selection.QueueObjectCategory(1);
@@ -1002,7 +1003,7 @@ namespace Rebellion.Tests.Tactical.Rendering
 
             view.Renderer.ShowImpact(
                 current,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Shield
             );
 
@@ -1377,12 +1378,12 @@ namespace Rebellion.Tests.Tactical.Rendering
             target.HyperspaceMilliseconds = 1500;
 
             view.Renderer.ShowShot(
-                new TacticalCombatShot(source, target, TacticalWeaponType.LaserCannon, 50),
+                new TacticalCombatShot(source, target, HardpointWeaponType.LaserCannon, 50),
                 1
             );
             view.Renderer.ShowImpact(
                 target,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 TacticalCombatImpactKind.Shield
             );
             view.Renderer.AdvanceEffects(.5f);

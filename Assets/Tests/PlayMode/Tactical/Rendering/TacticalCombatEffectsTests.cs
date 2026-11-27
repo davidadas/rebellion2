@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -52,7 +53,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_Torpedo_RemainsVisibleUntilTwoSecondLifetimeExpires()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Torpedo);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.TorpedoLauncher);
             _effects.ShowShot(shot, 0, false);
             _effects.Advance(1.5f);
             Assert.AreEqual(1, _root.GetComponentsInChildren<MeshRenderer>().Length);
@@ -63,7 +64,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowShot_ExpiredEffect_ReusesItsRendererAndGeometry()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.ShowShot(shot, 0, false);
             MeshRenderer first = _root.GetComponentInChildren<MeshRenderer>();
             _effects.Advance(1.01f);
@@ -72,12 +73,12 @@ namespace Rebellion.Tests.Tactical.Rendering
             Assert.AreEqual(1, _root.transform.childCount);
         }
 
-        [TestCase(TacticalWeaponType.LaserCannon, 0, 1, 0, 0)]
-        [TestCase(TacticalWeaponType.LaserCannon, 1, 0, 1, 0)]
-        [TestCase(TacticalWeaponType.IonCannon, 0, 0, 0, 1)]
-        [TestCase(TacticalWeaponType.Torpedo, 1, 1, 1, 1)]
+        [TestCase(HardpointWeaponType.LaserCannon, 0, 1, 0, 0)]
+        [TestCase(HardpointWeaponType.LaserCannon, 1, 0, 1, 0)]
+        [TestCase(HardpointWeaponType.IonCannon, 0, 0, 0, 1)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, 1, 1, 1, 1)]
         public void ShowShot_WeaponAndFaction_UsesSpecifiedBeamColor(
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             int faction,
             float red,
             float green,
@@ -94,7 +95,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_Superlaser_GrowsFromFixedEmitterTowardTarget()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.Turbolaser);
             Vector3 origin = new(5, 0, 0);
             _effects.ShowSuperlaser(origin, shot.Target);
             _effects.Advance(0.5f);
@@ -109,7 +110,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowShot_TemporaryPresentationPose_UsesPresentedSourceAndMovingTarget()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             Vector3 origin = new(0, 4, 0);
             _positions[shot.Source] = origin;
             _positions[shot.Target] = new Vector3(10, 6, 20);
@@ -133,7 +134,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_SuperlaserPresentationPose_TracksRenderedTargetFromFixedEmitter()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.Turbolaser);
             Vector3 origin = new(-3, 0, 2);
             _positions[shot.Target] = new Vector3(10, 8, 12);
             _effects.ShowSuperlaser(origin, shot.Target);
@@ -152,7 +153,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_MovingSuperlaserTarget_RetainsMeasuredGrowthExtentAndTracksDirection()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.Turbolaser);
             Vector3 origin = new(5, 0, 0);
             _positions[shot.Target] = new Vector3(5, 0, 10);
             _effects.ShowSuperlaser(origin, shot.Target);
@@ -172,7 +173,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_ZeroTimeSuperlaserFrame_MeasuresExtentOnFirstGrowthFrame()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.Turbolaser);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.Turbolaser);
             _positions[shot.Target] = new Vector3(0, 0, 10);
             _effects.ShowSuperlaser(Vector3.zero, shot.Target);
             _effects.Advance(0);
@@ -187,7 +188,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [UnityTest]
         public IEnumerator Dispose_ActiveEffect_ReleasesOwnedMeshMaterialAndObjects()
         {
-            _effects.ShowShot(CreateShot(TacticalWeaponType.Turbolaser), 1, false);
+            _effects.ShowShot(CreateShot(HardpointWeaponType.Turbolaser), 1, false);
             MeshRenderer renderer = _root.GetComponentInChildren<MeshRenderer>();
             Material material = renderer.sharedMaterial;
             Mesh mesh = renderer.GetComponent<MeshFilter>().sharedMesh;
@@ -203,7 +204,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// </summary>
         /// <param name="weapon">The effect's weapon category.</param>
         /// <returns>A captured shot with a fixed ten-unit span.</returns>
-        private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
+        private static TacticalCombatShot CreateShot(HardpointWeaponType weapon)
         {
             CombatUnit source = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip

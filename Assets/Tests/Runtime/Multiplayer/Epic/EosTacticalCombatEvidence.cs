@@ -56,7 +56,7 @@ namespace Rebellion.Tests.MultiplayerIntegration
         /// <param name="impact">The observed impact kind.</param>
         internal void RecordImpact(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact
         )
         {

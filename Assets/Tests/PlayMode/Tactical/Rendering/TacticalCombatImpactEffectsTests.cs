@@ -7,6 +7,7 @@ using NUnit.Framework;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
@@ -124,37 +125,37 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         [TestCase(
-            TacticalWeaponType.LaserCannon,
+            HardpointWeaponType.LaserCannon,
             TacticalCombatImpactKind.Shield,
             TacticalCombatEffectKind.ShieldHit
         )]
         [TestCase(
-            TacticalWeaponType.IonCannon,
+            HardpointWeaponType.IonCannon,
             TacticalCombatImpactKind.Shield,
             TacticalCombatEffectKind.IonShieldHit
         )]
         [TestCase(
-            TacticalWeaponType.LaserCannon,
+            HardpointWeaponType.LaserCannon,
             TacticalCombatImpactKind.Hull,
             TacticalCombatEffectKind.HullHit
         )]
         [TestCase(
-            TacticalWeaponType.IonCannon,
+            HardpointWeaponType.IonCannon,
             TacticalCombatImpactKind.Hull,
             TacticalCombatEffectKind.IonHullHit
         )]
         [TestCase(
-            TacticalWeaponType.Torpedo,
+            HardpointWeaponType.TorpedoLauncher,
             TacticalCombatImpactKind.Hull,
             TacticalCombatEffectKind.TorpedoHullHit
         )]
         [TestCase(
-            TacticalWeaponType.Turbolaser,
+            HardpointWeaponType.Turbolaser,
             TacticalCombatImpactKind.Destroyed,
             TacticalCombatEffectKind.Destruction
         )]
         public void ShowImpact_WeaponAndSurface_UsesAuthoredSequence(
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             TacticalCombatImpactKind impact,
             TacticalCombatEffectKind expected
         )
@@ -173,7 +174,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowImpact_DestructionAlreadyPlaying_PreservesHigherPrioritySequence()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.ShowDestruction(shot.Target);
             Texture initial = _root
                 .GetComponentInChildren<MeshRenderer>()
@@ -188,7 +189,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_Destruction_ReleasesModelAfterTwelfthPresentationFrame()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.ShowDestruction(shot.Target);
             for (int frame = 0; frame < 11; frame++)
                 _effects.Advance(1f / 60);
@@ -200,7 +201,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_CompletedFrameSequence_DisablesImpactRenderer()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
             int count = _definition
                 .Effects.Single(item => item.Kind == TacticalCombatEffectKind.ShieldHit)
@@ -213,7 +214,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowDestruction_CloseUpPrimary_ClearsLocksAndRetainsHiddenSequence()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _closeUpPrimary = unit.Index;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
 
@@ -234,7 +235,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowImpact_RejectedCloseUpRequest_PreservesActiveImpactAndLock()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.GravityLock, true);
             _effects.ShowDestruction(shot.Target);
             _closeUpPrimary = shot.Target.Index;
@@ -248,7 +249,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_NewCloseUpPrimary_ReleasesImpactPriorityAndRetainsRegisteredLoop()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.ShowDestruction(shot.Target);
             _effects.Advance(.101f);
@@ -274,7 +275,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ShowImpact_DifferentCloseUpPrimary_PreservesImpactAndLock()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _closeUpPrimary = shot.Source.Index;
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.GravityLock, true);
 
@@ -288,7 +289,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_TractorLock_WaitsForStrictIntervalAndWrapsAllFrames()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             MeshRenderer renderer = GetLockRenderer();
             Assert.IsTrue(renderer.enabled);
@@ -321,7 +322,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_RepeatedActivation_PreservesFrameAndElapsedInterval()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.Advance(.101f);
             _effects.Advance(.06f);
@@ -337,7 +338,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_GravityReplacesTractor_DoesNotRestoreClearedOwnership()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
             Assert.AreSame(
@@ -353,7 +354,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void SetLock_OverlappingSelectors_PreservesDetachBeforeRepeatedGravity()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.GravityLock, true);
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             Assert.AreSame(
@@ -373,7 +374,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void RestartLocks_ChangedModelDetail_ReattachesFirstFrame()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.Advance(.101f);
             _effects.Advance(.101f);
@@ -394,7 +395,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void ClearLocks_ImpactPlaying_PreservesImpactAnimation()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
 
@@ -412,7 +413,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_Destruction_ReleasesLockOnTwelfthPresentationFrame()
         {
-            CombatUnit unit = CreateShot(TacticalWeaponType.LaserCannon).Target;
+            CombatUnit unit = CreateShot(HardpointWeaponType.LaserCannon).Target;
             _effects.SetLock(unit, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.ShowDestruction(unit);
             for (int frame = 0; frame < 11; frame++)
@@ -427,7 +428,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_LockAndImpact_PlacesThemOnOppositeSidesOfCapital()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             shot.Target.Position = new System.Numerics.Vector3(0, 0, 10);
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
             _effects.ShowImpact(shot.Target, shot.Weapon, TacticalCombatImpactKind.Shield);
@@ -447,7 +448,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         [Test]
         public void Advance_TemporaryPresentationPose_KeepsImpactsAndLocksWithPresentedCapital()
         {
-            TacticalCombatShot shot = CreateShot(TacticalWeaponType.LaserCannon);
+            TacticalCombatShot shot = CreateShot(HardpointWeaponType.LaserCannon);
             shot.Target.Position = new System.Numerics.Vector3(0, 0, 10);
             _positions[shot.Target] = new Vector3(0, 0, 20);
             _effects.SetLock(shot.Target, TacticalCombatEffectKind.TractorRestraint, true);
@@ -510,7 +511,7 @@ namespace Rebellion.Tests.Tactical.Rendering
         /// </summary>
         /// <param name="weapon">The impacting weapon.</param>
         /// <returns>The captured discharge.</returns>
-        private static TacticalCombatShot CreateShot(TacticalWeaponType weapon)
+        private static TacticalCombatShot CreateShot(HardpointWeaponType weapon)
         {
             CombatUnit source = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
