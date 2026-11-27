@@ -29,7 +29,7 @@ namespace Rebellion.Gameplay
         public IReadOnlyList<GameResult> ProcessTick(GameRoot game)
         {
             List<GameResult> results = new List<GameResult>();
-            _commands.UpdateBlockadeSupport();
+            _commands.UpdateBlockadeSupport(results);
             _commands.UpdateUncolonizedPlanets(results);
             _commands.CheckOwnershipTransfers(results);
             return results;

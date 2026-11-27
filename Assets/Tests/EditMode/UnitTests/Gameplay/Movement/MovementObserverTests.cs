@@ -39,7 +39,9 @@ namespace Rebellion.Tests.Gameplay
             scene.origin.OwnerInstanceID = null;
             AddBlockadingFleet(scene.game, scene.origin);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            Assert.IsTrue(scene.origin.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+            Assert.IsTrue(
+                BlockadeQueries.IsBlockadedFor(null, scene.origin, fighter.GetOwnerInstanceID())
+            );
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -78,7 +80,9 @@ namespace Rebellion.Tests.Gameplay
             scene.blockadedDestination.OwnerInstanceID = null;
             AddBlockadingFleet(scene.game, carrierPlanet);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            Assert.IsTrue(carrierPlanet.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+            Assert.IsTrue(
+                BlockadeQueries.IsBlockadedFor(null, carrierPlanet, fighter.GetOwnerInstanceID())
+            );
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -475,7 +479,7 @@ namespace Rebellion.Tests.Gameplay
             scene.blockadedDestination.OwnerInstanceID = "third-faction";
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
 
-            Assert.IsTrue(scene.blockadedDestination.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, scene.blockadedDestination));
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -1130,7 +1134,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.IsTrue(scene.origin.IsBlockadedFor("empire"));
+            Assert.IsTrue(BlockadeQueries.IsBlockadedFor(null, scene.origin, "empire"));
             Assert.AreSame(scene.origin, officer.GetParent());
             Assert.AreSame(
                 officer,

@@ -573,9 +573,18 @@ namespace Rebellion.Tests.Game
             _game.AttachNode(CreateBuilding("MINE3", BuildingType.Mine, 0), _planet);
             _game.AttachNode(CreateBuilding("REFINERY1", BuildingType.Refinery, 0), _planet);
 
-            Assert.AreEqual(3, _faction1.RawMaterialSupply);
-            Assert.AreEqual(1, _faction1.RefinedMaterialSupply);
-            Assert.AreEqual(50, _faction1.MaintenanceCapacity);
+            Assert.AreEqual(
+                3,
+                ResourceProductionQueries.GetAvailableMinedResources(_game, _faction1)
+            );
+            Assert.AreEqual(
+                1,
+                ResourceProductionQueries.GetRefinedMaterialSupply(_game, _faction1)
+            );
+            Assert.AreEqual(
+                50,
+                ResourceProductionQueries.GetBaseMaintenanceCapacity(_game, _faction1)
+            );
         }
 
         [Test]
@@ -598,7 +607,10 @@ namespace Rebellion.Tests.Game
                 _planet
             );
 
-            Assert.AreEqual(38, _faction1.MaintenanceHeadroom);
+            Assert.AreEqual(
+                38,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _faction1)
+            );
         }
 
         [Test]

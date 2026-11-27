@@ -5,6 +5,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Planners
@@ -59,7 +60,10 @@ namespace Rebellion.Tests.AI.Planners
 
             var proposals = new AIMaintenanceRecoveryPlanner().Plan(context);
 
-            Assert.AreEqual(-10, faction.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(
+                -10,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(game, faction)
+            );
             Assert.IsEmpty(proposals);
         }
     }

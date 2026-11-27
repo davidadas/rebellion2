@@ -8,7 +8,6 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
-using Rebellion.Util.Mathematics;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Game.Factions
@@ -164,23 +163,6 @@ namespace Rebellion.Game.Factions
         // Resource Status.
         public int RawMaterials => RawMaterialStockpile;
         public int RefinedMaterials => RefinedMaterialStockpile;
-        public int RawMaterialSupply =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMinedResources(),
-                Settings.RefinementMultiplier
-            );
-        public int RefinedMaterialSupply =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(),
-                Settings.RefinementMultiplier
-            );
-        public int MaintenanceCapacity =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(),
-                Settings.ResourceProcessingPointsPerFacility
-            );
-        public int MaintenanceHeadroom => ProjectedMaintenanceHeadroom;
-        public int ProjectedMaintenanceHeadroom => GetProjectedMaintenanceHeadroom();
 
         // Fog of War.
         public FogState Fog { get; set; } = new FogState();
@@ -592,34 +574,13 @@ namespace Rebellion.Game.Factions
         }
 
         /// <summary>
-        /// Calculates the sum of resources across all owned planets.
-        /// </summary>
-        /// <param name="selector">A function that selects the resource value from a planet.</param>
-        /// <returns>The total sum of the selected resource across all owned planets.</returns>
-        private int SumPlanetaryResources(Func<Planet, int> selector)
-        {
-            List<Planet> planets = GetOwnedUnitsByType<Planet>();
-            return planets.Sum(selector);
-        }
-
-        /// <summary>
         /// Gets the total number of raw resource nodes across all owned planets.
         /// Raw resource nodes include all nodes without considering external factors such as blockade
         /// status or whether related buildings are under construction.
         /// </summary>
         /// <returns>The total number of raw resource nodes.</returns>
         public int GetTotalRawResourceNodes() =>
-            SumPlanetaryResources(p => p.GetRawResourceNodes());
-
-        /// <summary>
-        /// Gets the total number of available resource nodes across all owned planets.
-        /// Available resource nodes take into account external factors such as blockaded planets
-        /// or buildings still under construction that might reduce usability.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The total number of available resource nodes.</returns>
-        public int GetTotalAvailableResourceNodes(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableResourceNodes(game));
+            GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawResourceNodes());
 
         /// <summary>
         /// Gets the total number of raw mined resources across all owned planets.
@@ -628,17 +589,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <returns>The total number of raw mined resources.</returns>
         public int GetTotalRawMinedResources() =>
-            SumPlanetaryResources(p => p.GetRawMinedResources());
-
-        /// <summary>
-        /// Gets the total number of available mined resources across all owned planets.
-        /// Available mined resources consider blockaded planets or buildings under construction
-        /// that might limit resource collection.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The total number of available mined resources.</returns>
-        public int GetTotalAvailableMinedResources(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableMinedResources(game));
+            GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawMinedResources());
 
         /// <summary>
         /// Gets the total raw refinement capacity across all owned planets.
@@ -647,74 +598,7 @@ namespace Rebellion.Game.Factions
         /// </summary>
         /// <returns>The total raw refinement capacity.</returns>
         public int GetTotalRawRefinementCapacity() =>
-            SumPlanetaryResources(p => p.GetRawRefinementCapacity());
-
-        /// <summary>
-        /// Gets the total available refinement capacity across all owned planets.
-        /// Available refinement capacity accounts for factors like blockaded planets or buildings
-        /// that are still under construction.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The total available refinement capacity.</returns>
-        public int GetTotalAvailableRefinementCapacity(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableRefinementCapacity(game));
-
-        /// <summary>
-        /// Calculates the total available refined capacity count (before multiplier).
-        /// This includes only resources and capacities that are available after accounting for
-        /// blockades, buildings under construction, and other limiting factors.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The available refined capacity count.</returns>
-        public int GetTotalAvailableMaterialsRaw(GameRoot game = null)
-        {
-            int resourceNodes = 0;
-            int minedResources = 0;
-            int refinementCapacity = 0;
-            foreach (Planet planet in GetOwnedUnitsByType<Planet>())
-            {
-                if (planet.IsResourceProductionSuspended(game))
-                    continue;
-                checked
-                {
-                    resourceNodes += planet.GetRawResourceNodes();
-                    minedResources += planet.GetActiveMinedResources();
-                    refinementCapacity += planet.GetActiveRefinementCapacity();
-                }
-            }
-
-            return CalculateRefinedCapacity(resourceNodes, minedResources, refinementCapacity);
-        }
-
-        /// <summary>
-        /// Returns maintenance capacity after committed and ordered units are accounted for.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The projected spare maintenance capacity.</returns>
-        internal int GetProjectedMaintenanceHeadroom(GameRoot game = null) =>
-            IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(game),
-                Settings.ResourceProcessingPointsPerFacility
-            ) - GetTotalProjectedMaintenanceCost();
-
-        /// <summary>
-        /// Calculates the refined capacity count (before applying multiplier).
-        /// Returns how many units of refinement can be performed.
-        /// </summary>
-        /// <param name="resourceNodes">The number of resource nodes.</param>
-        /// <param name="minedResources">The amount of mined resources.</param>
-        /// <param name="refinementCapacity">The refinement capacity.</param>
-        /// <returns>The refined capacity count.</returns>
-        private int CalculateRefinedCapacity(
-            int resourceNodes,
-            int minedResources,
-            int refinementCapacity
-        )
-        {
-            int unprocessedMaterials = Math.Min(minedResources, resourceNodes);
-            int refinedCount = Math.Min(unprocessedMaterials, refinementCapacity);
-            return refinedCount;
-        }
+            GetOwnedUnitsByType<Planet>().Sum(p => p.GetRawRefinementCapacity());
 
         /// <summary>
         /// Returns all owned entities that implement IManufacturable.

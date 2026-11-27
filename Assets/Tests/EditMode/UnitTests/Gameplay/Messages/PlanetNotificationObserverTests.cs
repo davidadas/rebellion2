@@ -6,8 +6,10 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
+using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Gameplay.Scripting;
 
 namespace Rebellion.Tests.Gameplay
 {
@@ -20,6 +22,7 @@ namespace Rebellion.Tests.Gameplay
         private Building _mine;
         private SmugglingCommands _smuggling;
         private JediCommands _jediCommands;
+        private MovementCommands _movement;
         private PlanetNotificationObserver _observer;
         private GameResultBus _results;
 
@@ -63,7 +66,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         /// <summary>
-        /// Releases the fixture's model and result subscriptions.
+        /// Releases the fixture's result subscriptions.
         /// </summary>
         [TearDown]
         public void TearDown()
@@ -73,12 +76,9 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_ObservableSupportChange_ReportsSmugglingOnceWithoutTickPolling()
+        public void HandleResults_AuthoredSupportChange_ReportsSmugglingOnceWithoutTickPolling()
         {
-            _planet.SetPopularSupport("owner", 15);
-            _planet.SetPopularSupport("other", 85);
-
-            List<GameResult> first = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> first = SetOpposingSupport(85);
             List<GameResult> second = _results.Publish(Array.Empty<GameResult>());
 
             Assert.That(first.OfType<SmugglingChangedResult>().Single().NewPercent, Is.EqualTo(75));
@@ -89,8 +89,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_UnobservedMutation_DoesNotInventNotificationOrChangeProductionRules()
         {
-            _planet.PopularSupport["owner"] = 15;
-            _planet.PopularSupport["other"] = 85;
+            _planet.SetPopularSupport("other", 85);
 
             List<GameResult> notifications = _results.Publish(Array.Empty<GameResult>());
             _smuggling.BeginProduction();
@@ -119,22 +118,27 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(destination, _planet.GetParent());
             Fleet fleet = new() { InstanceID = "fleet", OwnerInstanceID = "owner" };
             _game.AttachNode(fleet, _planet);
-            _game.AttachNode(
-                new CapitalShip
-                {
-                    InstanceID = "ship",
-                    OwnerInstanceID = "owner",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                },
-                fleet
-            );
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                OwnerInstanceID = "owner",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 50,
+            };
+            _game.AttachNode(ship, fleet);
             Connect();
 
-            if (deleteShip)
-                _game.DeleteNode(fleet.GetChildren<CapitalShip>().Single());
-            else
-                _game.MoveNode(fleet, destination);
-            List<GameResult> notifications = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> notifications = deleteShip
+                ? PublishAction(
+                    new DestroyUnitsAction
+                    {
+                        Selectors = new()
+                        {
+                            new SelectCapitalShips { InstanceID = ship.InstanceID },
+                        },
+                    }
+                )
+                : MoveFleet(fleet, destination);
 
             PlanetStatChangedResult change = notifications
                 .OfType<PlanetStatChangedResult>()
@@ -143,6 +147,34 @@ namespace Rebellion.Tests.Gameplay
                 );
             Assert.That(change.NewValue, Is.EqualTo(75));
             Assert.That(change.OldValue, Is.LessThan(change.NewValue));
+        }
+
+        [Test]
+        public void HandleResults_FleetFormedFromCapturedShip_ReportsSmugglingChange()
+        {
+            _planet.SetPopularSupport("other", 85);
+            Fleet otherFleet = new() { InstanceID = "other-fleet", OwnerInstanceID = "other" };
+            _game.AttachNode(otherFleet, _planet);
+            CapitalShip ship = new()
+            {
+                InstanceID = "captured-ship",
+                OwnerInstanceID = "other",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            _game.AttachNode(ship, otherFleet);
+            _game.ChangeOwnership(ship, "owner");
+            Connect();
+
+            List<GameResult> results = new();
+            Fleet formed = new FleetCommands(_game).CreateFleet(new[] { ship }, "owner", results);
+            List<GameResult> completed = _results.Publish(results);
+
+            Assert.That(ship.GetParent(), Is.SameAs(formed));
+            PlanetStatChangedResult change = completed
+                .OfType<PlanetStatChangedResult>()
+                .Single(result => result.Category == PlanetChangeCategory.Smuggling);
+            Assert.That(change.Planet, Is.SameAs(_planet));
+            Assert.That(change.NewValue, Is.LessThan(change.OldValue));
         }
 
         [Test]
@@ -167,8 +199,12 @@ namespace Rebellion.Tests.Gameplay
                 );
             Connect();
 
-            _game.DetachNode(_planet.GetChildren<Regiment>()[0]);
-            List<GameResult> first = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> first = PublishAction(
+                new DestroyUnitsAction
+                {
+                    Selectors = new() { new SelectRegiments { InstanceID = "troop-0" } },
+                }
+            );
             List<GameResult> second = _results.Publish(Array.Empty<GameResult>());
 
             Assert.That(first.OfType<PlanetNearUprisingResult>().Count(), Is.EqualTo(1));
@@ -189,10 +225,7 @@ namespace Rebellion.Tests.Gameplay
             Connect();
             unrelated.PopularSupport["owner"] = 15;
             unrelated.PopularSupport["other"] = 85;
-            _planet.SetPopularSupport("owner", 15);
-            _planet.SetPopularSupport("other", 85);
-
-            List<GameResult> notifications = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> notifications = SetOpposingSupport(85);
 
             Assert.That(
                 notifications.OfType<SmugglingChangedResult>().Single().Planet,
@@ -236,6 +269,7 @@ namespace Rebellion.Tests.Gameplay
                     OwnerInstanceID = "owner",
                     ManufacturingStatus = ManufacturingStatus.Complete,
                     SectorSuppression = 2,
+                    Hyperdrive = 50,
                 },
                 fleet
             );
@@ -251,8 +285,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(destination, destinationSector);
             Connect();
 
-            _game.MoveNode(fleet, destination);
-            List<GameResult> notifications = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> notifications = MoveFleet(fleet, destination);
 
             Assert.That(
                 notifications.OfType<PlanetNearUprisingResult>().Single().Planet,
@@ -278,10 +311,20 @@ namespace Rebellion.Tests.Gameplay
             );
             Connect();
 
-            _game.SetNodeEnabled(fleet, false);
-            List<GameResult> disabled = _results.Publish(Array.Empty<GameResult>());
-            _game.SetNodeEnabled(fleet, true);
-            List<GameResult> enabled = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> disabled = PublishAction(
+                new SetNodeStateAction
+                {
+                    InstanceID = fleet.InstanceID,
+                    State = SceneNodeState.Inactive,
+                }
+            );
+            List<GameResult> enabled = PublishAction(
+                new SetNodeStateAction
+                {
+                    InstanceID = fleet.InstanceID,
+                    State = SceneNodeState.Active,
+                }
+            );
 
             Assert.That(
                 disabled.OfType<PlanetStatChangedResult>().Single().NewValue,
@@ -294,16 +337,18 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void HandleResults_ActivatedSector_SubscribesPreviouslyInactivePlanets()
+        public void HandleResults_ActivatedSector_ReportsSmugglingOnPreviouslyInactivePlanets()
         {
             _game.SetNodeEnabled(_planet.GetParent(), false);
             Connect();
-            _game.SetNodeEnabled(_planet.GetParent(), true);
-            _results.Publish(Array.Empty<GameResult>());
-            _planet.SetPopularSupport("owner", 15);
             _planet.SetPopularSupport("other", 85);
-
-            List<GameResult> notifications = _results.Publish(Array.Empty<GameResult>());
+            List<GameResult> notifications = PublishAction(
+                new SetNodeStateAction
+                {
+                    InstanceID = _planet.GetParent().InstanceID,
+                    State = SceneNodeState.Active,
+                }
+            );
 
             Assert.That(
                 notifications.OfType<SmugglingChangedResult>().Single().Planet,
@@ -312,14 +357,51 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Dispose_LaterSupportChange_DetachesModelAndResultObservers()
+        public void Dispose_LaterSupportChange_DetachesResultObserver()
         {
             _observer.Dispose();
-            _planet.SetPopularSupport("owner", 15);
-            _planet.SetPopularSupport("other", 85);
 
-            Assert.That(_observer.HasPendingChanges, Is.False);
-            Assert.That(_results.Publish(Array.Empty<GameResult>()), Is.Empty);
+            Assert.That(SetOpposingSupport(85).OfType<SmugglingChangedResult>(), Is.Empty);
+        }
+
+        /// <summary>
+        /// Applies an authored support change through the result bus.
+        /// </summary>
+        /// <param name="support">The rival faction's new support.</param>
+        /// <returns>The completed support change and its notifications.</returns>
+        private List<GameResult> SetOpposingSupport(int support) =>
+            PublishAction(
+                new SetPopularSupportAction
+                {
+                    PlanetInstanceID = _planet.InstanceID,
+                    FactionInstanceID = "other",
+                    Support = support,
+                }
+            );
+
+        /// <summary>
+        /// Publishes the results of a completed game action.
+        /// </summary>
+        /// <param name="action">The authored action.</param>
+        /// <returns>The results and resulting notifications.</returns>
+        private List<GameResult> PublishAction(GameAction action) =>
+            _results.Publish(
+                new GameActionCommands(_game, _game.Random).Execute(
+                    new[] { action },
+                    evaluation: null
+                )
+            );
+
+        /// <summary>
+        /// Issues a fleet movement order and publishes its immediate results.
+        /// </summary>
+        /// <param name="fleet">The fleet leaving port.</param>
+        /// <param name="destination">The destination planet.</param>
+        /// <returns>The departure results and resulting notifications.</returns>
+        private List<GameResult> MoveFleet(Fleet fleet, Planet destination)
+        {
+            Assert.IsTrue(_movement.TryRequestMove(fleet, destination));
+            return _results.Publish(_movement.TakePendingResults());
         }
 
         /// <summary>
@@ -336,8 +418,15 @@ namespace Rebellion.Tests.Gameplay
                 new PlanetaryControlQueries(_game),
                 new FogOfWarQueries(_game)
             );
+            _movement = new MovementCommands(
+                _game,
+                new FogOfWarCommands(_game),
+                new FleetCommands(_game),
+                new FogOfWarQueries(_game),
+                new MovementQueries(_game)
+            );
             UprisingResolver uprising = new(_game, new ThrowingRNG(), control, _jediCommands);
-            _observer = new PlanetNotificationObserver(_game, _smuggling, uprising);
+            _observer = new PlanetNotificationObserver(_smuggling, uprising);
             _results = new GameResultBus();
             _observer.Connect(_results);
         }

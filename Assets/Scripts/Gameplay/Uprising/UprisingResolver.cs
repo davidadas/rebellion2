@@ -124,17 +124,10 @@ namespace Rebellion.Gameplay
         private List<GameResult> ExecuteMission(Mission mission)
         {
             List<GameResult> results = new List<GameResult>();
-            bool objectiveAchieved = false;
-
-            mission.RollParticipantAttempts(
-                _provider,
-                _game,
-                _ =>
-                {
-                    objectiveAchieved = ResolveMissionAttempt(mission, results);
-                    return objectiveAchieved;
-                }
-            );
+            IMissionParticipant participant = mission.RollParticipantAttempts(_provider, _game);
+            bool objectiveAchieved = participant != null && ResolveMissionAttempt(mission, results);
+            if (objectiveAchieved)
+                mission.ImproveMissionParticipantRating(participant);
 
             MissionOutcome outcome = objectiveAchieved
                 ? MissionOutcome.Success
@@ -220,7 +213,7 @@ namespace Rebellion.Gameplay
 
             Faction missionFaction = _game.GetFactionByOwnerInstanceID(mission.OwnerInstanceID);
             int supportShift = RollSubdueSupportShift(mission, planet);
-            ApplyUprisingSupportShift(planet, missionFaction, supportShift);
+            ApplyUprisingSupportShift(planet, missionFaction, supportShift, results);
             results.AddRange(_planetaryControl.ReconcilePlanet(planet));
 
             if (!planet.IsInUprising)
@@ -446,7 +439,12 @@ namespace Rebellion.Gameplay
             planet.NextUprisingSupportDriftTick = 0;
             planet.UprisingSupportDriftTimerOrder = 0;
 
-            ApplyUprisingControllerSupportShift(planet, faction);
+            ApplyUprisingSupportShift(
+                planet,
+                faction,
+                _game.Config.Uprising.ControllerSupportShift,
+                results
+            );
             results.AddRange(_planetaryControl.ReconcilePlanet(planet));
             if (!planet.IsInUprising)
                 return;
@@ -555,7 +553,8 @@ namespace Rebellion.Gameplay
                 ApplyUprisingSupportShift(
                     planet,
                     faction,
-                    _game.Config.Uprising.InciteMissionSupportShift
+                    _game.Config.Uprising.InciteMissionSupportShift,
+                    results
                 );
         }
 
@@ -1165,32 +1164,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Applies a scheduled popular support shift to the controlling faction during uprising.
-        /// On core sectors the shift is halved when it moves against the faction's favor.
-        /// </summary>
-        /// <param name="planet">The planet in uprising.</param>
-        /// <param name="faction">The controlling faction whose support is shifted.</param>
-        private void ApplyUprisingControllerSupportShift(Planet planet, Faction faction)
-        {
-            ApplyUprisingSupportShift(
-                planet,
-                faction,
-                _game.Config.Uprising.ControllerSupportShift
-            );
-        }
-
-        /// <summary>
         /// Applies an uprising support shift with the controlling faction's configured penalty.
         /// </summary>
         /// <param name="planet">The planet whose support changes.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        private void ApplyUprisingSupportShift(Planet planet, Faction faction, int shift)
+        /// <param name="results">The completed support changes.</param>
+        private void ApplyUprisingSupportShift(
+            Planet planet,
+            Faction faction,
+            int shift,
+            List<GameResult> results
+        )
         {
-            if (shift == 0)
-                return;
-
-            _planetaryControl.ChangePopularSupport(planet, faction, shift);
+            PlanetSupportChangedResult change = _planetaryControl.ChangePopularSupport(
+                planet,
+                faction,
+                shift
+            );
+            if (change != null)
+                results.Add(change);
         }
 
         /// <summary>

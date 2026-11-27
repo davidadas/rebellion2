@@ -13,6 +13,7 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
+using Rebellion.Util.Mathematics;
 using Rebellion.Util.Random;
 using UnityEngine;
 
@@ -170,12 +171,24 @@ public static partial class HeadlessSimulationRunner
                     UnlockedSpecialForcesTechCount = faction
                         .GetUnlockedTechnologies(ManufacturingType.Troop)
                         .Count(tech => tech.GetReference() is SpecialForces),
-                    RawMaterialSupply = faction.RawMaterialSupply,
-                    RefinedMaterialSupply = faction.RefinedMaterialSupply,
+                    RawMaterialSupply = IntegerMath.SaturatingMultiply(
+                        ResourceProductionQueries.GetAvailableMinedResources(game, faction),
+                        faction.Settings.RefinementMultiplier
+                    ),
+                    RefinedMaterialSupply = ResourceProductionQueries.GetRefinedMaterialSupply(
+                        game,
+                        faction
+                    ),
                     RawMaterialStockpile = faction.RawMaterialStockpile,
                     RefinedMaterialStockpile = faction.RefinedMaterialStockpile,
-                    MaintenanceCapacity = faction.MaintenanceCapacity,
-                    MaintenanceHeadroom = faction.MaintenanceHeadroom,
+                    MaintenanceCapacity = ResourceProductionQueries.GetBaseMaintenanceCapacity(
+                        game,
+                        faction
+                    ),
+                    MaintenanceHeadroom = ResourceProductionQueries.GetBaseMaintenanceHeadroom(
+                        game,
+                        faction
+                    ),
                     Economy = BuildEconomySummary(faction),
                     Energy = GetOperationalOwnedPlanets(game, faction)
                         .Sum(planet => planet.GetAvailableEnergy()),

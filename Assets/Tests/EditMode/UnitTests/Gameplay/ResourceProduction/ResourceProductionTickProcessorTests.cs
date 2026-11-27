@@ -688,7 +688,10 @@ namespace Rebellion.Tests.Gameplay
 
             _system.ProcessTick(_game);
 
-            Assert.AreEqual(50, _faction.MaintenanceCapacity);
+            Assert.AreEqual(
+                50,
+                ResourceProductionQueries.GetBaseMaintenanceCapacity(_game, _faction)
+            );
             Assert.AreEqual(20, mine.ResourceMaintenanceAllocation);
             Assert.AreEqual(20, refinery.ResourceMaintenanceAllocation);
         }

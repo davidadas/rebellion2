@@ -49,7 +49,7 @@ namespace Rebellion.Gameplay
             if (
                 !(
                     opposingBlockadeAtDeparture
-                    ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID(), _game)
+                    ?? BlockadeQueries.IsBlockadedFor(_game, origin, unit.GetOwnerInstanceID())
                 )
                 || origin.HasOperationalIonCannon()
                 || unit is not Regiment regiment

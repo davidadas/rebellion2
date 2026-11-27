@@ -93,7 +93,8 @@ namespace Rebellion.Gameplay
                 destination == null
                 || template == null
                 || producer == null
-                || template.MaintenanceCost > faction.GetProjectedMaintenanceHeadroom(_game)
+                || template.MaintenanceCost
+                    > ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, faction)
             )
                 return false;
 
@@ -140,12 +141,16 @@ namespace Rebellion.Gameplay
             Dictionary<Planet, int> deficits = new Dictionary<Planet, int>();
             foreach (Planet planet in controlledPlanets)
             {
-                if (planet.IsBlockaded(_game) || planet.GetParentOfType<PlanetSector>() == null)
+                if (
+                    !planet.IsPopulated()
+                    || BlockadeQueries.IsBlockaded(_game, planet)
+                    || planet.GetParentOfType<PlanetSector>() == null
+                )
                     continue;
 
                 int deficit =
                     CalculateTargetRegimentCount(planet, faction)
-                    - CountStationaryRegiments(planet, faction);
+                    - CountAssignedRegiments(planet, faction);
                 if (deficit <= 0)
                     continue;
 
@@ -227,12 +232,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Counts stationary regiments owned by the controlling faction, including pending orders.
+        /// Counts friendly regiments assigned directly to the planet, including construction and transit.
         /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="planet">The receiving planet, which is the direct parent during transit.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <returns>The regiment count.</returns>
-        private static int CountStationaryRegiments(Planet planet, Faction faction)
+        private static int CountAssignedRegiments(Planet planet, Faction faction)
         {
             return planet
                 .GetAllRegiments()
@@ -242,7 +247,6 @@ namespace Rebellion.Gameplay
                         faction.InstanceID,
                         StringComparison.Ordinal
                     )
-                    && regiment.Movement == null
                 );
         }
 
@@ -263,7 +267,7 @@ namespace Rebellion.Gameplay
 
             List<Planet> eligibleProducers = controlledPlanets
                 .Where(planet =>
-                    !planet.IsBlockaded(_game)
+                    !BlockadeQueries.IsBlockaded(_game, planet)
                     && !planet.IsInUprising
                     && !planet.IsManufacturingReserved(ManufacturingType.Troop)
                     && planet.GetIdleManufacturingFacilities(ManufacturingType.Troop) > 0
