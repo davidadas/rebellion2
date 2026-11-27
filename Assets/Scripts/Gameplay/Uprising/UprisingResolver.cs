@@ -124,17 +124,10 @@ namespace Rebellion.Gameplay
         private List<GameResult> ExecuteMission(Mission mission)
         {
             List<GameResult> results = new List<GameResult>();
-            bool objectiveAchieved = false;
-
-            mission.RollParticipantAttempts(
-                _provider,
-                _game,
-                _ =>
-                {
-                    objectiveAchieved = ResolveMissionAttempt(mission, results);
-                    return objectiveAchieved;
-                }
-            );
+            IMissionParticipant participant = mission.RollParticipantAttempts(_provider, _game);
+            bool objectiveAchieved = participant != null && ResolveMissionAttempt(mission, results);
+            if (objectiveAchieved)
+                mission.ImproveMissionParticipantRating(participant);
 
             MissionOutcome outcome = objectiveAchieved
                 ? MissionOutcome.Success

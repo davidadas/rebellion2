@@ -13,7 +13,11 @@ namespace Rebellion.Gameplay
     /// Evaluates notifications only for planets affected by completed simulation changes.
     /// Histories are initialized from the loaded world and are never part of a save or checkpoint.
     /// </summary>
-    public sealed class PlanetNotificationObserver : IResultObserver, IDisposable
+    public sealed class PlanetNotificationObserver
+        : IResultObserver,
+            IObserver<Planet>,
+            IObserver<(ISceneNode Node, Planet Origin, Planet Destination)>,
+            IDisposable
     {
         private readonly GameRoot _game;
         private readonly HashSet<Planet> _changedPlanets = new();
@@ -58,7 +62,7 @@ namespace Rebellion.Gameplay
             // Resolve the planet subscriptions once when the session is connected.
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
                 SubscribePlanet(planet);
-            _game.UnitPresenceChanged += ObservePresenceChange;
+            _game.PresenceObserver = this;
             _subscription = results.ObserveAll(batch =>
             {
                 List<GameResult> notifications = HandleResults(batch);
@@ -73,9 +77,11 @@ namespace Rebellion.Gameplay
         public void Dispose()
         {
             _subscription?.Dispose();
-            _game.UnitPresenceChanged -= ObservePresenceChange;
+            if (ReferenceEquals(_game.PresenceObserver, this))
+                _game.PresenceObserver = null;
             foreach (Planet planet in _subscribedPlanets)
-                planet.PopularSupportChanged -= ObserveSupportChange;
+                if (ReferenceEquals(planet.SupportObserver, this))
+                    planet.SupportObserver = null;
             _subscribedPlanets.Clear();
             _changedPlanets.Clear();
             _changedSectors.Clear();
@@ -171,14 +177,37 @@ namespace Rebellion.Gameplay
         private void SubscribePlanet(Planet planet)
         {
             if (_subscribedPlanets.Add(planet))
-                planet.PopularSupportChanged += ObserveSupportChange;
+                planet.SupportObserver = this;
         }
 
         /// <summary>
         /// Retains only the affected planet until the enclosing operation has settled.
         /// </summary>
         /// <param name="planet">The planet whose support changed.</param>
-        private void ObserveSupportChange(Planet planet) => _changedPlanets.Add(planet);
+        void IObserver<Planet>.OnNext(Planet planet) => _changedPlanets.Add(planet);
+
+        /// <summary>
+        /// Records an ownership, availability, or position change before the result batch settles.
+        /// </summary>
+        /// <param name="change">The affected node and its locations.</param>
+        void IObserver<(ISceneNode Node, Planet Origin, Planet Destination)>.OnNext(
+            (ISceneNode Node, Planet Origin, Planet Destination) change
+        ) => ObservePresenceChange(change.Node, change.Origin, change.Destination);
+
+        /// <summary>
+        /// Ends the stream when its publisher completes.
+        /// </summary>
+        public void OnCompleted() => Dispose();
+
+        /// <summary>
+        /// Ends the stream and propagates a publisher failure.
+        /// </summary>
+        /// <param name="error">The publisher failure.</param>
+        public void OnError(Exception error)
+        {
+            Dispose();
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
+        }
 
         /// <summary>
         /// Captures precise old and new locations when membership or ownership changes.

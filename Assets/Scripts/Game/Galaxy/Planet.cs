@@ -50,7 +50,7 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Reports completed support changes to the session's notification observer.
         /// </summary>
-        internal event Action<Planet> PopularSupportChanged;
+        internal IObserver<Planet> SupportObserver { get; set; }
 
         private const int _maximumPopularSupport = 100;
         private const int _maximumProductionModifier = 100;
@@ -514,13 +514,19 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Resolves control from stationary regiment owners before falling back to popular support.
         /// </summary>
-        /// <param name="game">The game supplying faction identities and the control threshold.</param>
+        /// <param name="factions">Campaign factions in order.</param>
+        /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
-        internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
+        internal Faction ResolveController(
+            IReadOnlyList<Faction> factions,
+            GameConfig.SupportShiftConfig supportRules,
+            IReadOnlyList<string> regimentOwners
+        )
         {
             return ResolveController(
-                game,
+                factions,
+                supportRules,
                 regimentOwners.Count,
                 regimentOwners.Count == 1 ? regimentOwners[0] : null
             );
@@ -529,12 +535,14 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Resolves control from an assessed regiment-owner count without allocating owner lists.
         /// </summary>
-        /// <param name="game">The game supplying factions and the control threshold.</param>
+        /// <param name="factions">Campaign factions in order.</param>
+        /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
         /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction ResolveController(
-            GameRoot game,
+            IReadOnlyList<Faction> factions,
+            GameConfig.SupportShiftConfig supportRules,
             int regimentOwnerCount,
             string soleRegimentOwner
         )
@@ -543,17 +551,18 @@ namespace Rebellion.Game.Galaxy
                 return null;
 
             if (regimentOwnerCount == 1)
-                return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
+                return factions.FirstOrDefault(faction => faction.InstanceID == soleRegimentOwner)
+                    ?? throw new SceneNodeNotFoundException(soleRegimentOwner);
             if (regimentOwnerCount > 1)
                 return null;
 
             if (!IsPopulated())
                 return null;
 
-            int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            int threshold = supportRules.OwnershipTransferThreshold;
             Faction controller = null;
             int highestSupport = threshold;
-            foreach (Faction faction in game.GetFactions())
+            foreach (Faction faction in factions)
             {
                 int support = GetPopularSupport(faction.InstanceID);
                 if (support >= threshold && (controller == null || support > highestSupport))
@@ -570,8 +579,14 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="faction">The faction whose support changes.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        /// <param name="game">The game supplying factions in their established order.</param>
-        internal void ChangePopularSupport(Faction faction, int shift, GameRoot game)
+        /// <param name="opposingFactionID">The opposing faction whose support absorbs losses.</param>
+        /// <param name="supportRules">The rules for resistance in a suppressed sector.</param>
+        internal void ChangePopularSupport(
+            Faction faction,
+            int shift,
+            string opposingFactionID,
+            GameConfig.SupportShiftConfig supportRules
+        )
         {
             if (faction == null || shift == 0 || !IsPopulated())
                 return;
@@ -580,9 +595,9 @@ namespace Rebellion.Game.Galaxy
             if (
                 faction.Settings.SupportResistance == direction
                 && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor() > 1
-                && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
+                && supportRules.WeakSupportPenaltyDivisor > 1
             )
-                shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;
+                shift /= supportRules.WeakSupportPenaltyDivisor;
 
             int currentSupport = GetPopularSupport(faction.InstanceID);
             int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
@@ -593,14 +608,12 @@ namespace Rebellion.Game.Galaxy
                 SetPopularSupport(faction.InstanceID, newSupport);
                 return;
             }
-            Faction opposingFaction = game.GetFactions()
-                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
-            if (opposingFaction == null)
+            if (opposingFactionID == null)
             {
                 SetPopularSupport(faction.InstanceID, newSupport);
                 return;
             }
-            SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+            SetPopularSupport(opposingFactionID, 100 - newSupport);
         }
 
         /// <summary>
@@ -725,7 +738,7 @@ namespace Rebellion.Game.Galaxy
                 PopularSupport[factionInstanceId] = boundedSupport;
             }
             if (supportDifference != 0 || totalSupport + supportDifference > _maximumPopularSupport)
-                PopularSupportChanged?.Invoke(this);
+                SupportObserver?.OnNext(this);
         }
 
         /// <summary>

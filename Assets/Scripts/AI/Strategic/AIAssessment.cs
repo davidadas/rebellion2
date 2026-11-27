@@ -845,21 +845,18 @@ namespace Rebellion.AI
                     .Select(candidate => candidate.InstanceID)
                     .ToList()
                 ?? new List<string>();
-            AvailableResourceNodeCapacity =
-                faction?.GetTotalAvailableResourceNodes(ownedPlanet =>
-                    BlockadeQueries.IsBlockaded(_game, ownedPlanet)
-                )
-                ?? 0;
-            AvailableMinedResourceCapacity =
-                faction?.GetTotalAvailableMinedResources(ownedPlanet =>
-                    BlockadeQueries.IsBlockaded(_game, ownedPlanet)
-                )
-                ?? 0;
-            AvailableRefinementCapacity =
-                faction?.GetTotalAvailableRefinementCapacity(ownedPlanet =>
-                    BlockadeQueries.IsBlockaded(_game, ownedPlanet)
-                )
-                ?? 0;
+            AvailableResourceNodeCapacity = ResourceProductionQueries.GetAvailableResourceNodes(
+                _game,
+                faction
+            );
+            AvailableMinedResourceCapacity = ResourceProductionQueries.GetAvailableMinedResources(
+                _game,
+                faction
+            );
+            AvailableRefinementCapacity = ResourceProductionQueries.GetAvailableRefinementCapacity(
+                _game,
+                faction
+            );
             AvailableMaterialCapacity = Math.Min(
                 AvailableResourceNodeCapacity,
                 Math.Min(AvailableMinedResourceCapacity, AvailableRefinementCapacity)
@@ -4794,9 +4791,10 @@ namespace Rebellion.AI
             if (_game == null || _faction == null)
                 return new List<Mission>();
 
-            return _game.GetSceneNodesByType<Mission>(mission =>
-                mission.GetOwnerInstanceID() == _faction.InstanceID
-            );
+            return _game
+                .GetSceneNodesByType<Mission>()
+                .Where(mission => mission.GetOwnerInstanceID() == _faction.InstanceID)
+                .ToList();
         }
 
         /// <summary>

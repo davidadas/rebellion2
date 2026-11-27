@@ -36,7 +36,11 @@ namespace Rebellion.Game
         /// Reports completed membership or ownership changes with their affected planet locations.
         /// Observers defer reactions until the enclosing simulation operation has settled.
         /// </summary>
-        internal event Action<ISceneNode, Planet, Planet> UnitPresenceChanged;
+        internal IObserver<(
+            ISceneNode Node,
+            Planet Origin,
+            Planet Destination
+        )> PresenceObserver { get; set; }
 
         // Scene graph.
         private GalaxyMap _galaxy;
@@ -562,15 +566,15 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
-            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
+            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
-            ((BaseSceneNode)node).TraverseIncludingDisabled(child =>
+            foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
             {
                 DeregsiterOwnedUnit(child);
                 RemoveSceneNodeByInstanceID(child);
-            });
-            UnitPresenceChanged?.Invoke(node, origin, null);
+            }
+            PresenceObserver?.OnNext((node, origin, null));
         }
 
         /// <summary>
@@ -585,10 +589,10 @@ namespace Rebellion.Game
             if (node.IsEnabled == enabled)
                 return;
             node.IsEnabled = enabled;
-            if (UnitPresenceChanged != null)
+            if (PresenceObserver != null)
             {
                 Planet planet = GetContainingPlanet(node);
-                UnitPresenceChanged(node, planet, planet);
+                PresenceObserver.OnNext((node, planet, planet));
             }
         }
 
@@ -611,10 +615,10 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);
-            if (UnitPresenceChanged != null)
+            if (PresenceObserver != null)
             {
                 Planet planet = GetContainingPlanet(node);
-                UnitPresenceChanged(node, planet, planet);
+                PresenceObserver.OnNext((node, planet, planet));
             }
         }
 
@@ -636,7 +640,7 @@ namespace Rebellion.Game
 
             DeregsiterOwnedUnit(planet);
             planet.ClearDestroyedControl();
-            UnitPresenceChanged?.Invoke(planet, planet, planet);
+            PresenceObserver?.OnNext((planet, planet, planet));
         }
 
         /// <summary>
@@ -663,9 +667,10 @@ namespace Rebellion.Game
             RegisterOwnedUnit(node);
 
             // Register the node and its children.
-            ((BaseSceneNode)node).TraverseIncludingDisabled(AddSceneNodeByInstanceID);
-            if (UnitPresenceChanged != null)
-                UnitPresenceChanged(node, null, GetContainingPlanet(node));
+            foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
+                AddSceneNodeByInstanceID(child);
+            if (PresenceObserver != null)
+                PresenceObserver.OnNext((node, null, GetContainingPlanet(node)));
         }
 
         /// <summary>
@@ -683,7 +688,7 @@ namespace Rebellion.Game
             }
 
             ISceneNode parent = node.GetParent();
-            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
+            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
 
             parent.RemoveChild(node);
             node.SetParent(null);
@@ -692,8 +697,9 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
 
             // Deregister the node and its children.
-            ((BaseSceneNode)node).TraverseIncludingDisabled(RemoveSceneNodeByInstanceID);
-            UnitPresenceChanged?.Invoke(node, origin, null);
+            foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
+                RemoveSceneNodeByInstanceID(child);
+            PresenceObserver?.OnNext((node, origin, null));
         }
 
         /// <summary>
@@ -729,7 +735,7 @@ namespace Rebellion.Game
                     $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
                 );
 
-            Planet origin = UnitPresenceChanged == null ? null : GetContainingPlanet(node);
+            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
             oldParent.RemoveChild(node);
             try
             {
@@ -742,8 +748,8 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
-            if (UnitPresenceChanged != null)
-                UnitPresenceChanged(node, origin, GetContainingPlanet(node));
+            if (PresenceObserver != null)
+                PresenceObserver.OnNext((node, origin, GetContainingPlanet(node)));
         }
 
         /// <summary>
@@ -752,7 +758,7 @@ namespace Rebellion.Game
         /// <param name="moves">Distinct nodes with existing parents and validated destinations.</param>
         internal void ApplyNodeMoves(IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves)
         {
-            List<Planet> origins = UnitPresenceChanged == null ? null : new(moves.Count);
+            List<Planet> origins = PresenceObserver == null ? null : new(moves.Count);
             foreach (var (node, _) in moves)
             {
                 origins?.Add(GetContainingPlanet(node));
@@ -768,7 +774,7 @@ namespace Rebellion.Game
                 for (int index = 0; index < moves.Count; index++)
                 {
                     ISceneNode node = moves[index].Node;
-                    UnitPresenceChanged?.Invoke(node, origins[index], GetContainingPlanet(node));
+                    PresenceObserver?.OnNext((node, origins[index], GetContainingPlanet(node)));
                 }
         }
 
@@ -839,12 +845,11 @@ namespace Rebellion.Game
 
         /// <summary>
         /// Retrieves all nodes of a specified type T, stopping further traversal of a branch when
-        /// type T is found. An optional predicate filters which matching nodes are included.
+        /// type T is found.
         /// </summary>
-        /// <param name="predicate">The predicate.</param>
         /// <typeparam name="T">The scene-node type that stops traversal and is returned.</typeparam>
         /// <returns>The requested scene nodes by type.</returns>
-        public List<T> GetSceneNodesByType<T>(Func<T, bool> predicate = null)
+        public List<T> GetSceneNodesByType<T>()
             where T : class
         {
             List<T> result = new List<T>();
@@ -855,8 +860,7 @@ namespace Rebellion.Game
                     return;
                 if (node is T typedNode)
                 {
-                    if (predicate == null || predicate(typedNode))
-                        result.Add(typedNode);
+                    result.Add(typedNode);
                     return;
                 }
 
@@ -1035,27 +1039,25 @@ namespace Rebellion.Game
         /// <param name="root">The root.</param>
         private void InitializeSceneRoot(ISceneNode root)
         {
-            ((BaseSceneNode)root).TraverseIncludingDisabled(
-                (ISceneNode node) =>
+            foreach (ISceneNode node in ((BaseSceneNode)root).EnumerateSubtreeIncludingDisabled())
+            {
+                if (node is Planet { IsDestroyed: true } planet)
+                    NeutralizeDestroyedPlanet(planet);
+
+                EnsureRuntimeIdentifier((BaseGameEntity)node);
+                if (!NodesByInstanceID.ContainsKey(node.InstanceID))
+                    AddSceneNodeByInstanceID(node);
+
+                foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
                 {
-                    if (node is Planet { IsDestroyed: true } planet)
-                        NeutralizeDestroyedPlanet(planet);
-
-                    EnsureRuntimeIdentifier((BaseGameEntity)node);
-                    if (!NodesByInstanceID.ContainsKey(node.InstanceID))
-                        AddSceneNodeByInstanceID(node);
-
-                    foreach (ISceneNode child in node.GetChildren(includeDisabled: true))
-                    {
-                        string previousParentID = child.LastParentInstanceID;
-                        child.SetParent(node);
-                        child.LastParentInstanceID = previousParentID;
-                    }
-
-                    if (node.OwnerInstanceID != null)
-                        RegisterOwnedUnit(node);
+                    string previousParentID = child.LastParentInstanceID;
+                    child.SetParent(node);
+                    child.LastParentInstanceID = previousParentID;
                 }
-            );
+
+                if (node.OwnerInstanceID != null)
+                    RegisterOwnedUnit(node);
+            }
             foreach (ISceneNode node in NodesByInstanceID.Values)
                 node.LastParentNode = string.IsNullOrEmpty(node.LastParentInstanceID)
                     ? null

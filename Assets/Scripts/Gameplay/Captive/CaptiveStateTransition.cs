@@ -39,7 +39,13 @@ namespace Rebellion.Gameplay
             if (
                 officer == null
                 || captor == null
-                || !officer.TryCapture(captor.InstanceID, game, random, canEscape)
+                || !officer.TryCapture(
+                    captor.InstanceID,
+                    game.Config?.Captive?.EscapeAttemptInterval,
+                    game.CurrentTick,
+                    random,
+                    canEscape
+                )
             )
                 return null;
 

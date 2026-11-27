@@ -283,12 +283,12 @@ namespace Rebellion.Tests.Gameplay
             Starfighter first = CreateRecoverySquadron(game, firstHost, "first-fighter");
             Starfighter second = CreateRecoverySquadron(game, secondHost, "second-fighter");
             List<(ISceneNode Unit, Planet Origin, Planet Destination)> changes = new();
-            game.UnitPresenceChanged += (unit, origin, target) =>
+            game.PresenceObserver = new PresenceRecorder(change =>
             {
                 Assert.AreSame(destination, first.GetParent());
                 Assert.AreSame(firstHost, second.GetParent());
-                changes.Add((unit, origin, target));
-            };
+                changes.Add(change);
+            });
 
             movement.RecoverStarfighters(
                 destination,
@@ -4900,7 +4900,14 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Jedi.ForceGrowthPerMission = 1;
             game.AttachNode(officer, missionPlanet);
             Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
-            Assert.IsTrue(captive.TryCapture("empire", game, game.Random));
+            Assert.IsTrue(
+                captive.TryCapture(
+                    "empire",
+                    game.Config?.Captive?.EscapeAttemptInterval,
+                    game.CurrentTick,
+                    game.Random
+                )
+            );
             game.AttachNode(captive, missionPlanet);
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
@@ -8001,6 +8008,30 @@ namespace Rebellion.Tests.Gameplay
         {
             PlanetSector sector = planet.GetParentOfType<PlanetSector>();
             return faction.Fog.Snapshots[sector.InstanceID].Planets[planet.InstanceID];
+        }
+
+        private sealed class PresenceRecorder
+            : IObserver<(ISceneNode Node, Planet Origin, Planet Destination)>
+        {
+            private readonly Action<(ISceneNode Node, Planet Origin, Planet Destination)> _record;
+
+            /// <summary>
+            /// Records a scene change at the point it is reported.
+            /// </summary>
+            /// <param name="record">The assertion and recording action.</param>
+            public PresenceRecorder(
+                Action<(ISceneNode Node, Planet Origin, Planet Destination)> record
+            ) => _record = record;
+
+            /// <inheritdoc />
+            public void OnNext((ISceneNode Node, Planet Origin, Planet Destination) change) =>
+                _record(change);
+
+            /// <inheritdoc />
+            public void OnCompleted() { }
+
+            /// <inheritdoc />
+            public void OnError(Exception error) => Assert.Fail(error.Message);
         }
     }
 }
