@@ -283,6 +283,25 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void ProcessFaction_OwnedUnpopulatedPlanet_DoesNotQueueRegiments()
+        {
+            _faction.ManageProduction = false;
+            _destination.IsColonized = false;
+            _destination.PopularSupport.Clear();
+            AddCompletedRegiment(_destination, "OCCUPYING_REGIMENT");
+            AddStrategicFacility(
+                _destination,
+                "PENDING_CONSTRUCTION",
+                BuildingType.ConstructionFacility,
+                ManufacturingStatus.Building
+            );
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
         public void ProcessFaction_PendingRegimentMeetsTarget_DoesNotQueueAnotherRegiment()
         {
             _faction.ManageProduction = false;
@@ -295,21 +314,38 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessFaction_TravelingRegimentDoesNotMeetTarget_QueuesRegiment()
+        public void ProcessFaction_RegimentDispatchedToDestination_DoesNotQueueAnotherRegiment()
         {
             _faction.ManageProduction = false;
-            Regiment traveling = AddCompletedRegiment(_destination, "TRAVELING_DEFENSE");
-            traveling.Movement = TestMovement.Create();
+            _destination.PositionX = 100;
+            _automation.ProcessFaction(_faction);
+            new ManufacturingTickProcessor(_manufacturing, _movement).ProcessTick(_game);
+            Regiment delivering = _destination.GetAllRegiments().Single();
+            Assert.AreEqual(ManufacturingStatus.Delivering, delivering.ManufacturingStatus);
+            Assert.IsNotNull(delivering.Movement);
 
             _automation.ProcessFaction(_faction);
 
-            Assert.AreEqual(2, _destination.GetAllRegiments().Count);
-            Assert.AreEqual(
-                1,
-                _destination
-                    .GetAllRegiments()
-                    .Count(regiment => regiment.ManufacturingStatus == ManufacturingStatus.Building)
+            Assert.AreEqual(0, GetQueueCount(_producer, ManufacturingType.Troop));
+        }
+
+        [Test]
+        public void ProcessFaction_QueuedRegimentRetargeted_QueuesReplacement()
+        {
+            _faction.ManageProduction = false;
+            _automation.ProcessFaction(_faction);
+            Regiment queued = _destination.GetAllRegiments().Single();
+            Assert.IsTrue(_movement.TryRequestMove(queued, _producer));
+            Planet secondProducer = CreateProducer(
+                "SECOND_PRODUCER",
+                _producer.GetParentOfType<PlanetSector>(),
+                100
             );
+
+            _automation.ProcessFaction(_faction);
+
+            Assert.AreEqual(1, GetQueueCount(secondProducer, ManufacturingType.Troop));
+            Assert.AreNotSame(queued, _destination.GetAllRegiments().Single());
         }
 
         [Test]
