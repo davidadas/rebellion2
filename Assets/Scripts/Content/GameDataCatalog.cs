@@ -130,7 +130,7 @@ public sealed class GameDataCatalog
         {
             CapitalShip ship = CapitalShips[index];
             if (
-                ship.PhysicalGeometry != null && ship.BackupDrive != null
+                ship.PhysicalGeometry != null && ship.HasAuthoredHyperdrives
                 || !definitions.TryGetValue(ship.TypeID ?? string.Empty, out var definition)
             )
                 continue;

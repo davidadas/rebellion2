@@ -211,12 +211,7 @@ namespace Rebellion.Game.Combat
         }
         public CombatSide Side { get; private set; }
         public bool IsFighter => Unit is Starfighter;
-        public bool HasPrimaryHyperdrive =>
-            Unit is Starfighter fighter
-                ? fighter.Hyperdrive != 0
-                : Unit is CapitalShip { Hyperdrive: not 0 };
-        public bool HasBackupHyperdrive =>
-            Unit is CapitalShip { BackupHyperdrive: > 0 } or Starfighter { BackupHyperdrive: > 0 };
+        private int DriveSlotCount => Unit is CapitalShip ship ? ship.Hyperdrives.Length : 2;
         public bool IsBattleStation => Unit is CapitalShip { CanDestroyPlanets: true };
         public int InitialSquadronSize => (Unit as Starfighter)?.CurrentSquadronSize ?? 0;
         public float InitialHull =>
@@ -477,7 +472,7 @@ namespace Rebellion.Game.Combat
                 sublightSpeed,
                 maneuverability,
                 tractorBeamPower,
-                (uint)((HasPrimaryHyperdrive ? 1 : 0) + (HasBackupHyperdrive ? 1 : 0)),
+                CountInstalledHyperdrives(),
                 damageControl
             );
             InitializeBatteries(IsFighter ? 0 : GetDamage(TacticalShipSystem.Weapons), IsFighter);
@@ -779,29 +774,77 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Captures the component damage for the campaign, assigning disabled drives to
-        /// the primary drive before the backup drive.
+        /// Captures the component damage for the campaign in the ship's equipment order.
         /// </summary>
-        /// <param name="primaryHyperdriveInstalled">Whether the ship has a primary drive.</param>
-        /// <param name="backupHyperdriveInstalled">Whether the ship has a backup drive.</param>
         /// <returns>The component damage to commit with the battle result.</returns>
-        public CapitalShipSystemDamage CaptureDamage(
-            bool primaryHyperdriveInstalled,
-            bool backupHyperdriveInstalled
-        )
-        {
-            int remaining = (int)GetDamage(TacticalShipSystem.Hyperdrive);
-            int primary = primaryHyperdriveInstalled ? Math.Min(remaining, 1) : 0;
-            remaining -= primary;
-            return new CapitalShipSystemDamage()
+        public CapitalShipSystemDamage CaptureDamage() =>
+            new()
             {
                 Shields = (int)GetDamage(TacticalShipSystem.Shields),
                 Weapons = (int)GetDamage(TacticalShipSystem.Weapons),
                 TractorBeam = (int)GetDamage(TacticalShipSystem.TractorBeam),
                 Engines = (int)GetDamage(TacticalShipSystem.Engines),
-                PrimaryHyperdrive = primary,
-                BackupHyperdrive = backupHyperdriveInstalled ? Math.Min(remaining, 1) : 0,
+                HyperdriveDamage = DistributeDriveDamage(
+                    (int)GetDamage(TacticalShipSystem.Hyperdrive)
+                ),
             };
+
+        /// <summary>
+        /// Checks whether the captured unit has a drive at the given position.
+        /// </summary>
+        /// <param name="index">The drive index.</param>
+        /// <returns>Whether that drive participates in tactical combat.</returns>
+        internal bool HasHyperdriveAt(int index)
+        {
+            int rating = Unit switch
+            {
+                CapitalShip ship => ship.GetHyperdriveRating(index),
+                Starfighter fighter when index == 0 => fighter.Hyperdrive,
+                Starfighter fighter when index == 1 => fighter.BackupHyperdrive,
+                _ => 0,
+            };
+            return index == 0 ? rating != 0 : rating > 0;
+        }
+
+        /// <summary>
+        /// Counts the drives installed per the captured equipment.
+        /// </summary>
+        /// <returns>The number of valid drives in equipment order.</returns>
+        private uint CountInstalledHyperdrives()
+        {
+            uint count = 0;
+            for (int index = 0; index < DriveSlotCount; index++)
+                if (HasHyperdriveAt(index))
+                    count++;
+            return count;
+        }
+
+        /// <summary>
+        /// Assigns disabled drives in order, skipping empty positions.
+        /// </summary>
+        /// <param name="remaining">The total number of disabled drives.</param>
+        /// <param name="retainTotal">Whether to retain excess damage from older saved battle pools.</param>
+        /// <returns>The drive damage by equipment position.</returns>
+        private int[] DistributeDriveDamage(int remaining, bool retainTotal = false)
+        {
+            int[] damage = new int[DriveSlotCount];
+            // An older save can restore component damage before the unit's equipment is read.
+            bool equipmentPending = retainTotal && Unit == null;
+            for (int index = 0; index < damage.Length && remaining != 0; index++)
+            {
+                if (!equipmentPending && !HasHyperdriveAt(index))
+                    continue;
+                damage[index] = Math.Min(remaining, 1);
+                remaining -= damage[index];
+            }
+
+            if (retainTotal && remaining != 0)
+            {
+                if (damage.Length == 0)
+                    return new[] { remaining };
+                damage[damage.Length - 1] += remaining;
+            }
+            return damage;
         }
 
         /// <summary>
@@ -910,12 +953,16 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="system">The affected ship system.</param>
         /// <param name="damage">The new damage level.</param>
-        private void SetDamage(TacticalShipSystem system, uint damage) =>
-            ComponentDamage.SetCombatDamage(
-                system,
-                unchecked((int)damage),
-                primaryHyperdriveInstalled: _unit is not CapitalShip || HasPrimaryHyperdrive
-            );
+        private void SetDamage(TacticalShipSystem system, uint damage)
+        {
+            if (system == TacticalShipSystem.Hyperdrive)
+                ComponentDamage.HyperdriveDamage = DistributeDriveDamage(
+                    unchecked((int)damage),
+                    retainTotal: true
+                );
+            else
+                ComponentDamage.SetCombatDamage(system, unchecked((int)damage));
+        }
 
         /// <summary>
         /// Restores the ordered component damage values from persisted battle state.

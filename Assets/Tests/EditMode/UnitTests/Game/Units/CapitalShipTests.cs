@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
 using XmlDocument = global::System.Xml.XmlDocument;
@@ -53,8 +54,7 @@ namespace Rebellion.Tests.Game.Units
                 Weapons = 3,
                 TractorBeam = 4,
                 Engines = 1,
-                PrimaryHyperdrive = 1,
-                BackupHyperdrive = 1,
+                HyperdriveDamage = new[] { 1, 1 },
             };
             _capitalShip.NextRepairTick = 120;
             _capitalShip.RepairIntervalTicks = 30;
@@ -98,7 +98,7 @@ namespace Rebellion.Tests.Game.Units
         {
             UnitFactory factory = TacticalTestData.CreateUnitFactory(TestConfig.Create());
             CapitalShip ship = factory.Create<CapitalShip>("ALCS008", "owner");
-            ship.SystemDamage.PrimaryHyperdrive = 1;
+            ship.SystemDamage.SetHyperdriveDamage(0, 1);
             Assert.AreEqual(2, ship.GetOperationalHyperdrive());
         }
 
@@ -106,9 +106,59 @@ namespace Rebellion.Tests.Game.Units
         public void GetOperationalHyperdrive_BothDrivesDamaged_ReturnsZero()
         {
             _capitalShip.Hyperdrive = 1;
-            _capitalShip.SystemDamage.PrimaryHyperdrive = 1;
-            _capitalShip.SystemDamage.BackupHyperdrive = 1;
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+            _capitalShip.SystemDamage.SetHyperdriveDamage(1, 1);
             Assert.AreEqual(0, _capitalShip.GetOperationalHyperdrive());
+        }
+
+        [TestCase("<BackupHyperdrive>6</BackupHyperdrive>")]
+        [TestCase("<BackupDrive><Rating>6</Rating></BackupDrive>")]
+        public void Deserialize_LegacyDriveFields_PreservesEquipmentOrderAndDamage(
+            string reserveDrive
+        )
+        {
+            string xml =
+                "<CapitalShip>"
+                + "<PrimaryDrive><Rating>4</Rating></PrimaryDrive>"
+                + "<Hyperdrive>9</Hyperdrive>"
+                + reserveDrive
+                + "<SystemDamage><PrimaryHyperdrive>1</PrimaryHyperdrive><BackupHyperdrive>0</BackupHyperdrive></SystemDamage>"
+                + "</CapitalShip>";
+
+            CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(xml);
+
+            CollectionAssert.AreEqual(
+                new[] { 4, 6 },
+                ship.Hyperdrives.Select(drive => drive.Rating)
+            );
+            Assert.AreEqual(6, ship.GetOperationalHyperdrive());
+            string saved = SerializationHelper.Serialize(ship);
+            StringAssert.Contains("<Hyperdrives>", saved);
+            StringAssert.Contains("<HyperdriveDamage>", saved);
+            StringAssert.DoesNotContain("<PrimaryDrive>", saved);
+            StringAssert.DoesNotContain("<BackupHyperdrive>", saved);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(saved);
+            Assert.AreEqual(6, restored.GetOperationalHyperdrive());
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_WithThreeDrives_UsesFirstWorkingDrive()
+        {
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+                new Hyperdrive { Rating = 2 },
+            };
+            _capitalShip.SystemDamage.HyperdriveDamage = new[] { 1, 1 };
+
+            Assert.AreEqual(2, _capitalShip.GetOperationalHyperdrive());
+
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+            copy.SystemDamage.RepairComponent(1);
+            copy.Hyperdrives[2].Rating = 3;
+            Assert.AreEqual(8, copy.GetOperationalHyperdrive());
+            Assert.AreEqual(2, _capitalShip.GetOperationalHyperdrive());
         }
 
         [Test]

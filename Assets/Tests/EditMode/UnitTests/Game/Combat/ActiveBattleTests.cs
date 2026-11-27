@@ -394,6 +394,19 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsFalse(restored.IsBatteryReady(TacticalWeaponArc.Forward));
         }
 
+        [Test]
+        public void Deserialize_LegacyDriveDamageBeforeShip_DisablesTheFirstDrive()
+        {
+            const string xml =
+                "<CombatUnit><Systems>"
+                + "<ComponentDamage><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>0</UInt32><UInt32>1</UInt32></ComponentDamage>"
+                + "</Systems><CapitalShip><Hyperdrive>4</Hyperdrive><BackupHyperdrive>6</BackupHyperdrive></CapitalShip></CombatUnit>";
+
+            CombatUnit restored = SerializationHelper.Deserialize<CombatUnit>(xml);
+
+            Assert.AreEqual(6, ((CapitalShip)restored.Unit).GetOperationalHyperdrive());
+        }
+
         /// <summary>
         /// Creates an empty space battle for a test.
         /// </summary>

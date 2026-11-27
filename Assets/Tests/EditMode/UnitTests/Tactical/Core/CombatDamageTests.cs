@@ -915,9 +915,9 @@ namespace Rebellion.Tests.Tactical
                 0,
                 new CapitalShipSystemDamage { Shields = 1 }
             );
-            Assert.AreEqual(1, systems.CaptureDamage(true, false).Shields);
+            Assert.AreEqual(1, systems.CaptureDamage().Shields);
             systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
-            Assert.AreEqual(0, systems.CaptureDamage(true, false).Total);
+            Assert.AreEqual(0, systems.CaptureDamage().Total);
         }
 
         [TestCase(TacticalWeaponType.LaserCannon)]

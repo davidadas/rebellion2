@@ -1024,7 +1024,7 @@ namespace Rebellion.Tests.Tactical
         public void CanWithdraw_DisabledHyperdrive_PreventsDeparture()
         {
             CapitalShip ship = CreateShip("a", 100, 0);
-            ship.SystemDamage.PrimaryHyperdrive = 1;
+            ship.SystemDamage.SetHyperdriveDamage(0, 1);
             TacticalCombatSession session = CreateSession(ship, CreateShip("b", 100, 0));
 
             Assert.IsFalse(session.CanWithdraw(CombatSide.Attacker));

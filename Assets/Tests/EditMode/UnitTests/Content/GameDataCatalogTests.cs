@@ -306,7 +306,7 @@ namespace Rebellion.Tests.Content
             );
             CapitalShip captured = sourceFactory.Create<CapitalShip>(template.TypeID, "owner");
             derivedFactory.Create<CapitalShip>(template.TypeID, "owner");
-            captured.SystemDamage.PrimaryHyperdrive = 1;
+            captured.SystemDamage.SetHyperdriveDamage(0, 1);
             Assert.Greater(captured.GetOperationalHyperdrive(), 0);
             Assert.AreSame(template, derived.CapitalShips[0]);
         }
@@ -322,15 +322,15 @@ namespace Rebellion.Tests.Content
             GameDataCatalog first = CreateCatalog(2, 3, 12);
             GameDataCatalog second = CreateCatalog(4, 5, 24);
 
-            Assert.AreEqual(2, first.CapitalShips.Single().BackupHyperdrive);
-            Assert.AreEqual(4, second.CapitalShips.Single().BackupHyperdrive);
+            Assert.AreEqual(2, first.CapitalShips.Single().GetHyperdriveRating(1));
+            Assert.AreEqual(4, second.CapitalShips.Single().GetHyperdriveRating(1));
             Assert.AreEqual(12, first.CapitalShips.Single().PhysicalGeometry.HullWidth);
             Assert.AreEqual(24, second.CapitalShips.Single().PhysicalGeometry.HullWidth);
             Assert.AreEqual(3, first.Starfighters.Single().BackupHyperdrive);
             Assert.AreEqual(5, second.Starfighters.Single().BackupHyperdrive);
             Assert.AreSame(ship, ships.Single());
             Assert.AreSame(fighter, fighters.Single());
-            Assert.IsNull(ship.BackupDrive);
+            Assert.Zero(ship.GetHyperdriveRating(1));
             Assert.IsNull(ship.PhysicalGeometry);
             Assert.Zero(fighter.BackupHyperdrive);
 
