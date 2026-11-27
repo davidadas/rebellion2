@@ -146,7 +146,22 @@ namespace Rebellion.Game.Missions
                 {
                     projection = (Planet)_planet.CreateCopy();
                     projection.SetParent(_planet.GetParent());
-                    projection.ChangePopularSupport(faction, shift, _game);
+                    if (shift != 0 && projection.IsPopulated())
+                    {
+                        string opposingFactionID =
+                            shift < 0
+                                ? _game
+                                    .GetFactions()
+                                    .Find(candidate => candidate.InstanceID != faction.InstanceID)
+                                    ?.InstanceID
+                                : null;
+                        projection.ChangePopularSupport(
+                            faction,
+                            shift,
+                            opposingFactionID,
+                            _game.Config?.SupportShift
+                        );
+                    }
                     _supportProjections.Add(key, projection);
                 }
                 return projection;
@@ -864,15 +879,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
-        /// <param name="resolveSuccessfulAttempt">
-        /// Optional mission-specific resolution applied immediately after each successful roll.
-        /// Return true when that attempt earned the mission's normal participant improvement.
-        /// </param>
         /// <returns>The first participant whose attempt succeeds, or null if every attempt fails.</returns>
         protected internal IMissionParticipant RollParticipantAttempts(
             IRandomNumberProvider provider,
-            GameRoot game,
-            Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null
+            GameRoot game
         )
         {
             SuccessfulParticipantInstanceID = null;
@@ -896,8 +906,6 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 SuccessfulParticipantInstanceID = participant.InstanceID;
-                if (resolveSuccessfulAttempt?.Invoke(participant) == true)
-                    ImproveMissionParticipantRating(participant);
                 return participant;
             }
 
@@ -911,8 +919,6 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 SuccessfulParticipantInstanceID = specialForces.InstanceID;
-                if (resolveSuccessfulAttempt?.Invoke(specialForces) == true)
-                    ImproveMissionParticipantRating(specialForces);
                 return specialForces;
             }
 

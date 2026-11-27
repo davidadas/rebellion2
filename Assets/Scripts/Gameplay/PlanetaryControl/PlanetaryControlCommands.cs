@@ -344,7 +344,21 @@ namespace Rebellion.Gameplay
         /// <param name="shift">The signed support adjustment.</param>
         internal void ChangePopularSupport(Planet planet, Faction faction, int shift)
         {
-            planet?.ChangePopularSupport(faction, shift, _game);
+            if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
+                return;
+            string opposingFactionID =
+                shift < 0
+                    ? _game
+                        .GetFactions()
+                        .Find(candidate => candidate.InstanceID != faction.InstanceID)
+                        ?.InstanceID
+                    : null;
+            planet.ChangePopularSupport(
+                faction,
+                shift,
+                opposingFactionID,
+                _game.Config?.SupportShift
+            );
         }
 
         /// <summary>

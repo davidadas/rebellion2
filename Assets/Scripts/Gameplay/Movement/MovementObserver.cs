@@ -370,7 +370,14 @@ namespace Rebellion.Gameplay
                         )
                     );
             }
-            else if (officer.TryCapture(captorInstanceId, _game, _game.Random))
+            else if (
+                officer.TryCapture(
+                    captorInstanceId,
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _game.Random
+                )
+            )
             {
                 results.Add(
                     new OfficerCaptureStateResult

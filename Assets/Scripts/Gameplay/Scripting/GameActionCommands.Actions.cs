@@ -368,7 +368,8 @@ namespace Rebellion.Gameplay.Scripting
                     if (
                         !officer.TryCapture(
                             action.CaptorFactionInstanceID,
-                            game,
+                            game.Config?.Captive?.EscapeAttemptInterval,
+                            game.CurrentTick,
                             context.Random,
                             action.CanEscape
                         )

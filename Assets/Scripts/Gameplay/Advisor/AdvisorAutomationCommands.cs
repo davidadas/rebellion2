@@ -94,9 +94,7 @@ namespace Rebellion.Gameplay
                 || template == null
                 || producer == null
                 || template.MaintenanceCost
-                    > faction.GetProjectedMaintenanceHeadroom(ownedPlanet =>
-                        BlockadeQueries.IsBlockaded(_game, ownedPlanet)
-                    )
+                    > ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, faction)
             )
                 return false;
 

@@ -177,16 +177,12 @@ namespace Rebellion.Game.Missions
         )
         {
             List<GameResult> results = new List<GameResult>();
-            IMissionParticipant successfulParticipant = RollParticipantAttempts(
-                provider,
-                game,
-                participant =>
-                {
-                    List<GameResult> attemptResults = OnSuccess(game, provider, participant);
-                    results.AddRange(attemptResults);
-                    return true;
-                }
-            );
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
+            if (successfulParticipant != null)
+            {
+                results.AddRange(OnSuccess(game, provider, successfulParticipant));
+                ImproveMissionParticipantRating(successfulParticipant);
+            }
 
             MissionOutcome outcome;
             MissionCompletionReason completionReason;
@@ -237,7 +233,14 @@ namespace Rebellion.Game.Missions
             )
                 return results;
 
-            if (!target.TryCapture(OwnerInstanceID, game, provider))
+            if (
+                !target.TryCapture(
+                    OwnerInstanceID,
+                    game.Config?.Captive?.EscapeAttemptInterval,
+                    game.CurrentTick,
+                    provider
+                )
+            )
                 return results;
 
             results.Add(
@@ -481,27 +484,20 @@ namespace Rebellion.Game.Missions
             MissionOutcome outcome = MissionOutcome.Failed;
             MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
-            bool targetKilled = false;
-            IMissionParticipant successfulParticipant = RollParticipantAttempts(
-                provider,
-                game,
-                participant =>
-                {
-                    List<GameResult> attemptResults = OnSuccess(game, provider, participant);
-                    results.AddRange(attemptResults);
-                    if (attemptResults.Exists(result => result is OfficerKilledResult))
-                        targetKilled = true;
-                    return targetKilled;
-                }
-            );
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
             if (successfulParticipant == null)
             {
                 results.AddRange(OnFailed(game, provider));
             }
-            else if (targetKilled)
+            else
             {
-                outcome = MissionOutcome.Success;
-                completionReason = MissionCompletionReason.Success;
+                List<GameResult> attemptResults = OnSuccess(game, provider, successfulParticipant);
+                results.AddRange(attemptResults);
+                if (attemptResults.Exists(result => result is OfficerKilledResult))
+                {
+                    ImproveMissionParticipantRating(successfulParticipant);
+                    outcome = MissionOutcome.Success;
+                }
             }
 
             results.Add(BuildCompletedResult(outcome, completionReason, game));
@@ -1415,7 +1411,14 @@ namespace Rebellion.Game.Missions
                 ownerCount++;
                 soleOwner = owner;
             }
-            return planet.ResolveController(game, ownerCount, soleOwner)?.InstanceID;
+            return planet
+                .ResolveController(
+                    game.GetFactions(),
+                    game.Config?.SupportShift,
+                    ownerCount,
+                    soleOwner
+                )
+                ?.InstanceID;
         }
 
         /// <summary>
@@ -2096,20 +2099,17 @@ namespace Rebellion.Game.Missions
         )
         {
             RecruitedOfficerInstanceID = null;
-            IMissionParticipant successfulParticipant = RollParticipantAttempts(
-                provider,
-                game,
-                _ =>
+            IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
+            if (successfulParticipant != null)
+            {
+                List<Officer> targets = game.GetUnrecruitedOfficers(OwnerInstanceID);
+                if (targets.Count > 0)
                 {
-                    List<Officer> targets = game.GetUnrecruitedOfficers(OwnerInstanceID);
-                    if (targets.Count == 0)
-                        return false;
-
                     Officer recruitedOfficer = targets.RandomElement(provider);
                     RecruitedOfficerInstanceID = recruitedOfficer.InstanceID;
-                    return true;
+                    ImproveMissionParticipantRating(successfulParticipant);
                 }
-            );
+            }
 
             List<GameResult> results;
             MissionOutcome outcome;
@@ -3224,7 +3224,9 @@ namespace Rebellion.Game.Missions
                             ? projection.OwnerInstanceID
                             : null
                     )
-                    : projection.ResolveController(game, owners)?.InstanceID;
+                    : projection
+                        .ResolveController(game.GetFactions(), game.Config?.SupportShift, owners)
+                        ?.InstanceID;
                 if (owner != planet.OwnerInstanceID)
                 {
                     successes++;
