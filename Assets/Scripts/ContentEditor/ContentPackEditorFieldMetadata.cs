@@ -42,7 +42,27 @@ internal static class ContentPackEditorFieldMetadata
         [(typeof(StartingPlanet), nameof(StartingPlanet.PickFromRim))] =
             "Selects a random unused Outer Rim planet instead of the configured planet.",
         [(typeof(StartingPlanet), nameof(StartingPlanet.VisibleToFactionIDs))] =
-            "Additional factions that know this planet at game start.",
+            "Factions that receive full starting intelligence at this planet, even when other planets start unexplored.",
+        [(typeof(StartingIntelligenceProfile), nameof(StartingIntelligenceProfile.Difficulty))] =
+            "The difficulty that uses these starting visibility rules. Omitted difficulties use the default rules.",
+        [(typeof(StartingIntelligenceProfile), nameof(StartingIntelligenceProfile.RevealAgents))] =
+            "Reveals foreign officers and special forces on initially explored Core worlds. Passengers of hidden fleets stay hidden. Scenario visibility exceptions always apply.",
+        [(typeof(StartingIntelligenceProfile), nameof(StartingIntelligenceProfile.RevealFleets))] =
+            "Reveals foreign fleets on initially explored Core worlds. Scenario visibility exceptions always apply.",
+        [
+            (
+                typeof(StartingIntelligenceProfile),
+                nameof(StartingIntelligenceProfile.RevealBuildings)
+            )
+        ] =
+            "Reveals foreign buildings on initially explored Core worlds. Scenario visibility exceptions always apply.",
+        [
+            (
+                typeof(StartingIntelligenceProfile),
+                nameof(StartingIntelligenceProfile.StartWithUnexploredPlanets)
+            )
+        ] =
+            "Starts neutral and enemy planets unexplored, including Core worlds. Owned planets and scenario visibility exceptions remain known. Applies to every faction.",
         [(typeof(FactionBucketConfig), nameof(FactionBucketConfig.FactionID))] =
             "The faction assigned these shares of strong and weak core planets.",
         [(typeof(FactionBucketConfig), nameof(FactionBucketConfig.StrongPct))] =

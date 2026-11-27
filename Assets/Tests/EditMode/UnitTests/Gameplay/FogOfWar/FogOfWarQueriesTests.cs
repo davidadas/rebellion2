@@ -27,6 +27,21 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void IsPlanetControlVisible_UnexploredCorePlanet_DoesNotRevealPoliticalChanges()
+        {
+            Assert.IsFalse(_queries.IsPlanetControlVisible(_coruscant, _alliance));
+            Assert.IsTrue(_queries.IsPlanetControlVisible(_coruscant, _empire));
+        }
+
+        [Test]
+        public void IsPlanetControlVisible_ExploredCorePlanet_ReceivesPoliticalChangesWithoutFleet()
+        {
+            new FogOfWarRecorder().RecordPlanetSnapshot(_alliance, _coruscant, _coreSector, 1);
+
+            Assert.IsTrue(_queries.IsPlanetControlVisible(_coruscant, _alliance));
+        }
+
+        [Test]
         public void BuildFactionView_HiddenSuppressionSource_PreservesSectorPresence()
         {
             Fleet fleet = new() { OwnerInstanceID = _empire.InstanceID };

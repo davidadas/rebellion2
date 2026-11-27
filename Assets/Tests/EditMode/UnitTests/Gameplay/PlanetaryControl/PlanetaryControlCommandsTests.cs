@@ -330,6 +330,33 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("rebels", _targetPlanet.GetOwnerInstanceID());
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TransferPlanet_CoreWorld_OnlyNotifiesThirdFactionAfterExploration(bool explored)
+        {
+            Faction spectator = new() { InstanceID = "spectator" };
+            _game.GetFactions().Add(spectator);
+            _targetPlanet.GetParentOfType<PlanetSector>().SectorType = PlanetSectorType.Core;
+            if (explored)
+                _targetPlanet.AddVisitor(spectator.InstanceID);
+
+            PlanetOwnershipChangedResult result = _commands.TransferPlanet(_targetPlanet, _empire);
+            FogOfWarRecorder recorder = new();
+            FogOfWarObserver observer = new(
+                _game,
+                new FogOfWarCommands(_game, recorder),
+                new FogOfWarQueries(_game),
+                recorder
+            );
+            observer.ProcessResults(new GameResult[] { result });
+
+            Assert.AreEqual(
+                explored,
+                result.ObserverFactionInstanceIDs.Contains(spectator.InstanceID)
+            );
+            Assert.AreEqual(explored, spectator.Fog.Snapshots.Count > 0);
+        }
+
         [Test]
         public void TransferPlanet_TransfersBuildings_ToNewOwner()
         {

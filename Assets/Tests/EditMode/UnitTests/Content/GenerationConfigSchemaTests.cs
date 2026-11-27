@@ -14,6 +14,55 @@ namespace Rebellion.Tests.Content
     [Category("RequiresMedia")]
     public sealed class GenerationConfigSchemaTests
     {
+        [Test]
+        public void Validate_StartingIntelligence_DeserializesVisibilityRules()
+        {
+            XDocument document = XDocument.Parse(CreateGenerationXml(string.Empty));
+            document.Root.Add(
+                XElement.Parse(
+                    "<StartingIntelligence><StartingIntelligenceProfile><Difficulty>Hard</Difficulty><RevealAgents>false</RevealAgents><RevealFleets>false</RevealFleets><StartWithUnexploredPlanets>true</StartWithUnexploredPlanets></StartingIntelligenceProfile></StartingIntelligence>"
+                )
+            );
+            string xml = document.ToString();
+
+            ValidateGenerationConfigXml(xml);
+            using StringReader reader = new(xml);
+            GameGenerationConfig config = (GameGenerationConfig)
+                new GameSerializer(typeof(GameGenerationConfig)).Deserialize(reader);
+
+            StartingIntelligenceProfile profile = config.GetStartingIntelligence(
+                GameDifficulty.Hard
+            );
+            Assert.IsFalse(profile.RevealAgents);
+            Assert.IsFalse(profile.RevealFleets);
+            Assert.IsTrue(profile.RevealBuildings);
+            Assert.IsTrue(profile.StartWithUnexploredPlanets);
+        }
+
+        [TestCase(
+            "<StartingIntelligenceProfile><Difficulty>Hard</Difficulty><RevealAgents>maybe</RevealAgents></StartingIntelligenceProfile>"
+        )]
+        [TestCase(
+            "<StartingIntelligenceProfile><Difficulty>Impossible</Difficulty></StartingIntelligenceProfile>"
+        )]
+        [TestCase(
+            "<StartingIntelligenceProfile><RevealAgents>true</RevealAgents></StartingIntelligenceProfile>"
+        )]
+        [TestCase(
+            "<StartingIntelligenceProfile><Difficulty>Hard</Difficulty></StartingIntelligenceProfile><StartingIntelligenceProfile><Difficulty>Hard</Difficulty></StartingIntelligenceProfile>"
+        )]
+        public void Validate_InvalidStartingIntelligence_RejectsDocument(string profiles)
+        {
+            XDocument document = XDocument.Parse(CreateGenerationXml(string.Empty));
+            document.Root.Add(
+                XElement.Parse("<StartingIntelligence>" + profiles + "</StartingIntelligence>")
+            );
+
+            Assert.Throws<XmlSchemaValidationException>(() =>
+                ValidateGenerationConfigXml(document.ToString())
+            );
+        }
+
         [TestCase("string")]
         [TestCase("String")]
         public void Validate_StartingFacilityElementName_PreservesOrderedQuantitiesWhenLoaded(

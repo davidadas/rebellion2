@@ -45,6 +45,9 @@ namespace Rebellion.Generation
             );
             PlanetSupportSection sup = rules.PlanetSupport;
             string[] factionIds = summary.StartingFactionIDs;
+            bool startUnexplored = rules
+                .GetStartingIntelligence(summary.Difficulty)
+                .StartWithUnexploredPlanets;
 
             foreach (PlanetSector sector in sectors)
             {
@@ -55,7 +58,7 @@ namespace Rebellion.Generation
                     RollPlanetResources(planet, isCore, res, rng);
                     ResolveColonization(planet, isCore, res.RimColonizationPct, rng);
                     SetPopularSupport(planet, isCore, classification, sup, factionIds, rng);
-                    RecordStartingVisitors(planet, isCore, factionIds);
+                    RecordStartingVisitors(planet, isCore && !startUnexplored, factionIds);
                 }
             }
         }
@@ -144,14 +147,14 @@ namespace Rebellion.Generation
 
         /// <summary>
         /// Records which factions have already visited a planet at game start. Core
-        /// planets are visible to every faction; rim planets only to their owner.
+        /// planets may be pre-explored; otherwise only the owner starts with a visit.
         /// </summary>
         /// <param name="planet">The planet to update.</param>
-        /// <param name="isCore">True when the planet sits in a core sector.</param>
+        /// <param name="preExplored">Whether every faction starts with knowledge of the planet.</param>
         /// <param name="factionIds">IDs of every faction in the game.</param>
-        private void RecordStartingVisitors(Planet planet, bool isCore, string[] factionIds)
+        private void RecordStartingVisitors(Planet planet, bool preExplored, string[] factionIds)
         {
-            if (isCore)
+            if (preExplored)
             {
                 foreach (string factionId in factionIds)
                 {

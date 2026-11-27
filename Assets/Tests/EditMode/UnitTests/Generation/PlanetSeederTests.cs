@@ -106,6 +106,42 @@ namespace Rebellion.Tests.Generation
             _factionIds = new[] { "FNALL1", "FNEMP1" };
         }
 
+        [TestCase(PlanetSectorType.Core, null)]
+        [TestCase(PlanetSectorType.Core, "FNEMP1")]
+        [TestCase(PlanetSectorType.OuterRim, null)]
+        [TestCase(PlanetSectorType.OuterRim, "FNEMP1")]
+        public void Seed_UnexploredPlanets_OnlyOwnerStartsWithVisit(
+            PlanetSectorType sectorType,
+            string owner
+        )
+        {
+            Planet planet = new() { InstanceID = "planet", OwnerInstanceID = owner };
+            PlanetSector sector = new() { InstanceID = "sector", SectorType = sectorType };
+            sector.AddChild(planet);
+            GameGenerationConfig rules = CreateRules();
+            rules.StartingIntelligence = new List<StartingIntelligenceProfile>
+            {
+                new() { Difficulty = GameDifficulty.Hard, StartWithUnexploredPlanets = true },
+            };
+            GenerationContext context = new()
+            {
+                Sectors = new[] { sector },
+                Classification = new GalaxyClassificationResult(),
+                Config = rules,
+                Summary = new GameSummary
+                {
+                    StartingFactionIDs = _factionIds,
+                    Difficulty = GameDifficulty.Hard,
+                },
+                Rng = new StubRNG(),
+            };
+
+            new PlanetSeeder().Seed(context);
+
+            Assert.IsFalse(planet.WasVisitedBy("FNALL1"));
+            Assert.AreEqual(owner == "FNEMP1", planet.WasVisitedBy("FNEMP1"));
+        }
+
         [Test]
         public void Seed_Coruscant_Gets0Alliance100Empire()
         {

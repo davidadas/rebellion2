@@ -28,11 +28,22 @@ namespace Rebellion.Game
 
         public BalanceSection Balance { get; set; }
 
+        public List<StartingIntelligenceProfile> StartingIntelligence { get; set; }
+
         public List<GameEventCategory> DisabledEventCategories { get; set; } =
             new List<GameEventCategory>();
 
         public List<FactionModifierConfig> FactionModifiers { get; set; } =
             new List<FactionModifierConfig>();
+
+        /// <summary>
+        /// Gets the starting visibility rules for a difficulty, preserving defaults when omitted.
+        /// </summary>
+        /// <param name="difficulty">The selected difficulty.</param>
+        /// <returns>The matching profile or the default visibility rules.</returns>
+        public StartingIntelligenceProfile GetStartingIntelligence(GameDifficulty difficulty) =>
+            StartingIntelligence?.SingleOrDefault(profile => profile.Difficulty == difficulty)
+            ?? new StartingIntelligenceProfile { Difficulty = difficulty };
 
         /// <summary>
         /// Returns whether one classified event category is enabled by these generation settings.
@@ -59,8 +70,38 @@ namespace Rebellion.Game
                 FacilityGeneration = FacilityGeneration?.CreateCopy(),
                 UnitDeployment = UnitDeployment?.CreateCopy(),
                 Balance = Balance?.CreateCopy(),
+                StartingIntelligence = StartingIntelligence
+                    ?.Select(item => item?.CreateCopy())
+                    .ToList(),
                 DisabledEventCategories = DisabledEventCategories?.ToList(),
                 FactionModifiers = FactionModifiers?.Select(item => item?.CreateCopy()).ToList(),
+            };
+    }
+
+    /// <summary>
+    /// Defines starting exploration and unit visibility for one difficulty.
+    /// </summary>
+    [PersistableObject]
+    public class StartingIntelligenceProfile
+    {
+        public GameDifficulty Difficulty { get; set; }
+        public bool RevealAgents { get; set; } = true;
+        public bool RevealFleets { get; set; } = true;
+        public bool RevealBuildings { get; set; } = true;
+        public bool StartWithUnexploredPlanets { get; set; }
+
+        /// <summary>
+        /// Copies the difficulty and its starting visibility rules.
+        /// </summary>
+        /// <returns>An independent copy of the profile.</returns>
+        public StartingIntelligenceProfile CreateCopy() =>
+            new()
+            {
+                Difficulty = Difficulty,
+                RevealAgents = RevealAgents,
+                RevealFleets = RevealFleets,
+                RevealBuildings = RevealBuildings,
+                StartWithUnexploredPlanets = StartWithUnexploredPlanets,
             };
     }
 

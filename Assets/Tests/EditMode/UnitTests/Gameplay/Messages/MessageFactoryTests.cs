@@ -4742,10 +4742,13 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual("empire-image", message.DisplayImagePath);
         }
 
-        [TestCase(false)]
-        [TestCase(true)]
-        public void CreateMessages_UprisingEndedOnCorePlanet_NotifiesBothFactions(
-            bool allianceControlsPlanet
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void CreateMessages_UprisingEndedOnCorePlanet_NotifiesOnlyInformedFactions(
+            bool allianceControlsPlanet,
+            bool opponentKnowsPlanet
         )
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
@@ -4753,6 +4756,8 @@ namespace Rebellion.Tests.Gameplay
             Faction controller = allianceControlsPlanet ? alliance : empire;
             Faction opponent = allianceControlsPlanet ? empire : alliance;
             target.OwnerInstanceID = controller.InstanceID;
+            if (opponentKnowsPlanet)
+                target.AddVisitor(opponent.InstanceID);
 
             List<MessageDelivery> deliveries = CreateMessages(
                 game,
@@ -4774,13 +4779,15 @@ namespace Rebellion.Tests.Gameplay
                 new PlanetUprisingEndedResult { Planet = target, Faction = controller }
             );
 
-            Assert.AreEqual(2, deliveries.Count);
+            Assert.AreEqual(opponentKnowsPlanet ? 2 : 1, deliveries.Count);
             MessageDelivery friendly = deliveries.Single(item => item.Recipient == controller);
-            MessageDelivery enemy = deliveries.Single(item => item.Recipient == opponent);
             Assert.AreEqual(
                 AdvisorNotificationType.PositivePopularSupport,
                 friendly.NotificationType
             );
+            if (!opponentKnowsPlanet)
+                return;
+            MessageDelivery enemy = deliveries.Single(item => item.Recipient == opponent);
             Assert.AreEqual(AdvisorNotificationType.NegativePopularSupport, enemy.NotificationType);
             Assert.AreEqual($"ended:{controller.DisplayName}:Yavin", enemy.Message.Title);
             Assert.AreEqual($"body:{controller.DisplayName}:Yavin", enemy.Message.Body);
@@ -4878,6 +4885,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Faction alliance, Faction empire, _, Planet target) =
                 BuildTwoFactionMessageScene();
+            target.AddVisitor(empire.InstanceID);
             target.OwnerInstanceID = alliance.InstanceID;
             IReadOnlyList<MessageDelivery> deliveries = CreateMessages(
                 game,

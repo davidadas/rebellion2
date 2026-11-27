@@ -8,6 +8,56 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameGenerationConfigTests
     {
+        [TestCase(GameDifficulty.Easy)]
+        [TestCase(GameDifficulty.Medium)]
+        [TestCase(GameDifficulty.Hard)]
+        public void GetStartingIntelligence_OmittedProfile_PreservesDefaultVisibility(
+            GameDifficulty difficulty
+        )
+        {
+            GameGenerationConfig config = SerializationHelper.Deserialize<GameGenerationConfig>(
+                "<GameGenerationConfig/>"
+            );
+
+            StartingIntelligenceProfile profile = config.GetStartingIntelligence(difficulty);
+
+            Assert.IsTrue(profile.RevealAgents);
+            Assert.IsTrue(profile.RevealFleets);
+            Assert.IsTrue(profile.RevealBuildings);
+            Assert.IsFalse(profile.StartWithUnexploredPlanets);
+        }
+
+        [Test]
+        public void CreateCopy_StartingIntelligence_PreservesIndependentSerializableProfiles()
+        {
+            GameGenerationConfig source = new()
+            {
+                StartingIntelligence = new List<StartingIntelligenceProfile>
+                {
+                    new()
+                    {
+                        Difficulty = GameDifficulty.Hard,
+                        RevealAgents = false,
+                        RevealFleets = false,
+                        RevealBuildings = false,
+                        StartWithUnexploredPlanets = true,
+                    },
+                },
+            };
+            string serialized = SerializationHelper.Serialize(source);
+            GameGenerationConfig restored = SerializationHelper.Deserialize<GameGenerationConfig>(
+                serialized
+            );
+            GameGenerationConfig copy = source.CreateCopy();
+
+            Assert.AreEqual(serialized, SerializationHelper.Serialize(restored));
+            Assert.AreEqual(serialized, SerializationHelper.Serialize(copy));
+            copy.GetStartingIntelligence(GameDifficulty.Hard).RevealAgents = true;
+            copy.StartingIntelligence.Clear();
+            Assert.AreEqual(serialized, SerializationHelper.Serialize(source));
+            Assert.IsTrue(source.GetStartingIntelligence(GameDifficulty.Medium).RevealAgents);
+        }
+
         [Test]
         public void CreateCopy_ConfiguredGeneration_PreservesAllValues()
         {

@@ -22,6 +22,7 @@ internal static class ContentEditorGenerationLayout
             {
                 ("Faction setup", new[] { "GalaxyClassification", "FactionSetups" }),
                 ("Planet ownership", new[] { "GalaxyClassification", "FactionBuckets" }),
+                ("Starting intelligence", new[] { "StartingIntelligence" }),
             },
             "Officers" => new[] { ("Starting officers", new[] { "Officers", "StartingOfficers" }) },
             "Buildings" => new[]
@@ -89,6 +90,7 @@ internal static class ContentEditorGenerationLayout
             "Bonuses" => "Add additional forces",
             "BudgetLevels" => "Add galaxy size",
             "Overrides" => "Add difficulty override",
+            "StartingIntelligence" => "Add difficulty profile",
             "Profiles" => "Add resource profile",
             _ => "Add faction setup",
         };
@@ -167,6 +169,10 @@ internal static class ContentEditorGenerationLayout
     internal static string EntryCaption(ContentPackEditorProject project, XElement entry, int index)
     {
         List<string> names = new();
+        if (entry.Name.LocalName == nameof(StartingIntelligenceProfile))
+            names.Add(
+                entry.Element(nameof(StartingIntelligenceProfile.Difficulty))?.Value ?? "Difficulty"
+            );
         if (entry.Name.LocalName == "FixedFleet")
             names.Add("Fleet " + (index + 1));
         if (entry.Name.LocalName == "WeightedUnitEntry")
