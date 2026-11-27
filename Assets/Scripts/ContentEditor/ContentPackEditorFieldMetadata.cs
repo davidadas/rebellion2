@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
 using UnityEngine;
@@ -263,8 +264,9 @@ internal static class ContentPackEditorFieldMetadata
         ["HyperdriveCount"] =
             "The number of hyperdrive systems on each craft. Combat damage can disable them; losing all systems prevents independent retreat. This does not change travel speed.",
         ["Roles"] = "The combat tasks this unit design is intended to perform.",
+        ["Role"] = "The combat role assigned to this starfighter design. Choose one role.",
         ["FormationPriority"] =
-            "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by roles, then type ID.",
+            "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by role, then type ID.",
         ["DistanceDivisor"] =
             "Divides travel distance when calculating transit duration. Larger values shorten trips.",
         ["MinTransitTicks"] = "The minimum number of turns for a trip between different sectors.",
@@ -393,6 +395,8 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The label to display.</returns>
     internal static string GetCaption(ContentPackEditorField field, string fallback)
     {
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return field.MemberName == "PlanetIconPath" ? "Map image" : "Encyclopedia image";
         if (IsAIDecisionInterval(field))
             return "Decision interval (ticks)";
 
@@ -604,7 +608,9 @@ internal static class ContentPackEditorFieldMetadata
 
         string ancestry = string.Join(
             "/",
-            field.XmlElement.AncestorsAndSelf().Select(parent => parent.Name.LocalName)
+            (field.Container?.AncestorsAndSelf() ?? Enumerable.Empty<XElement>())
+                .Append(field.XmlElement)
+                .Select(parent => parent.Name.LocalName)
         );
         bool referenceKey =
             field.MemberName.EndsWith("Key", StringComparison.Ordinal)
@@ -714,7 +720,7 @@ internal static class ContentPackEditorFieldMetadata
                 && member != "RequiredSpecialForces"
         )
             return "Force";
-        if (member is "Traits" or "Roles")
+        if (member is "Traits" or "Role" or "Roles")
             return "Identity";
         if (member.StartsWith("Allowed", StringComparison.Ordinal))
             return "Command and missions";

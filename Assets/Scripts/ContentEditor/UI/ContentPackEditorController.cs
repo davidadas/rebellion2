@@ -55,8 +55,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.OpenRequested += ChooseOpenPack;
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
+        view.MediaReplacementRequested += ReplaceSharedMedia;
+        view.OfficerStatusArtworkRequested += ApplyOfficerStatusArtwork;
         view.ArtworkCutsRequested += PreviewArtworkCuts;
         view.ArtworkEffectRequested += PreviewArtworkEffect;
+        view.GameplayArtworkRequested += PreviewGameplayArtwork;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
         packageStore = new ModPackageStore(contentRootPath, new ThunderstoreClient());
@@ -249,8 +252,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.OpenRequested -= ChooseOpenPack;
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
+            view.MediaReplacementRequested -= ReplaceSharedMedia;
+            view.OfficerStatusArtworkRequested -= ApplyOfficerStatusArtwork;
             view.ArtworkCutsRequested -= PreviewArtworkCuts;
             view.ArtworkEffectRequested -= PreviewArtworkEffect;
+            view.GameplayArtworkRequested -= PreviewGameplayArtwork;
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
             view.ModManagerRequested -= ShowModManager;
@@ -562,6 +568,38 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Confirms an explicit request to share one officer status image across every faction.
+    /// </summary>
+    /// <param name="field">The selected status image whose assignments will be shared.</param>
+    private void ApplyOfficerStatusArtwork(ContentPackEditorField field)
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            project.RequireOwnedRecord(field.Record);
+            int count = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Count(record => record.Kind == "Officer");
+            view.ConfirmOfficerStatusArtwork(
+                field,
+                count,
+                () =>
+                    RunOperation(() =>
+                    {
+                        int changed = project.ApplyOfficerStatusArtwork(field);
+                        OpenProject(project);
+                        view.RenderStatus(
+                            $"Artwork applied to {changed} officers. Undo restores their previous images.",
+                            false
+                        );
+                    })
+            );
+        });
+    }
+
+    /// <summary>
     /// Imports a selected file and applies its content address through the project's normal editing API.
     /// </summary>
     /// <param name="field">The field receiving the imported content address.</param>
@@ -583,6 +621,41 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Confirms a shared image replacement that writes only into the working pack.
+    /// </summary>
+    /// <param name="field">The selected planet artwork slot.</param>
+    private void ReplaceSharedMedia(ContentPackEditorField field)
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            project.RequireOwnedRecord(field.Record);
+            string target =
+                ContentEditorPlanetArtwork.GetReplacementPath(project, field)
+                ?? throw new ArgumentException("Choose an existing pack image.");
+            string source = ContentEditorFileDialog.OpenFile(
+                GetImageImportDirectory(),
+                field.MediaExtensions
+            );
+            if (!string.IsNullOrEmpty(source))
+                view.ConfirmMediaReplacement(
+                    Path.GetFileName(target),
+                    ContentPackEditorStorage.HasMatchingMediaFormat(source, target)
+                        ? () =>
+                            RunOperation(() =>
+                            {
+                                ContentEditorPlanetArtwork.Replace(project, field, source);
+                                RememberImageImportDirectory(source);
+                                OpenProject(project);
+                            })
+                        : null,
+                    () => RunOperation(() => ApplyMediaImport(field, source, false))
+                );
+        });
+    }
+
+    /// <summary>
     /// Uses the same preview and replacement flow for selected and dropped files.
     /// </summary>
     /// <param name="field">The media slot receiving the file.</param>
@@ -598,6 +671,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             throw new ArgumentException("Unsupported file type.");
         if (!File.Exists(source))
             throw new FileNotFoundException("The selected media file does not exist.", source);
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+        {
+            ApplyMediaImport(field, source, false);
+            return;
+        }
         string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
         if (current == null)
         {
@@ -687,7 +765,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
         }
 
         ContentPackEditorField[] emptyCuts = GetFirstArtworkCutTargets(field);
-        using (project.BeginEdit("Import artwork"))
+        using (
+            project.BeginEdit(
+                field.MediaType == ContentPackEditorMediaType.Audio
+                    ? "Import audio clip"
+                    : "Import artwork"
+            )
+        )
         {
             string address = ContentPackEditorStorage.ImportAsset(project, source, field);
             if (field.IsList)
@@ -993,6 +1077,71 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Reuses the existing artwork workspace to edit a unit's combined layer order.
+    /// </summary>
+    /// <param name="record">The unit being edited.</param>
+    /// <param name="frame">The linked gameplay images with their current placement.</param>
+    private void PreviewGameplayArtwork(
+        ContentPackEditorRecord record,
+        ArtworkEffectPreviewFrame frame
+    )
+    {
+        RunOperation(() =>
+        {
+            var editor = new ContentEditorGameplayArtworkEditor(
+                view,
+                project,
+                record,
+                frame,
+                () =>
+                {
+                    ContentPackEditorStorage.Save(project);
+                    workspace.RenderProject(project, assets);
+                },
+                RunOperation
+            );
+            editor.Show();
+        });
+    }
+
+    /// <summary>
+    /// Applies the active effect to every card size belonging to the selected ship type.
+    /// </summary>
+    /// <param name="record">The selected ship definition.</param>
+    /// <param name="templates">The active effect fitted to each of this ship's output sizes.</param>
+    private async void ApplyArtworkToAllCards(
+        ContentPackEditorRecord record,
+        IReadOnlyList<ContentEditorShipArtworkVariants> templates
+    )
+    {
+        int? changed = null;
+        await RunOperationAsync(async cancellationToken =>
+        {
+            view.RenderStatus("Preparing card artwork. Press Escape to cancel.", false);
+            changed = await ContentEditorShipArtworkVariants.ApplyAsync(
+                project,
+                record,
+                templates,
+                ResolveArtworkFile,
+                view.GetShipEffectBackground,
+                cancellationToken
+            );
+        });
+        if (changed is not int count || this == null)
+            return;
+        RunOperation(() =>
+        {
+            Action reopen = view.CaptureArtworkReopen();
+            OpenProject(project);
+            reopen?.Invoke();
+            view.RenderStatus(
+                $"Artwork applied to {count} cards for {record.Name}. Save pack to keep the changes. Undo restores the entire edit.",
+                false
+            );
+        });
+    }
+
+    /// <summary>
     /// Begins a repeatable preview of the applicable gameplay images for one unit.
     /// </summary>
     /// <param name="selectedField">The state image selected on the artwork page.</param>
@@ -1007,6 +1156,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         RunOperation(() =>
         {
             ContentPackEditorRecord record = selectedField.Record;
+            string recordKey = record.Key;
             project.RequireOwnedRecord(record);
             if (!ContentEditorArtworkEffectGenerator.TryGetStyle(record, effect, out var style))
                 throw new ArgumentException(
@@ -1727,6 +1877,35 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     || savedRecipes[index] != JsonUtility.ToJson(drafts[index])
                 );
 
+            ContentEditorShipArtworkVariants[] CaptureCardArtwork()
+            {
+                var draft = JsonUtility.FromJson<ContentEditorArtworkRecipe>(
+                    JsonUtility.ToJson(drafts[activeOutput])
+                );
+                for (int index = 0; index < draft.Layers.Count; index++)
+                {
+                    var layer = draft.Layers[index];
+                    layer.Name = LayerName(layer, index, frames[activeOutput], draft);
+                    draft.Layers[index] = layer;
+                }
+                return outputs
+                    .Select(output => new ContentEditorShipArtworkVariants(
+                        output.Field,
+                        frames[activeOutput],
+                        draft
+                    ))
+                    .ToArray();
+            }
+
+            void ApplyToAllCards()
+            {
+                view.ConfirmShipArtworkCards(
+                    record,
+                    effect == ContentEditorArtworkEffect.Travel ? "hyperspace" : "damage",
+                    () => RunOperation(() => ApplyArtworkToAllCards(record, CaptureCardArtwork()))
+                );
+            }
+
             void Save()
             {
                 var images = new List<(ContentPackEditorField Field, byte[] Png, string Layers)>();
@@ -1973,6 +2152,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                                 ? "Rebuild travel artwork"
                                 : "Regenerate damage artwork",
                         Save = () => RunOperation(Save),
+                        ApplyToAllCards = shipEffects ? () => RunOperation(ApplyToAllCards) : null,
                         Undo =
                             undo.Count == 0
                                 ? null
@@ -1986,6 +2166,19 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             IReadOnlyList<ArtworkEffectPreviewFrame> result = null;
                             RunOperation(() => result = ReadCurrent());
                             return result;
+                        },
+                        Reopen = output =>
+                        {
+                            var refreshed = project
+                                .GetCatalogs()
+                                .SelectMany(catalog => catalog.Records)
+                                .FirstOrDefault(candidate => candidate.Key == recordKey);
+                            if (refreshed != null)
+                                PreviewArtworkEffect(
+                                    refreshed.GetField(outputs[output].Field.MemberName),
+                                    effect,
+                                    false
+                                );
                         },
                         Close = () =>
                         {

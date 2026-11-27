@@ -42,6 +42,8 @@ catalog's `Starfighters` root.
 
 | Field | Purpose |
 | --- | --- |
+| `Role` | One combat role: `Interceptor`, `Multirole`, `Bomber`, or `HeavyAssault`. Without an explicit formation priority, present designs are ordered by role, then type ID. Leave unset to order after classified designs. |
+| `FormationPriority` | Optional fixed place in the faction's formation order, including when the design is absent. Lower numbers come first and override role ordering. |
 | `MaxSquadronSize` | Full number of fighters in one squadron. |
 | `CurrentSquadronSize` | Starting number copied from the definition; normally equal to the maximum. |
 | `DetectionRating` | Detection strength. |
@@ -53,6 +55,11 @@ catalog's `Starfighters` root.
 | `Agility` | Tactical agility. |
 | `LaserCannon`, `IonCannon`, `Torpedoes` | Per-fighter weapon strengths. |
 | `LaserRange`, `IonRange`, `TorpedoRange` | Ranges for the corresponding weapons. |
+
+The deprecated `Roles` list remains readable in older packs and saved games. Its lowest-valued
+role is used, with the former `Fighter` role treated as `Multirole`. An explicit `Role` takes
+precedence over the list. New saves write the single `Role`; changing it in the content editor
+replaces the older list. Existing explicit formation priorities are preserved.
 
 Battle reports may use `BattleResultImagePath`, `BattleResultInTransitImagePath`, and
 `BattleResultDamagedImagePath`. Strategy views use the common normal, in-transit, and damaged image

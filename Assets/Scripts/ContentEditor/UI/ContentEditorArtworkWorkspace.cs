@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -82,6 +83,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
 
     [SerializeField]
     private Button save;
+
+    [SerializeField]
+    private Button applyToAll;
 
     [SerializeField]
     private Button undo;
@@ -193,6 +197,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     {
         Bind();
         bool opening = frames == null;
+        bool savedChanges = dirty && !changed;
         bool changedOutput = opening || outputIndex != initialOutput;
         outputIndex = initialOutput;
         frames = outputs;
@@ -200,7 +205,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         dirty = changed;
         actions = commands;
         confirmClose = confirm;
-        if (opening)
+        if (opening || savedChanges)
         {
             current = null;
             comparing = false;
@@ -211,8 +216,15 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         undo.interactable = commands.Undo != null;
         redo.interactable = commands.Redo != null;
         save.interactable = dirty;
+        save.GetComponentInChildren<TMP_Text>().text = commands.SaveLabel ?? "Save artwork";
+        applyToAll.gameObject.SetActive(commands.ApplyToAllCards != null);
         add.GetComponentInChildren<TMP_Text>().text = commands.AddLabel;
         rebuild.GetComponentInChildren<TMP_Text>().text = commands.RebuildLabel;
+        add.gameObject.SetActive(commands.Add != null);
+        duplicate.gameObject.SetActive(commands.Duplicate != null);
+        remove.gameObject.SetActive(commands.Remove != null);
+        importLayer.gameObject.SetActive(commands.Import != null);
+        rebuild.gameObject.SetActive(commands.Rebuild != null);
         varyShipWakes.gameObject.SetActive(commands.VaryShipWakes != null);
         gameObject.SetActive(true);
         Layout();
@@ -231,6 +243,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         bound = true;
         back.onClick.AddListener(() => TryCancel());
         save.onClick.AddListener(() => actions?.Save());
+        applyToAll.onClick.AddListener(() => actions?.ApplyToAllCards?.Invoke());
         undo.onClick.AddListener(() => actions?.Undo?.Invoke());
         redo.onClick.AddListener(() => actions?.Redo?.Invoke());
         draftButton.onClick.AddListener(() => Compare(false));
@@ -326,7 +339,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             selectedIndex = availableIndex;
         }
         artworkCanvas.Show(shown, selectedIndex, !comparing, resetView);
-        RenderLayers(selected);
+        RenderLayers(shown);
         UpdateInspector();
     }
 
@@ -390,8 +403,16 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         );
         bool canEdit = !comparing && selectedLayer.HasValue;
         bool canEditPixels = canEdit && !selectedLayer.Value.Linked;
+        bool showPosition = actions.Move != null;
+        positionCaption.gameObject.SetActive(showPosition);
+        scope.gameObject.SetActive(showPosition);
+        xCaption.gameObject.SetActive(showPosition);
+        yCaption.gameObject.SetActive(showPosition);
+        xInput.gameObject.SetActive(showPosition);
+        yInput.gameObject.SetActive(showPosition);
         xInput.interactable = yInput.interactable = canEditPixels;
-        duplicate.interactable = remove.interactable = canEditPixels;
+        duplicate.interactable = canEditPixels && actions.Duplicate != null;
+        remove.interactable = canEditPixels && actions.Remove != null;
         forward.interactable = canEdit && GetReorderTarget(1) >= 0;
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
@@ -527,7 +548,16 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         float width = panel.rect.width;
         float height = panel.rect.height;
         bool narrow = width < 790;
-        float headerHeight = width < 760 ? 104 : 74;
+        bool bulk = applyToAll.gameObject.activeSelf;
+        float saveWidth = Mathf.Max(
+            132,
+            save.GetComponentInChildren<TMP_Text>().preferredWidth + 24
+        );
+        float saveExtra = saveWidth - 132;
+        float headerHeight =
+            bulk && width < 640 ? 144
+            : width < (bulk ? 1000 : 760) + saveExtra ? 104
+            : 74;
         float outputHeight = width < 740 ? 88 : 50;
         float top = headerHeight + outputHeight;
         float room = Mathf.Max(140, height - top);
@@ -547,19 +577,57 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         );
 
         Place(back.transform, 16, 18, 76, 32);
-        Place(title.transform, 108, 8, Mathf.Max(120, width - (headerHeight > 74 ? 126 : 520)), 34);
+        Place(
+            title.transform,
+            108,
+            8,
+            Mathf.Max(
+                120,
+                width
+                    - saveExtra
+                    - (
+                        headerHeight > 74 ? 126
+                        : bulk ? 736
+                        : 560
+                    )
+            ),
+            34
+        );
         Place(
             detail.transform,
             109,
             41,
-            Mathf.Max(120, width - (headerHeight > 74 ? 127 : 522)),
+            Mathf.Max(
+                120,
+                width
+                    - saveExtra
+                    - (
+                        headerHeight > 74 ? 127
+                        : bulk ? 737
+                        : 561
+                    )
+            ),
             22
         );
         float actionY = headerHeight > 74 ? 68 : 20;
-        Place(save.transform, width - 148, actionY, 132, 34);
-        Place(redo.transform, width - 219, actionY, 64, 34);
-        Place(undo.transform, width - 290, actionY, 64, 34);
-        Place(status.transform, Mathf.Max(12, width - 440), actionY, 138, 34);
+        Place(save.transform, width - saveWidth - 16, actionY, saveWidth, 34);
+        Place(
+            applyToAll.transform,
+            width < 640 ? 16 : width - 324 - saveExtra,
+            width < 640 ? 108 : actionY,
+            168,
+            34
+        );
+        bool bulkOnActionRow = bulk && width >= 640;
+        Place(redo.transform, width - (bulkOnActionRow ? 395 : 219) - saveExtra, actionY, 64, 34);
+        Place(undo.transform, width - (bulkOnActionRow ? 466 : 290) - saveExtra, actionY, 64, 34);
+        Place(
+            status.transform,
+            Mathf.Max(12, width - (bulkOnActionRow ? 616 : 440) - saveExtra),
+            actionY,
+            138,
+            34
+        );
         float compareY = outputHeight > 50 ? 49 : 8;
         Place(currentButton.transform, width - 144, compareY, 128, 34);
         Place(draftButton.transform, width - 218, compareY, 66, 34);
@@ -583,14 +651,22 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             Mathf.Max(51, layerCount * 51),
             Mathf.Max(51, Mathf.Min(narrow ? 154 : 260, sideHeight - footer - 56))
         );
-        Place(layerCaption.transform, 16, 9, sideWidth - 246, 32);
+        Place(
+            layerCaption.transform,
+            16,
+            9,
+            actions.Add == null && actions.Import == null ? sideWidth - 32 : sideWidth - 246,
+            32
+        );
         Place(add.transform, sideWidth - 224, 9, 108, 32);
         Place(importLayer.transform, sideWidth - 110, 9, 94, 32);
         Place(layerScroll.transform, 16, 50, sideWidth - 32, listHeight);
         float controlsY = 56 + listHeight;
         Place(layerActions, 0, controlsY, sideWidth, 37);
-        float actionWidth = (sideWidth - 48) / 4f;
-        var layerButtons = new[] { duplicate, remove, forward, backward };
+        var layerButtons = new[] { duplicate, remove, forward, backward }
+            .Where(button => button.gameObject.activeSelf)
+            .ToArray();
+        float actionWidth = (sideWidth - 32 - (layerButtons.Length - 1) * 5) / layerButtons.Length;
         for (int i = 0; i < layerButtons.Length; i++)
             Place(layerButtons[i].transform, 16 + i * (actionWidth + 5), 0, actionWidth, 32);
         float positionY = controlsY + 48;
@@ -725,6 +801,8 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             () =>
             {
                 actions?.Save();
+                if (!HasUnsavedChanges)
+                    Dismiss();
                 if (!gameObject.activeSelf)
                     continuation?.Invoke();
             },
@@ -735,6 +813,33 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             }
         );
         return true;
+    }
+
+    /// <summary>
+    /// Captures a way to reopen refreshed artwork on the same card and viewport.
+    /// </summary>
+    /// <returns>The restoration action, or null when this draft has no reload owner.</returns>
+    internal Action CaptureReopen()
+    {
+        if (actions?.Reopen == null)
+            return null;
+        Action<int> reopen = actions.Reopen;
+        int output = outputIndex;
+        int layer = selectedIndex;
+        var state = artworkCanvas.CaptureView();
+        return () =>
+        {
+            reopen(output);
+            if (!gameObject.activeSelf || frames == null)
+                return;
+            if (frames[outputIndex].Layers.Any(item => item.Index == layer))
+            {
+                selectedIndex = layer;
+                actions.Select?.Invoke(layer);
+            }
+            Present(false);
+            artworkCanvas.RestoreView(state);
+        };
     }
 
     /// <summary>
@@ -784,9 +889,12 @@ internal sealed class ArtworkEffectActions
     internal Action Rebuild;
     internal Action VaryShipWakes;
     internal Action Save;
+    internal Action ApplyToAllCards;
+    internal string SaveLabel;
     internal Action Undo;
     internal Action Redo;
     internal Action Close;
+    internal Action<int> Reopen;
     internal Func<IReadOnlyList<ArtworkEffectPreviewFrame>> ReadCurrent;
     internal string AddLabel;
     internal string RebuildLabel;

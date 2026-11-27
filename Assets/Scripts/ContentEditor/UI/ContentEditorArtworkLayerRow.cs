@@ -55,8 +55,9 @@ public sealed class ContentEditorArtworkLayerRow : MonoBehaviour
         onToggle = toggleLayer;
         caption.text = layer.Name;
         thumbnail.texture = layer.Texture;
+        thumbnail.uvRect = layer.Uv;
         thumbnail.GetComponent<AspectRatioFitter>().aspectRatio =
-            (float)layer.Texture.width / layer.Texture.height;
+            (layer.Texture.width * layer.Uv.width) / (layer.Texture.height * layer.Uv.height);
         thumbnail.color = layer.Hidden ? new Color(1, 1, 1, 0.48f) : Color.white;
         visibilityCaption.text =
             layer.Linked ? "Linked"

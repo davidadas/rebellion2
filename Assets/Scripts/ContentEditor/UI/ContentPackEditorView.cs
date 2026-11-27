@@ -290,6 +290,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    internal event Action<ContentPackEditorField> MediaReplacementRequested;
+    internal event Action<ContentPackEditorField, int> AudioClipRemovalRequested;
+    internal event Action<ContentPackEditorField> OfficerStatusArtworkRequested;
     public event Action<
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
@@ -299,6 +302,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentEditorArtworkEffect,
         bool
     > ArtworkEffectRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ArtworkEffectPreviewFrame
+    > GameplayArtworkRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
     internal event Action<ContentEditorModRule> ModRuleRequested;
@@ -605,8 +612,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
+        form.MediaReplacementRequested += RequestMediaReplacement;
+        form.AudioClipRemovalRequested += RequestAudioClipRemoval;
+        form.OfficerStatusArtworkRequested += RequestOfficerStatusArtwork;
         form.ArtworkCutsRequested += RequestArtworkCuts;
         form.ArtworkEffectRequested += RequestArtworkEffect;
+        form.GameplayArtworkRequested += RequestGameplayArtwork;
         form.PreviewRequested += PreviewMedia;
         form.AssetEditRequested += OpenAssetEditor;
         form.SectionRequested += ShowSection;
@@ -691,8 +702,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
+            form.MediaReplacementRequested -= RequestMediaReplacement;
+            form.AudioClipRemovalRequested -= RequestAudioClipRemoval;
+            form.OfficerStatusArtworkRequested -= RequestOfficerStatusArtwork;
             form.ArtworkCutsRequested -= RequestArtworkCuts;
             form.ArtworkEffectRequested -= RequestArtworkEffect;
+            form.GameplayArtworkRequested -= RequestGameplayArtwork;
             form.PreviewRequested -= PreviewMedia;
             form.AssetEditRequested -= OpenAssetEditor;
             form.SectionRequested -= ShowSection;
@@ -2334,6 +2349,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
         artworkTab.gameObject.SetActive(
             selectedRecord.Kind != "PlanetSectors"
+                && selectedRecord.Kind != "EncyclopediaEntry"
                 && fields.Any(field =>
                     field.IsMedia
                     && field.MediaType != ContentPackEditorMediaType.Audio
@@ -2342,6 +2358,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                         || field.MediaType != ContentPackEditorMediaType.Video
                     )
                     && !ContentEditorContentSections.IsEncyclopediaField(field)
+                    && !ContentEditorPlanetArtwork.IsImageField(field)
                 )
         );
         audioTab.gameObject.SetActive(
@@ -2729,6 +2746,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
 
     /// <summary>
+    /// Retains the active artwork card and viewport across a media-store refresh.
+    /// </summary>
+    /// <returns>The action that restores the refreshed artwork workspace, when available.</returns>
+    internal Action CaptureArtworkReopen() => artworkWorkspace.CaptureReopen();
+
+    /// <summary>
     /// Guards native window closure while a draft has unsaved edits.
     /// </summary>
     /// <param name="next">Resumes closing after the artwork decision.</param>
@@ -2821,6 +2844,63 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Forwards an explicit request to share one status image across all officers.
+    /// </summary>
+    /// <param name="field">The selected officer status image.</param>
+    private void RequestOfficerStatusArtwork(ContentPackEditorField field) =>
+        OfficerStatusArtworkRequested?.Invoke(field);
+
+    /// <summary>
+    /// Presents the image role and full scope before replacing individual officer assignments.
+    /// </summary>
+    /// <param name="source">The status slot supplying the image and its role.</param>
+    /// <param name="count">The number of officers across the pack's factions.</param>
+    /// <param name="apply">Applies the shared image as one undoable edit.</param>
+    internal void ConfirmOfficerStatusArtwork(
+        ContentPackEditorField source,
+        int count,
+        Action apply
+    )
+    {
+        string artwork =
+            ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(source)
+            ?? throw new ArgumentException("Choose an officer status image.", nameof(source));
+        confirmation.Show(
+            $"Apply this {artwork} image to all {count} officers across every faction? Their existing {artwork} images will be replaced.",
+            "Apply to all",
+            apply
+        );
+    }
+
+    /// <summary>
+    /// Confirms applying the current effect to every card size for the selected ship type.
+    /// </summary>
+    /// <param name="source">The ship whose card artwork is being edited.</param>
+    /// <param name="effect">The damage or hyperspace effect being copied.</param>
+    /// <param name="apply">Applies the card variants after confirmation.</param>
+    internal void ConfirmShipArtworkCards(
+        ContentPackEditorRecord source,
+        string effect,
+        Action apply
+    ) =>
+        confirmation.Show(
+            $"Apply these {effect} layers to every card for {source.Name}? "
+                + $"This replaces its small, large and battle-report {effect} artwork.",
+            "Apply to all cards",
+            apply
+        );
+
+    /// <summary>
+    /// Opens the combined linked artwork in the shared layer workspace.
+    /// </summary>
+    /// <param name="record">The unit whose drawing order is edited.</param>
+    /// <param name="frame">The combined preview's textures and bounds.</param>
+    private void RequestGameplayArtwork(
+        ContentPackEditorRecord record,
+        ArtworkEffectPreviewFrame frame
+    ) => GameplayArtworkRequested?.Invoke(record, frame);
+
+    /// <summary>
     /// Requests an effect preview for the selected unit artwork.
     /// </summary>
     /// <param name="field">The state image and preview size selected by the author.</param>
@@ -2864,6 +2944,24 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (CommitFields())
             ImportRequested?.Invoke(field);
     }
+
+    /// <summary>
+    /// Commits the form before requesting replacement of a shared image file.
+    /// </summary>
+    /// <param name="field">The shared image being replaced.</param>
+    private void RequestMediaReplacement(ContentPackEditorField field)
+    {
+        if (CommitFields())
+            MediaReplacementRequested?.Invoke(field);
+    }
+
+    /// <summary>
+    /// Forwards an explicit audio-list removal to the project-owning workspace.
+    /// </summary>
+    /// <param name="field">The owning audio list.</param>
+    /// <param name="index">The selected stored entry index.</param>
+    private void RequestAudioClipRemoval(ContentPackEditorField field, int index) =>
+        AudioClipRemovalRequested?.Invoke(field, index);
 
     /// <summary>
     /// Routes a dropped image to the visible artwork draft or image slot at the drop position.
@@ -3519,6 +3617,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return ContentEditorContentSections.CutscenesSection;
         if (page?.MissionID != null)
             return field.Record.Kind == "GameConfig" ? "Rules" : "General";
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return ContentEditorPlanetArtwork.GetSection(field);
         if (
             record.Element != field.Record.Element
             || ContentEditorContentSections.HasEncyclopedia(record)

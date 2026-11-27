@@ -13,6 +13,70 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void RenderProject_NewOfficer_OffersTheAudioTabAndEveryVoiceResponse()
+        {
+            ContentPackEditorRecord officer = project.AddUnit(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers")
+            );
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+
+            Button audio = view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio");
+            audio.onClick.Invoke();
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.AreEqual(
+                Enum.GetValues(typeof(Rebellion.Game.Units.OfficerVoiceLineType)).Length,
+                fields.Length
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    field
+                        .GetComponentsInChildren<Button>()
+                        .Any(button =>
+                            button.GetComponentInChildren<TMP_Text>()?.text == "Add clip..."
+                        )
+                )
+            );
+        }
+
+        [Test]
+        public void RenderProject_RemovingAudioClip_CancelsPreviewAndKeepsTheOtherClip()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            string source = ContentEditorUnitAudio
+                .GetFields(catalog.Records.First())
+                .SelectMany(field => field.Values)
+                .First(value => !string.IsNullOrWhiteSpace(value));
+            ContentPackEditorRecord officer = project.AddUnit(catalog);
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { source, source });
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio")
+                .onClick.Invoke();
+            int cancelled = 0;
+            view.PreviewCancelled += () => cancelled++;
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field.MemberName == "Order");
+
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { source }, control.Field.Values);
+            Assert.AreEqual(1, cancelled);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void RenderConnection_PublishingDialogIsHidden_UpdatesConnectionLabel(bool connected)
@@ -429,6 +493,46 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(900, 1)]
+        [TestCase(1200, 2)]
+        [TestCase(1600, 3)]
+        [TestCase(2200, 4)]
+        public void Render_FactionCutscenes_FitsMorePreviewsAcrossWiderWindows(
+            int width,
+            int expectedColumns
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab")
+                .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+
+            RawImage[] previews = view.GetComponentsInChildren<RawImage>()
+                .Where(image => image.name.StartsWith("ArticleImageTemplate-VideoStill-"))
+                .ToArray();
+            Assert.AreEqual(4, previews.Length);
+            Assert.AreEqual(
+                expectedColumns,
+                previews
+                    .Select(image => UILayout.GetSourceRect(image.rectTransform).x)
+                    .Distinct()
+                    .Count()
+            );
+            foreach (RawImage preview in previews)
+            {
+                RectInt bounds = UILayout.GetSourceRect(preview.rectTransform);
+                RectTransform content = (RectTransform)preview.transform.parent;
+                Assert.GreaterOrEqual(bounds.xMin, 0);
+                Assert.LessOrEqual(bounds.xMax, content.rect.width);
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
         [Test]
         public void Render_SelectingStartupPreviewResolution_RequestsTheBuiltInVideoAtThatSize()
         {
@@ -452,6 +556,100 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(ContentPackDefinition.DefaultStartupIntroVideoPath, requested.Address);
             Assert.IsTrue(requested.Size.HasValue);
             Assert.AreEqual(chosen, $"{requested.Size.Value.x} × {requested.Size.Value.y}");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfirmShipArtworkCards_RespondingToConfirmation_AppliesOnlyWhenAccepted(
+            bool accept
+        )
+        {
+            var ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            int applications = 0;
+            view.ConfirmShipArtworkCards(ship, "damage", () => applications++);
+            var dialog = view.GetComponentInChildren<ActionDialogView>();
+            Assert.IsTrue(
+                dialog
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text.Contains("every card for " + ship.Name))
+            );
+            dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>().text
+                    == (accept ? "Apply to all cards" : "Cancel")
+                )
+                .onClick.Invoke();
+            Assert.AreEqual(accept ? 1 : 0, applications);
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Declined_KeepsTheImportedImageAndOtherAssignments(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            string imported = source.Value;
+            string[] assignments = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .Select(record => record.GetField(member).Value)
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                assignments.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Cancel")
+                .onClick.Invoke();
+
+            Assert.AreEqual(imported, source.Value);
+            CollectionAssert.AreEqual(
+                assignments,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .Select(record => record.GetField(member).Value)
+            );
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Accepted_AppliesTheImportedImageToAllOfficers(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            ContentPackEditorRecord[] officers = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                officers.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Apply to all")
+                .onClick.Invoke();
+
+            Assert.IsTrue(officers.All(record => record.GetField(member).Value == source.Value));
         }
 
         [TestCase(EventModifiers.Control)]
@@ -957,6 +1155,22 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(text => text.name == "Error")
                     .text
             );
+        }
+
+        /// <summary>
+        /// Applies a different installed image before presenting the optional all-officer action.
+        /// </summary>
+        /// <param name="member">The status slot being changed.</param>
+        /// <returns>The status field retaining its newly selected image.</returns>
+        private ContentPackEditorField ChangeOfficerStatusImage(string member)
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            ContentPackEditorField field = officer.GetField(member);
+            project.SetField(field, officer.GetField("DisplayImagePath").Value);
+            return field;
         }
 
         /// <summary>

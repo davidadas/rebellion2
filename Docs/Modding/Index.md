@@ -317,6 +317,15 @@ For capital ships and starfighters, full-size display art can also be framed at 
 on an encyclopedia canvas with the configured unit or faction background.
 Message and encyclopedia images can also supply gameplay cuts.
 
+### Planet artwork
+
+The content editor's planet **General** page offers a thumbnail picker for the sector-map image.
+The planet's **Encyclopedia** page has a separate picker for article artwork. Each picker lists
+images already used for that purpose, including inherited images. **Add image…** copies an external
+file into `Pack/Shared/Planets/`; other planets can then select it from the same picker.
+**Replace shared image…** asks for confirmation before updating every planet using that file.
+For inherited artwork, the replacement is written into the mod, leaving the base pack untouched.
+
 ### Artwork layers
 
 In the travel or damage artwork editor, choose an output size and click **Add image…**.

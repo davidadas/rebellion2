@@ -250,6 +250,42 @@ public sealed class ContentPackEditorProject : IDisposable
     }
 
     /// <summary>
+    /// Shares one selected status image across every officer as one reversible document edit.
+    /// </summary>
+    /// <param name="source">The officer status image selected by the author.</param>
+    /// <returns>The number of officer definitions receiving this image.</returns>
+    public int ApplyOfficerStatusArtwork(ContentPackEditorField source)
+    {
+        RequireOwnedRecord(source.Record);
+        string artwork = ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(source);
+        if (artwork == null)
+            throw new ArgumentException("Choose an officer status image.", nameof(source));
+        if (string.IsNullOrWhiteSpace(source.Value))
+            throw new ArgumentException("Choose an image first.", nameof(source));
+
+        string address = source.GetMediaAddress(source.Value);
+        ContentPackEditorField[] targets = GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .Where(record => record.Kind == "Officer")
+            .Select(record => record.GetField(source.MemberName))
+            .ToArray();
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        foreach (ContentPackEditorField target in targets)
+            ValidateFieldValues(target, new[] { address }, resolver, null, null);
+        using (BeginEdit($"Apply {artwork} artwork to all officers"))
+            foreach (ContentPackEditorField target in targets)
+            {
+                target.SetValue(address);
+                LinkRulesOverride(target.Document);
+            }
+        return targets.Length;
+    }
+
+    /// <summary>
     /// Applies a scheme field edit while preserving existing link choices.
     /// </summary>
     /// <param name="field">The validated color or link field.</param>
@@ -401,7 +437,7 @@ public sealed class ContentPackEditorProject : IDisposable
                 production.Container
             );
         }
-        field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
+        field.ResetToInherited();
     }
 
     /// <summary>
@@ -436,6 +472,29 @@ public sealed class ContentPackEditorProject : IDisposable
         using (BeginEdit(field.Name))
         {
             field.SetListValues(replacement);
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
+    /// Removes one existing audio-list entry without requiring other stored clips to resolve.
+    /// </summary>
+    /// <param name="field">The project-owned audio list.</param>
+    /// <param name="index">The stored entry index, including any empty entries.</param>
+    internal void RemoveAudioClip(ContentPackEditorField field, int index)
+    {
+        RequireOwnedRecord(field.Record);
+        if (
+            !field.IsList
+            || field.IsMediaDirectory
+            || field.MediaType != ContentPackEditorMediaType.Audio
+        )
+            throw new ArgumentException("Choose an audio clip list.", nameof(field));
+        if (index < 0 || index >= field.Values.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        using (BeginEdit("Remove audio clip"))
+        {
+            field.SetListValues(field.Values.Where((_, position) => position != index).ToArray());
             LinkRulesOverride(field.Document);
         }
     }

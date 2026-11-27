@@ -19,6 +19,489 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        private static readonly string[] _officerStatusMembers =
+        {
+            "InjuredImagePath",
+            "CapturedOverlayImagePath",
+            "InTransitImagePath",
+            "InTransitSmallImagePath",
+        };
+
+        [Test]
+        public void SetField_DeprecatedStarfighterRole_ReplacesTheListAndSupportsUndoAndRedo()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole>"
+                    + "<StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                    + "<FormationPriority>2</FormationPriority></Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+
+            project.SetField(record.GetField("Role"), "Interceptor");
+
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.IsTrue(project.Undo());
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.AreEqual(2, record.Element.Element("Roles").Elements().Count());
+            Assert.AreEqual("Bomber", record.GetField("Role").Value);
+            Assert.IsTrue(project.Redo());
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.AreEqual("2", record.Element.Element("FormationPriority").Value);
+        }
+
+        [Test]
+        public void ResetFieldToInherited_ConvertedStarfighterRole_RestoresTheInheritedRoleList()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            project.SetField(record.GetField("Role"), "Interceptor");
+
+            project.ResetFieldToInherited(record.GetField("Role"));
+
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual("Bomber", record.GetField("Role").Value);
+            Assert.IsTrue(record.GetField("Role").IsInherited);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResetFieldToInherited_ClearedCanonicalRole_RestoresDefaultAcrossHistory(
+            bool hasLegacyRole
+        )
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID><Role>Bomber</Role>"
+                    + (
+                        hasLegacyRole
+                            ? "<Roles><StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                            : ""
+                    )
+                    + "<FormationPriority>2</FormationPriority></Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            project.SetField(GetStarfighterRecord(project).GetField("Role"), string.Empty);
+            ContentPackEditorStorage.Save(project);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            ContentPackEditorField field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+
+            reopened.ResetFieldToInherited(field);
+
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual("Bomber", field.Value);
+            Assert.IsTrue(field.IsInherited);
+            Assert.IsFalse(field.CanResetToDefault);
+            Assert.IsTrue(reopened.Undo());
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+            Assert.IsTrue(reopened.Redo());
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual("Bomber", field.Value);
+            Assert.IsTrue(field.IsInherited);
+            Assert.AreEqual(
+                "2",
+                GetStarfighterRecord(reopened).GetField("FormationPriority").Value
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void GetField_DeprecatedStarfighterRoleOverride_RemainsAnOverride(bool cleared)
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+
+            if (cleared)
+                project.SetField(record.GetField("Role"), string.Empty);
+            else
+                project.SetFieldValues(record.GetField("Roles"), new[] { "HeavyAssault" });
+            ContentPackEditorField field = record.GetField("Role");
+
+            Assert.AreEqual(cleared ? string.Empty : "HeavyAssault", field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+        }
+
+        [Test]
+        public void RemoveAudioClip_MultipleMissingFiles_RemovesOnlyTheSelectedEntryAndSupportsUndo()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/missing-one</Path><Path>Pack/missing-two</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 1);
+
+            CollectionAssert.AreEqual(new[] { "Pack/missing-one" }, field.Values);
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(
+                new[] { "Pack/missing-one", "Pack/missing-two" },
+                ContentEditorUnitAudio
+                    .GetFields(GetAudioOfficer(project))
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+        }
+
+        [Test]
+        public void RemoveAudioClip_DuplicateReferences_RemovesOnlyOneOccurrence()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/same</Path><Path>Pack/same</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 1);
+
+            CollectionAssert.AreEqual(new[] { "Pack/same" }, field.Values);
+        }
+
+        [Test]
+        public void RemoveAudioClip_LastInheritedClip_KeepsTheCategoryEmptyAfterSave()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/Audio/one.wav</Path></Order></VoiceSet>"
+            );
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 0);
+            ContentPackEditorStorage.Save(project);
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.IsEmpty(
+                ContentEditorUnitAudio
+                    .GetFields(GetAudioOfficer(reopened))
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+            Assert.IsTrue(File.Exists(Path.Combine(contentRoot, "Packs/BasePack/Audio/one.wav")));
+        }
+
+        [TestCase(-1)]
+        [TestCase(2)]
+        public void RemoveAudioClip_InvalidIndex_RejectsTheRemovalWithoutChangingTheList(int index)
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/one</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => project.RemoveAudioClip(field, index));
+
+            CollectionAssert.AreEqual(new[] { "Pack/one" }, field.Values);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RemoveAudioClip_ScalarField_RejectsTheRemovalWithoutEditingIt()
+        {
+            using ContentPackEditorProject project = CreateAudioProject();
+            ContentPackEditorField field = GetAudioOfficer(project).GetField("DisplayName");
+
+            Assert.Throws<ArgumentException>(() => project.RemoveAudioClip(field, 0));
+
+            Assert.AreEqual("Officer", field.Value);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_DifferentIndividualImages_SharesSelectedImageAcrossOfficers(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string[] before = Directory.GetFiles(
+                project.PackRootPath,
+                "*",
+                SearchOption.AllDirectories
+            );
+
+            string[] untouched = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .SelectMany(record =>
+                    _officerStatusMembers
+                        .Where(name => name != member)
+                        .Select(name => record.GetField(name).Value)
+                )
+                .ToArray();
+
+            int count = project.ApplyOfficerStatusArtwork(source);
+
+            Assert.AreEqual(3, count);
+            CollectionAssert.AreEqual(
+                untouched,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .SelectMany(record =>
+                        _officerStatusMembers
+                            .Where(name => name != member)
+                            .Select(name => record.GetField(name).Value)
+                    )
+            );
+            Assert.That(
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == source.Value),
+                Is.True
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Icons/old",
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.ID == "SHIP1")
+                    .GetField("DamagedImagePath")
+                    .Value
+            );
+            CollectionAssert.AreEquivalent(
+                before,
+                Directory.GetFiles(project.PackRootPath, "*", SearchOption.AllDirectories)
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_Undo_RestoresAllPreviousAssignmentsInOneStep(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+
+            Assert.IsTrue(project.Undo());
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Shared/Icons/new",
+                    "Pack/Shared/Icons/old",
+                    "Pack/Shared/Icons/other",
+                },
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .OrderBy(record => record.ID)
+                    .Select(record => record.GetField(member).Value)
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_Redo_ReappliesAllAssignmentsInOneStep(string member)
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+            project.Undo();
+
+            Assert.IsTrue(project.Redo());
+
+            Assert.That(
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == "Pack/Shared/Icons/new"),
+                Is.True
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_RepeatedApplication_AddsNoDuplicateUndoStep(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+            project.ApplyOfficerStatusArtwork(source);
+            Assert.IsTrue(project.Undo());
+
+            Assert.AreEqual(
+                "Pack/Shared/Icons/old",
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.ID == "OFF2")
+                    .GetField(member)
+                    .Value
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_MissingImage_LeavesOtherOfficersUnchanged(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            File.Delete(Path.Combine(contentRoot, "Packs/BasePack/Shared/Icons/new.png"));
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string before = string.Join("\n", project.Documents.Select(document => document.Text));
+
+            Assert.Throws<ArgumentException>(() => project.ApplyOfficerStatusArtwork(source));
+
+            Assert.AreEqual(
+                before,
+                string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_SaveAndReopen_PreservesSharedAssignment(string member)
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string address = "Pack/Factions/Fixture/Units/Officers/OFF1/injured";
+            string image = Path.Combine(project.PackRootPath, address[5..] + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(image));
+            File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
+            project.SetField(source, address);
+            project.ApplyOfficerStatusArtwork(source);
+            ContentPackEditorStorage.Save(project);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+
+            Assert.That(
+                reopened
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == address),
+                Is.True
+            );
+            Assert.AreEqual(
+                1,
+                Directory
+                    .GetFiles(project.PackRootPath, "*.png", SearchOption.AllDirectories)
+                    .Length
+            );
+        }
+
+        [TestCase("OFF1", "DisplayImagePath")]
+        [TestCase("SHIP1", "DamagedImagePath")]
+        public void ApplyOfficerStatusArtwork_UnsupportedImage_LeavesAssignmentsUnchanged(
+            string id,
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == id)
+                .GetField(member);
+            string before = string.Join("\n", project.Documents.Select(document => document.Text));
+
+            Assert.Throws<ArgumentException>(() => project.ApplyOfficerStatusArtwork(source));
+
+            Assert.AreEqual(
+                before,
+                string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
         [Test]
         public void DiscardChanges_LaterAssetCannotBeRemoved_RollsBackEarlierRestoreAndAllowsRetry()
         {
@@ -2016,6 +2499,19 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         /// <summary>
+        /// Resolves the current starfighter record after reopening or history rebuilds.
+        /// </summary>
+        /// <param name="project">The working starfighter fixture.</param>
+        /// <returns>The fixture's current starfighter record.</returns>
+        private static ContentPackEditorRecord GetStarfighterRecord(
+            ContentPackEditorProject project
+        ) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+
+        /// <summary>
         /// Resolves the current field wrappers after undo or discard rebuilds the catalogs.
         /// </summary>
         /// <param name="project">The working starfighter fixture.</param>
@@ -2085,5 +2581,88 @@ namespace Rebellion.Tests.ContentEditor
                 .Single(item => item.Name == "Rules");
             return (project, catalog);
         }
+
+        /// <summary>
+        /// Creates two factions' officers with different status images and an unrelated ship.
+        /// </summary>
+        /// <returns>The isolated editable project.</returns>
+        private ContentPackEditorProject CreateOfficerStatusProject()
+        {
+            WriteFixtureFile(
+                "Factions/Fixture/officers.xml",
+                new XElement(
+                    "Officers",
+                    CreateOfficerStatusDefinition("OFF1", "new"),
+                    CreateOfficerStatusDefinition("OFF2", "old")
+                ).ToString()
+            );
+            WriteFixtureFile(
+                "Factions/Other/officers.xml",
+                new XElement("Officers", CreateOfficerStatusDefinition("OFF3", "other")).ToString()
+            );
+            WriteFixtureFile(
+                "Factions/Fixture/ships.xml",
+                "<CapitalShips><CapitalShip><TypeID>SHIP1</TypeID><DamagedImagePath>Pack/Shared/Icons/old</DamagedImagePath></CapitalShip></CapitalShips>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+            {
+                faction.OfficersPath = "Factions/Fixture/officers.xml";
+                faction.CapitalShipsPath = "Factions/Fixture/ships.xml";
+            });
+            WriteFixtureFile(
+                "Factions/Other/faction.xml",
+                "<Faction><ID>other</ID><OfficersPath>Factions/Other/officers.xml</OfficersPath></Faction>"
+            );
+            UpdateBasePackDefinition(pack => pack.FactionPaths.Add("Factions/Other/faction.xml"));
+            string folder = Path.Combine(contentRoot, "Packs/BasePack/Shared/Icons");
+            Directory.CreateDirectory(folder);
+            foreach (string name in new[] { "new", "old", "other" })
+                File.WriteAllBytes(Path.Combine(folder, name + ".png"), new byte[] { 1, 2, 3 });
+            return CreateWorkingProject();
+        }
+
+        /// <summary>
+        /// Creates one officer with all independently selectable status slots populated.
+        /// </summary>
+        /// <param name="id">The officer type identifier.</param>
+        /// <param name="image">The installed fixture image filename.</param>
+        /// <returns>The officer definition.</returns>
+        private static XElement CreateOfficerStatusDefinition(string id, string image) =>
+            new(
+                "Officer",
+                new XElement("TypeID", id),
+                _officerStatusMembers.Select(member => new XElement(
+                    member,
+                    "Pack/Shared/Icons/" + image
+                ))
+            );
+
+        /// <summary>
+        /// Creates an inherited officer catalog with optional fixture voice data.
+        /// </summary>
+        /// <param name="voice">The existing authored voice set, when needed by a test.</param>
+        /// <returns>The isolated editable project.</returns>
+        private ContentPackEditorProject CreateAudioProject(string voice = "")
+        {
+            WriteFixtureFile(
+                "Data/officers.xml",
+                "<Officers><Officer><TypeID>OFF1</TypeID><DisplayName>Officer</DisplayName>"
+                    + voice
+                    + "</Officer></Officers>"
+            );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
+            return CreateWorkingProject();
+        }
+
+        /// <summary>
+        /// Finds the fixture officer in the project's current document generation.
+        /// </summary>
+        /// <param name="project">The project owning the effective officer.</param>
+        /// <returns>The fixture officer.</returns>
+        private static ContentPackEditorRecord GetAudioOfficer(ContentPackEditorProject project) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Officers")
+                .Records.First(record => record.ID == "OFF1");
     }
 }

@@ -53,6 +53,250 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Object.DestroyImmediate(canvas);
         }
 
+        [Test]
+        public void Render_StarfighterRole_ShowsFourRolesAndUnclassified()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject fighters = ContentPackEditorStorage.Create(
+                contentRoot,
+                "base-pack",
+                "fighters",
+                "Fighters",
+                "1.0.0"
+            );
+            ContentPackEditorRecord record = fighters
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            ContentPackEditorField field = record.GetField("Role");
+            string before = field.Document.Text;
+            control.Submitted += (selected, values) => fighters.SetField(selected, values.Single());
+
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, field),
+                null,
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
+            Assert.IsNotNull(dropdown);
+            CollectionAssert.AreEqual(
+                new[] { "Unclassified", "Interceptor", "Multirole", "Bomber", "Heavy assault" },
+                dropdown.options.Select(option => option.text)
+            );
+            Assert.AreEqual("Bomber", dropdown.options[dropdown.value].text);
+            Assert.IsEmpty(control.GetComponentsInChildren<UICheckboxView>());
+            Assert.AreEqual(before, field.Document.Text);
+
+            dropdown.value = 1;
+
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+        }
+
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("Bomber")]
+        public void Render_ReassignedStarfighterRole_CanReturnToUnclassified(string initialRole)
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + (initialRole == null ? "" : $"<Role>{initialRole}</Role>")
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject fighters = ContentPackEditorStorage.Create(
+                contentRoot,
+                "base-pack",
+                "fighters",
+                "Fighters",
+                "1.0.0"
+            );
+            ContentPackEditorRecord record = fighters
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            control.Submitted += (selected, values) => fighters.SetField(selected, values.Single());
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
+            dropdown.value = dropdown.options.FindIndex(option => option.text == "Heavy assault");
+            Assert.AreEqual("HeavyAssault", record.GetField("Role").Value);
+
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            int unclassified = dropdown.options.FindIndex(option => option.text == "Unclassified");
+            Assert.GreaterOrEqual(unclassified, 0);
+            dropdown.value = unclassified;
+
+            Assert.AreEqual(string.Empty, record.GetField("Role").Value);
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.IsNull(record.Element.Element("Roles"));
+            ContentPackEditorStorage.Save(fighters);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                fighters.PackRootPath
+            );
+            record = reopened
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual(string.Empty, record.GetField("Role").Value);
+            control.Render(
+                ContentPackEditorProjector.BuildField(reopened, record.GetField("Role")),
+                null,
+                null,
+                null
+            );
+            Assert.AreEqual("Unclassified", dropdown.options[dropdown.value].text);
+        }
+
+        [Test]
+        public void Render_EmptyAudioList_OffersAddingAClipWithoutAnEditablePath()
+        {
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            ContentPackEditorField requested = null;
+            string before = field.Document.Text;
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                null,
+                value => requested = value,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            Assert.IsFalse(
+                control.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf
+            );
+            TMP_Dropdown clips = control.GetComponentInChildren<TMP_Dropdown>();
+            Assert.AreEqual("No clips", clips.options.Single().text);
+            Assert.IsFalse(clips.interactable);
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Preview")
+                    .interactable
+            );
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "SelectItems")
+                    .interactable
+            );
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Import")
+                .onClick.Invoke();
+            Assert.AreSame(field, requested);
+            Assert.AreEqual(before, field.Document.Text);
+        }
+
+        [Test]
+        public void SelectDropdownValue_AudioList_SelectsPlaybackWithoutEditingTheList()
+        {
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            WriteFixtureFile("Audio/two.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" });
+            string before = field.Document.Text;
+            string played = null;
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                null,
+                null,
+                (_, address, _) => played = address
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            control.GetComponentInChildren<TMP_Dropdown>().value = 1;
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Preview")
+                .onClick.Invoke();
+
+            Assert.AreEqual("Pack/Audio/two.wav", played);
+            Assert.AreEqual(before, field.Document.Text);
+            CollectionAssert.AreEqual(
+                new[] { "one.wav", "two.wav" },
+                control.GetComponentInChildren<TMP_Dropdown>().options.Select(option => option.text)
+            );
+        }
+
+        [Test]
+        public void Render_AudioList_RejectsEditsFromTheHiddenTextInput()
+        {
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            control.Submitted += project.SetFieldValues;
+            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
+
+            control.GetComponentInChildren<TMP_InputField>(true).onEndEdit.Invoke("arbitrary text");
+
+            Assert.IsEmpty(field.Values);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RequestSelection_AudioList_RemovesOnlyTheSelectedClipAndSupportsUndo()
+        {
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            WriteFixtureFile("Audio/two.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" });
+            control.AudioClipRemovalRequested += project.RemoveAudioClip;
+            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+            control.GetComponentInChildren<TMP_Dropdown>().value = 1;
+
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { "Pack/Audio/one.wav" }, field.Values);
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(
+                new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" },
+                ContentEditorUnitAudio
+                    .GetFields(
+                        project
+                            .GetCatalogs()
+                            .Single(catalog => catalog.Name == "Officers")
+                            .Records.Single()
+                    )
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+        }
+
         [TestCase("Officers", "RecruitingFactionInstanceIDs")]
         [TestCase("Starfighters", "ManufacturingFactionInstanceIDs")]
         [TestCase("Capital ships", "ManufacturingFactionInstanceIDs")]

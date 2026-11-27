@@ -9,6 +9,45 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorFieldTests
     {
+        [TestCase(false, false)]
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        [TestCase(true, true)]
+        public void IsInherited_ClearedCanonicalRole_RemainsAnOverride(
+            bool hasLegacyRole,
+            bool recreateField
+        )
+        {
+            string inherited =
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID><Role>Bomber</Role>"
+                + (
+                    hasLegacyRole
+                        ? "<Roles><StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                        : ""
+                )
+                + "</Starfighter></Starfighters>";
+            ContentPackEditorCatalog catalog = new(
+                new ContentPackEditorDocument(
+                    "Pack/Data/starfighters.xml",
+                    Path.Combine(Path.GetTempPath(), "source.xml"),
+                    Path.Combine(Path.GetTempPath(), "target.xml"),
+                    inherited,
+                    inherited,
+                    null
+                )
+            );
+            ContentPackEditorField field = catalog.Records.Single().GetField("Role");
+            Assert.IsTrue(field.IsInherited);
+
+            field.SetValue(string.Empty);
+            if (recreateField)
+                field = catalog.Records.Single().GetField("Role");
+
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+        }
+
         [Test]
         public void SetValue_InvalidNumber_DoesNotChangeWorkingDocument()
         {

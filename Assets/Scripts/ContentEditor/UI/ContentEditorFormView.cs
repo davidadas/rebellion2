@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
@@ -183,7 +184,9 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
     private readonly Dictionary<string, Button> illustrationReuseButtons = new();
+    private readonly Dictionary<string, Button> officerStatusApplyButtons = new();
     private Button artworkCutsButton;
+    private Button gameplayLayersButton;
     private UICheckboxView illustrationBackgroundToggle;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
@@ -208,6 +211,9 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField> RemoveMessageRequested;
     public event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    internal event Action<ContentPackEditorField> MediaReplacementRequested;
+    internal event Action<ContentPackEditorField, int> AudioClipRemovalRequested;
+    internal event Action<ContentPackEditorField> OfficerStatusArtworkRequested;
     public event Action<
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
@@ -217,6 +223,10 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         ContentEditorArtworkEffect,
         bool
     > ArtworkEffectRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ArtworkEffectPreviewFrame
+    > GameplayArtworkRequested;
     public event Action<ContentPackEditorField, string, Vector2Int?> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
     public event Action<string> SectionRequested;
@@ -358,6 +368,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             field.Submitted -= SubmitField;
             field.ValidationRequested -= ValidateField;
             field.SelectionRequested -= RequestSelection;
+            field.MediaReplacementRequested -= RequestMediaReplacement;
+            field.AudioClipRemovalRequested -= RequestAudioClipRemoval;
         }
     }
 
@@ -823,6 +835,21 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     private void RequestImport(ContentPackEditorField field) => ImportRequested?.Invoke(field);
 
     /// <summary>
+    /// Requests explicit replacement of the selected pack-owned shared artwork.
+    /// </summary>
+    /// <param name="field">The image whose shared file will be replaced.</param>
+    private void RequestMediaReplacement(ContentPackEditorField field) =>
+        MediaReplacementRequested?.Invoke(field);
+
+    /// <summary>
+    /// Forwards removal of one selected audio file to the workspace owner.
+    /// </summary>
+    /// <param name="field">The audio list being edited.</param>
+    /// <param name="index">The selected entry's stored list index.</param>
+    private void RequestAudioClipRemoval(ContentPackEditorField field, int index) =>
+        AudioClipRemovalRequested?.Invoke(field, index);
+
+    /// <summary>
     /// Requests application-owned asynchronous media loading.
     /// </summary>
     /// <param name="field">The media field.</param>
@@ -972,12 +999,23 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             RenderGenerationSettings();
             return;
         }
-        IReadOnlyList<ContentPackEditorField> pageFields =
+        if (
             section == "Encyclopedia"
-                ? ContentEditorContentSections.EncyclopediaFields(selectedRecord, catalogs)
-                : selectedPage?.Fields ?? ContentEditorInspectorLayout.GetFields(selectedRecord);
+            || selectedRecord.Kind == "EncyclopediaEntry" && section == "General"
+        )
+        {
+            RenderEncyclopediaFields();
+            return;
+        }
+        IReadOnlyList<ContentPackEditorField> pageFields =
+            selectedPage?.Fields ?? ContentEditorInspectorLayout.GetFields(selectedRecord);
         bool unit = ContentEditorUnitFactory.CanCreate(selectedRecord.Kind);
         ContentPackEditorField[] fields = pageFields.Where(IsInCurrentSection).ToArray();
+        if (selectedRecord.Kind == "Officer" && section == "Audio")
+        {
+            RenderOfficerAudioFields(fields);
+            return;
+        }
         if (selectedPage?.MissionID != null && section == "Rules")
         {
             RenderMissionRules();
@@ -1024,16 +1062,10 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             );
             return;
         }
-        string imageAddress =
-            section == "Encyclopedia"
-                ? fields
-                    .FirstOrDefault(field => field.MediaType == ContentPackEditorMediaType.Image)
-                    ?.Value
-                : selectedRecord.ImageAddress;
         int y =
-            section != "Audio" && (!selectedRecord.Catalog.IsMap || section == "Encyclopedia")
+            section != "Audio" && !selectedRecord.Catalog.IsMap
                 ? RenderPreview(
-                    imageAddress,
+                    selectedRecord.ImageAddress,
                     Mathf.Min(440, fieldScroll.ScrollArea.ViewportWidth - 8)
                 )
                 : 0;
@@ -1088,6 +1120,183 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             );
         }
         fieldScroll.SetContentHeight(y, rebind);
+    }
+
+    /// <summary>
+    /// Presents an entity or standalone article with its image controls above stats and description.
+    /// </summary>
+    private void RenderEncyclopediaFields()
+    {
+        previewPane.SetActive(false);
+        IReadOnlyList<ContentPackEditorField> fields =
+            ContentEditorContentSections.EncyclopediaFields(selectedRecord, catalogs);
+        float width = fieldScroll.ScrollArea.ViewportWidth;
+        int fieldIndex = 0,
+            labelIndex = 0,
+            imageIndex = 0;
+        int y = PlaceEncyclopediaFields(
+            fields,
+            0,
+            width,
+            ref fieldIndex,
+            ref labelIndex,
+            ref imageIndex
+        );
+        fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Shows all supported officer responses as compact file selectors, including empty categories.
+    /// </summary>
+    /// <param name="fields">The officer's authored and optional voice response lists.</param>
+    private void RenderOfficerAudioFields(IReadOnlyList<ContentPackEditorField> fields)
+    {
+        previewPane.SetActive(false);
+        float width = fieldScroll.ScrollArea.ViewportWidth;
+        int y = PlaceLabel("Voice lines", 0, 4, 0, width - 8, true) + 4;
+        y +=
+            PlaceLabel(
+                "Add clips for each response. One assigned clip is chosen when the response plays.",
+                1,
+                4,
+                y,
+                width - 8,
+                false
+            ) + 12;
+        int index = 0;
+        foreach (ContentPackEditorField field in fields)
+            y += PlaceField(field, index++, 0, y, width, Mathf.Min(220, width * 0.28f)) + 4;
+        fieldScroll.SetContentHeight(y, !reflowingFields);
+    }
+
+    /// <summary>
+    /// Places the common article controls for entity, reference, faction, and mission pages.
+    /// </summary>
+    /// <param name="fields">The article fields in presentation order.</param>
+    /// <param name="y">The first available vertical position.</param>
+    /// <param name="width">The available inspector width.</param>
+    /// <param name="fieldIndex">The next reusable field control.</param>
+    /// <param name="labelIndex">The next reusable heading.</param>
+    /// <param name="imageIndex">The next reusable inline preview.</param>
+    /// <returns>The first position below the article.</returns>
+    private int PlaceEncyclopediaFields(
+        IReadOnlyList<ContentPackEditorField> fields,
+        int y,
+        float width,
+        ref int fieldIndex,
+        ref int labelIndex,
+        ref int imageIndex
+    )
+    {
+        foreach (
+            IGrouping<string, ContentPackEditorField> group in fields.GroupBy(
+                ContentEditorContentSections.EncyclopediaSection
+            )
+        )
+        {
+            string help = group.Key is "Image" or "Description" ? group.First().HelpText : null;
+            y += PlaceLabel(group.Key, labelIndex++, 4, y, width - 8, true, help) + 8;
+            if (group.Key == "Stats")
+                y = PlaceEncyclopediaStats(group, y, width, ref fieldIndex, ref labelIndex);
+            else
+                foreach (ContentPackEditorField field in group)
+                {
+                    if (group.Key == "Image")
+                    {
+                        if (field.MemberName == "BackgroundImagePath")
+                            y += PlaceLabel(
+                                "Background image",
+                                labelIndex++,
+                                4,
+                                y,
+                                width - 8,
+                                false,
+                                field.HelpText
+                            );
+                        bool unit =
+                            field.Record == selectedRecord
+                            && ContentEditorUnitArtworkLayout.SupportsMember(
+                                selectedRecord,
+                                field.MemberName
+                            )
+                            && !string.IsNullOrWhiteSpace(field.Value)
+                            && ResolveArtworkTexture(field) != null;
+                        if (unit)
+                        {
+                            y += RenderUnitArtworkPreview(field, Mathf.Min(440, width - 8), 280, y);
+                            imageIndex = articleImages.Count(image => image.gameObject.activeSelf);
+                        }
+                        else
+                            y = PlaceArtworkImagePreview(
+                                field,
+                                4,
+                                y,
+                                width,
+                                440,
+                                280,
+                                ref imageIndex,
+                                ref labelIndex
+                            );
+                    }
+                    bool stacked = group.Key is "Image" or "Description";
+                    y += PlaceField(
+                        field,
+                        fieldIndex++,
+                        0,
+                        y,
+                        group.Key == "Image" ? Mathf.Min(448, width) : width,
+                        stacked ? 0 : Mathf.Min(244, width * 0.45f),
+                        showMediaName: group.Key != "Image"
+                    );
+                }
+            y += 16;
+        }
+        return y;
+    }
+
+    /// <summary>
+    /// Edits article stats as aligned label and value rows using their existing field controls.
+    /// </summary>
+    /// <param name="fields">The authored stat members, retaining their list order and owners.</param>
+    /// <param name="y">The first available vertical position.</param>
+    /// <param name="width">The available inspector width.</param>
+    /// <param name="fieldIndex">The next reusable field control.</param>
+    /// <param name="labelIndex">The next reusable column heading.</param>
+    /// <returns>The first position below the stat rows.</returns>
+    private int PlaceEncyclopediaStats(
+        IEnumerable<ContentPackEditorField> fields,
+        int y,
+        float width,
+        ref int fieldIndex,
+        ref int labelIndex
+    )
+    {
+        float labelWidth = (width - 12) * 0.6f;
+        int headingHeight = PlaceLabel("Stat", labelIndex++, 4, y, labelWidth - 8, false);
+        headingHeight = Mathf.Max(
+            headingHeight,
+            PlaceLabel("Value", labelIndex++, labelWidth + 16, y, width - labelWidth - 24, false)
+        );
+        y += headingHeight + 4;
+        foreach (var row in fields.GroupBy(field => field.Container))
+        {
+            int bottom = y;
+            foreach (ContentPackEditorField field in row)
+            {
+                bool value = field.MemberName == "Value";
+                int height = PlaceField(
+                    field,
+                    fieldIndex++,
+                    value ? labelWidth + 12 : 0,
+                    y,
+                    value ? width - labelWidth - 12 : labelWidth,
+                    0
+                );
+                bottom = Mathf.Max(bottom, y + height);
+            }
+            y = bottom;
+        }
+        return y;
     }
 
     /// <summary>
@@ -1153,11 +1362,13 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// <param name="field">The unit artwork selected for the inspector.</param>
     /// <param name="width">The available inspector width.</param>
     /// <param name="maximumHeight">The maximum preview height.</param>
+    /// <param name="top">The preview's vertical position within the current form.</param>
     /// <returns>The preview height and trailing margin.</returns>
     private int RenderUnitArtworkPreview(
         ContentPackEditorField field,
         float width,
-        float maximumHeight
+        float maximumHeight,
+        int top = 0
     )
     {
         Texture2D texture = ResolveArtworkTexture(field);
@@ -1196,7 +1407,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         PlaceArtworkComposition(
             "Unit-preview",
             4,
-            0,
+            top,
             imageWidth,
             imageHeight,
             dimensions,
@@ -1217,10 +1428,14 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// <returns>Whether the field belongs in the active inspector tab.</returns>
     private bool IsInCurrentSection(ContentPackEditorField field)
     {
+        if (field.MemberName == nameof(BaseGameEntity.ArtworkLayerOrder))
+            return false;
         if (field.Record.Kind == "ContentPack" && field.Group == "Preloads")
             return false;
         if (selectedRecord.Kind == "PlanetSector" && field.Group == "Planets")
             return false;
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return section == ContentEditorPlanetArtwork.GetSection(field);
         if (section == "Encyclopedia")
             return true;
         if (
@@ -2259,6 +2474,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                     false
                 )
             );
+        if (captured != null)
+            states.Add(("Captured", new[] { captured }, captured, false));
         if (damage != null && (transit != null || officer))
             states.Add(
                 (
@@ -2270,8 +2487,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                     true
                 )
             );
-        if (captured != null)
-            states.Add(("Captured", new[] { captured }, captured, false));
+        if (damage == null && transit != null)
+            states.Add(("Combined", new[] { transit }, null, true));
 
         Texture2D baseTexture = ResolveArtworkTexture(baseField);
         var gameplayBackground = showStateArtworkBackground
@@ -2342,6 +2559,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 else if (regiment)
                     stateBackground = defenseTravel;
             }
+            int firstStateImage = imageIndex;
             PlaceArtworkComposition(
                 "State-" + caption.Replace(' ', '-'),
                 Mathf.RoundToInt(x),
@@ -2368,7 +2586,53 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 && overlays.Length == 0
             )
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
+            var overlayRoles = layers
+                .Where(field =>
+                    (!officerTransit || field != transit) && ResolveArtworkTexture(field) != null
+                )
+                .Select(field =>
+                    field == captured ? GameplayArtworkLayer.Captured
+                    : field == damage ? GameplayArtworkLayer.Damage
+                    : GameplayArtworkLayer.Travel
+                )
+                .Where((_, index) => index < overlays.Length)
+                .ToArray();
+            ArtworkEffectPreviewFrame combined = CreateGameplayArtworkFrame(
+                firstStateImage,
+                imageIndex,
+                size,
+                dimensions,
+                overlayRoles
+            );
             int cardHeight = labelHeight + 4 + size.y;
+            if (action == null && layers.Length > 0)
+            {
+                gameplayLayersButton ??= Instantiate(
+                    setupUnitsTemplate,
+                    fieldScroll.ScrollArea.ContentRoot
+                );
+                gameplayLayersButton.name = "EditCombinedLayers";
+                gameplayLayersButton.GetComponentInChildren<TMP_Text>().text = "Edit layers";
+                gameplayLayersButton.onClick.RemoveAllListeners();
+                ContentPackEditorRecord record = selectedRecord;
+                gameplayLayersButton.onClick.AddListener(() =>
+                {
+                    if (Commit())
+                        GameplayArtworkRequested?.Invoke(
+                            record,
+                            ReadGameplayArtworkFrame(combined)
+                        );
+                });
+                SetFormRect(
+                    (RectTransform)gameplayLayersButton.transform,
+                    x,
+                    imageY + size.y + 8,
+                    Mathf.Min(size.x, 150),
+                    32
+                );
+                gameplayLayersButton.gameObject.SetActive(true);
+                cardHeight += 44;
+            }
             if (action != null)
             {
                 bool canEditEffect = ContentEditorArtworkEffectGenerator.TryGetStyle(
@@ -2405,11 +2669,153 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                         editArtwork: edit,
                         hasEffectArtwork: hasStateArtwork
                     );
+                if (ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(action) != null)
+                {
+                    if (!officerStatusApplyButtons.TryGetValue(action.MemberName, out Button apply))
+                    {
+                        apply = Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
+                        officerStatusApplyButtons.Add(action.MemberName, apply);
+                        apply.name = "ApplyOfficerArtwork-" + action.MemberName;
+                        apply.GetComponentInChildren<TMP_Text>().text = "Apply to all";
+                    }
+                    apply.onClick.RemoveAllListeners();
+                    apply.onClick.AddListener(() =>
+                    {
+                        if (Commit())
+                            OfficerStatusArtworkRequested?.Invoke(action);
+                    });
+                    apply.interactable = ResolveArtworkTexture(action) != null;
+                    TMP_Text applyLabel = apply.GetComponentInChildren<TMP_Text>();
+                    int applyWidth = Mathf.CeilToInt(applyLabel.preferredWidth) + 16;
+                    const int importWidth = 120;
+                    const int actionGap = 6;
+                    bool inline = size.x >= importWidth + actionGap + applyWidth;
+                    SetFormRect(
+                        (RectTransform)apply.transform,
+                        inline ? x + importWidth + actionGap : x,
+                        inline ? imageY + size.y + 8 : y + cardHeight + 4,
+                        inline ? applyWidth : size.x,
+                        32
+                    );
+                    apply.gameObject.SetActive(true);
+                    if (!inline)
+                        cardHeight += 40;
+                }
             }
             rowHeight = Mathf.Max(rowHeight, cardHeight);
             x += size.x + gap;
         }
         return y + rowHeight + 8;
+    }
+
+    /// <summary>
+    /// Borrows readable layer images from the asset store when opening pixel-based selection.
+    /// </summary>
+    /// <param name="frame">The displayed composition with its existing crop and placement.</param>
+    /// <returns>The same composition backed by the asset store's readable texture cache.</returns>
+    private ArtworkEffectPreviewFrame ReadGameplayArtworkFrame(ArtworkEffectPreviewFrame frame) =>
+        new(
+            frame.Caption,
+            frame.BaseImage,
+            frame
+                .Layers.Select(layer => new ArtworkEffectLayerPreview(
+                    layer.Index,
+                    layer.Name,
+                    assets.TryGetTextureAddress(layer.Texture, out string address)
+                        ? assets.GetReadableTexture(address)
+                        : layer.Texture,
+                    layer.Bounds,
+                    layer.Offset,
+                    layer.Hidden,
+                    layer.Linked,
+                    layer.ScalePercent,
+                    layer.Uv
+                ))
+                .ToArray(),
+            frame.IsMissing,
+            frame.Size,
+            frame.BaseUv
+        );
+
+    /// <summary>
+    /// Captures the actual card bounds and source crops for the shared layer workspace.
+    /// </summary>
+    /// <param name="first">The first image belonging to this card.</param>
+    /// <param name="end">The first image after this card.</param>
+    /// <param name="size">The displayed card size.</param>
+    /// <param name="target">The gameplay output size.</param>
+    /// <param name="overlayRoles">The identities of the separately drawn status overlays.</param>
+    /// <returns>The linked composition in the unit's drawing order.</returns>
+    private ArtworkEffectPreviewFrame CreateGameplayArtworkFrame(
+        int first,
+        int end,
+        Vector2Int size,
+        Vector2Int target,
+        IReadOnlyList<GameplayArtworkLayer> overlayRoles
+    )
+    {
+        var parts = new Dictionary<GameplayArtworkLayer, RawImage>();
+        RectInt origin = UILayout.GetSourceRect(articleImages[first].rectTransform);
+        RawImage background = null;
+        for (int index = first; index < end; index++)
+        {
+            RawImage image = articleImages[index];
+            if (image.name.EndsWith("-Background", StringComparison.Ordinal))
+                background = image;
+            else if (image.name.EndsWith("-Entity", StringComparison.Ordinal))
+                parts[GameplayArtworkLayer.Entity] = image;
+            else if (image.name.EndsWith("-Transit", StringComparison.Ordinal))
+                parts[GameplayArtworkLayer.Travel] = image;
+            else
+                for (int overlay = 0; overlay < overlayRoles.Count; overlay++)
+                    if (image.name.EndsWith("-Overlay-" + overlay, StringComparison.Ordinal))
+                        parts[overlayRoles[overlay]] = image;
+        }
+        var layers = new List<ArtworkEffectLayerPreview>();
+        foreach (
+            GameplayArtworkLayer layer in ContentEditorGameplayArtworkEditor.ReadOrder(
+                selectedRecord
+            )
+        )
+        {
+            if (!parts.TryGetValue(layer, out RawImage image))
+                continue;
+            image.transform.SetAsLastSibling();
+            RectInt bounds = UILayout.GetSourceRect(image.rectTransform);
+            string label = layer switch
+            {
+                GameplayArtworkLayer.Entity => selectedRecord.Kind == "Officer"
+                    ? "Portrait"
+                    : "Unit",
+                GameplayArtworkLayer.Travel => "Travel",
+                GameplayArtworkLayer.Damage => selectedRecord.Kind == "Officer"
+                    ? "Injured"
+                    : "Damaged",
+                _ => "Captured",
+            };
+            layers.Add(
+                new ArtworkEffectLayerPreview(
+                    (int)layer,
+                    label,
+                    (Texture2D)image.texture,
+                    new Rect(
+                        (bounds.x - origin.x) / (float)size.x,
+                        1 - (bounds.y - origin.y + bounds.height) / (float)size.y,
+                        bounds.width / (float)size.x,
+                        bounds.height / (float)size.y
+                    ),
+                    linked: true,
+                    uv: image.uvRect
+                )
+            );
+        }
+        return new ArtworkEffectPreviewFrame(
+            "Combined",
+            (Texture2D)background?.texture,
+            layers,
+            size: target,
+            baseUv: background?.uvRect
+        );
     }
 
     /// <summary>
@@ -3551,8 +3957,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             int start = y;
             y = BeginArtworkPanel(ref panelIndex, "MissionEncyclopedia", y, width);
             y += PlaceLabel("Encyclopedia", labelIndex++, 0, y, width, true) + 8;
-            y = PlaceArtworkFieldGroup(
-                article,
+            y = PlaceEncyclopediaFields(
+                ContentEditorContentSections.OrderEncyclopediaFields(article),
                 y,
                 width,
                 ref fieldIndex,
@@ -4825,6 +5231,16 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void ClearArtworkViewControls()
     {
+        foreach (Button button in officerStatusApplyButtons.Values)
+        {
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
+        if (gameplayLayersButton != null)
+        {
+            gameplayLayersButton.onClick.RemoveAllListeners();
+            gameplayLayersButton.gameObject.SetActive(false);
+        }
         if (illustrationBackgroundToggle != null)
             illustrationBackgroundToggle.gameObject.SetActive(false);
         foreach (Button button in illustrationReuseButtons.Values)
@@ -4969,34 +5385,29 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 : section;
             if (article || record.Kind != "Faction")
                 y += PlaceLabel(title, headingIndex++, 4, y, width - 8, true) + 8;
-            if (article && !string.IsNullOrEmpty(record.ImageAddress))
+            if (article)
             {
-                Texture2D texture = assets.GetTexture(record.ImageAddress);
-                if (texture != null)
-                {
-                    RawImage preview = GetArtworkPreviewImage(
-                        ref imageIndex,
-                        "Encyclopedia-" + record.ID
-                    );
-                    preview.texture = texture;
-                    Vector2Int source = UILayout.GetTextureSourceSize(preview.texture);
-                    int imageWidth = Mathf.Min(Mathf.RoundToInt(width - 8), 440);
-                    int imageHeight = Mathf.RoundToInt((float)imageWidth * source.y / source.x);
-                    UILayout.SetSourceRect(preview.rectTransform, 4, y, imageWidth, imageHeight);
-                    preview.enabled = true;
-                    preview.gameObject.SetActive(true);
-                    y += imageHeight + 12;
-                }
+                y = PlaceEncyclopediaFields(
+                    ContentEditorContentSections
+                        .EncyclopediaArticleFields(record)
+                        .Where(field =>
+                            field.MemberName
+                                is not ("TypeID" or "Category" or "VisibleFactionInstanceID")
+                        )
+                        .ToArray(),
+                    y,
+                    width,
+                    ref fieldIndex,
+                    ref headingIndex,
+                    ref imageIndex
+                );
+                y += 24;
+                continue;
             }
             IReadOnlyDictionary<XElement, string> poolTitles = GetNamePoolTitles(record);
             IReadOnlyList<string> previous = Array.Empty<string>();
             foreach (ContentPackEditorField field in group)
             {
-                if (
-                    article
-                    && field.MemberName is "TypeID" or "Category" or "VisibleFactionInstanceID"
-                )
-                    continue;
                 IReadOnlyList<string> sections = collection
                     ? Array.Empty<string>()
                     : field.SectionPath;
@@ -6054,6 +6465,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// <param name="editArtwork">Opens the gameplay artwork editor when one is available.</param>
     /// <param name="hasEffectArtwork">Whether the associated effect image could be loaded.</param>
     /// <param name="videoPreviewAddress">The effective video address for a cutscene action row.</param>
+    /// <param name="showMediaName">Whether the media filename adds context beyond the surrounding preview.</param>
     private int PlaceField(
         ContentPackEditorField field,
         int index,
@@ -6066,7 +6478,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         IReadOnlyDictionary<string, string> referenceLabels = null,
         Action editArtwork = null,
         bool hasEffectArtwork = false,
-        string videoPreviewAddress = null
+        string videoPreviewAddress = null,
+        bool showMediaName = true
     )
     {
         while (fieldViews.Count <= index)
@@ -6079,6 +6492,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             created.Submitted += SubmitField;
             created.ValidationRequested += ValidateField;
             created.SelectionRequested += RequestSelection;
+            created.MediaReplacementRequested += RequestMediaReplacement;
+            created.AudioClipRemovalRequested += RequestAudioClipRemoval;
             fieldViews.Add(created);
         }
         ContentEditorFieldView view = fieldViews[index];
@@ -6100,10 +6515,11 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             !reflowingFields
             || !view.gameObject.activeSelf
             || !IsBoundTo(view, field)
+            || view.NeedsMediaRefresh
             || view.Field.XmlElement != field.XmlElement && view.Field.Value != field.Value
         )
             view.Render(
-                ContentPackEditorProjector.BuildField(project, field, referenceLabels),
+                ContentPackEditorProjector.BuildField(project, field, referenceLabels, assets),
                 HandleFieldChanged,
                 RequestImport,
                 RequestPreview
@@ -6113,7 +6529,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             return view.SetVideoActionLayout(rect, videoPreviewAddress, videoResolutions);
         return artworkAction
             ? view.SetArtworkActionLayout(rect, editArtwork, hasEffectArtwork)
-            : view.SetLayout(rect, labelWidth);
+            : view.SetLayout(rect, labelWidth, showMediaName);
     }
 
     /// <summary>

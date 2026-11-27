@@ -15,6 +15,7 @@ internal readonly struct ArtworkEffectLayerPreview
     internal bool Hidden { get; }
     internal bool Linked { get; }
     internal int? ScalePercent { get; }
+    internal Rect Uv { get; }
 
     /// <summary>
     /// Captures a layer's position and artwork in one preview.
@@ -27,6 +28,7 @@ internal readonly struct ArtworkEffectLayerPreview
     /// <param name="hidden">Whether the layer is excluded from the exported card.</param>
     /// <param name="linked">Whether the layer is supplied by the runtime composition.</param>
     /// <param name="scalePercent">The current scale percentage for a resizable effect.</param>
+    /// <param name="uv">The source region drawn inside the layer's bounds.</param>
     internal ArtworkEffectLayerPreview(
         int index,
         string name,
@@ -35,7 +37,8 @@ internal readonly struct ArtworkEffectLayerPreview
         Vector2 offset = default,
         bool hidden = false,
         bool linked = false,
-        int? scalePercent = null
+        int? scalePercent = null,
+        Rect? uv = null
     )
     {
         Index = index;
@@ -46,6 +49,7 @@ internal readonly struct ArtworkEffectLayerPreview
         Hidden = hidden;
         Linked = linked;
         ScalePercent = scalePercent;
+        Uv = uv ?? new Rect(0, 0, 1, 1);
     }
 }
 
@@ -57,7 +61,8 @@ internal readonly struct ArtworkEffectPreviewFrame
     internal string Caption { get; }
     internal Texture2D BaseImage { get; }
     internal IReadOnlyList<ArtworkEffectLayerPreview> Layers { get; }
-    internal Vector2Int Size => new(BaseImage.width, BaseImage.height);
+    internal Vector2Int Size { get; }
+    internal Rect BaseUv { get; }
     internal bool IsMissing { get; }
 
     /// <summary>
@@ -67,16 +72,22 @@ internal readonly struct ArtworkEffectPreviewFrame
     /// <param name="baseImage">The fixed gameplay background.</param>
     /// <param name="layers">The effects in back-to-front order, including any used only by another output.</param>
     /// <param name="isMissing">Whether the pack has no assigned image for this output.</param>
+    /// <param name="size">The output dimensions when the background has different dimensions.</param>
+    /// <param name="baseUv">The background region drawn inside the output.</param>
     internal ArtworkEffectPreviewFrame(
         string caption,
         Texture2D baseImage,
         IReadOnlyList<ArtworkEffectLayerPreview> layers,
-        bool isMissing = false
+        bool isMissing = false,
+        Vector2Int? size = null,
+        Rect? baseUv = null
     )
     {
         Caption = caption;
         BaseImage = baseImage;
         Layers = layers.Where(layer => layer.Texture != null).ToArray();
         IsMissing = isMissing;
+        Size = size ?? new Vector2Int(baseImage.width, baseImage.height);
+        BaseUv = baseUv ?? new Rect(0, 0, 1, 1);
     }
 }

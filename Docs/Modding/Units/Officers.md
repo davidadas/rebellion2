@@ -139,6 +139,11 @@ Gameplay bonuses continue to use their existing definitions and events.
 
 ## Voice sets
 
+In the content editor, open an officer's **Audio** tab to add, preview, or remove clips in any
+supported response category, including for new officers. **Add clip…** copies an external audio
+file into the pack. Choose a clip from the list to preview or remove it; removing it from a response
+does not delete the file. Empty categories remain absent from the saved XML until edited.
+
 Each voice category contains zero or more extensionless asset paths. The game may choose among
 multiple paths in a category.
 

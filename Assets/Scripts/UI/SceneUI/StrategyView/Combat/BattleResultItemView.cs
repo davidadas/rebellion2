@@ -1,4 +1,5 @@
 using System;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -72,6 +73,13 @@ public sealed class BattleResultItemView : MonoBehaviour
         );
         UILayout.SetCenteredImage(damagedOverlayImage, data.DamagedOverlayTexture, imageSlotRect);
         UILayout.SetCenteredImage(capturedOverlayImage, data.CapturedOverlayTexture, imageSlotRect);
+        GameplayArtworkLayout.Apply(
+            GameplayArtworkOrder.Resolve(data.ArtworkLayerOrder),
+            baseImage.transform,
+            withdrawingOverlayImage.transform,
+            damagedOverlayImage.transform,
+            capturedOverlayImage.transform
+        );
         nameTextField.gameObject.SetActive(hasImage);
         emptyTextField.gameObject.SetActive(!hasImage);
         TextMeshProUGUI activeTextField = hasImage ? nameTextField : emptyTextField;

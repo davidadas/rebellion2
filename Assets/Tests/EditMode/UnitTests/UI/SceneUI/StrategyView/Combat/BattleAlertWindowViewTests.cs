@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -649,6 +650,52 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual(2, itemTemplates.Length);
             Assert.Throws<ArgumentNullException>(() => itemTemplates[0].Render(null));
             Assert.Throws<ArgumentNullException>(() => itemTemplates[1].Render(null));
+        }
+
+        [TestCase("ResultStandardItemTemplate")]
+        [TestCase("ResultPersonnelItemTemplate")]
+        public void Render_CustomArtworkThenDefault_RestoresResultTemplateLayering(string name)
+        {
+            BattleResultItemView item = _viewObject
+                .GetComponentsInChildren<BattleResultItemView>(true)
+                .Single(view => view.name == name);
+            Transform imageParent = FindItemImage(item, "BaseImage").transform.parent;
+            string[] original = imageParent.Cast<Transform>().Select(child => child.name).ToArray();
+            RectInt slot = item.GetArtworkRect(new Vector2Int(_texture.width, _texture.height));
+            item.Render(
+                new BattleResultItemRenderData(
+                    "Custom",
+                    _texture,
+                    _texture,
+                    _texture,
+                    _texture,
+                    new[]
+                    {
+                        GameplayArtworkLayer.Captured,
+                        GameplayArtworkLayer.Damage,
+                        GameplayArtworkLayer.Travel,
+                        GameplayArtworkLayer.Entity,
+                    }
+                )
+            );
+
+            Assert.Less(
+                FindItemImage(item, "DamagedOverlayImage").transform.GetSiblingIndex(),
+                FindItemImage(item, "BaseImage").transform.GetSiblingIndex()
+            );
+            Assert.AreEqual(
+                slot,
+                item.GetArtworkRect(new Vector2Int(_texture.width, _texture.height))
+            );
+
+            item.Render(
+                new BattleResultItemRenderData("Default", _texture, _texture, _texture, _texture)
+            );
+
+            CollectionAssert.AreEqual(
+                original,
+                imageParent.Cast<Transform>().Select(child => child.name)
+            );
         }
 
         [Test]

@@ -239,6 +239,28 @@ internal static class ContentEditorUnitArtworkLayout
         );
 
     /// <summary>
+    /// Names the independent officer status slots that can share one image across definitions.
+    /// </summary>
+    /// <param name="field">The direct artwork member selected by the author.</param>
+    /// <returns>The image role, or null for portraits, other units, and nested settings.</returns>
+    internal static string GetOfficerStatusArtworkName(ContentPackEditorField field)
+    {
+        if (
+            field?.Record.Kind != "Officer"
+            || field.Container != null && field.Container != field.Record.Element
+        )
+            return null;
+        return field.MemberName switch
+        {
+            "InjuredImagePath" => "injury",
+            "CapturedOverlayImagePath" => "capture",
+            "InTransitImagePath" => "large hyperspace",
+            "InTransitSmallImagePath" => "small hyperspace",
+            _ => null,
+        };
+    }
+
+    /// <summary>
     /// Creates the common ordered artwork members used by capital ships and starfighters.
     /// </summary>
     /// <returns>The independent member array assigned to one unit type.</returns>

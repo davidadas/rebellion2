@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -770,6 +772,68 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             Assert.AreSame(_view, destroyed);
         }
 
+        [Test]
+        public void Render_CustomArtworkThenDefault_RestoresBannerAndRowLayering()
+        {
+            string[] bannerOrder = FindObject("BannerImage")
+                .transform.parent.Cast<Transform>()
+                .Select(child => child.name)
+                .ToArray();
+            FleetListRowView template = _viewObject
+                .GetComponentsInChildren<FleetListRowView>(true)
+                .Single(row => row.name == "FleetListRowTemplate");
+            string[] rowOrder = FindRowObject(template, "IconImage")
+                .transform.parent.Cast<Transform>()
+                .Select(child => child.name)
+                .ToArray();
+            GameplayArtworkLayer[] custom =
+            {
+                GameplayArtworkLayer.Damage,
+                GameplayArtworkLayer.Travel,
+                GameplayArtworkLayer.Entity,
+                GameplayArtworkLayer.Captured,
+            };
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("Ship", true, artworkLayerOrder: custom) },
+                    Array.Empty<StrategyUnitCardRenderData>(),
+                    artworkLayerOrder: custom
+                )
+            );
+
+            Assert.Less(
+                FindObject("BannerDamagedOverlayImage").transform.GetSiblingIndex(),
+                FindObject("BannerImage").transform.GetSiblingIndex()
+            );
+            FleetListRowView row = FindFleetRows().Single();
+            Assert.Less(
+                FindRowObject(row, "DamagedOverlayImage").transform.GetSiblingIndex(),
+                FindRowObject(row, "IconImage").transform.GetSiblingIndex()
+            );
+
+            _view.Render(
+                CreateRenderData(
+                    true,
+                    new[] { CreateFleetRow("Default ship", true) },
+                    Array.Empty<StrategyUnitCardRenderData>()
+                )
+            );
+
+            CollectionAssert.AreEqual(
+                bannerOrder,
+                FindObject("BannerImage")
+                    .transform.parent.Cast<Transform>()
+                    .Select(child => child.name)
+            );
+            CollectionAssert.AreEqual(
+                rowOrder,
+                FindRowObject(FindFleetRows().Single(), "IconImage")
+                    .transform.parent.Cast<Transform>()
+                    .Select(child => child.name)
+            );
+        }
+
         /// <summary>
         /// Creates render data.
         /// </summary>
@@ -781,6 +845,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <param name="renameFleetRowIndex">The rename fleet row index.</param>
         /// <param name="renameDetailItemIndex">The rename detail item index.</param>
         /// <param name="renameText">The rename text.</param>
+        /// <param name="artworkLayerOrder">The optional ship banner drawing order.</param>
         /// <returns>The created render data.</returns>
         private FleetWindowRenderData CreateRenderData(
             bool hasSelectedFleet,
@@ -790,7 +855,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             FleetWindowTabRenderData[] tabs = null,
             int renameFleetRowIndex = -1,
             int renameDetailItemIndex = -1,
-            string renameText = ""
+            string renameText = "",
+            IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder = null
         )
         {
             return new FleetWindowRenderData(
@@ -815,7 +881,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 items,
                 renameFleetRowIndex,
                 renameDetailItemIndex,
-                renameText
+                renameText,
+                bannerArtworkLayerOrder: artworkLayerOrder
             );
         }
 
@@ -839,6 +906,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         /// <param name="treeHasHorizontalBranch">Whether the connector reaches into the row.</param>
         /// <param name="treeContinuesAbove">Whether the connector reaches the row's top edge.</param>
         /// <param name="isCapitalShip">Whether the row represents an expanded capital ship.</param>
+        /// <param name="artworkLayerOrder">The optional ship row drawing order.</param>
         /// <returns>The created fleet row.</returns>
         private FleetListRowRenderData CreateFleetRow(
             string name,
@@ -846,7 +914,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
             bool showTreeBranch = false,
             bool treeHasHorizontalBranch = false,
             bool treeContinuesAbove = false,
-            bool isCapitalShip = false
+            bool isCapitalShip = false,
+            IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder = null
         )
         {
             Texture optionalTexture = showOptionalImages ? _texture : null;
@@ -862,7 +931,8 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
                 isCapitalShip: isCapitalShip,
                 showTreeBranch: showTreeBranch,
                 treeContinuesAbove: treeContinuesAbove,
-                treeHasHorizontalBranch: treeHasHorizontalBranch
+                treeHasHorizontalBranch: treeHasHorizontalBranch,
+                artworkLayerOrder: artworkLayerOrder
             );
         }
 

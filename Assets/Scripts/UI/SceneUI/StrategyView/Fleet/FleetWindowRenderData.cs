@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
@@ -34,6 +35,8 @@ public sealed class FleetListRowRenderData
 
     public Texture IconTexture { get; }
 
+    public IReadOnlyList<GameplayArtworkLayer> ArtworkLayerOrder { get; }
+
     public Texture EnrouteOverlayTexture { get; }
 
     public Texture DamagedOverlayTexture { get; }
@@ -63,6 +66,7 @@ public sealed class FleetListRowRenderData
     /// <param name="treeContinuesAbove">Whether the branch stem reaches the row's top edge.</param>
     /// <param name="treeContinuesBelow">Whether the branch stem reaches the row's bottom edge.</param>
     /// <param name="treeHasHorizontalBranch">Whether the branch reaches horizontally into the row.</param>
+    /// <param name="artworkLayerOrder">The optional ship artwork drawing order.</param>
     public FleetListRowRenderData(
         string name,
         Texture iconTexture,
@@ -77,7 +81,8 @@ public sealed class FleetListRowRenderData
         bool showTreeBranch = false,
         bool treeContinuesAbove = false,
         bool treeContinuesBelow = false,
-        bool treeHasHorizontalBranch = false
+        bool treeHasHorizontalBranch = false,
+        IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder = null
     )
     {
         FleetIndex = fleetIndex;
@@ -88,6 +93,7 @@ public sealed class FleetListRowRenderData
         TreeContinuesBelow = treeContinuesBelow;
         Name = name ?? string.Empty;
         IconTexture = iconTexture;
+        ArtworkLayerOrder = artworkLayerOrder;
         EnrouteOverlayTexture = enrouteOverlayTexture;
         DamagedOverlayTexture = damagedOverlayTexture;
         StarfighterBadgeTexture = starfighterBadgeTexture;
@@ -162,6 +168,8 @@ public sealed class FleetWindowRenderData
 
     public Texture BannerTexture { get; }
 
+    public IReadOnlyList<GameplayArtworkLayer> BannerArtworkLayerOrder { get; }
+
     public Texture BannerEnrouteOverlayTexture { get; }
 
     public Texture BannerDamagedOverlayTexture { get; }
@@ -211,6 +219,7 @@ public sealed class FleetWindowRenderData
     /// <param name="renameFleetRowIndex">The fleet-row rename target, or -1.</param>
     /// <param name="renameDetailItemIndex">The detail-card rename target, or -1.</param>
     /// <param name="renameText">The current rename value.</param>
+    /// <param name="bannerArtworkLayerOrder">The selected ship's optional drawing order.</param>
     public FleetWindowRenderData(
         int x,
         int y,
@@ -233,7 +242,8 @@ public sealed class FleetWindowRenderData
         IReadOnlyList<StrategyUnitCardRenderData> detailItems,
         int renameFleetRowIndex,
         int renameDetailItemIndex,
-        string renameText
+        string renameText,
+        IReadOnlyList<GameplayArtworkLayer> bannerArtworkLayerOrder = null
     )
     {
         X = x;
@@ -246,6 +256,7 @@ public sealed class FleetWindowRenderData
         SelectedFleetIndex = selectedFleetIndex;
         HasSelectedFleet = hasSelectedFleet;
         BannerTexture = bannerTexture;
+        BannerArtworkLayerOrder = bannerArtworkLayerOrder;
         BannerEnrouteOverlayTexture = bannerEnrouteOverlayTexture;
         BannerDamagedOverlayTexture = bannerDamagedOverlayTexture;
         FleetName = fleetName ?? string.Empty;
