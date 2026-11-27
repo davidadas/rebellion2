@@ -181,10 +181,19 @@ namespace Rebellion.Game.Combat
         }
 
         public string SourceUnitInstanceID { get; set; }
-        public string CarrierSourceUnitInstanceID { get; set; }
-        public bool HasPlanetaryProtection { get; set; }
-        public int PayloadCount { get; set; }
-        public int FighterCapacity { get; set; }
+        public bool HasPlanetaryProtection { get; internal set; }
+        public int PayloadCount { get; internal set; }
+        public int FighterCapacity { get; internal set; }
+
+        // Older active battles also wrote the campaign carrier at entry.
+        [PersistableMember(Name = "CarrierSourceUnitInstanceID")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private string LegacyCarrierSourceUnitInstanceID
+        {
+            get => null;
+            set { }
+        }
 
         [PersistableIgnore]
         public BaseSceneNode Unit => _unit;
@@ -389,7 +398,7 @@ namespace Rebellion.Game.Combat
         public CombatUnit() { }
 
         /// <summary>
-        /// Copies the campaign unit and captures its starting carrier and payload.
+        /// Copies the campaign unit and its starting carrier association.
         /// </summary>
         /// <param name="sourceUnit">The campaign unit entering the battle.</param>
         private void CaptureSource(BaseSceneNode sourceUnit)
@@ -404,26 +413,10 @@ namespace Rebellion.Game.Combat
 
             _unit = (BaseSceneNode)sourceUnit.CreateCopy();
             SourceUnitInstanceID = sourceUnit.InstanceID;
-            CarrierSourceUnitInstanceID =
-                sourceUnit is Starfighter
-                    ? (sourceUnit.ParentNode as CapitalShip)?.InstanceID
-                    : null;
-
-            if (sourceUnit is CapitalShip ship)
-            {
-                PayloadCount =
-                    ship.GetChildren<Officer>().Count
-                    + ship.GetChildren<Regiment>().Count
-                    + ship.GetChildren<SpecialForces>().Count;
-                int fighterCount = ship.GetChildren<Starfighter>(includeDisabled: true).Count;
-                int activeFighterCount = ship.GetChildren<Starfighter>()
-                    .Count(fighter =>
-                        fighter.ManufacturingStatus == ManufacturingStatus.Complete
-                        && fighter.Movement == null
-                        && fighter.CurrentSquadronSize > 0
-                    );
-                FighterCapacity = ship.StarfighterCapacity - fighterCount + activeFighterCount;
-            }
+            if (sourceUnit is Starfighter)
+                CarrierID = (sourceUnit.ParentNode as CapitalShip)?.InstanceID;
+            else if (sourceUnit is CapitalShip ship)
+                FighterCapacity = ship.StarfighterCapacity;
         }
 
         /// <summary>

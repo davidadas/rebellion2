@@ -383,7 +383,17 @@ namespace Rebellion.Gameplay
             {
                 CombatUnit unit = battle.AddCombatant(participant.Source);
                 if (participant.Source is CapitalShip ship)
+                {
                     unit.HasPlanetaryProtection = HasPlanetaryProtection(ship, planet);
+                    unit.PayloadCount =
+                        ship.GetChildren<Officer>().Count
+                        + ship.GetChildren<Regiment>().Count
+                        + ship.GetChildren<SpecialForces>().Count;
+                    unit.FighterCapacity =
+                        ship.GetExcessStarfighterCapacity()
+                        + ship.GetChildren<Starfighter>()
+                            .Count(SpaceCombatQueries.IsActiveStarfighter);
+                }
                 TacticalCombatDeployment.InitializeUnit(
                     unit,
                     participant.Definition,

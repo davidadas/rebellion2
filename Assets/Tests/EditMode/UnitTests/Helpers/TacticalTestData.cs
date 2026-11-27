@@ -20,8 +20,8 @@ internal static class TacticalTestData
     internal static GameConfig ConfigureCampaignRules(GameConfig config)
     {
         config.Smuggling.LossPercentByMinimumSupport.TryAdd(0, 0);
-        SpaceCombatSupportConfig support = new();
-        SpaceCombatSupportSideConfig side = new()
+        GameConfig.SpaceCombatSupportConfig support = new();
+        GameConfig.SpaceCombatSupportSideConfig side = new()
         {
             LeadingFlat = 100,
             LeadingGapScale = 0,
@@ -31,11 +31,13 @@ internal static class TacticalTestData
             SupportThreshold = 101,
         };
         foreach (
-            SpaceCombatSupportContext context in Enum.GetValues(typeof(SpaceCombatSupportContext))
+            GameConfig.SpaceCombatSupportContext context in Enum.GetValues(
+                typeof(GameConfig.SpaceCombatSupportContext)
+            )
         )
             support.Profiles.Add(
                 context,
-                new SpaceCombatSupportProfile
+                new GameConfig.SpaceCombatSupportProfile
                 {
                     Divisor = 10,
                     FirstSide = side.CreateCopy(),
@@ -170,7 +172,5 @@ internal static class TacticalTestData
                 },
             },
             WithdrawalDistancePercent = 100,
-            FastSystemRepairTicks = 2,
-            NormalSystemRepairTicks = 30,
         };
 }

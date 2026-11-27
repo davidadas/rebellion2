@@ -137,7 +137,6 @@ namespace Rebellion.Tactical
 
             unit.Side = side;
             unit.Index = index;
-            unit.CarrierID = unit.CarrierSourceUnitInstanceID;
             unit.InitializeCombatPools(
                 maximumHull,
                 initialHull,
@@ -178,8 +177,7 @@ namespace Rebellion.Tactical
                 );
             unit.DesiredHeading = unit.Heading;
             unit.Status =
-                isFighter && unit.CarrierSourceUnitInstanceID != null && !unit.HasHyperdrive
-                    ? CombatUnitStatus.Docked
+                isFighter && unit.CarrierID != null && !unit.HasHyperdrive ? CombatUnitStatus.Docked
                 : isUnderConstruction ? CombatUnitStatus.UnderConstruction
                 : CombatUnitStatus.Active;
             unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);

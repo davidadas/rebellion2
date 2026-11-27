@@ -914,20 +914,31 @@ namespace Rebellion.Tests.Content
             Assert.AreEqual(7, profiles.Count);
             Assert.AreEqual(
                 321,
-                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.LeadingGapScale
+                profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
+                    .FirstSide
+                    .LeadingGapScale
             );
             Assert.AreEqual(
                 200,
-                profiles[SpaceCombatSupportContext.FirstFactionEasy].SecondSide.LeadingGapScale
+                profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
+                    .SecondSide
+                    .LeadingGapScale
             );
             Assert.AreEqual(
                 400,
-                profiles[SpaceCombatSupportContext.FirstFactionMedium].FirstSide.LeadingGapScale
+                profiles[GameConfig.SpaceCombatSupportContext.FirstFactionMedium]
+                    .FirstSide
+                    .LeadingGapScale
             );
-            Assert.AreEqual(10, profiles[SpaceCombatSupportContext.FirstFactionEasy].Divisor);
+            Assert.AreEqual(
+                10,
+                profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy].Divisor
+            );
             Assert.AreEqual(
                 0,
-                profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.TrailingFlat
+                profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
+                    .FirstSide
+                    .TrailingFlat
             );
         }
 

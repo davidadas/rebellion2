@@ -25,9 +25,9 @@ namespace Rebellion.Tests.Gameplay
         private CapitalShip _lostShip;
         private SpaceCombatResult _result;
 
-        private SpaceCombatSupportProfile Profile =>
+        private GameConfig.SpaceCombatSupportProfile Profile =>
             _game.Config.SupportShift.BattleSupport.Profiles[
-                SpaceCombatSupportContext.FirstFactionEasy
+                GameConfig.SpaceCombatSupportContext.FirstFactionEasy
             ];
 
         /// <summary>
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Gameplay
                         Settings = new FactionSettings { BattleLossLoyaltyDivisor = 80 },
                     }
                 );
-            SpaceCombatSupportProfile profile = Profile;
+            GameConfig.SpaceCombatSupportProfile profile = Profile;
             profile.Divisor = 10;
             profile.FirstSide = CreateSide();
             profile.SecondSide = CreateSide();
@@ -418,7 +418,7 @@ namespace Rebellion.Tests.Gameplay
         /// Creates a flat-weight profile for observable campaign aftermath assertions.
         /// </summary>
         /// <returns>The complete authored calculation inputs.</returns>
-        private static SpaceCombatSupportSideConfig CreateSide() =>
+        private static GameConfig.SpaceCombatSupportSideConfig CreateSide() =>
             new()
             {
                 LeadingFlat = 100,
