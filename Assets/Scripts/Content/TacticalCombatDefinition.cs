@@ -58,7 +58,8 @@ namespace Rebellion.Content
     [PersistableObject]
     public sealed class TacticalCombatSoundDefinition
     {
-        public TacticalCombatSound Kind { get; set; }
+        public string Name { get; set; }
+        public TacticalCombatSound? Kind { get; set; }
         public List<TacticalCombatSoundClip> Variants { get; set; } = new();
     }
 

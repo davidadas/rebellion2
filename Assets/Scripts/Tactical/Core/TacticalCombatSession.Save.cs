@@ -137,6 +137,7 @@ namespace Rebellion.Tactical
                 Value = command.Value,
                 Position = command.Position,
                 Weapon = command.Shot.Weapon,
+                FiringArc = command.Kind == CommandKind.Fire ? command.Shot.Arc : null,
                 Strength = command.Shot.Strength,
                 System = command.Change.System,
                 IsRepair = command.Change.IsRepair,
@@ -239,7 +240,7 @@ namespace Rebellion.Tactical
             CombatUnit target = GetUnit(state.TargetID);
             TacticalCombatGroup group = state.GroupID is int groupID ? _groupsByID[groupID] : null;
             TacticalCombatShot shot = kind is CommandKind.Fire or CommandKind.Hit
-                ? new(source, target, state.Weapon, state.Strength)
+                ? new(source, target, state.Weapon, state.Strength, state.FiringArc)
                 : default;
             TacticalSystemEvent change =
                 state.AttackDelay is float attackDelay && state.MovementDelay is float movementDelay

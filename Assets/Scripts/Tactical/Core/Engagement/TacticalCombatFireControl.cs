@@ -19,14 +19,15 @@ namespace Rebellion.Tactical
         public HardpointWeaponType Weapon { get; }
         public float Strength { get; }
         public int ImpactDelay { get; }
+        internal TacticalWeaponArc? Arc { get; }
         public int FiringDelay => Weapon == HardpointWeaponType.IonCannon ? 1 : 0;
 
         /// <summary>
-        /// Selects the discharge cue from this weapon and the firing faction.
+        /// Selects the original discharge cue for a weapon without an authored sound.
         /// </summary>
         /// <param name="factionIndex">The firing side's authored faction index.</param>
         /// <returns>The cue requested when the discharge is applied.</returns>
-        internal TacticalCombatSound GetFiringSound(int factionIndex) =>
+        internal TacticalCombatSound GetDefaultFiringSound(int factionIndex) =>
             Weapon switch
             {
                 HardpointWeaponType.LaserCannon when Source.IsFighter => factionIndex == 0
@@ -46,17 +47,20 @@ namespace Rebellion.Tactical
         /// <param name="target">The unit receiving the shot.</param>
         /// <param name="weapon">The weapon used.</param>
         /// <param name="strength">The attack strength before target damage handling.</param>
+        /// <param name="arc">The firing battery when the shot uses an installed weapon.</param>
         public TacticalCombatShot(
             CombatUnit source,
             CombatUnit target,
             HardpointWeaponType weapon,
-            float strength
+            float strength,
+            TacticalWeaponArc? arc = null
         )
         {
             Source = source;
             Target = target;
             Weapon = weapon;
             Strength = strength;
+            Arc = arc;
             ImpactDelay = weapon
                 is HardpointWeaponType.IonCannon
                     or HardpointWeaponType.TorpedoLauncher
@@ -452,7 +456,9 @@ namespace Rebellion.Tactical
                 || unit.Status == CombatUnitStatus.PreparingHyperspace
             )
                 return;
-            ShotRequested?.Invoke(new TacticalCombatShot(unit, target, weapon, strength));
+            ShotRequested?.Invoke(
+                new TacticalCombatShot(unit, target, weapon, strength, (TacticalWeaponArc)arc)
+            );
             if (
                 weapon == HardpointWeaponType.LaserCannon
                 && unit.IsFighter

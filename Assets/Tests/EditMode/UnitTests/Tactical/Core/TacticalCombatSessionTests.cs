@@ -42,6 +42,52 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
+        public void Advance_AuthoredFiringSound_UsesTheDischargedBattery()
+        {
+            CapitalShip attacker = CreateShip("a", 1000, 0);
+            attacker.WeaponRecharge = 10;
+            attacker.HardpointGroups.Clear();
+            foreach (
+                (string arc, string sound) in new[] { ("Forward", "bow-gun"), ("Aft", "stern-gun") }
+            )
+            {
+                attacker.HardpointGroups.Add(
+                    SerializationHelper.Deserialize<HardpointGroup>(
+                        $"<HardpointGroup><Arc>{arc}</Arc><Hardpoints><Hardpoint>"
+                            + $"<FiringSound>{sound}</FiringSound><Weapon>"
+                            + "<WeaponType>LaserCannon</WeaponType><Damage>10</Damage><Range>100</Range>"
+                            + "</Weapon></Hardpoint></Hardpoints></HardpointGroup>"
+                    )
+                );
+            }
+            TacticalCombatDefinition definition =
+                SerializationHelper.Deserialize<TacticalCombatDefinition>(
+                    "<TacticalCombatDefinition><Sounds><TacticalCombatSoundDefinition>"
+                        + "<Name>bow-gun</Name><Variants><TacticalCombatSoundClip>"
+                        + "<Path>test/bow-laser</Path></TacticalCombatSoundClip></Variants>"
+                        + "</TacticalCombatSoundDefinition><TacticalCombatSoundDefinition>"
+                        + "<Name>stern-gun</Name><Variants><TacticalCombatSoundClip>"
+                        + "<Path>test/stern-laser</Path></TacticalCombatSoundClip></Variants>"
+                        + "</TacticalCombatSoundDefinition></Sounds></TacticalCombatDefinition>"
+                );
+            TacticalCombatSession session = CreateSession(
+                attacker,
+                CreateShip("b", 1000, 0),
+                definition
+            );
+            List<string> played = new();
+            session.Audio.Playback = (clip, _) =>
+            {
+                played.Add(clip.Path);
+                return null;
+            };
+
+            AdvanceSeconds(session, 20);
+
+            Assert.That(played, Is.Not.Empty.And.All.EqualTo("test/bow-laser"));
+        }
+
+        [Test]
         public void AdvanceClocked_MissingClock_RejectsImplicitTimeProvider()
         {
             TacticalCombatSession session = CreateSession(
