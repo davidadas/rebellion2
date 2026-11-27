@@ -66,14 +66,12 @@ namespace Rebellion.Tactical
             _inspected = _session.GetUnit(state.InspectedID);
             _members.Clear();
             _members.AddRange(state.Members.Select(_session.GetUnit));
-            _highlights.Clear();
             _targets.Clear();
             _targets.AddRange(state.Targets.Select(_session.GetUnit));
             _waypoints.Clear();
             _waypoints.AddRange(state.Waypoints.Select(point => point.ToVector()));
             _groups.Clear();
             _groups.AddRange(state.Groups.Select(_session.GetSynchronizedGroup));
-            BuildHighlights();
             if (changed)
                 ContextReplaced?.Invoke(Kind);
             if (previous == TacticalCombatSelectionKind.StationTarget && previous != Kind)

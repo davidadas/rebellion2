@@ -133,7 +133,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="group">The requested owner.</param>
         /// <returns>Its category, or minus one when untracked.</returns>
-        private int FindObjectCategory(TacticalCombatGroup group)
+        internal int FindObjectCategory(TacticalCombatGroup group)
         {
             for (int category = 0; category < 8; category++)
                 if (ReferenceEquals(_session.GetObjectGroup(_side, category), group))

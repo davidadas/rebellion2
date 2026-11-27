@@ -34,7 +34,6 @@ namespace Rebellion.Tactical
         private readonly Queue<Action> _commands = new();
         private readonly Queue<PointerCommand> _pointers = new();
         private readonly List<CombatUnit> _members = new();
-        private readonly List<CombatUnit> _highlights = new();
         private readonly List<CombatUnit> _targets = new();
         private readonly List<Vector3> _waypoints = new();
         private readonly List<TacticalCombatGroup> _groups = new();
@@ -58,7 +57,6 @@ namespace Rebellion.Tactical
                 _ => _primary,
             };
         public IReadOnlyList<CombatUnit> Members { get; }
-        public IReadOnlyList<CombatUnit> Highlights { get; }
         public IReadOnlyList<CombatUnit> Targets { get; }
         public IReadOnlyList<Vector3> Waypoints { get; }
         public IReadOnlyList<TacticalCombatGroup> Groups { get; }
@@ -82,7 +80,6 @@ namespace Rebellion.Tactical
             if (_side is not CombatSide.Attacker and not CombatSide.Defender)
                 throw new ArgumentOutOfRangeException(nameof(side));
             Members = _members.AsReadOnly();
-            Highlights = _highlights.AsReadOnly();
             Targets = _targets.AsReadOnly();
             Waypoints = _waypoints.AsReadOnly();
             Groups = _groups.AsReadOnly();
