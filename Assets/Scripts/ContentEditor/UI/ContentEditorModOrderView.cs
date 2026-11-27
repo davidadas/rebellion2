@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -60,6 +61,7 @@ public sealed class ContentEditorModOrderView : MonoBehaviour, ICancelable
     /// <summary>
     /// Fits the dialog within the resized toolkit window.
     /// </summary>
+    [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange()
     {
         if (panel == null)
