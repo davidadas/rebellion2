@@ -47,7 +47,7 @@ env:
 jobs:
   test:
     name: Test
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     environment: production
 
     steps:
@@ -119,10 +119,6 @@ jobs:
             echo "The prepared merge does not contain the approved revisions."
             exit 1
           fi
-
-      - name: Build and verify Linux native vector library
-        if: ${{ hashFiles('Native/TacticalMath/CMakeLists.txt') != '' }}
-        run: python3 Tools/build_tactical_math.py --build-directory "$RUNNER_TEMP/tactical-math" --target linux-x64
 
       - name: Checkout media (git only, no LFS)
         if: inputs.media_sha != ''
@@ -276,7 +272,7 @@ jobs:
           dockerMemoryLimit: 8g
           customImage: rebellion2-unity-test:vulkan
           customParameters: ${{ inputs.media_sha != '' && '-force-vulkan -debugCodeOptimization -executeMethod UIBuilderMenu.BuildAll' || '-force-vulkan -debugCodeOptimization -testCategory !^RequiresMedia$' }}
-          coverageOptions: "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
+          coverageOptions: "generateHtmlReport;assemblyFilters:+Rebellion.AI,+Rebellion.Analytics,+Rebellion.App,+Rebellion.Content,+Rebellion.Game,+Rebellion.Gameplay,+Rebellion.Generation,+Rebellion.Multiplayer,+Rebellion.Networking.Transport,+Rebellion.Saves,+Rebellion.SceneGraph,+Rebellion.Sessions,+Rebellion.Tactical.Core,+Rebellion.UserSettings,+Rebellion.Util"
           checkName: ${{ inputs.media_sha != '' && 'Test results' || 'Core Unity test results' }}
           cliVersion: v0.1.76
 

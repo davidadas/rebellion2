@@ -15,6 +15,7 @@ namespace Rebellion.Tactical
         private readonly IRandomNumberProvider _random;
         private readonly Func<float> _commandBudget;
         private readonly int _playerFactionIndex;
+        private Action<int, int> _networkNotifications;
         private readonly List<CombatUnit> _candidates = new();
         private readonly Dictionary<CombatUnit, Pools> _entryPools = new();
         private bool _transitionPending;
@@ -43,13 +44,22 @@ namespace Rebellion.Tactical
         public event Action<TacticalCombatGroup, TacticalCombatOrder> OrderRequested;
 
         /// <summary>
+        /// Routes both factions' existing attack cues through the shared presentation authority.
+        /// </summary>
+        /// <param name="notifications">The recipient-faction and authored-message sink.</param>
+        internal void ConfigureSynchronizedNotifications(Action<int, int> notifications) =>
+            _networkNotifications = notifications;
+
+        /// <summary>
         /// Emits one faction's authored cue without changing the attack's random decisions.
         /// </summary>
         /// <param name="faction">The authored recipient faction index.</param>
         /// <param name="message">The authored message identity.</param>
         private void NotifyFaction(int faction, int message)
         {
-            if (_playerFactionIndex == faction)
+            if (_networkNotifications != null)
+                _networkNotifications(faction, message);
+            else if (_playerFactionIndex == faction)
                 NotificationRequested?.Invoke(message);
         }
 
@@ -62,6 +72,17 @@ namespace Rebellion.Tactical
         {
             NotifyFaction(0, alliance);
             NotifyFaction(1, empire);
+        }
+
+        /// <summary>
+        /// Restores visible attack progress without advancing or selecting a local outcome.
+        /// </summary>
+        /// <param name="state">The authoritative attack state.</param>
+        /// <param name="remainingMilliseconds">The stored attack countdown.</param>
+        internal void ApplySnapshot(TacticalCombatAttackRunState state, float remainingMilliseconds)
+        {
+            State = state;
+            RemainingMilliseconds = remainingMilliseconds;
         }
 
         /// <summary>

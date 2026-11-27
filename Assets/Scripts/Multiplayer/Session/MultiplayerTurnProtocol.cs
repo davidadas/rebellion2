@@ -2,12 +2,14 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;
 using Rebellion.PlayerRequests;
+using Rebellion.Tactical;
 using UnityEngine;
 
 namespace Rebellion.Multiplayer
@@ -60,6 +62,18 @@ namespace Rebellion.Multiplayer
         public bool HasDeclaredVictory => _victoryDeclared;
 
         /// <summary>
+        /// Gets whether ordered entry traffic is waiting for the campaign's writable command boundary.
+        /// </summary>
+        public bool HasQueuedTacticalEntry =>
+            _events.Any(item =>
+                item.Type == MultiplayerMessageType.PlayerActionCommit
+                && item.Envelope.accepted
+                && item.Envelope.kind
+                    is PlayerRequestKind.BeginTacticalCombat
+                        or PlayerRequestKind.ResolveCombat
+            );
+
+        /// <summary>
         /// Gets whether the host may consume another configured clock interval.
         /// </summary>
         public bool CanBeginHostTick =>
@@ -76,6 +90,16 @@ namespace Rebellion.Multiplayer
         /// Raised after a committed operation changes the existing live state.
         /// </summary>
         public event Action StateChanged;
+
+        /// <summary>
+        /// Raised after a typed action has executed on this peer's stable campaign session.
+        /// </summary>
+        public event Action<PlayerRequest, PlayerRequestOutcome> ActionApplied;
+
+        /// <summary>
+        /// Raised after the guest confirms execution of one exact host-ordered action.
+        /// </summary>
+        public event Action<PlayerRequestKind> ActionAcknowledged;
 
         /// <summary>
         /// Raised when continued replay cannot be established as safe.
@@ -409,6 +433,20 @@ namespace Rebellion.Multiplayer
                 envelope.kind,
                 item.Payload
             );
+            if (action is BeginTacticalCombatRequest begin)
+            {
+                byte[] seed = new byte[4];
+                using (RandomNumberGenerator random = RandomNumberGenerator.Create())
+                    random.GetBytes(seed);
+                begin.BattleID = Guid.NewGuid().ToString("N");
+                begin.Seed = BitConverter.ToUInt32(seed, 0);
+                begin.ScenerySeed = TacticalCombatSeed.FromClock(DateTimeOffset.Now);
+                item = new ReceivedEvent(
+                    item.Type,
+                    envelope,
+                    MultiplayerPlayerRequestCodec.Serialize(begin)
+                );
+            }
             PlayerRequestOutcome result = _victoryDeclared
                 ? RejectCompletedCampaign()
                 : _executor.Execute(GetFaction(envelope.actor), action);
@@ -425,6 +463,7 @@ namespace Rebellion.Multiplayer
             Send(MultiplayerMessageType.PlayerActionCommit, envelope, item.Payload);
             if (envelope.actor == MultiplayerRole.Host)
                 CompleteRequest(envelope.requestID, result);
+            ActionApplied?.Invoke(action, result);
             StateChanged?.Invoke();
         }
 
@@ -466,6 +505,7 @@ namespace Rebellion.Multiplayer
             Send(MultiplayerMessageType.PlayerActionReceipt, envelope);
             if (envelope.actor == MultiplayerRole.Guest)
                 CompleteRequest(envelope.requestID, result);
+            ActionApplied?.Invoke(action, result);
             StateChanged?.Invoke();
         }
 
@@ -486,6 +526,7 @@ namespace Rebellion.Multiplayer
                     "The peer could not apply the committed player operation."
                 );
             _awaitingReceipts.Remove(envelope.sequence);
+            ActionAcknowledged?.Invoke(expected.kind);
             _completedRequests.Remove(expected.requestID);
         }
 

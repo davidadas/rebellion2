@@ -25,6 +25,11 @@ namespace Rebellion.Gameplay
         public string PlanetInstanceID { get; set; }
         public bool? AttackerRetreatResponse { get; set; }
         public bool? DefenderRetreatResponse { get; set; }
+        public bool AttackerTakeCommand { get; set; }
+        public bool DefenderTakeCommand { get; set; }
+        public string TacticalBattleID { get; set; }
+        public uint TacticalSeed { get; set; }
+        public int TacticalScenerySeed { get; set; }
     }
 
     /// <summary>
@@ -43,6 +48,7 @@ namespace Rebellion.Gameplay
         private readonly SpaceCombatAftermath _aftermath;
         private (
             TacticalCombatSession Session,
+            string BattleID,
             List<CombatUnitSnapshot> AttackingUnits,
             List<CombatUnitSnapshot> DefendingUnits
         )? _tacticalEncounter;
@@ -56,6 +62,11 @@ namespace Rebellion.Gameplay
         /// Gets the captured manual encounter while the campaign decision remains suspended.
         /// </summary>
         public TacticalCombatSession ActiveTacticalCombat => _tacticalEncounter?.Session;
+
+        /// <summary>
+        /// Gets the identity of the active network battle, or null outside network combat.
+        /// </summary>
+        public string ActiveTacticalBattleID => _tacticalEncounter?.BattleID;
 
         internal bool CanCaptureTacticalCombat =>
             _pendingDecision != null && ActiveTacticalCombat?.CanCaptureForSave == true;
@@ -162,6 +173,47 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Starts the committed multiplayer encounter using the first manual response's identity and seeds.
+        /// </summary>
+        /// <param name="decision">The encounter whose response barrier has been satisfied.</param>
+        /// <param name="roster">The validated roster when the final response was manual.</param>
+        private void BeginNetworkTacticalCombat(
+            SpaceCombatDecision decision,
+            TacticalCombatFactory.EncounterRoster roster
+        )
+        {
+            if (
+                decision.AttackerRetreatResponse != false
+                || decision.DefenderRetreatResponse != false
+            )
+                throw new InvalidOperationException("The encounter cannot enter tactical combat.");
+
+            if (roster == null)
+            {
+                if (!_tacticalFactory.TryPrepare(decision, out roster))
+                    throw new InvalidOperationException(
+                        "The encounter cannot enter tactical combat."
+                    );
+                _aftermath?.ValidateBattle(roster.Planet);
+            }
+
+            bool isReplica =
+                _game.LocalPlayerFactionID != _game.Metadata.MultiplayerCampaign.HostFactionID;
+            (ActiveBattle battle, TacticalCombatSession session) = _tacticalFactory.Create(
+                roster,
+                decision.TacticalSeed,
+                unchecked((uint)decision.TacticalScenerySeed),
+                isReplica
+            );
+            if (!isReplica)
+            {
+                session.SetAutomated(CombatSide.Attacker, !decision.AttackerTakeCommand);
+                session.SetAutomated(CombatSide.Defender, !decision.DefenderTakeCommand);
+            }
+            PublishTacticalEncounter(roster, battle, session, decision.TacticalBattleID);
+        }
+
+        /// <summary>
         /// Releases a prepared encounter whose required presentation assets could not be loaded.
         /// </summary>
         /// <param name="session">The unstarted encounter to release.</param>
@@ -202,13 +254,94 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Imports one host-ordered outcome against this peer's captured encounter participants.
+        /// </summary>
+        /// <param name="battleID">The active battle identity from the ordered completion request.</param>
+        /// <param name="outcome">The detached authoritative tactical outcome.</param>
+        /// <returns>The applied campaign result and its resulting domain events.</returns>
+        public List<GameResult> CompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome
+        )
+        {
+            if (!TryCompleteNetworkTacticalCombat(battleID, outcome, out List<GameResult> results))
+                throw new InvalidOperationException(
+                    "The network battle outcome cannot be committed."
+                );
+            return results;
+        }
+
+        /// <summary>
+        /// Rejects stale or malformed outcomes before entering the campaign mutation boundary.
+        /// </summary>
+        /// <param name="battleID">The host-issued identity of the completed encounter.</param>
+        /// <param name="outcome">The authoritative final tactical pools.</param>
+        /// <param name="results">The applied result and domain events, or null after rejection.</param>
+        /// <returns>Whether the final outcome was validated and committed.</returns>
+        public bool TryCompleteNetworkTacticalCombat(
+            string battleID,
+            TacticalCombatOutcome outcome,
+            out List<GameResult> results
+        )
+        {
+            results = null;
+            if (
+                ActiveTacticalCombat?.IsComplete != true
+                || _pendingDecision == null
+                || string.IsNullOrEmpty(ActiveTacticalBattleID)
+                || !string.Equals(ActiveTacticalBattleID, battleID, StringComparison.Ordinal)
+            )
+                return false;
+            SpaceCombatResult result;
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves;
+            try
+            {
+                result = CreateTacticalResult(outcome, validateNetwork: true);
+                recoveryMoves = PlanFighterRecovery(
+                    result,
+                    _queries.ResolveCombatPlanet(_pendingDecision)
+                );
+            }
+            catch (Exception error)
+                when (error
+                        is InvalidDataException
+                            or ArgumentException
+                            or InvalidOperationException
+                )
+            {
+                return false;
+            }
+            results = ImportTacticalResult(result, immediateResult: false, recoveryMoves);
+            return true;
+        }
+
+        /// <summary>
         /// Projects final tactical state into the campaign's combat result.
         /// </summary>
         /// <param name="outcome">The authoritative set of final unit states.</param>
+        /// <param name="validateNetwork">Whether peer data requires network admission checks.</param>
         /// <returns>The result whose units are resolved against the campaign.</returns>
-        private SpaceCombatResult CreateTacticalResult(TacticalCombatOutcome outcome)
+        private SpaceCombatResult CreateTacticalResult(
+            TacticalCombatOutcome outcome,
+            bool validateNetwork = false
+        )
         {
-            if (outcome?.Ships == null || outcome.Fighters == null)
+            if (
+                outcome?.Ships == null
+                || outcome.Fighters == null
+                || validateNetwork
+                    && (
+                        !Enum.IsDefined(typeof(SpaceCombatResult.BattleOutcome), outcome.Winner)
+                        || !Enum.IsDefined(
+                            typeof(SpaceCombatResult.SideOutcome),
+                            outcome.AttackerOutcome
+                        )
+                        || !Enum.IsDefined(
+                            typeof(SpaceCombatResult.SideOutcome),
+                            outcome.DefenderOutcome
+                        )
+                    )
+            )
                 throw new InvalidDataException("The tactical outcome is incomplete.");
 
             Dictionary<string, TacticalCombatOutcome.ShipOutcome> ships = new(
@@ -253,6 +386,16 @@ namespace Rebellion.Gameplay
                     && ships.TryGetValue(unit.InstanceID, out var shipState)
                 )
                 {
+                    if (
+                        validateNetwork
+                        && (
+                            shipState.Hull < 0
+                            || shipState.Hull > Math.Max(1, (int)unit.MaximumHull)
+                            || !IsValidTacticalComponentDamage(shipState.SystemDamage, unit)
+                        )
+                    )
+                        throw new InvalidDataException("A tactical ship outcome is invalid.");
+
                     result.ShipDamage.Add(
                         new ShipDamageResult
                         {
@@ -273,12 +416,23 @@ namespace Rebellion.Gameplay
                     throw new InvalidDataException(
                         "A tactical outcome has no matching participant."
                     );
+                if (
+                    validateNetwork
+                    && (
+                        fighterState.SquadronSize < 0
+                        || fighterState.SquadronSize > Math.Max(1, fighter.MaxSquadronSize)
+                    )
+                )
+                    throw new InvalidDataException("A tactical fighter outcome is invalid.");
 
                 CapitalShip carrier = null;
                 if (fighterState.CarrierID != null)
                 {
                     CombatUnit host = session.GetUnit(fighterState.CarrierID);
-                    if (ResolveTacticalSource(host) is not CapitalShip shipHost)
+                    if (
+                        ResolveTacticalSource(host) is not CapitalShip shipHost
+                        || validateNetwork && host.Side != unit.Side
+                    )
                         throw new InvalidDataException("A tactical recovery host is invalid.");
                     carrier = shipHost;
                 }
@@ -319,14 +473,44 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Admits only component levels and installed hyperdrives represented by the captured ship.
+        /// </summary>
+        /// <param name="damage">The authoritative component damage.</param>
+        /// <param name="unit">The captured tactical participant.</param>
+        /// <returns>Whether all component fields are within their supported ranges.</returns>
+        private static bool IsValidTacticalComponentDamage(
+            CapitalShipSystemDamage damage,
+            CombatUnit unit
+        )
+        {
+            if (
+                damage?.Shields is not (>= 0 and <= 4)
+                || damage.Weapons is not (>= 0 and <= 4)
+                || damage.TractorBeam is not (>= 0 and <= 4)
+                || damage.Engines is not (>= 0 and <= 4)
+            )
+                return false;
+
+            for (int index = 0; index < damage.HyperdriveDamage.Length; index++)
+            {
+                int level = damage.HyperdriveDamage[index];
+                if (level != 0 && (level != 1 || !unit.HasHyperdriveAt(index)))
+                    return false;
+            }
+            return true;
+        }
+
+        /// <summary>
         /// Applies captured tactical pools through the shared campaign loss and withdrawal boundary.
         /// </summary>
         /// <param name="result">The completed encounter's result using local campaign references.</param>
         /// <param name="immediateResult">Whether surviving forces require automatic continuation.</param>
+        /// <param name="recoveryMoves">The landings already validated for a network outcome.</param>
         /// <returns>The final campaign result and its resulting domain events.</returns>
         private List<GameResult> ImportTacticalResult(
             SpaceCombatResult result,
-            bool immediateResult
+            bool immediateResult,
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves = null
         )
         {
             SpaceCombatDecision decision = _pendingDecision;
@@ -344,7 +528,7 @@ namespace Rebellion.Gameplay
             result.AttackingUnits = encounter.AttackingUnits;
             result.DefendingUnits = encounter.DefendingUnits;
             bool wasBlockaded = BlockadeQueries.IsBlockaded(_game, planet.InstanceID);
-            List<GameResult> events = ApplyFighterResults(result);
+            List<GameResult> events = ApplyFighterResults(result, recoveryMoves);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
             if (immediateResult)
                 result = ResolveImmediateTacticalContinuation(
@@ -1457,10 +1641,12 @@ namespace Rebellion.Gameplay
         /// <param name="roster">The validated roster captured for this encounter.</param>
         /// <param name="battle">The encounter's detached battle state.</param>
         /// <param name="session">The encounter's initialized tactical session.</param>
+        /// <param name="battleID">The network encounter identity, when synchronized.</param>
         private void PublishTacticalEncounter(
             TacticalCombatFactory.EncounterRoster roster,
             ActiveBattle battle,
-            TacticalCombatSession session
+            TacticalCombatSession session,
+            string battleID = null
         )
         {
             Dictionary<string, ISceneNode> battleCopies = session.Units.ToDictionary(
@@ -1480,7 +1666,7 @@ namespace Rebellion.Gameplay
                 roster.Defender.OwnerID,
                 battleCopies
             );
-            _tacticalEncounter = (session, attackingUnits, defendingUnits);
+            _tacticalEncounter = (session, battleID, attackingUnits, defendingUnits);
             _game.ActiveBattle = battle;
         }
 
@@ -1585,11 +1771,14 @@ namespace Rebellion.Gameplay
         /// Commits fighter counts and final carrier assignments before departure destinations are applied.
         /// </summary>
         /// <param name="result">The combat result containing fighter losses and recovery assignments.</param>
+        /// <param name="recoveryMoves">The landings already validated for a network outcome.</param>
         /// <returns>The fighter destruction and placement results.</returns>
-        private List<GameResult> ApplyFighterResults(SpaceCombatResult result)
+        private List<GameResult> ApplyFighterResults(
+            SpaceCombatResult result,
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves = null
+        )
         {
-            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves =
-                PlanFighterRecovery(result, result.Planet);
+            recoveryMoves ??= PlanFighterRecovery(result, result.Planet);
             List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
                 result.Planet

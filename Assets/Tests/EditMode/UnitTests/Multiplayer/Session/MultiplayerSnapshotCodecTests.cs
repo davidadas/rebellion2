@@ -10,6 +10,7 @@ using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Multiplayer;
 using Rebellion.Util.Serialization;
+using Faction = global::Rebellion.Game.Factions.Faction;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -100,15 +101,8 @@ namespace Rebellion.Tests.Multiplayer
         public void ComputeStateFingerprint_NestedSceneNodeChanges_DetectsChange()
         {
             GameRoot game = new GameRoot();
-            Rebellion.Game.Galaxy.Planet planet = new Rebellion.Game.Galaxy.Planet
-            {
-                InstanceID = "planet",
-                DisplayName = "Before",
-            };
-            Rebellion.Game.Galaxy.PlanetSector sector = new Rebellion.Game.Galaxy.PlanetSector
-            {
-                InstanceID = "sector",
-            };
+            Planet planet = new Planet { InstanceID = "planet", DisplayName = "Before" };
+            PlanetSector sector = new PlanetSector { InstanceID = "sector" };
             game.AttachNode(sector, game.Galaxy);
             game.AttachNode(planet, sector);
             string snapshotHash = MultiplayerSnapshotCodec.Capture(game).Hash;
@@ -139,15 +133,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             GameRoot game = new GameRoot();
             string fingerprint = MultiplayerSnapshotCodec.ComputeStateFingerprint(game);
-            game.Metadata.LastSavedUtc = new System.DateTime(
-                2026,
-                10,
-                26,
-                12,
-                0,
-                0,
-                System.DateTimeKind.Utc
-            );
+            game.Metadata.LastSavedUtc = new DateTime(2026, 10, 26, 12, 0, 0, DateTimeKind.Utc);
             Assert.That(
                 MultiplayerSnapshotCodec.ComputeStateFingerprint(game),
                 Is.Not.EqualTo(fingerprint)
@@ -186,7 +172,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             MultiplayerSnapshot snapshot = MultiplayerSnapshotCodec.Capture(new GameRoot());
 
-            Assert.Throws<System.IO.InvalidDataException>(() =>
+            Assert.Throws<InvalidDataException>(() =>
                 MultiplayerSnapshotCodec.Restore(snapshot.Payload, new string('0', 64))
             );
         }
@@ -217,8 +203,8 @@ namespace Rebellion.Tests.Multiplayer
         public void GetPlayerFaction_TwoHumanPlayers_UsesRuntimeLocalFactionWithoutPersistingIt()
         {
             GameRoot game = new GameRoot();
-            game.GetFactions().Add(new Rebellion.Game.Factions.Faction { InstanceID = "host" });
-            game.GetFactions().Add(new Rebellion.Game.Factions.Faction { InstanceID = "guest" });
+            game.GetFactions().Add(new Faction { InstanceID = "host" });
+            game.GetFactions().Add(new Faction { InstanceID = "guest" });
             game.SetFactionController("host", "player-1", PlayerControllerType.Human);
             game.SetFactionController("guest", "player-2", PlayerControllerType.Human);
             game.LocalPlayerFactionID = "guest";

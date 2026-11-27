@@ -12,6 +12,7 @@ namespace Rebellion.Tactical
         internal bool CanCaptureForSave =>
             _battle != null
             && _random is LinearCongruentialRandomProvider
+            && !IsSynchronized
             && !IsArriving
             && !IsComplete
             && PendingAttackRunMovie == null;

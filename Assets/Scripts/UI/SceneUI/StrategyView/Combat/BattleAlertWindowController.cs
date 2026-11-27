@@ -54,6 +54,8 @@ public sealed class BattleAlertWindowController
     private readonly Func<UIContext> getUIContext;
     private readonly Func<Vector2Int> getWindowPosition;
     private readonly Action markDirty;
+    private readonly Func<bool> canTakeCommand;
+    private readonly Action<BattleAlertWindowView> takeCommand;
     private readonly Action<string> playSfx;
     private readonly Action<string> playTrack;
     private readonly Action stopMusic;
@@ -81,6 +83,8 @@ public sealed class BattleAlertWindowController
     /// <param name="getWindowPosition">Returns the authored battle-alert placement.</param>
     /// <param name="closeWindow">Closes a registered strategy window.</param>
     /// <param name="markDirty">Invalidates strategy presentation after window changes.</param>
+    /// <param name="canTakeCommand">Checks whether tactical deployment is available.</param>
+    /// <param name="takeCommand">Opens the interactive encounter.</param>
     internal BattleAlertWindowController(
         Func<bool> hasPendingCombat,
         Func<PendingCombatResult> getPendingCombat,
@@ -95,7 +99,9 @@ public sealed class BattleAlertWindowController
         UIWindowManager windowManager,
         Func<Vector2Int> getWindowPosition,
         Action<UIWindow> closeWindow,
-        Action markDirty
+        Action markDirty,
+        Func<bool> canTakeCommand = null,
+        Action<BattleAlertWindowView> takeCommand = null
     )
     {
         this.hasPendingCombat =
@@ -118,6 +124,8 @@ public sealed class BattleAlertWindowController
             getWindowPosition ?? throw new ArgumentNullException(nameof(getWindowPosition));
         this.closeWindow = closeWindow ?? throw new ArgumentNullException(nameof(closeWindow));
         this.markDirty = markDirty ?? throw new ArgumentNullException(nameof(markDirty));
+        this.canTakeCommand = canTakeCommand ?? (() => false);
+        this.takeCommand = takeCommand;
     }
 
     /// <summary>
@@ -286,6 +294,17 @@ public sealed class BattleAlertWindowController
             return false;
 
         SpaceCombatResult result = completedCombats.Dequeue();
+        PresentCombatResult(view, result);
+        return true;
+    }
+
+    /// <summary>
+    /// Projects one settled encounter and its participant-specific audio through the shared result window.
+    /// </summary>
+    /// <param name="view">The result window to update.</param>
+    /// <param name="result">The settled encounter.</param>
+    private void PresentCombatResult(BattleAlertWindowView view, SpaceCombatResult result)
+    {
         BattleResultPresentation presentation = BattleResultPresentation.Create(result);
         SetCombatResult(view, presentation);
         if (
@@ -298,7 +317,6 @@ public sealed class BattleAlertWindowController
             PlayResultAudio(presentation);
         actions.RebuildBattleSnapshot();
         markDirty();
-        return true;
     }
 
     /// <summary>
@@ -418,7 +436,8 @@ public sealed class BattleAlertWindowController
             x,
             y,
             getUIContext(),
-            pendingPlanet
+            pendingPlanet,
+            canTakeCommand()
         );
     }
 
@@ -440,6 +459,10 @@ public sealed class BattleAlertWindowController
         {
             switch (choice)
             {
+                case BattleAlertChoice.TakeCommand:
+                    if (canTakeCommand())
+                        takeCommand?.Invoke(view);
+                    break;
                 case BattleAlertChoice.Retreat:
                     await resolveRetreat();
                     break;
@@ -452,6 +475,23 @@ public sealed class BattleAlertWindowController
         {
             pendingChoices.Remove(view);
         }
+    }
+
+    /// <summary>
+    /// Returns from interactive combat without repeating a result already released by the shared pipeline.
+    /// </summary>
+    /// <param name="view">The originating battle alert.</param>
+    /// <param name="result">The committed battle result.</param>
+    internal void ShowTacticalResult(BattleAlertWindowView view, SpaceCombatResult result)
+    {
+        if (observedCombats.TryGetValue(result, out _))
+            return;
+        if (view == null || !sessions.ContainsKey(view))
+            view = FindWindow() ?? OpenWindow();
+        if (view == null)
+            return;
+        observedCombats.Add(result, new object());
+        PresentCombatResult(view, result);
     }
 
     /// <summary>

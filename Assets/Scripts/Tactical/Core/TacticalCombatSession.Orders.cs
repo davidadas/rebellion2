@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Tactical.Synchronization;
 using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
@@ -177,6 +178,7 @@ namespace Rebellion.Tactical
         /// <returns>Whether the target resolves within this encounter.</returns>
         public bool FireSuperlaser(CombatUnit target)
         {
+            RequireSimulationAuthority();
             if (
                 BattleStation == null
                 || target == null
@@ -198,22 +200,12 @@ namespace Rebellion.Tactical
         /// <returns>Whether withdrawal was started.</returns>
         public bool BeginWithdrawal(CombatSide side)
         {
+            RequireSimulationAuthority();
             if (!CanWithdraw(side))
                 return false;
             ApplyWithdrawal(side);
             return true;
         }
-
-        /// <summary>
-        /// Checks whether a side currently has direct command authority.
-        /// </summary>
-        /// <param name="side">The faction being inspected.</param>
-        /// <returns>Whether the side can issue direct battle orders.</returns>
-        public bool IsSideDirectControlEnabled(CombatSide side) =>
-            side is CombatSide.Attacker or CombatSide.Defender
-            && !_directCommandsSuspended
-            && !IsArriving
-            && !GetSide(side).IsAutomated;
 
         /// <summary>
         /// Suspends direct player orders while preserving camera and inspection ownership.
@@ -228,7 +220,7 @@ namespace Rebellion.Tactical
         {
             TacticalCombatSide state = GetSide(side);
             state.BeginWithdrawal();
-            if (side == PlayerSide)
+            if (side == PlayerSide || _synchronizationAuthority)
                 EnqueueFactionNotification(side, state.FactionIndex == 0 ? 143 : 269);
             PrepareWithdrawalGroups(side);
             state.SelectWithdrawalDelay(BattleStation?.IsOperational == true);
@@ -252,7 +244,7 @@ namespace Rebellion.Tactical
                     SetOrder(group, TacticalCombatOrder.Withdraw);
                     continue;
                 }
-                if (side == PlayerSide)
+                if (side == PlayerSide || _synchronizationAuthority)
                     ClearGroupCategories(group);
                 if (group.Members.Count == 0)
                     continue;
@@ -275,7 +267,10 @@ namespace Rebellion.Tactical
                 TacticalCombatGroup applied = GetGroup(unit);
                 if (applied != null)
                 {
-                    if (applied.Side == PlayerSide && !HasUntrackedRequestedOwner(unit))
+                    if (
+                        (applied.Side == PlayerSide || _synchronizationAuthority)
+                        && !HasUntrackedRequestedOwner(unit)
+                    )
                         ClearGroupCategories(applied);
                     RemoveGroupMember(applied, unit);
                 }
@@ -295,7 +290,15 @@ namespace Rebellion.Tactical
             if (requested == null)
                 return false;
             for (int category = 0; category < 8; category++)
-                if (ReferenceEquals(_objectGroups[(int)PlayerSide, category], requested))
+                if (
+                    ReferenceEquals(
+                        _objectGroups[
+                            (int)(_synchronizationAuthority ? unit.Side : PlayerSide),
+                            category
+                        ],
+                        requested
+                    )
+                )
                     return false;
             return true;
         }
@@ -318,6 +321,7 @@ namespace Rebellion.Tactical
         /// <param name="order">The requested behavior.</param>
         public void SetOrder(TacticalCombatGroup group, TacticalCombatOrder order)
         {
+            RequireSimulationAuthority();
             if (
                 !_groupsByID.TryGetValue(group.ID, out TacticalCombatGroup existing)
                 || !ReferenceEquals(existing, group)
@@ -412,6 +416,8 @@ namespace Rebellion.Tactical
             run.UnitDestroyed += Destroy;
             run.UnitParticipationChanged += _spatial.Update;
             run.NotificationRequested += RequestAttackRunNotification;
+            if (_synchronizationAuthority)
+                run.ConfigureSynchronizedNotifications(RouteSynchronizedAttackNotification);
             group.AttackRun = run;
             return run;
         }
@@ -448,6 +454,7 @@ namespace Rebellion.Tactical
             run.UnitDestroyed -= Destroy;
             run.UnitParticipationChanged -= _spatial.Update;
             run.NotificationRequested -= RequestAttackRunNotification;
+            run.ConfigureSynchronizedNotifications(null);
         }
 
         /// <summary>
@@ -461,6 +468,13 @@ namespace Rebellion.Tactical
             _moviePauses++;
             TacticalCombatMovieRequest request = new(run, CompleteAttackRunMovie);
             PendingAttackRunMovie = request;
+            if (_synchronizationAuthority)
+            {
+                _synchronizedMovieID++;
+                RecordSynchronizedEvent(
+                    new() { Kind = TacticalCombatEventKind.Movie, MovieID = _synchronizedMovieID }
+                );
+            }
             bool notificationsEnabled = Audio.Notifications.Enabled;
             Audio.Notifications.Enabled = false;
             try

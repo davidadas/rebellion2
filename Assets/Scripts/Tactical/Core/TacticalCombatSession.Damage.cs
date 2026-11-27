@@ -20,7 +20,11 @@ namespace Rebellion.Tactical
                 || !_unitsByID.TryGetValue(attackerInstanceID, out CombatUnit attacker)
             )
                 return;
-            ReportFactionDestruction(victim, attacker, PlayerSide);
+            if (_synchronizationAuthority)
+                foreach (TacticalCombatSide side in _sides)
+                    ReportFactionDestruction(victim, attacker, side.Side);
+            else
+                ReportFactionDestruction(victim, attacker, PlayerSide);
         }
 
         /// <summary>
@@ -213,7 +217,7 @@ namespace Rebellion.Tactical
         /// </summary>
         /// <param name="target">The unit whose restraint sources changed.</param>
         /// <param name="populated">Whether at least one tractor source remains.</param>
-        private void SetTractorSources(CombatUnit target, bool populated)
+        internal void SetTractorSources(CombatUnit target, bool populated)
         {
             target.HasTractorSources = populated;
             TractorSourcesChanged?.Invoke(target, populated);
@@ -226,6 +230,8 @@ namespace Rebellion.Tactical
         /// <returns>The rounded sum of its current contributors, without a health or participation filter.</returns>
         private float GetTractorRestraint(CombatUnit target)
         {
+            if (_synchronizationReplica)
+                return target.TractorRestraint;
             float restraint = 0;
             if (_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources))
                 foreach (CombatUnit source in sources.Values)

@@ -286,6 +286,11 @@ namespace Rebellion.Tactical
         private void RefreshNotification()
         {
             if (
+                _session.IsSynchronized
+                && (!_session.IsRefreshingSynchronizedPresentation || _side != _session.PlayerSide)
+            )
+                return;
+            if (
                 _notification != 0
                 && (!_session.Audio.Notifications.IsActive(_notification) || _session.IsPaused)
             )
@@ -315,6 +320,11 @@ namespace Rebellion.Tactical
         /// <returns>The scheduler-owned loop handle, or zero when the selected bank is silent.</returns>
         private uint EnqueueSelectedNotification(CombatUnit unit)
         {
+            if (
+                _session.IsSynchronized
+                && (!_session.IsRefreshingSynchronizedPresentation || _side != _session.PlayerSide)
+            )
+                return 0;
             int message =
                 unit.IsFighter ? (_session.GetSide(unit.Side).FactionIndex == 0 ? 22 : 21)
                 : !(unit.MaximumHull >= 1100) ? 25

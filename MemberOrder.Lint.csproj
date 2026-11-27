@@ -7,6 +7,14 @@
     <EnableDefaultItems>false</EnableDefaultItems>
   </PropertyGroup>
   <ItemGroup>
+    <Reference
+      Include="UnityEngine.CoreModule"
+      Condition="Exists('$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll')"
+    >
+      <HintPath>$(UnityManagedAssembliesPath)/UnityEngine.CoreModule.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
     <Compile Include="Assets/Scripts/**/*.cs" />
     <Compile Include="Assets/Editor/**/*.cs" />
     <Compile Include="Assets/Tests/**/*.cs" />

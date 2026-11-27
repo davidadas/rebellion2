@@ -308,8 +308,10 @@ namespace Rebellion.Tactical
             )
                 return;
 
-            if (side.Side == PlayerSide)
-                Selection.ProcessStationDeparture();
+            if (side.Side == PlayerSide || _synchronizationAuthority)
+                (
+                    _synchronizationAuthority ? GetSynchronizedSelection(side.Side) : Selection
+                ).ProcessStationDeparture();
             QueueCommand(new Command(CommandKind.Withdraw, BattleStation.Unit));
         }
 
@@ -527,7 +529,11 @@ namespace Rebellion.Tactical
         /// </summary>
         private void NotifyStationCharged()
         {
-            if (GetSide(PlayerSide).FactionIndex == 1)
+            if (_synchronizationAuthority)
+                foreach (TacticalCombatSide side in _sides)
+                    if (side.FactionIndex == 1)
+                        EnqueueFactionNotification(side.Side, 275);
+            if (!_synchronizationAuthority && GetSide(PlayerSide).FactionIndex == 1)
                 EnqueueFactionNotification(PlayerSide, 275);
         }
 
@@ -602,7 +608,11 @@ namespace Rebellion.Tactical
                     if (target.IsTargetable)
                     {
                         Audio.Enqueue(TacticalCombatSound.Superlaser);
-                        if (GetSide(PlayerSide).FactionIndex == 0)
+                        if (_synchronizationAuthority)
+                            foreach (TacticalCombatSide side in _sides)
+                                if (side.FactionIndex == 0)
+                                    EnqueueFactionNotification(side.Side, 145);
+                        if (!_synchronizationAuthority && GetSide(PlayerSide).FactionIndex == 0)
                             EnqueueFactionNotification(PlayerSide, 145);
                     }
                     SuperlaserFired?.Invoke(source, target);

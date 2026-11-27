@@ -4,6 +4,9 @@ using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Util.Logging;
 using UnityEngine;
+using CancellationToken = global::System.Threading.CancellationToken;
+using CancellationTokenSource = global::System.Threading.CancellationTokenSource;
+using InvalidDataException = global::System.IO.InvalidDataException;
 
 namespace Rebellion.Multiplayer
 {
@@ -150,7 +153,7 @@ namespace Rebellion.Multiplayer
         /// <returns>The pending save and exact-content validation.</returns>
         public async Task LoadLobbySaveAsync(
             SaveGameEntry entry,
-            System.Threading.CancellationToken requestedCancellation = default
+            CancellationToken requestedCancellation = default
         )
         {
             if (
@@ -163,11 +166,10 @@ namespace Rebellion.Multiplayer
             if (entry == null)
                 throw new ArgumentNullException(nameof(entry));
             var sessionToken = _sessionCancellation.Token;
-            using var cancellation =
-                System.Threading.CancellationTokenSource.CreateLinkedTokenSource(
-                    sessionToken,
-                    requestedCancellation
-                );
+            using var cancellation = CancellationTokenSource.CreateLinkedTokenSource(
+                sessionToken,
+                requestedCancellation
+            );
             var cancellationToken = cancellation.Token;
             IsLoadingSave = true;
             SetStatus("Verifying saved game and required content");
@@ -241,7 +243,7 @@ namespace Rebellion.Multiplayer
                 }
             }
             catch (Exception exception)
-                when (exception is InvalidOperationException or System.IO.InvalidDataException)
+                when (exception is InvalidOperationException or InvalidDataException)
             {
                 SetStatus(exception.Message);
                 return;

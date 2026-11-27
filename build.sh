@@ -189,6 +189,7 @@ do_lint() {
             Rebellion.Content
             Rebellion.Generation
             Rebellion.Analytics
+            Rebellion.Tactical.Core
             Rebellion.Gameplay
             Rebellion.AI
             Rebellion.Sessions
@@ -210,6 +211,15 @@ do_lint() {
                 "${extra_args[@]}"
         done
         echo ""
+        if [ -f ContentPackEditorAssembly.csproj ]; then
+            echo "=== ContentPackEditorAssembly ==="
+            dotnet build ContentPackEditorAssembly.csproj \
+                --no-dependencies \
+                -maxcpucount:1 \
+                -verbosity:normal \
+                "${extra_args[@]}"
+            echo ""
+        fi
         for test_project in UnitTests.csproj PlayModeTests.csproj NativeAudit.csproj; do
             if [ ! -f "$test_project" ]; then
                 continue
@@ -312,7 +322,7 @@ do_coverage() {
         -debugCodeOptimization \
         -enableCodeCoverage \
         -coverageResultsPath "$coverage_dir" \
-        -coverageOptions "generateHtmlReport;assemblyFilters:+GameAssembly,+Rebellion.*,-Rebellion.InputActions,-Rebellion.Build.Editor"
+        -coverageOptions "generateHtmlReport;assemblyFilters:+Rebellion.AI,+Rebellion.Analytics,+Rebellion.App,+Rebellion.Content,+Rebellion.Game,+Rebellion.Gameplay,+Rebellion.Generation,+Rebellion.Multiplayer,+Rebellion.Networking.Transport,+Rebellion.Saves,+Rebellion.SceneGraph,+Rebellion.Sessions,+Rebellion.Tactical.Core,+Rebellion.UserSettings,+Rebellion.Util"
     echo "Coverage report written to $coverage_dir/Report/index.html"
 
     # Keep thresholds in sync with .github/workflows/unity-tests.yml

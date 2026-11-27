@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
+using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -31,6 +32,28 @@ namespace Rebellion.Tactical
         public float TurnRate { get; private set; }
         public int StableUpdates { get; private set; }
         public IReadOnlyList<CombatUnit> Members { get; }
+
+        /// <summary>
+        /// Restores the visible marker without integrating local movement or collision recovery.
+        /// </summary>
+        /// <param name="state">The validated group projection.</param>
+        /// <param name="members">The authoritative applied members in their captured order.</param>
+        internal void ApplySnapshot(
+            TacticalCombatGroupSnapshot state,
+            IReadOnlyList<CombatUnit> members
+        )
+        {
+            Kind = state.Formation;
+            Position = state.Position.ToVector();
+            Heading = state.Heading.ToVector();
+            Velocity = state.Velocity.ToVector();
+            _minimumMovementSpeed = state.MovementSpeed;
+            _currentCount = state.Members.Length;
+            TurnRate = state.TurnRate;
+            StableUpdates = state.StableUpdates;
+            _memberOrder.Clear();
+            _memberOrder.AddRange(members);
+        }
 
         /// <summary>
         /// Captures the marker and its assigned offsets at a save boundary.

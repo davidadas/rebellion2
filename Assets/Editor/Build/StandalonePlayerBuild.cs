@@ -398,17 +398,17 @@ public static class StandalonePlayerBuild
     /// </summary>
     /// <param name="target">The platform being packaged.</param>
     /// <param name="outputPath">The built player artifact path.</param>
-    internal static void CopyLegalDocuments(UnityEditor.BuildTarget target, string outputPath)
+    internal static void CopyLegalDocuments(BuildTarget target, string outputPath)
     {
         string root =
-            target == UnityEditor.BuildTarget.StandaloneOSX
+            target == BuildTarget.StandaloneOSX
                 ? Path.Combine(outputPath, "Contents", "Resources")
                 : Path.GetDirectoryName(outputPath);
         string destination = Path.Combine(root, "Legal");
         Directory.CreateDirectory(destination);
         foreach (string name in new[] { "EULA.txt", "Privacy.txt" })
             File.Copy(
-                Path.Combine(UnityEngine.Application.dataPath, "Legal", name),
+                Path.Combine(Application.dataPath, "Legal", name),
                 Path.Combine(destination, name),
                 true
             );

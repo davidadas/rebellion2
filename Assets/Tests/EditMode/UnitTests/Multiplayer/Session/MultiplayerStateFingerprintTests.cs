@@ -1,6 +1,8 @@
+using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
+using Rebellion.Game.Galaxy;
 using Rebellion.Game.GameEvents;
 using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
@@ -8,6 +10,7 @@ using Rebellion.Gameplay;
 using Rebellion.Multiplayer;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using InvalidOperationException = global::System.InvalidOperationException;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -50,6 +53,36 @@ namespace Rebellion.Tests.Multiplayer
         public void ComputeSimulation_EquivalentRecovery_ReturnsSameFingerprint()
         {
             Assert.AreEqual(
+                MultiplayerStateFingerprint.ComputeSimulation(_source),
+                MultiplayerStateFingerprint.ComputeSimulation(_restored)
+            );
+        }
+
+        [TestCase(null, "owner")]
+        [TestCase("owner", "other")]
+        public void ComputeSimulation_OfficerRecruitmentFlagsDiffer_DetectsBattleAllegianceChange(
+            string first,
+            string second
+        )
+        {
+            _source
+                .ExecuteCommandAsync(() =>
+                {
+                    AttachOfficer(_source.Game, first);
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
+            _restored
+                .ExecuteCommandAsync(() =>
+                {
+                    AttachOfficer(_restored.Game, second);
+                    return true;
+                })
+                .GetAwaiter()
+                .GetResult();
+
+            Assert.AreNotEqual(
                 MultiplayerStateFingerprint.ComputeSimulation(_source),
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
             );
@@ -175,7 +208,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             string expected = MultiplayerStateFingerprint.ComputeSimulation(_source);
             _restored.Game.GetFactionByOwnerInstanceID("owner").Settings.BattleLossLoyaltyDivisor++;
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
@@ -184,7 +217,7 @@ namespace Rebellion.Tests.Multiplayer
         [TestCase("")]
         public void VerifyLoadedGame_MissingSourceFingerprint_RejectsBeforeGameplay(string expected)
         {
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.VerifyLoadedGame(_restored, expected)
             );
         }
@@ -244,7 +277,7 @@ namespace Rebellion.Tests.Multiplayer
         {
             _restored.Game.Random = new SystemRandomProvider(456);
 
-            Assert.Throws<System.InvalidOperationException>(() =>
+            Assert.Throws<InvalidOperationException>(() =>
                 MultiplayerStateFingerprint.ComputeSimulation(_restored)
             );
         }
@@ -280,6 +313,38 @@ namespace Rebellion.Tests.Multiplayer
             state.Pending = after;
 
             Assert.AreNotEqual(fingerprint, MultiplayerStateFingerprint.Compute(state));
+        }
+
+        /// <summary>
+        /// Attaches one identified officer beneath an owned planet without changing the random stream.
+        /// </summary>
+        /// <param name="game">The authoritative graph receiving the officer.</param>
+        /// <param name="recruitingFactionID">The current authored allegiance, or null when unspecified.</param>
+        private static void AttachOfficer(GameRoot game, string recruitingFactionID)
+        {
+            PlanetSector sector = new() { InstanceID = "loyalty-sector" };
+            Planet planet = new()
+            {
+                InstanceID = "loyalty-planet",
+                OwnerInstanceID = "owner",
+                IsColonized = true,
+            };
+            planet.SetFullPopularSupport("owner");
+            game.AttachNode(sector, game.Galaxy);
+            game.AttachNode(planet, sector);
+            game.AttachNode(
+                new Officer
+                {
+                    InstanceID = "loyalty-officer",
+                    TypeID = "authored-officer",
+                    OwnerInstanceID = "owner",
+                    RecruitingFactionInstanceIDs =
+                        recruitingFactionID == null
+                            ? new List<string>()
+                            : new List<string> { recruitingFactionID },
+                },
+                planet
+            );
         }
 
         /// <summary>

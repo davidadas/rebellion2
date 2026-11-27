@@ -22,6 +22,9 @@ using Rebellion.SceneGraph;
 using UnityEngine;
 using UnityEngine.UI;
 using AssetDatabase = UnityEditor.AssetDatabase;
+using FogOfWarRecorder = global::Rebellion.Game.FogOfWar.FogOfWarRecorder;
+using SystemRandomProvider = global::Rebellion.Util.Random.SystemRandomProvider;
+using TMP_Text = global::TMPro.TMP_Text;
 
 namespace Rebellion.Tests.Multiplayer
 {
@@ -30,6 +33,42 @@ namespace Rebellion.Tests.Multiplayer
     {
         private const string _hostFactionID = "FNALL1";
         private const string _guestFactionID = "FNEMP1";
+
+        [Test]
+        public void Pump_BeginTacticalCombatGuestParameters_CommitsOnlyHostIssuedIdentityAndSeeds()
+        {
+            using PeerPair peers = new();
+            BeginTacticalCombatRequest hostApplied = null;
+            BeginTacticalCombatRequest guestApplied = null;
+            peers.Host.ActionApplied += (request, _) =>
+                hostApplied = request as BeginTacticalCombatRequest;
+            peers.Guest.ActionApplied += (request, _) =>
+                guestApplied = request as BeginTacticalCombatRequest;
+            string forgedID = Guid.NewGuid().ToString("N");
+            long hostRandom = ((SystemRandomProvider)peers.HostGame.Random).CallCount;
+            peers.Guest.ExecuteAsync(
+                new BeginTacticalCombatRequest
+                {
+                    PlanetID = "unavailable-battle",
+                    Tick = 0,
+                    BattleID = forgedID,
+                    Seed = 123,
+                    ScenerySeed = int.MinValue,
+                }
+            );
+
+            peers.Flush();
+
+            Assert.IsNotNull(hostApplied);
+            Assert.IsNotNull(guestApplied);
+            Assert.AreNotEqual(forgedID, hostApplied.BattleID);
+            Assert.IsTrue(Guid.TryParseExact(hostApplied.BattleID, "N", out _));
+            Assert.AreEqual(hostApplied.BattleID, guestApplied.BattleID);
+            Assert.AreEqual(hostApplied.Seed, guestApplied.Seed);
+            Assert.AreEqual(hostApplied.ScenerySeed, guestApplied.ScenerySeed);
+            Assert.AreNotEqual(int.MinValue, hostApplied.ScenerySeed);
+            Assert.AreEqual(hostRandom, ((SystemRandomProvider)peers.HostGame.Random).CallCount);
+        }
 
         [TestCaseSource(nameof(MissionStartCases))]
         public void Pump_MissionFamilyRequest_PreservesMatchingContinuationAfterReload(
@@ -129,7 +168,7 @@ namespace Rebellion.Tests.Multiplayer
             )
             {
                 Planet location = (Planet)entry.Item2.Location;
-                new Rebellion.Game.FogOfWar.FogOfWarRecorder().RecordEspionageSnapshot(
+                new FogOfWarRecorder().RecordEspionageSnapshot(
                     entry.Item1.GetFactionByOwnerInstanceID(actor),
                     location,
                     location.GetParentOfType<PlanetSector>(),
@@ -2565,7 +2604,7 @@ namespace Rebellion.Tests.Multiplayer
                         view.GetComponentsInChildren<StrategyDropdownItemView>(true)
                             .Single(item =>
                                 item.gameObject.activeSelf
-                                && item.GetComponentsInChildren<TMPro.TMP_Text>(true)
+                                && item.GetComponentsInChildren<TMP_Text>(true)
                                     .Any(text => text.text == label)
                             );
                     row.GetComponentInChildren<Button>(true).onClick.Invoke();

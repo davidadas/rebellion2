@@ -280,5 +280,24 @@ namespace Rebellion.Tests.Util.Logging
 
             StringAssert.Contains("retained path", File.ReadAllText(_tempFile));
         }
+
+        [TestCase("")]
+        [TestCase(" ")]
+        public void Configure_InvalidEnabledPath_PreservesExistingConfiguration(string invalidPath)
+        {
+            GameLogger.Configure(
+                filePath: _tempFile,
+                enableFileLogging: false,
+                addTimestamps: false
+            );
+
+            Assert.Throws<ArgumentException>(() =>
+                GameLogger.Configure(filePath: invalidPath, enableFileLogging: true)
+            );
+            GameLogger.Configure(enableFileLogging: true, addTimestamps: false);
+            GameLogger.Log("retained valid configuration");
+
+            StringAssert.Contains("retained valid configuration", File.ReadAllText(_tempFile));
+        }
     }
 }

@@ -1,8 +1,11 @@
 using System;
+using System.Collections;
+using System.IO;
 using System.Reflection;
 using NUnit.Framework;
 using UnityEditor;
 using UnityEngine;
+using UnityEngine.TestTools;
 using UnityEngine.Video;
 
 namespace Rebellion.Tests.UI.SceneUI.Cutscenes
@@ -19,6 +22,8 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
         private GameObject _playerPrefab;
         private AudioManager _audioManager;
         private bool _previousAudioPause;
+        private ContentAssets _ownedAssets;
+        private string _ownedContentRoot;
 
         /// <summary>
         /// Sets up.
@@ -58,6 +63,11 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
 
             Time.timeScale = 1f;
             AudioListener.pause = _previousAudioPause;
+            _ownedAssets?.Dispose();
+            _ownedAssets = null;
+            if (_ownedContentRoot != null && Directory.Exists(_ownedContentRoot))
+                Directory.Delete(_ownedContentRoot, true);
+            _ownedContentRoot = null;
         }
 
         [Test]
@@ -178,6 +188,58 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             Assert.AreEqual(1, finishedCount);
         }
 
+        [UnityTest]
+        public IEnumerator PlayOwned_DisposedOwnership_RestoresApplicationState()
+        {
+            InitializeOwnedContent();
+            Time.timeScale = 0.75f;
+            IDisposable ownership = _manager.PlayOwned(
+                "Application/Videos/blank.webm",
+                null,
+                CutsceneSkipInput.EscapeOrPrimaryPointer
+            );
+
+            ownership.Dispose();
+
+            Assert.AreEqual(0.75f, Time.timeScale);
+            Assert.IsFalse(AudioListener.pause);
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayOwned_StaleOwnershipDisposed_PreservesReplacementPlayback()
+        {
+            InitializeOwnedContent();
+            IDisposable first = _manager.PlayOwned("Application/Videos/blank.webm", null);
+            using IDisposable replacement = _manager.PlayOwned(
+                "Application/Videos/blank.webm",
+                null
+            );
+
+            first.Dispose();
+
+            Assert.AreEqual(0f, Time.timeScale);
+            Assert.IsTrue(AudioListener.pause);
+            replacement.Dispose();
+            yield return null;
+        }
+
+        [UnityTest]
+        public IEnumerator PlayOwned_DisposedOwnership_DoesNotCompleteCancelledPlayback()
+        {
+            InitializeOwnedContent();
+            int completions = 0;
+            IDisposable ownership = _manager.PlayOwned(
+                "Application/Videos/blank.webm",
+                () => completions++
+            );
+
+            ownership.Dispose();
+
+            Assert.AreEqual(0, completions);
+            yield return null;
+        }
+
         /// <summary>
         /// Gets field.
         /// </summary>
@@ -202,6 +264,25 @@ namespace Rebellion.Tests.UI.SceneUI.Cutscenes
             typeof(CutsceneManager)
                 .GetField(fieldName, BindingFlags.Instance | BindingFlags.NonPublic)
                 .SetValue(_manager, value);
+        }
+
+        /// <summary>
+        /// Copies the existing portable video fixture into external content for scoped playback requests.
+        /// </summary>
+        private void InitializeOwnedContent()
+        {
+            _ownedContentRoot = Path.Combine(
+                Path.GetTempPath(),
+                "rebellion2-owned-video",
+                Guid.NewGuid().ToString("N")
+            );
+            string videoDirectory = Path.Combine(_ownedContentRoot, "Application", "Videos");
+            string packRoot = Path.Combine(_ownedContentRoot, "Pack");
+            Directory.CreateDirectory(videoDirectory);
+            Directory.CreateDirectory(packRoot);
+            File.Copy(_clipPath, Path.Combine(videoDirectory, "blank.webm"));
+            _ownedAssets = new ContentAssets(new ContentFileResolver(_ownedContentRoot, packRoot));
+            _manager.InitializeContent(_ownedAssets);
         }
     }
 }

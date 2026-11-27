@@ -6,6 +6,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using UnityAction = global::UnityEngine.Events.UnityAction;
 
 /// <summary>
 /// Inspects artwork at its authored aspect ratio without covering the current workspace.
@@ -416,11 +417,7 @@ public sealed partial class ImagePreviewView
     /// <param name="button">The reused optional button.</param>
     /// <param name="visible">Whether to show the button.</param>
     /// <param name="action">The command to invoke when selected.</param>
-    private static void SetAction(
-        Button button,
-        bool visible,
-        UnityEngine.Events.UnityAction action
-    )
+    private static void SetAction(Button button, bool visible, UnityAction action)
     {
         if (button == null)
             return;

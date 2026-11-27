@@ -92,8 +92,8 @@ namespace Rebellion.Multiplayer
         }
 
         /// <summary>
-        /// Verifies shared live player names and selection revisions alongside durable model state,
-        /// excluding the UI state explicitly owned by an individual participant.
+        /// Verifies shared player details alongside durable
+        /// model state, excluding the UI state explicitly owned by an individual participant.
         /// </summary>
         /// <param name="type">The model type being inspected.</param>
         /// <returns>The simulation-specific cached member plan.</returns>

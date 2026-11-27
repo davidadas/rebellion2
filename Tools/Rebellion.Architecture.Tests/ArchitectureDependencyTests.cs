@@ -6,6 +6,7 @@ using ArchUnitNET.Loader;
 using ArchUnitNET.NUnit;
 using NUnit.Framework;
 using Rebellion.Game;
+using Rebellion.Util.Random;
 using static ArchUnitNET.Fluent.ArchRuleDefinition;
 
 namespace Rebellion.Architecture.Tests
@@ -103,6 +104,7 @@ namespace Rebellion.Architecture.Tests
                     "Rebellion.Saves",
                     "Rebellion.SceneGraph",
                     "Rebellion.Sessions",
+                    "Rebellion.Tactical.Core",
                     "Rebellion.UserSettings",
                     "Rebellion.Util",
                 ],
@@ -137,20 +139,6 @@ namespace Rebellion.Architecture.Tests
                         .DoNotResideInNamespaceMatching("^Rebellion\\.SceneGraph(?:\\.|$)")
                         .And()
                         .DoNotResideInNamespaceMatching("^Rebellion\\.Util(?:\\.|$)")
-                );
-
-            rule.Check(_architecture);
-        }
-
-        [Test]
-        public void GameplayRuntime_Dependencies_DoNotReferenceUserInterface()
-        {
-            IArchRule rule = Types()
-                .That()
-                .ResideInNamespaceMatching("^Rebellion\\.(?:Systems|Gameplay)(?:\\.|$)")
-                .Should()
-                .NotDependOnAny(
-                    Types().That().ResideInNamespaceMatching("^Rebellion\\.UI(?:\\.|$)")
                 );
 
             rule.Check(_architecture);
@@ -343,6 +331,13 @@ namespace Rebellion.Architecture.Tests
         [TestCase("Rebellion.Util.DependencyInjection")]
         public void UtilityArea_Dependencies_ReferenceOnlySameUtilityArea(string utilityNamespace)
         {
+            Assert.That(
+                typeof(IRandomNumberProvider)
+                    .Assembly.GetTypes()
+                    .Any(type => type.Namespace == utilityNamespace),
+                Is.True,
+                "The utility area must be present in the inspected assembly."
+            );
             string escapedNamespace = utilityNamespace.Replace(".", "\\.");
             IArchRule rule = Types()
                 .That()

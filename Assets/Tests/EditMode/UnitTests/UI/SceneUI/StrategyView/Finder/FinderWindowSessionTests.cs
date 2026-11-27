@@ -1,6 +1,7 @@
 using NUnit.Framework;
 using Rebellion.Game.Galaxy;
 using UnityEngine;
+using ArgumentNullException = global::System.ArgumentNullException;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
@@ -36,7 +37,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Finder
         [Test]
         public void Constructor_NullWindow_ThrowsArgumentNullException()
         {
-            Assert.Throws<System.ArgumentNullException>(() =>
+            Assert.Throws<ArgumentNullException>(() =>
                 new FinderWindowSession(null, FinderMode.Systems)
             );
         }

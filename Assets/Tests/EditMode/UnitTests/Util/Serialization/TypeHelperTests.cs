@@ -148,6 +148,53 @@ namespace Rebellion.Tests.Util.Serialization
             );
         }
 
+        [Test]
+        public void ConvertToScalar_EmptyNullableEnum_ReturnsNull()
+        {
+            Assert.IsNull(TypeHelper.ConvertToScalar(string.Empty, typeof(SampleEnum?)));
+        }
+
+        [Test]
+        public void ConvertToScalar_NullNullableEnum_ThrowsArgumentNullException()
+        {
+            Assert.Throws<ArgumentNullException>(() =>
+                TypeHelper.ConvertToScalar(null, typeof(SampleEnum?))
+            );
+        }
+
+        [Test]
+        public void ConvertToScalar_ExplicitNullableEnumZero_PreservesValue()
+        {
+            Assert.AreEqual(SampleEnum.A, TypeHelper.ConvertToScalar("A", typeof(SampleEnum?)));
+        }
+
+        [TestCase(" ")]
+        [TestCase("Unknown")]
+        public void ConvertToScalar_NonemptyInvalidNullableEnum_ThrowsArgumentException(
+            string value
+        )
+        {
+            Assert.Throws<ArgumentException>(() =>
+                TypeHelper.ConvertToScalar(value, typeof(SampleEnum?))
+            );
+        }
+
+        [Test]
+        public void ConvertToScalar_EmptyNonnullableEnum_ThrowsArgumentException()
+        {
+            Assert.Throws<ArgumentException>(() =>
+                TypeHelper.ConvertToScalar(string.Empty, typeof(SampleEnum))
+            );
+        }
+
+        [Test]
+        public void ConvertToScalar_EmptyNullableInteger_ThrowsFormatException()
+        {
+            Assert.Throws<FormatException>(() =>
+                TypeHelper.ConvertToScalar(string.Empty, typeof(int?))
+            );
+        }
+
         [TestCaseSource(nameof(ScalarParseCases))]
         public void ConvertToScalar_SupportedType_ReturnsParsedValue(
             string content,

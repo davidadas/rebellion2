@@ -10,6 +10,7 @@ using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
+using Rebellion.Tactical.Synchronization;
 using Rebellion.UI;
 using Rebellion.Util.Random;
 using TacticalCombatPlanner = global::Rebellion.AI.Tactical.TacticalCombatPlanner;
@@ -316,11 +317,14 @@ namespace Rebellion.Tests.Tactical
             );
         }
 
-        [TestCase(CombatSide.Attacker, 0)]
-        [TestCase(CombatSide.Defender, 1000000)]
+        [TestCase(CombatSide.Attacker, 0, false)]
+        [TestCase(CombatSide.Defender, 1000000, false)]
+        [TestCase(CombatSide.Attacker, 0, true)]
+        [TestCase(CombatSide.Defender, 1000000, true)]
         public void BeginArrival_LocalPlayerSide_PresentsOnlyItsMembers(
             CombatSide playerSide,
-            int expectedIndex
+            int expectedIndex,
+            bool replica
         )
         {
             TacticalCombatSession session = CreateSession(
@@ -328,12 +332,17 @@ namespace Rebellion.Tests.Tactical
                 CreateShip("b", 100, 0),
                 player: playerSide
             );
+            if (replica)
+                session.ConfigureSynchronizedReplica();
             ArrivalPresentation presentation = new();
             session.BeginArrival(TacticalCombatArrival.CreateFor(session, presentation));
 
-            session.Advance(50);
+            Action<float> advance = replica
+                ? milliseconds => session.AdvanceSynchronizedArrival(milliseconds)
+                : session.Advance;
+            advance(50);
             Assert.IsEmpty(presentation.ResetIndices);
-            session.Advance(50);
+            advance(50);
 
             CollectionAssert.AreEqual(new[] { expectedIndex }, presentation.ResetIndices);
         }
@@ -2275,6 +2284,44 @@ namespace Rebellion.Tests.Tactical
 
             CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
             Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, session.Winner);
+        }
+
+        [TestCase(CombatSide.Attacker, 283, 152)]
+        [TestCase(CombatSide.Defender, 152, 283)]
+        public void Advance_SynchronizedEnding_QueuesTheRemoteCueBeforeTheLocalCue(
+            CombatSide player,
+            int remoteMessage,
+            int localMessage
+        )
+        {
+            TacticalCombatSession session = CreateSession(
+                CreateShip("a", 100, 0),
+                CreateShip("b", 100, 0),
+                NotificationBank(152, 283),
+                player
+            );
+            session.ConfigureSynchronizedAuthority();
+            SchedulerClock clock = new(0);
+            StartClockedSession(session, clock);
+            session.GetUnit("b").Status = CombatUnitStatus.Destroyed;
+
+            clock.Advance(16);
+            session.AdvanceClocked(16);
+
+            TacticalCombatEvent[] cues = session
+                .CaptureSnapshot(1)
+                .Effects.Where(effect =>
+                    effect.Kind == TacticalCombatEventKind.Notification
+                    && effect.MessageID is 152 or 283
+                )
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { remoteMessage, localMessage },
+                cues.Select(cue => cue.MessageID)
+            );
+            Assert.IsTrue(cues.All(cue => cue.HasRecipient));
+            Assert.AreNotEqual(player, cues[0].Recipient);
+            Assert.AreEqual(player, cues[1].Recipient);
         }
 
         [Test]

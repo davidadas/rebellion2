@@ -376,6 +376,75 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.IsFalse(_controller.SyncPendingCombatWindow());
         }
 
+        [TestCase(true)]
+        [TestCase(false)]
+        public void TakeCommandButton_DeploymentAvailability_PreservesTacticalAdmission(
+            bool available
+        )
+        {
+            BattleAlertWindowView requested = null;
+            _controller = CreateController(available, view => requested = view);
+            _controller.Initialize(_actions);
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+
+            FindButton(view, "TakeCommandButtonImage").onClick.Invoke();
+
+            BattleAlertWindowRenderData data = _controller.CreateRenderData(
+                view,
+                _playerFactionId,
+                0,
+                0
+            );
+            Assert.AreEqual(available, data.Pending.CommandButtons[2].Interactable);
+            Assert.AreSame(available ? view : null, requested);
+            Assert.IsFalse(_controller.HasCombatResult(view));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ShowTacticalResult_SharedDeliveryInEitherOrder_PresentsOnce(bool sharedFirst)
+        {
+            BattleAlertWindowView view = OpenWindow(out UIWindow _);
+            _pending = null;
+            if (sharedFirst)
+                _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            _controller.ShowTacticalResult(view, _resolveResult);
+
+            if (!sharedFirst)
+                _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+            Assert.AreSame(view, _controller.FindWindow());
+            Assert.IsTrue(_controller.HasCombatResult(view));
+            Assert.AreEqual(2, _playedTracks.Count);
+            Assert.AreEqual(1, _stopMusicCount);
+            Assert.AreEqual(1, _actions.RebuildCount);
+            Assert.AreEqual(2, _dirtyCount);
+            Assert.IsFalse(_controller.SyncPendingCombatWindow());
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ShowTacticalResult_RemoteEntryWithoutOrigin_UsesLocalResultWindowOnce(
+            bool existingWindow
+        )
+        {
+            BattleAlertWindowView existing = existingWindow ? OpenWindow(out UIWindow _) : null;
+            _pending = null;
+
+            _controller.ShowTacticalResult(null, _resolveResult);
+            BattleAlertWindowView presented = _controller.FindWindow();
+            _pipeline.ProcessResults(new[] { _resolveResult }, processMessages: false);
+
+            Assert.IsNotNull(presented);
+            if (existingWindow)
+                Assert.AreSame(existing, presented);
+            Assert.IsTrue(_controller.HasCombatResult(presented));
+            Assert.AreEqual(existingWindow ? 2 : 1, _playedTracks.Count);
+            Assert.AreEqual(1, _actions.RebuildCount);
+            Assert.AreSame(presented, _controller.FindWindow());
+            Assert.IsFalse(_controller.SyncPendingCombatWindow());
+        }
+
         [Test]
         public void PresentResolvedResults_DismissedDuplicate_DoesNotReopenOrReplayAudio()
         {
@@ -881,8 +950,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         /// <summary>
         /// Creates controller.
         /// </summary>
+        /// <param name="canTakeCommand">Whether tactical deployment is available.</param>
+        /// <param name="takeCommand">Receives an admitted tactical request.</param>
         /// <returns>The created controller.</returns>
-        private BattleAlertWindowController CreateController()
+        private BattleAlertWindowController CreateController(
+            bool canTakeCommand = false,
+            Action<BattleAlertWindowView> takeCommand = null
+        )
         {
             return new BattleAlertWindowController(
                 () => _pending != null,
@@ -905,7 +979,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 _windowManager,
                 () => new Vector2Int(141, 73),
                 window => _windowManager.DestroyWindow(window),
-                () => _dirtyCount++
+                () => _dirtyCount++,
+                () => canTakeCommand,
+                takeCommand
             );
         }
 

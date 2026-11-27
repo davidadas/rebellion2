@@ -83,6 +83,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     [SerializeField]
     private bool _showToolbar = true;
     private bool _canSaveGame;
+    private bool _canLoadGame;
     private bool _existingSaveSelected;
     private bool _controlsBound;
 
@@ -193,7 +194,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         if (data == null)
             throw new ArgumentNullException(nameof(data));
 
-        Render(data.SaveSlots, data.SelectedSlot, data.CanSave, resetScroll);
+        Render(data.SaveSlots, data.SelectedSlot, data.CanSave, resetScroll, data.CanLoad);
     }
 
     /// <summary>
@@ -203,11 +204,13 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// <param name="selected">The selected row index, or -1.</param>
     /// <param name="canSaveState">Whether the host can save its current state.</param>
     /// <param name="resetScroll">Whether to show the top of the rebuilt list.</param>
+    /// <param name="canLoadState">Whether the host permits loading saved games.</param>
     public void Render(
         IReadOnlyList<OptionsSaveSlot> slots,
         int selected,
         bool canSaveState,
-        bool resetScroll
+        bool resetScroll,
+        bool canLoadState = true
     )
     {
         BindControls();
@@ -215,9 +218,10 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
         bool existingSelected =
             selected >= 0 && selected < slots.Count && !slots[selected].IsCreateNew;
         _canSaveGame = canSaveState;
+        _canLoadGame = canLoadState;
         _existingSaveSelected = existingSelected;
         bool canSave = CanSaveCurrentEntry();
-        bool canLoad = existingSelected;
+        bool canLoad = canLoadState && existingSelected;
         _saveButton.interactable = canSave;
         _loadButton.interactable = canLoad;
         SetButtonDisabledVisual(_saveButton, _saveDisabledImage, canSave);
@@ -263,6 +267,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             );
             row.sprite = index == selected ? _rowActiveSprite : _rowIdleSprite;
             row.color = Color.white;
+            if (row.TryGetComponent(out Button rowButton))
+                rowButton.interactable = canSaveState || canLoadState;
 
             RawImage icon = GetIcon(index);
             icon.texture = slot.FactionIcon;
@@ -332,6 +338,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             date.alignment = TextAlignmentOptions.TopRight;
 
             Button delete = GetDelete(index);
+            delete.interactable = canSaveState || canLoadState;
             delete.gameObject.SetActive(!_loadOnly && !slot.IsCreateNew);
             UILayout.SetSourceRect(
                 (RectTransform)delete.transform,
@@ -558,7 +565,7 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Selects a clicked slot and starts renaming on a qualifying double-click.
+    /// Selects a clicked slot, refreshes its commands, and starts renaming on a qualifying double-click.
     /// </summary>
     /// <param name="button">The button.</param>
     /// <param name="index">The index.</param>
@@ -568,6 +575,12 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
             return;
 
         bool existing = !_slots[index].IsCreateNew;
+        _existingSaveSelected = existing;
+        _loadButton.interactable = _canLoadGame && existing;
+        if (_showToolbar)
+            SetButtonDisabledVisual(_loadButton, _loadDisabledImage, _loadButton.interactable);
+        if (_showToolbar && !_loadOnly)
+            RenderSaveButton();
         float now = Time.unscaledTime;
         if (
             !_loadOnly
@@ -729,6 +742,8 @@ public sealed class OptionsSaveListView : MonoBehaviour, IContentInitializable
     /// </summary>
     private void HandleLoadRequested()
     {
+        if (!_canLoadGame || !_existingSaveSelected)
+            return;
         LoadRequested?.Invoke();
     }
 

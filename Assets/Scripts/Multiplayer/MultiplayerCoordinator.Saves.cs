@@ -153,6 +153,8 @@ namespace Rebellion.Multiplayer
         {
             if (!IsTransferringScene || !ReferenceEquals(_sessionManager, runtime))
                 return;
+            ReleaseTacticalGameplay();
+            _pendingTacticalReady = null;
             _turnProtocol?.Dispose();
             _turnProtocol = null;
             _sessionManager?.GetActiveGameManager()?.UnbindSpeedRequests();

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
 {
@@ -33,6 +34,19 @@ namespace Rebellion.Tactical
         public float AttackBudget { get; internal set; }
         public float WithdrawalMilliseconds { get; private set; }
         public CombatWithdrawalPhase? WithdrawalPhase { get; private set; }
+
+        /// <summary>
+        /// Projects the authoritative side and withdrawal state into the local view.
+        /// </summary>
+        /// <param name="state">The authoritative side snapshot.</param>
+        internal void ApplySnapshot(TacticalCombatSideSnapshot state)
+        {
+            IsWithdrawing = state.Withdrawing;
+            WithdrawalMilliseconds = state.WithdrawalMilliseconds;
+            WithdrawalPhase = state.HasWithdrawalPhase ? state.WithdrawalPhase : null;
+            IsAutomated = state.Automated;
+            AttackBudget = state.AttackBudget;
+        }
 
         /// <summary>
         /// Captures the support and withdrawal state independently of the campaign roster.

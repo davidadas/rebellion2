@@ -6,6 +6,7 @@ using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
+using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
@@ -84,7 +85,10 @@ namespace Rebellion.Tactical
         public TacticalCombatAudio Audio { get; }
         public TacticalCombatSelection Selection { get; }
         internal TacticalCombatTargeting Targeting => _targeting;
-        public int SystemTime => unchecked((int)_clockState.SystemTime);
+        public int SystemTime =>
+            _synchronizationReplica
+                ? _synchronizedSystemTime
+                : unchecked((int)_clockState.SystemTime);
         public bool IsComplete { get; private set; }
         public bool IsArriving => _arrival?.IsComplete == false;
         public bool WasRestored { get; }
@@ -95,12 +99,19 @@ namespace Rebellion.Tactical
             get => _userPaused || _moviePauses > 0;
             set
             {
-                if (!value && _resumePaused)
+                if (
+                    !RequestSynchronizedCommand(
+                        new() { Kind = TacticalCombatCommandKind.Pause, Paused = value }
+                    )
+                )
                 {
-                    _resumePaused = false;
-                    _scheduler?.RebaseClock();
+                    if (!value && _resumePaused)
+                    {
+                        _resumePaused = false;
+                        _scheduler?.RebaseClock();
+                    }
+                    _userPaused = value;
                 }
-                _userPaused = value;
             }
         }
         public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
@@ -139,7 +150,8 @@ namespace Rebellion.Tactical
         /// Gets whether the player can hand the surviving encounter to automatic resolution.
         /// </summary>
         public bool CanRequestImmediateResult =>
-            !IsComplete
+            !IsSynchronized
+            && !IsComplete
             && !IsArriving
             && !_completionStarted
             && PendingAttackRunMovie == null

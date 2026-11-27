@@ -1,6 +1,6 @@
 const assert = require('node:assert/strict');
 const { test } = require('node:test');
-const { readFileSync } = require('node:fs');
+const { readFileSync, readdirSync } = require('node:fs');
 const path = require('node:path');
 const YAML = require('yaml');
 const { REVIEW_ENVIRONMENT } = require('./pr-tests.cjs');
@@ -124,6 +124,29 @@ test('default-branch tests validate the pinned pack and check full coverage', ()
   assert.equal(runner.env.UNITY_IMAGE_VERSION, ci.env.UNITY_IMAGE_VERSION);
 });
 
+test('local and CI coverage include every assembly extracted from the game runtime', () => {
+  const sourceRoot = path.join(root, 'Assets/Scripts');
+  const assemblies = [];
+  const visit = directory => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) visit(file);
+      else if (entry.name.endsWith('.asmdef')) {
+        const assembly = JSON.parse(readFileSync(file, 'utf8'));
+        if (assembly.name !== 'ContentPackEditorAssembly') assemblies.push(`+${assembly.name}`);
+      }
+    }
+  };
+  visit(sourceRoot);
+  const gameci = runner.jobs.test.steps.find(step => step.uses === 'game-ci/unity-test-runner@v4');
+  const local = readFileSync(path.join(root, 'build.sh'), 'utf8').match(/-coverageOptions "([^"]+)"/)[1];
+  const filters = options => options.split(';').find(option => option.startsWith('assemblyFilters:'))
+    .slice('assemblyFilters:'.length).split(',').sort();
+
+  assert.deepEqual(filters(gameci.with.coverageOptions), assemblies.sort());
+  assert.deepEqual(filters(local), assemblies.sort());
+});
+
 test('PR runs omit the media checkout and content credentials', () => {
   for (const job of [ci.jobs['test-pr'], dispatcher.jobs['trusted-test']]) {
     assert.equal(job.uses, './.github/workflows/unity-test-runner.yml');
@@ -141,18 +164,6 @@ test('PR runs omit the media checkout and content credentials', () => {
   assert.match(gameci.with.customParameters, /-testCategory !\^RequiresMedia\$/);
   assert.equal(steps.find(step => step.name === 'Verify media is absent').if, "inputs.media_sha == ''");
   assert.equal(steps.find(step => step.name === 'Check compiled architecture').if, undefined);
-});
-
-test('the shared runner stages optional native math after the verified merge and before Unity', () => {
-  const steps = runner.jobs.test.steps;
-  const merge = steps.findIndex(step => step.name === 'Prepare reviewed merge');
-  const native = steps.findIndex(step => step.name === 'Build and verify Linux native vector library');
-  const unity = steps.findIndex(step => step.uses === 'game-ci/unity-test-runner@v4');
-  assert.ok(merge >= 0 && merge < native && native < unity);
-  assert.equal(steps[native].if, "${{ hashFiles('Native/TacticalMath/CMakeLists.txt') != '' }}");
-  assert.match(steps[native].run, /python3 Tools\/build_tactical_math\.py/);
-  assert.match(steps[native].run, /--target linux-x64/);
-  assert.equal(steps[native].env, undefined);
 });
 
 test('PR results require actual Unity execution and target the PR check', () => {

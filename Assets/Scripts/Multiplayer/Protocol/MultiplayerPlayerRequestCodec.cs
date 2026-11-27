@@ -71,6 +71,8 @@ namespace Rebellion.Multiplayer
                 PlayerRequestKind.ConsumeMissionContinuation =>
                     typeof(ConsumeMissionContinuationRequest),
                 PlayerRequestKind.ResolveCombat => typeof(ResolveCombatRequest),
+                PlayerRequestKind.BeginTacticalCombat => typeof(BeginTacticalCombatRequest),
+                PlayerRequestKind.CompleteTacticalCombat => typeof(CompleteTacticalCombatRequest),
                 PlayerRequestKind.SetSpeed => typeof(SetSpeedRequest),
                 PlayerRequestKind.RespondToSpeed => typeof(RespondToSpeedRequest),
                 PlayerRequestKind.SetManufacturingOrder => typeof(SetManufacturingOrderRequest),

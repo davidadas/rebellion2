@@ -7,6 +7,7 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.TestTools;
 using UnityEngine.UI;
+using StringComparison = global::System.StringComparison;
 
 namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
 {
@@ -338,7 +339,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             {
                 if (child.name == "ion-engine_39")
                     engineRoot = child;
-                if (child.name.StartsWith("EnginePlume", System.StringComparison.Ordinal))
+                if (child.name.StartsWith("EnginePlume", StringComparison.Ordinal))
                 {
                     exhaustPlumeCount++;
                     Assert.AreEqual(engineRoot, child.parent);
@@ -460,7 +461,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             bool found = false;
             foreach (Renderer renderer in modelRoot.GetComponentsInChildren<Renderer>(true))
             {
-                if (renderer.name.StartsWith("EnginePlume", System.StringComparison.Ordinal))
+                if (renderer.name.StartsWith("EnginePlume", StringComparison.Ordinal))
                     continue;
                 if (found)
                     bounds.Encapsulate(renderer.bounds);
@@ -507,7 +508,7 @@ namespace Rebellion.Tests.UI.SceneUI.LoadingScreen
             return modelRoot
                     .GetComponentsInChildren<Renderer>(true)
                     .Count(renderer =>
-                        renderer.name.StartsWith("EnginePlume", System.StringComparison.Ordinal)
+                        renderer.name.StartsWith("EnginePlume", StringComparison.Ordinal)
                     ) == 4;
         }
     }
