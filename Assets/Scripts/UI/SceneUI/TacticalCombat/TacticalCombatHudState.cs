@@ -1,4 +1,4 @@
-using Rebellion.Tactical;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.UI.SceneUI.TacticalCombat
 {

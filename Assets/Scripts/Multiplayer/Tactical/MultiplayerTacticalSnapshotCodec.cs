@@ -696,7 +696,7 @@ namespace Rebellion.Multiplayer.Tactical
                     Withdrawing = Boolean(),
                     WithdrawalMilliseconds = _reader.ReadSingle(),
                     HasWithdrawalPhase = Boolean(),
-                    WithdrawalPhase = (TacticalCombatSide.DeparturePhase)_reader.ReadInt32(),
+                    WithdrawalPhase = (CombatWithdrawalPhase)_reader.ReadInt32(),
                     AttackBudget = _reader.ReadSingle(),
                 };
 

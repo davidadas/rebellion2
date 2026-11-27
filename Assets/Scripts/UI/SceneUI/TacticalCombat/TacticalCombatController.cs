@@ -160,17 +160,17 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 _view.SetBackgroundTexture(
                     assets.GetTexture(_session.Definition.BackgroundImagePath)
                 );
-            TacticalCombatArrival arrival = TacticalCombatArrival.CreateFor(
-                _session,
-                _view.Renderer
-            );
+            TacticalCombatArrival arrival = _session.WasRestored
+                ? null
+                : TacticalCombatArrival.CreateFor(_session, _view.Renderer);
             if (_driver != null)
                 _driver.Prepare(arrival);
             else
             {
                 Stopwatch clock = Stopwatch.StartNew();
                 _session.ConfigureClockedAdvance(() => unchecked((uint)clock.ElapsedMilliseconds));
-                _session.BeginArrival(arrival);
+                if (arrival != null)
+                    _session.BeginArrival(arrival);
             }
             CaptureHeldKeys();
             _ready = true;

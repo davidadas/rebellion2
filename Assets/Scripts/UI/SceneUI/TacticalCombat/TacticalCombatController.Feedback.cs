@@ -166,12 +166,24 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
         /// <summary>
         /// Adapts one application-owned playback to the notification scheduler's live status.
         /// </summary>
-        private sealed class NotificationPlayback : ITacticalCombatNotificationPlayback
+        private sealed class NotificationPlayback
+            : ITacticalCombatNotificationPlayback,
+                ITacticalCombatNotificationPosition
         {
             private readonly AudioPlaybackHandle playback;
             public bool IsPlaying =>
                 playback.IsActive
                 && (playback.Paused || AudioListener.pause || playback.Source?.isPlaying == true);
+
+            public int PositionSamples
+            {
+                get => playback.Source?.timeSamples ?? 0;
+                set
+                {
+                    if (playback.Source is { clip: { samples: > 0 } clip } source)
+                        source.timeSamples = Mathf.Clamp(value, 0, clip.samples - 1);
+                }
+            }
 
             /// <summary>
             /// Captures the independently controllable sound source.

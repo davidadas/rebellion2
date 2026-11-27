@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.Combat;
 using Rebellion.Game.PlayerRequests;
 using Rebellion.Game.Results;
 using Rebellion.Gameplay;

@@ -108,6 +108,7 @@ public sealed class StrategyController
     private ITacticalCombatPresentationDriver presentedTacticalDriver;
     private ITacticalCombatPresentationDriver activeTacticalDriver;
     private bool tacticalCombatStarting;
+    private TacticalCombatSession attemptedRestoredBattle;
     private IDisposable tacticalShortcutSuppression;
     private CancelStack cancelStack;
     private GameManager gameManager;
@@ -1173,6 +1174,17 @@ public sealed class StrategyController
             return;
 
         TryPresentNetworkTacticalCombat();
+        if (tacticalCombatController == null && !tacticalCombatStarting)
+        {
+            TacticalCombatSession battle = session
+                .GetService<SpaceCombatCommands>()
+                .ActiveTacticalCombat;
+            if (battle?.WasRestored == true && !ReferenceEquals(battle, attemptedRestoredBattle))
+            {
+                attemptedRestoredBattle = battle;
+                BeginTacticalCombatAsync(battleAlertWindowController.FindWindow());
+            }
+        }
         if (tacticalCombatController != null)
         {
             tacticalOptionsHost?.Render();
@@ -2218,6 +2230,14 @@ public sealed class StrategyController
     /// <param name="game">The replacement active game.</param>
     private void HandleGameReplaced(GameRoot game)
     {
+        attemptedRestoredBattle = null;
+        if (tacticalCombatController != null && activeTacticalDriver == null)
+        {
+            DisposeTacticalOptions();
+            tacticalCombatController.Dispose();
+            tacticalCombatController = null;
+            SetTacticalInteraction(false);
+        }
         UIStateSection uiState = GetStrategyUIState();
         idleBarController.ResetSession(uiState.IgnoredItems);
         bookmarkController.ResetSession(uiState.BookmarkedItems);
@@ -4150,11 +4170,15 @@ public sealed class StrategyController
     /// <param name="origin">The report window that will display the completed result.</param>
     private async void BeginTacticalCombatAsync(BattleAlertWindowView origin)
     {
-        if (tacticalCombatController != null || tacticalCombatStarting || !CanTakeTacticalCommand())
+        if (tacticalCombatController != null || tacticalCombatStarting)
             return;
-        tacticalCombatStarting = true;
-        TacticalCombatSession battle = null;
+
         SpaceCombatCommands commands = session.GetService<SpaceCombatCommands>();
+        TacticalCombatSession battle = commands.ActiveTacticalCombat;
+        if (battle?.WasRestored != true && !CanTakeTacticalCommand())
+            return;
+
+        tacticalCombatStarting = true;
         try
         {
             if (tacticalCoordinator?.IsMultiplayerGame == true)
@@ -4179,12 +4203,12 @@ public sealed class StrategyController
                 throw new MissingReferenceException(
                     "The strategy screen is missing its tactical combat prefab."
                 );
-            battle = commands.BeginTacticalCombat();
+            battle ??= commands.BeginTacticalCombat();
             await PrepareTacticalPresentationAsync(origin, battle, null);
         }
         catch (Exception exception)
         {
-            if (battle != null)
+            if (battle is { WasRestored: false })
                 commands.CancelTacticalPreparation(battle);
             if (exception is not OperationCanceledException)
                 Debug.LogException(exception);
@@ -4330,7 +4354,7 @@ public sealed class StrategyController
                         invalidate,
                         saveGameManager,
                         showModsTab: false,
-                        allowSaveLoad: false
+                        allowSaveLoad: !battle.IsSynchronized
                     )
             );
             tacticalOptionsHost.VisibilityChanged += HandleTacticalOptionsVisibility;

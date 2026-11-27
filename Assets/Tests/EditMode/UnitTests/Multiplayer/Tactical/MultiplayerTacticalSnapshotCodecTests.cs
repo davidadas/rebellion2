@@ -399,7 +399,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 Withdrawing = true,
                 WithdrawalMilliseconds = 5.125f,
                 HasWithdrawalPhase = true,
-                WithdrawalPhase = (TacticalCombatSide.DeparturePhase)7,
+                WithdrawalPhase = (CombatWithdrawalPhase)7,
                 AttackBudget = 8.125f,
             };
 

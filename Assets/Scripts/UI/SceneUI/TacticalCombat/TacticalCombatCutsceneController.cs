@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Rebellion.Game.Combat;
 using Rebellion.Tactical;
 
 namespace Rebellion.UI.SceneUI.TacticalCombat
