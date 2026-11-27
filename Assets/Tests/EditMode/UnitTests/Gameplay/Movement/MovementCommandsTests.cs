@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Gameplay
         [TestCase(0, false)]
         [TestCase(1, false)]
         [TestCase(2, true)]
-        public void TryRequestMove_OnlyMovesFleetWhenAllShipsCanTravel(
+        public void TryRequestMove_FleetWithDisabledDrives_RequiresEveryReadyShipToTravel(
             int workingDrives,
             bool accepted
         )
