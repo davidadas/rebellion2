@@ -182,6 +182,7 @@ namespace Rebellion.Tactical
                     ? CombatUnitStatus.Docked
                 : isUnderConstruction ? CombatUnitStatus.UnderConstruction
                 : CombatUnitStatus.Active;
+            unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
         }
 
         /// <summary>

@@ -61,10 +61,12 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(expected, unit.HasHyperdrive);
         }
 
-        [TestCase(0, 3.6f)]
-        [TestCase(21, 19f)]
-        [TestCase(37, 3.6f)]
-        public void Constructor_CapitalPresentationType_SelectsFixedCollisionBounds(
+        [TestCase("custom-ship", 0, 3.6f)]
+        [TestCase("custom-ship", 21, 3.6f)]
+        [TestCase("CSEM014", 21, 19f)]
+        [TestCase("CSEM014", 37, 19f)]
+        public void InitializeUnit_LegacyCapitalType_SelectsFixedCollisionBounds(
+            string typeID,
             int presentationIndex,
             float expectedRadius
         )
@@ -77,7 +79,7 @@ namespace Rebellion.Tests.Tactical
                 HullDepth = 60,
             };
 
-            CombatUnit unit = CreateWithLegacyGeometry(definition);
+            CombatUnit unit = CreateWithLegacyGeometry(definition, typeID);
 
             Assert.AreEqual(3, unit.HalfHeight);
             Assert.AreEqual(expectedRadius, unit.CollisionRadius);
@@ -103,7 +105,8 @@ namespace Rebellion.Tests.Tactical
         public void InitializeUnit_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
         {
             CombatUnit unit = CreateWithLegacyGeometry(
-                new TacticalCombatUnitDefinition { PresentationIndex = 21 }
+                new TacticalCombatUnitDefinition { PresentationIndex = 21 },
+                "CSEM014"
             );
 
             Assert.AreEqual(0.0523598827f, unit.MaximumTurnRate);
@@ -114,10 +117,16 @@ namespace Rebellion.Tests.Tactical
         /// Initializes a ship from an older tactical geometry definition.
         /// </summary>
         /// <param name="definition">The old tactical definition supplying physical defaults.</param>
+        /// <param name="typeID">The campaign ship's stable content identity.</param>
         /// <returns>The combatant with migrated ship dimensions.</returns>
-        private static CombatUnit CreateWithLegacyGeometry(TacticalCombatUnitDefinition definition)
+        private static CombatUnit CreateWithLegacyGeometry(
+            TacticalCombatUnitDefinition definition,
+            string typeID = "custom-ship"
+        )
         {
-            CombatUnit unit = CombatUnit.Create(CreateShip());
+            CapitalShip ship = CreateShip();
+            ship.TypeID = typeID;
+            CombatUnit unit = CombatUnit.Create(ship);
             TacticalCombatDeployment.InitializeUnit(unit, definition, CombatSide.Attacker, 1);
             return unit;
         }

@@ -10,6 +10,7 @@ using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -22,6 +23,26 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(false, true)]
+        [TestCase(true, false)]
+        public void CanTravelBetweenPlanets_DamagedPrimaryDrive_UsesWorkingBackup(
+            bool backupDamaged,
+            bool expected
+        )
+        {
+            CapitalShip ship = new()
+            {
+                Hyperdrives = new[]
+                {
+                    new Hyperdrive { Rating = 30 },
+                    new Hyperdrive { Rating = 80 },
+                },
+            };
+            ship.SystemDamage.HyperdriveDamage = new[] { 1, backupDamaged ? 1 : 0 };
+
+            Assert.AreEqual(expected, MovementQueries.CanTravelBetweenPlanets(ship));
+        }
+
         [Test]
         public void RecoverStarfighters_FullCarrierExchange_UsesFinalCapacity()
         {
