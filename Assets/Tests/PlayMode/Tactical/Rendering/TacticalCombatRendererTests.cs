@@ -900,6 +900,37 @@ namespace Rebellion.Tests.Tactical.Rendering
         }
 
         [UnityTest]
+        public IEnumerator RenderUnits_SelectedCategoryMember_HighlightsVisibleRequestedWing()
+        {
+            TacticalCombatSession encounter = CreateEncounter(
+                _pack.GameData,
+                allCapitalsPlayer: true
+            );
+            CombatUnit primary = encounter.GetUnit("ALCS008");
+            CombatUnit wing = encounter.GetUnit("CSAL009");
+            TacticalCombatGroup group = encounter.GetRequestedGroup(primary);
+            encounter.AddGroupMember(group, wing);
+            encounter.SetObjectGroup(encounter.PlayerSide, 0, group);
+            yield return PrepareRenderer(encounter);
+
+            encounter.Selection.QueueObject(primary);
+            encounter.Selection.ProcessPendingCommands();
+            view.Renderer.RenderUnits();
+
+            Transform wingRoot = view
+                .Renderer.GetComponentsInChildren<Transform>(true)
+                .Single(item => item.name == wing.InstanceID);
+            GameObject box = wingRoot.Find("Selection box").gameObject;
+            Assert.IsTrue(box.activeSelf);
+            Assert.AreEqual(Color.red, box.GetComponent<MeshRenderer>().sharedMaterial.color);
+
+            wing.Status = CombatUnitStatus.EnteringHyperspace;
+            view.Renderer.RenderUnits();
+
+            Assert.IsFalse(box.activeSelf);
+        }
+
+        [UnityTest]
         public IEnumerator ShowCategory_CapitalFrame_UsesCachedMiddleBoundsAndLivePresentationPose()
         {
             TacticalCombatSession encounter = CreateEncounter(_pack.GameData);

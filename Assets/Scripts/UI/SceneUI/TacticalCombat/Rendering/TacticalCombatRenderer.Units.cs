@@ -257,15 +257,38 @@ namespace Rebellion.Tactical.Rendering
             _factionBoxes.Clear();
             _whiteBoxes.Clear();
             TacticalCombatSelection selection = _session.Selection;
-            foreach (CombatUnit unit in selection.Highlights)
+            CombatUnit primary = selection.PrimaryUnit;
+            switch (selection.Kind)
             {
-                bool yellow =
-                    selection.Kind == TacticalCombatSelectionKind.MultipleObjects
-                    || selection.Kind
-                        is TacticalCombatSelectionKind.SingleObject
-                            or TacticalCombatSelectionKind.ObjectGroup
-                        && ReferenceEquals(selection.PrimaryUnit, unit);
-                (yellow ? _yellowBoxes : _factionBoxes).Add(unit);
+                case TacticalCombatSelectionKind.SingleObject
+                    when selection.IsDisplayObject(primary):
+                    _yellowBoxes.Add(primary);
+                    if (
+                        selection.Groups.Count > 0
+                        && selection.FindObjectCategory(selection.Groups[0]) >= 0
+                    )
+                        foreach (CombatUnit unit in selection.Groups[0].RequestedMembers)
+                            if (!ReferenceEquals(unit, primary) && selection.IsDisplayObject(unit))
+                                _factionBoxes.Add(unit);
+                    break;
+                case TacticalCombatSelectionKind.ObjectGroup:
+                case TacticalCombatSelectionKind.FighterGroup:
+                    foreach (CombatUnit unit in selection.Members)
+                        if (selection.IsDisplayObject(unit))
+                        {
+                            bool yellow =
+                                selection.Kind == TacticalCombatSelectionKind.ObjectGroup
+                                && ReferenceEquals(unit, primary);
+                            (yellow ? _yellowBoxes : _factionBoxes).Add(unit);
+                        }
+                    break;
+                case TacticalCombatSelectionKind.MultipleObjects:
+                    _yellowBoxes.UnionWith(selection.Members);
+                    break;
+                case TacticalCombatSelectionKind.EnemyInspection
+                    when selection.IsDisplayObject(primary):
+                    _factionBoxes.Add(primary);
+                    break;
             }
             bool first = true;
             foreach (CombatUnit target in selection.Targets)
