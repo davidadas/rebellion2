@@ -92,6 +92,37 @@ public sealed class OptionsToggleRowView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
+    /// Fits the mod name, enable state, and switch in the mod list.
+    /// </summary>
+    /// <param name="width">The available row width.</param>
+    /// <param name="height">The shared height of the controls in this row.</param>
+    internal void LayoutModRow(int width, int height)
+    {
+        int stateX = width - 80;
+        int labelWidth = stateX - 8;
+        UILayout.SetSourceRect(_labelTextField.rectTransform, 0, 0, labelWidth, height);
+        UILayout.SetSourceRect(_stateTextField.rectTransform, stateX, 0, 40, height);
+        UILayout.SetSourceRect(_toggleImage.rectTransform, width - 31, (height - 14) / 2, 30, 14);
+        _labelTextField.textWrappingMode = TextWrappingModes.NoWrap;
+        _labelTextField.overflowMode = TextOverflowModes.Ellipsis;
+
+        string label = _labelTextField.text;
+        bool clipped = _labelTextField.GetPreferredValues(label).x > labelWidth;
+        _labelTextField.raycastTarget = clipped;
+        if (!_labelTextField.TryGetComponent(out HelpTooltipView tooltip) && clipped)
+            tooltip = _labelTextField.gameObject.AddComponent<HelpTooltipView>();
+        tooltip?.Configure(clipped ? label : string.Empty, captionFont: _labelTextField.font);
+    }
+
+    /// <summary>
+    /// Reports whether the pointer was pressed on the mod's enable switch.
+    /// </summary>
+    /// <param name="target">The pointer's original raycast target.</param>
+    /// <returns>Whether the toggle owns this pointer gesture.</returns>
+    internal bool IsModToggleTarget(GameObject target) =>
+        target && target.transform.IsChildOf(_button.transform);
+
+    /// <summary>
     /// Restores the state-swapped toggle sprites from installation content.
     /// </summary>
     /// <param name="contentAssets">The active content asset source.</param>

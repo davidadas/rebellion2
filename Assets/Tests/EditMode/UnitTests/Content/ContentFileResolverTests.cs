@@ -174,6 +174,371 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Discover_DuplicateID_BlocksBothCopiesAndReportsTheirFolders()
+        {
+            WriteMod("first-copy", "duplicate", "");
+            WriteMod("second-copy", "duplicate", "");
+            WriteMod("unrelated", "unrelated", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(resolver.Mods.Single().ID, Is.EqualTo("unrelated"));
+            Assert.That(resolver.AvailableMods.Single().ID, Is.EqualTo("unrelated"));
+            Assert.That(
+                resolver.ModIssues.Single().Message,
+                Does.Contain("first-copy (1.0.0)").And.Contain("second-copy (1.0.0)")
+            );
+        }
+
+        [Test]
+        public void Discover_NewModHasEarlierID_AppendsWithoutChangingAppliedOrder()
+        {
+            WriteMod("01-alpha", "alpha", "");
+            WriteMod("02-bravo", "bravo", "");
+            WriteMod("03-charlie", "charlie", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "charlie", "bravo" }
+            );
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "charlie", "bravo", "alpha" })
+            );
+        }
+
+        [Test]
+        public void Discover_FirstUseOfPack_BreaksTiesByID()
+        {
+            WriteMod("01-charlie", "charlie", "");
+            WriteMod("02-alpha", "alpha", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: Array.Empty<string>()
+            );
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "alpha", "charlie" })
+            );
+        }
+
+        [Test]
+        public void Discover_NewPrerequisite_LoadsBeforeDependentWithoutMovingUnrelatedModAhead()
+        {
+            WriteMod("appended", "new-dependency", "<LoadBefore><ModID>first</ModID></LoadBefore>");
+            WriteMod("first", "first", "");
+            WriteMod("second", "second", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "first", "second" }
+            );
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "new-dependency", "first", "second" })
+            );
+        }
+
+        [Test]
+        public void Discover_NewOrderingRulesMoveAppliedModsTogether_PreservesTheirRelativeOrder()
+        {
+            WriteMod("first", "first", "");
+            WriteMod("second", "second", "");
+            WriteMod("third", "third", "");
+            WriteMod(
+                "alpha",
+                "alpha",
+                "<LoadAfter><ModID>third</ModID></LoadAfter><LoadBefore><ModID>first</ModID></LoadBefore>"
+            );
+            WriteMod(
+                "bravo",
+                "bravo",
+                "<LoadAfter><ModID>second</ModID></LoadAfter><LoadBefore><ModID>first</ModID></LoadBefore>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "first", "second", "third" }
+            );
+
+            Assert.That(
+                resolver
+                    .Mods.Select(mod => mod.ID)
+                    .Where(id => id is "first" or "second" or "third"),
+                Is.EqualTo(new[] { "second", "third", "first" })
+            );
+        }
+
+        [Test]
+        public void GetMoveRestriction_MovedPastANonAdjacentDependent_ReportsTheDependency()
+        {
+            WriteMod("first", "first", "");
+            WriteMod("second", "second", "");
+            WriteMod("third", "third", "<Requires><Mod><ID>first</ID></Mod></Requires>");
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(
+                ContentModLoadOrder.GetMoveRestriction(resolver.Mods, 0, 2),
+                Is.EqualTo("third requires first.")
+            );
+        }
+
+        [Test]
+        public void Discover_AppliedSelection_KeepsNewCompatibleModsPending()
+        {
+            WriteMod("applied", "applied", "");
+            WriteMod("new", "new", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "applied" },
+                appliedModIDs: new[] { "applied" }
+            );
+
+            Assert.That(resolver.Mods.Select(mod => mod.ID), Is.EqualTo(new[] { "applied" }));
+            Assert.That(resolver.AvailableMods.Select(mod => mod.ID), Does.Contain("new"));
+        }
+
+        [Test]
+        public void Discover_AppliedVersionWithAnInstalledUpdate_UsesTheRetainedRelease()
+        {
+            WriteMod("version-one", "example", "");
+            string mods = Path.Combine(_root, "Mods");
+            string retained = Path.Combine(mods, ".versions");
+            Directory.CreateDirectory(retained);
+            Directory.Move(
+                Path.Combine(mods, "version-one"),
+                Path.Combine(retained, "version-one")
+            );
+            WriteMod("version-two", "example", "");
+            string manifest = Path.Combine(mods, "version-two", "mod.xml");
+            File.WriteAllText(
+                manifest,
+                File.ReadAllText(manifest)
+                    .Replace("<Version>1.0.0</Version>", "<Version>2.0.0</Version>")
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                appliedModIDs: new[] { "example" },
+                appliedModVersions: new[] { "1.0.0" }
+            );
+
+            Assert.That(resolver.Mods.Single().Version, Is.EqualTo("1.0.0"));
+            Assert.That(resolver.AvailableMods.Single().Version, Is.EqualTo("2.0.0"));
+        }
+
+        [Test]
+        public void DescribeModOverrides_OrderedSparseSettings_ReportsWinningValue()
+        {
+            const string address = "Pack/Data/ships.xml";
+            WriteFile(_packRoot, "Data/ships.xml", "<Ships><Cost>5</Cost></Ships>");
+            WriteMod("alpha", "alpha", "");
+            WriteFile(
+                Path.Combine(_root, "Mods", "alpha", "Content"),
+                address,
+                "<Ships Inherit='true'><Cost>20</Cost></Ships>"
+            );
+            WriteMod("bravo", "bravo", "");
+            WriteFile(
+                Path.Combine(_root, "Mods", "bravo", "Content"),
+                address,
+                "<Ships Inherit='true'><Cost>25</Cost></Ships>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "bravo", "alpha" }
+            );
+
+            Assert.That(
+                resolver.DescribeModOverrides()["bravo"].Single(),
+                Does.Contain("alpha").And.Contain("Cost to 20")
+            );
+        }
+
+        [Test]
+        public void Discover_MalformedArtworkAliasMap_KeepsOtherModsAvailable()
+        {
+            WriteMod("invalid", "invalid", "");
+            WriteMod("valid", "valid", "");
+            WriteFile(
+                Path.Combine(_root, "Mods", "invalid", "Content"),
+                "Pack/" + ContentArtworkAliases.FileName,
+                "<InvalidArtworkAliases/>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(
+                resolver.AvailableMods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "valid" })
+            );
+            Assert.That(resolver.ModIssues.Single().Message, Does.Contain("invalid root"));
+        }
+
+        [Test]
+        public void DescribeModOverrides_ArtworkAliases_ReportsOnlyChangedTargets()
+        {
+            WriteMod("alpha", "alpha", "");
+            WriteMod("bravo", "bravo", "");
+            string address = "Pack/" + ContentArtworkAliases.FileName;
+            WriteFile(
+                Path.Combine(_root, "Mods", "alpha", "Content"),
+                address,
+                "<ArtworkAliases><Image From='Pack/shared' To='Pack/first'/>"
+                    + "<Image From='Pack/alpha' To='Pack/second'/></ArtworkAliases>"
+            );
+            WriteFile(
+                Path.Combine(_root, "Mods", "bravo", "Content"),
+                address,
+                "<ArtworkAliases><Image From='Pack/shared' To='Pack/third'/>"
+                    + "<Image From='Pack/bravo' To='Pack/fourth'/></ArtworkAliases>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(
+                resolver.DescribeModOverrides()["alpha"],
+                Is.EqualTo(new[] { "bravo overrides Pack/shared." })
+            );
+        }
+
+        [Test]
+        public void Discover_RequiredModWouldLoadLater_LoadsRequirementFirst()
+        {
+            WriteMod(
+                "01-patch",
+                "patch",
+                "<Requires><Mod><ID>base-mod</ID><Version>1.0.0</Version></Mod></Requires>"
+            );
+            WriteMod("02-base", "base-mod", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "base-mod", "patch" },
+                resolver.Mods.Select(mod => mod.ID)
+            );
+        }
+
+        [Test]
+        public void Discover_MissingRequirement_KeepsModAvailableWithReason()
+        {
+            WriteMod("patch", "patch", "<Requires><Mod><ID>base-mod</ID></Mod></Requires>");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(resolver.AvailableMods.Single().ID, Is.EqualTo("patch"));
+            Assert.That(resolver.Mods, Is.Empty);
+            Assert.That(resolver.ModIssues.Single().Message, Does.Contain("base-mod"));
+        }
+
+        [Test]
+        public void Discover_ModOrderCycle_LeavesAnUnrelatedModActive()
+        {
+            WriteMod("first", "first", "<LoadAfter><ModID>second</ModID></LoadAfter>");
+            WriteMod("second", "second", "<LoadAfter><ModID>first</ModID></LoadAfter>");
+            WriteMod("unrelated", "unrelated", "");
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(resolver.Mods.Single().ID, Is.EqualTo("unrelated"));
+            Assert.That(
+                resolver.ModIssues.Select(issue => issue.ID),
+                Is.EquivalentTo(new[] { "first", "second" })
+            );
+        }
+
+        [Test]
+        public void Discover_IncompatibleMods_BecomeLoadableWhenOneIsDisabled()
+        {
+            WriteMod(
+                "first",
+                "first",
+                "<IncompatibleWith><ModID>second</ModID></IncompatibleWith>"
+            );
+            WriteMod("second", "second", "");
+
+            ContentFileResolver both = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+            ContentFileResolver one = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                new[] { "second" }
+            );
+
+            Assert.That(both.Mods, Is.Empty);
+            Assert.That(one.Mods.Single().ID, Is.EqualTo("first"));
+        }
+
+        [Test]
         public void Discover_CompatibleMod_LoadsDefinitionAndContent()
         {
             WriteFile(_packRoot, "Data/ships.xml", "base");
@@ -378,6 +743,22 @@ namespace Rebellion.Tests.Content
             );
 
             Assert.IsEmpty(resolver.Mods);
+        }
+
+        /// <summary>
+        /// Installs a compatible mod with the supplied relationship metadata.
+        /// </summary>
+        /// <param name="folder">The installation folder.</param>
+        /// <param name="id">The mod identity.</param>
+        /// <param name="relationships">The authored dependency and ordering XML.</param>
+        private void WriteMod(string folder, string id, string relationships)
+        {
+            WriteFile(
+                Path.Combine(_root, "Mods", folder),
+                "mod.xml",
+                $"<ContentModDefinition><ID>{id}</ID><DisplayName>{id}</DisplayName><Version>1.0.0</Version>"
+                    + $"<BasePackID>base-pack</BasePackID><BasePackVersion>1.0.0</BasePackVersion>{relationships}</ContentModDefinition>"
+            );
         }
 
         /// <summary>

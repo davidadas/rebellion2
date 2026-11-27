@@ -535,6 +535,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             _newGameSettingsView.CloseRequested += CloseNewGameSettings;
             _newGameSettingsView.StartRequested += StartCustomGame;
             _newGameSettingsView.ContentPackRequested += SelectCustomGameContentPack;
+            _newGameSettingsView.ScenarioRequested += SelectCustomGameScenario;
             ContentPack contentPack = bootstrap.GetContentPack();
             _customGamePacks = ContentPackLoader.DiscoverPacks(contentPack.ContentRootPath);
             _newGameSettingsView.Initialize(
@@ -569,14 +570,39 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             throw new InvalidDataException($"Content pack '{packID}' is not installed.");
 
         ContentPack current = _appBootstrap.GetContentPack();
-        string[] disabledModIDs = _appBootstrap
-            .GetUserSettingsManager()
-            .Settings.Content.DisabledModIDs;
-        ContentPack selected = ContentPackLoader.OpenExact(
-            current.ContentRootPath,
-            definition.ID,
-            definition.DefaultScenarioID,
-            disabledModIDs
+        UserContentSettings preferences = _appBootstrap.GetUserSettingsManager().Settings.Content;
+        ContentPack selected =
+            current.Definition.ID == definition.ID
+                ? ContentPackLoader.LoadPack(current.FileResolver, current.Definition, null)
+                : ContentPackLoader.OpenDefaultScenario(
+                    current.ContentRootPath,
+                    definition.ID,
+                    preferences.DisabledModIDs,
+                    preferences.GetModLoadOrder(definition.ID),
+                    appliedModVersions: preferences.GetModVersions(definition.ID)
+                );
+        _newGameSettingsView.Initialize(
+            selected,
+            GameLaunchContext.CreateDefaultSummary(selected),
+            _optionsMenuPrefab,
+            _customGamePresetManager,
+            _customGamePacks
+        );
+    }
+
+    /// <summary>
+    /// Loads a selected campaign with the same active mods as the custom game being edited.
+    /// </summary>
+    /// <param name="current">The selected pack and its active mods.</param>
+    /// <param name="scenarioID">The requested campaign identity.</param>
+    private void SelectCustomGameScenario(ContentPack current, string scenarioID)
+    {
+        if (current == null || current.Scenario.ID == scenarioID)
+            return;
+        ContentPack selected = ContentPackLoader.LoadPack(
+            current.FileResolver,
+            current.Definition,
+            scenarioID
         );
         _newGameSettingsView.Initialize(
             selected,
@@ -618,6 +644,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             _newGameSettingsView.CloseRequested -= CloseNewGameSettings;
             _newGameSettingsView.StartRequested -= StartCustomGame;
             _newGameSettingsView.ContentPackRequested -= SelectCustomGameContentPack;
+            _newGameSettingsView.ScenarioRequested -= SelectCustomGameScenario;
         }
         AppBootstrap.Instance?.GetCancelStack()?.Unregister(this);
         if (view?.OptionsWindowManager != null)

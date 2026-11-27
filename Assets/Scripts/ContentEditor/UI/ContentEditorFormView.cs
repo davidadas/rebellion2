@@ -2915,12 +2915,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     internal string GetUnitCompactBackgroundAddress(bool inTransit, bool defense)
     {
         FactionTheme theme = ResolveUnitFactionTheme();
-        if (
-            theme == null
-            && selectedRecord.Kind == "Building"
-            && inTransit
-            && !string.IsNullOrEmpty(project.Definition.NeutralThemePath)
-        )
+        if (theme == null && selectedRecord.Kind == "Building" && inTransit)
             theme = ContentEditorPresentation.GetNeutralTheme(project);
         return selectedRecord.Kind switch
         {

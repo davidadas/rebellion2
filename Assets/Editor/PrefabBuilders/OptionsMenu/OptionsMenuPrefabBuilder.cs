@@ -215,7 +215,11 @@ public static class OptionsMenuPrefabBuilder
         Color textDim
     )
     {
-        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "CONTENT PACK", 16, accent);
+        int bodyWidth = UILayout.GetSourceRect(modsPage).width - 2 * _optionsContentInset;
+        int viewportWidth = _optionsContentInset + bodyWidth + 1;
+        int scrollBarX = viewportWidth + 4;
+        const int scrollBarWidth = 10;
+        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "ERA", 16, accent);
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
             "ContentPack",
@@ -223,34 +227,40 @@ public static class OptionsMenuPrefabBuilder
             41,
             out Button packPrev,
             out Button packNext,
-            fieldX: 20,
-            fieldWidth: 329,
+            fieldX: _optionsContentInset,
+            fieldWidth: bodyWidth,
             textInset: 28
         );
         packValue.overflowMode = TextOverflowModes.Ellipsis;
-        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
+        CreateOptionsSectionHeader(
+            modsPage,
+            "LoadedModsHeader",
+            "MODS & CONTENT PACKS",
+            74,
+            accent
+        );
 
         TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
         status.text = "NO MODS LOADED";
         status.color = textDim;
         status.fontSize = 11;
         status.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(status.rectTransform, 20, 101, 348, 18);
+        SetSourceRect(status.rectTransform, _optionsContentInset, 101, bodyWidth, 18);
 
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
             modsPage,
             "ModsScrollArea",
-            20,
+            0,
             126,
-            348,
+            scrollBarX + scrollBarWidth,
             176,
             0,
             0,
-            330,
+            viewportWidth,
             176,
-            334,
+            scrollBarX,
             0,
-            12,
+            scrollBarWidth,
             176,
             out RectTransform modsContent
         );
@@ -259,7 +269,7 @@ public static class OptionsMenuPrefabBuilder
             "ModRowTemplate",
             0,
             "Mod",
-            0,
+            _optionsContentInset,
             0
         );
         rowTemplate.gameObject.SetActive(false);

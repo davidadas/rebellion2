@@ -86,7 +86,7 @@ public sealed class ContentEditorPlaySession : IDisposable
                 session.PackPath,
                 options.ScenarioID
             );
-            ContentEditorPackValidator.ValidateDefinitions(pack);
+            CampaignContentValidator.ValidateDefinitions(pack);
             GameSummary summary = pack.CreateDefaultGameSummary();
             if (!pack.Scenario.PlayableFactionIDs.Contains(options.FactionID))
                 throw new ArgumentException(
@@ -98,7 +98,7 @@ public sealed class ContentEditorPlaySession : IDisposable
             summary.Difficulty = options.Difficulty;
             await Task.Yield();
             cancellationToken.ThrowIfCancellationRequested();
-            ContentEditorPackValidator.ValidateStartup(pack, summary);
+            CampaignContentValidator.ValidateStartup(pack, summary);
             Directory.CreateDirectory(session.ProfilePath);
             using FileStream output = new FileStream(
                 session.RequestPath,

@@ -894,6 +894,230 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
+        public void Render_PendingMod_MarksThePendingCard()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow("loaded", "1.0.0", "Already applied", loadOrder: 1),
+                        new OptionsModRow(
+                            "pending",
+                            "1.0.0",
+                            "New installation",
+                            loaded: false,
+                            loadOrder: 2
+                        ),
+                    }
+                )
+            );
+
+            TextMeshProUGUI status = GetField<List<TextMeshProUGUI>>("_modDetails")
+                .Single(detail => detail.gameObject.activeSelf);
+            Assert.That(status.text, Is.EqualTo("Pending Apply"));
+            Assert.That(
+                status
+                    .transform.parent.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == "New installation"),
+                Is.True
+            );
+        }
+
+        [Test]
+        public void ModsPage_MoveLater_RequestsTheFirstDisplayedModByID()
+        {
+            string movedID = null;
+            int destination = 0;
+            _view.ModMoveRequested += (id, order) => (movedID, destination) = (id, order);
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow("second", "1.0.0", "Second Mod", loadOrder: 2),
+                        new OptionsModRow("first", "1.0.0", "First Mod", loadOrder: 1),
+                    }
+                )
+            );
+
+            _view
+                .GetComponentsInChildren<OptionsModDragHandle>()
+                .Single(handle => handle.ModID == "first")
+                .GetComponent<Button>()
+                .onClick.Invoke();
+            _view
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Move later" && button.interactable)
+                .onClick.Invoke();
+
+            Assert.AreEqual("first", movedID);
+            Assert.AreEqual(2, destination);
+        }
+
+        [Test]
+        public void ModsPage_ReorderGrip_SitsOutsideTheLeftEdgeOfTheRow()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow(
+                            "first",
+                            "1.0.0",
+                            "A very long mod name with a description",
+                            loadOrder: 1
+                        ),
+                        new OptionsModRow("second", "1.0.0", "Second Mod", loadOrder: 2),
+                    }
+                )
+            );
+
+            OptionsModDragHandle handle = _view
+                .GetComponentsInChildren<OptionsModDragHandle>()
+                .Single(grip => grip.ModID == "first");
+            RectInt gripBounds = UILayout.GetSourceRect(handle.rectTransform);
+            RectInt rowBounds = UILayout.GetSourceRect((RectTransform)handle.transform.parent);
+            Assert.That(gripBounds.xMax, Is.LessThanOrEqualTo(0));
+            Assert.That(gripBounds.xMin + rowBounds.xMin, Is.GreaterThanOrEqualTo(0));
+        }
+
+        [Test]
+        public void ModsPage_DragAcrossSeveralRows_RequestsTheFinalLoadPosition()
+        {
+            string movedID = null;
+            int destination = 0;
+            _view.ModMoveRequested += (id, order) => (movedID, destination) = (id, order);
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: Enumerable
+                        .Range(1, 4)
+                        .Select(index => new OptionsModRow(
+                            $"mod-{index}",
+                            "1.0",
+                            $"Mod {index}",
+                            loadOrder: index
+                        ))
+                        .ToArray()
+                )
+            );
+            OptionsModDragHandle handle = _view
+                .GetComponentsInChildren<OptionsModDragHandle>()
+                .Single(grip => grip.ModID == "mod-1");
+            RectTransform viewport = GetField<ScrollAreaView>("_modsScrollArea").ViewportRoot;
+            var pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    handle.transform.TransformPoint(handle.rectTransform.rect.center)
+                ),
+            };
+            handle.Card.OnBeginDrag(pointer);
+            pointer.position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                viewport.TransformPoint(new Vector2(viewport.rect.center.x, viewport.rect.yMin + 4))
+            );
+            handle.Card.OnDrag(pointer);
+            handle.Card.OnEndDrag(pointer);
+
+            Assert.That((movedID, destination), Is.EqualTo(("mod-1", 4)));
+        }
+
+        [Test]
+        public void ModsPage_OrderedMod_ShowsItsNameWithoutAPositionPrefix()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[] { new OptionsModRow("first", "1.0", "First Mod", loadOrder: 1) }
+                )
+            );
+
+            OptionsModCardView card = _view.GetComponentsInChildren<OptionsModCardView>().Single();
+            Assert.That(
+                card.Row.transform.Find("LabelTextField").GetComponent<TMP_Text>().text,
+                Is.EqualTo("First Mod")
+            );
+        }
+
+        [Test]
+        public void ModsPage_CardPickup_MovesTheEntireCardWithThePointer()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow("first", "1.0", "First Mod", loadOrder: 1),
+                        new OptionsModRow("second", "1.0", "Second Mod", loadOrder: 2),
+                    }
+                )
+            );
+            OptionsModCardView card = _view
+                .GetComponentsInChildren<OptionsModCardView>()
+                .Single(item => item.Grip.ModID == "first");
+            Transform originalParent = card.transform.parent;
+            var pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                position = RectTransformUtility.WorldToScreenPoint(
+                    null,
+                    card.Rect.TransformPoint(card.Rect.rect.center)
+                ),
+                pointerPressRaycast = new RaycastResult { gameObject = card.gameObject },
+            };
+            pointer.pressPosition = pointer.position;
+            Image background = card.GetComponent<Image>();
+            Sprite idle = background.sprite;
+
+            card.OnPointerDown(pointer);
+            Assert.That(background.sprite, Is.Not.EqualTo(idle));
+            card.OnBeginDrag(pointer);
+            Vector2 originalPosition = card.Rect.anchoredPosition;
+            pointer.position += new Vector2(12f, -30f);
+            card.OnDrag(pointer);
+
+            Assert.That(card.transform.parent, Is.Not.SameAs(originalParent));
+            Assert.That(card.Rect.anchoredPosition.y, Is.LessThan(originalPosition.y));
+            card.OnEndDrag(pointer);
+            Assert.That(card.transform.parent, Is.SameAs(originalParent));
+        }
+
+        [Test]
+        public void ModsPage_EnableSwitchDrag_LeavesTheCardInTheList()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[]
+                    {
+                        new OptionsModRow("first", "1.0", "First Mod", loadOrder: 1),
+                        new OptionsModRow("second", "1.0", "Second Mod", loadOrder: 2),
+                    }
+                )
+            );
+            OptionsModCardView card = _view
+                .GetComponentsInChildren<OptionsModCardView>()
+                .Single(item => item.Grip.ModID == "first");
+            Transform originalParent = card.transform.parent;
+            var pointer = new PointerEventData(null)
+            {
+                button = PointerEventData.InputButton.Left,
+                pointerPressRaycast = new RaycastResult
+                {
+                    gameObject = card.Row.transform.Find("ToggleImage").gameObject,
+                },
+            };
+
+            card.OnBeginDrag(pointer);
+
+            Assert.That(card.transform.parent, Is.SameAs(originalParent));
+        }
+
+        [Test]
         public void ModsPage_InvalidMod_RendersDisabledErrorRow()
         {
             _view.Render(

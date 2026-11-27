@@ -11,7 +11,8 @@
         "Rebellion.Gameplay",
         "Unity.TextMeshPro",
         "UnityEngine.UI",
-        "Rebellion.Util"
+        "Rebellion.Util",
+        "Rebellion.UserSettings"
     ],
     "includePlatforms": [],
     "excludePlatforms": [],

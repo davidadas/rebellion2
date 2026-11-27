@@ -377,13 +377,12 @@ public sealed class ContentEditorNavigation
                 .ToArray();
             if (records.Length == 0)
                 continue;
-            string themePath = records
-                .Select(record => record.Element.Element("ThemePath")?.Value)
-                .FirstOrDefault(path => !string.IsNullOrEmpty(path));
-            ContentPackEditorRecord theme = projectCatalogs
-                .Where(catalog => catalog.Document.Address == "Pack/" + themePath)
-                .SelectMany(catalog => catalog.Records)
-                .FirstOrDefault(record => record.Kind == "FactionTheme");
+            ContentPackEditorRecord theme = ContentEditorPresentation.GetFactionThemeRecord(
+                projectCatalogs,
+                records.FirstOrDefault(record =>
+                    record.Kind == "Faction" && record.Element.Element("ID") != null
+                )
+            );
             ContentPackEditorField[] fields = records
                 .SelectMany(ContentEditorInspectorLayout.GetFields)
                 .Concat(ContentEditorContentSections.FactionArtworkFields(theme))

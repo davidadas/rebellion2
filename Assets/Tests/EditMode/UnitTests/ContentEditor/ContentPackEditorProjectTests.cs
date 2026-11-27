@@ -1581,7 +1581,7 @@ namespace Rebellion.Tests.ContentEditor
                 "Data/theme.xml",
                 "<FactionTheme><StrategyAdvisor><AnimationImageRoot>Pack/Frames</AnimationImageRoot></StrategyAdvisor></FactionTheme>"
             );
-            UpdateBasePackDefinition(pack => pack.NeutralThemePath = "Data/theme.xml");
+            UpdateBasePackDefinition(pack => pack.ThemePaths = new() { "Data/theme.xml" });
             WriteFixtureFile("Frames/idle/frame-001.png", "fixture");
             WriteFixtureFile("Frames/idle/frame-002.png", "fixture");
             ContentPackEditorProject project = CreateWorkingProject();

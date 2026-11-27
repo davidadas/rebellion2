@@ -550,8 +550,8 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 .SelectMany(item => item.GetComponentsInChildren<TMP_Text>())
                 .Select(label => label.text)
                 .ToArray();
-            CollectionAssert.Contains(fileItems, "Save pack");
-            CollectionAssert.Contains(fileItems, "Validate pack");
+            CollectionAssert.Contains(fileItems, "Save");
+            CollectionAssert.Contains(fileItems, "Validate");
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "Edit")
                 .onClick.Invoke();
@@ -612,7 +612,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             Assert.IsTrue(heading.fontStyle.HasFlag(FontStyles.Bold));
             Assert.AreNotEqual(heading.color, heading.transform.parent.GetComponent<Image>().color);
             StringAssert.Contains(
-                "not guaranteed",
+                "Projects may require updates between releases.",
                 prompt
                     .GetComponentsInChildren<TMP_Text>()
                     .Single(text => text.text.Contains("alpha"))
@@ -2614,12 +2614,11 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void ShowNewPackDialog_OpeningTheWorkflow_LeavesTheWorkingPackUnchanged()
+        public void ShowNewEraDialog_OpeningTheWorkflow_LeavesTheWorkingPackUnchanged()
         {
-            view.ShowNewPackDialog();
+            view.ShowNewEraDialog();
             Assert.IsTrue(
-                view.GetComponentsInChildren<TMP_Text>()
-                    .Any(label => label.text == "New content pack")
+                view.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "New era")
             );
             Assert.IsFalse(project.IsDirty);
         }
@@ -2638,6 +2637,80 @@ namespace Rebellion.Tests.ContentEditor.Integration
             Assert.IsTrue(
                 view.GetComponentsInChildren<Button>().Any(button => button.name == "View")
             );
+        }
+
+        [TestCase("Mod / content pack", "New mod / content pack")]
+        [TestCase("Era", "New era")]
+        public void ClearProject_SelectingProjectType_OpensTheMatchingForm(
+            string projectType,
+            string heading
+        )
+        {
+            view.ClearProject();
+
+            Button create = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "NewPack");
+            Assert.That(create.GetComponentInChildren<TMP_Text>().text, Is.EqualTo("New project"));
+            create.onClick.Invoke();
+            ContextMenuCommandView[] commands =
+                view.GetComponentsInChildren<ContextMenuCommandView>();
+            string[] choices = commands
+                .Select(item => item.GetComponentInChildren<TMP_Text>().text)
+                .ToArray();
+            CollectionAssert.AreEqual(new[] { "Mod / content pack", "Era" }, choices);
+            commands[Array.IndexOf(choices, projectType)]
+                .OnPointerClick(
+                    new PointerEventData(EventSystem.current)
+                    {
+                        button = PointerEventData.InputButton.Left,
+                    }
+                );
+
+            ContentEditorPackDialogView dialog =
+                view.GetComponentInChildren<ContentEditorPackDialogView>();
+            Assert.That(dialog.IsOpen, Is.True);
+            Assert.That(
+                dialog.GetComponentsInChildren<TMP_Text>().Any(label => label.text == heading),
+                Is.True
+            );
+        }
+
+        [Test]
+        public void ProjectsPage_AuthoringPreview_UsesTheFullProjectWidth()
+        {
+            GameObject prefab = UnityEditor.AssetDatabase.LoadAssetAtPath<GameObject>(
+                "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab"
+            );
+            ScrollAreaLayout page = prefab
+                .GetComponentsInChildren<ScrollAreaLayout>(true)
+                .Single(scroll => scroll.name == "ProjectsPage");
+            var projects = (RectTransform)page.ScrollArea.ContentRoot.Find("Projects");
+
+            Assert.That(
+                page.ScrollArea.ViewportWidth,
+                Is.GreaterThanOrEqualTo(projects.rect.width)
+            );
+        }
+
+        [Test]
+        public void ClearProject_FileNewSubmenu_ListsModsBeforeEras()
+        {
+            view.ClearProject();
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "File")
+                .onClick.Invoke();
+            var commands = view.GetComponentsInChildren<ContextMenuCommandView>();
+            ContextMenuCommandView create = commands.Single(command =>
+                command.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "New")
+            );
+            create.OnPointerEnter(new PointerEventData(EventSystem.current));
+            view.GetComponentInChildren<ContextMenuView>(true).RenderCurrent();
+
+            string[] choices = view.GetComponentsInChildren<ContextMenuCommandView>()
+                .Except(commands)
+                .Select(command => command.GetComponentInChildren<TMP_Text>().text)
+                .ToArray();
+            CollectionAssert.AreEqual(new[] { "Mod / content pack", "Era" }, choices);
         }
 
         [Test]
@@ -2727,10 +2800,10 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void HandleKeyboardShortcut_EscapeWithNewPackDialog_ClosesOnlyTheDialog()
+        public void HandleKeyboardShortcut_EscapeWithNewEraDialog_ClosesOnlyTheDialog()
         {
             view.RenderStatus("Keep this status.", false);
-            view.ShowNewPackDialog();
+            view.ShowNewEraDialog();
             Event key = new Event { type = EventType.KeyDown, keyCode = KeyCode.Escape };
             Assert.IsTrue(view.HandleKeyboardShortcut(key));
             Assert.AreEqual(EventType.Used, key.type);

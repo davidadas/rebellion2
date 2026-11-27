@@ -1,7 +1,10 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading.Tasks;
 using Rebellion.Multiplayer;
+using Rebellion.Util.Logging;
 using UnityEngine;
 
 /// <summary>
@@ -27,6 +30,11 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     public SaveGameFailureNotice PersistenceNotice { get; } = new();
 
+    /// <summary>
+    /// Gets the content recovery message to display in the Mods settings.
+    /// </summary>
+    internal string ContentRecoveryMessage { get; private set; }
+
     [SerializeField]
     private AppInputController inputController;
 
@@ -42,6 +50,7 @@ public sealed class AppBootstrap : MonoBehaviour
     private ContentAssets _contentAssets;
     private ContentModelCache _contentModelCache;
     private ContentPack _contentPack;
+    private ContentPack _menuPack;
     private CutsceneManager _cutsceneManager;
     private DisplayManager _displayManager;
     private GraphicsManager _graphicsManager;
@@ -151,18 +160,23 @@ public sealed class AppBootstrap : MonoBehaviour
         _sceneLoader = GetComponent<SceneLoader>();
         if (_sceneLoader == null)
             _sceneLoader = gameObject.AddComponent<SceneLoader>();
+        UserContentSettings startupContent = null;
         if (_contentPack == null)
         {
-            // Read the saved selection directly; the settings system loads after content.
-            UserSettingsManager.TryReadContentSelection(
-                out string selectedPackID,
-                out string selectedScenarioID,
-                out string[] disabledModIDs
-            );
+            // Content is required before the settings system can apply runtime preferences.
+            startupContent = UserSettingsManager.ReadContentSelection();
             _contentPack = ContentPackLoader.OpenActive(
-                selectedPackID,
-                selectedScenarioID,
-                disabledModIDs
+                ContentPackLoader.ResolveContentRootPath(),
+                startupContent.ActivePackID,
+                startupContent.ActiveScenarioID,
+                startupContent.DisabledModIDs,
+                startupContent.GetModLoadOrder,
+                message =>
+                {
+                    ContentRecoveryMessage = message;
+                    GameLogger.Warning(message);
+                },
+                startupContent.GetModVersions
             );
         }
         _mainMenuApplicationPreload = ContentPackLoader.LoadApplicationPreloadManifest(
@@ -212,6 +226,8 @@ public sealed class AppBootstrap : MonoBehaviour
             _analyticsManager
         );
         _userSettingsManager.Load();
+        if (startupContent != null && ContentRecoveryMessage == null)
+            RememberStartupModOrder(startupContent);
         FrameRateMonitor.EnsureExists(
             transform,
             () => _userSettingsManager?.Settings?.UserInterface?.ShowFrameRate == true
@@ -228,6 +244,59 @@ public sealed class AppBootstrap : MonoBehaviour
 
         inputController?.Initialize(inputManager, _cancelStack, _sessionManager, LoadSaveAsync);
         LoadingScreenController.Prepare(this);
+    }
+
+    /// <summary>
+    /// Records the verified startup order and migrates the legacy order for other installed packs.
+    /// </summary>
+    /// <param name="startupContent">The preferences used to resolve the startup content.</param>
+    private void RememberStartupModOrder(UserContentSettings startupContent)
+    {
+        UserContentSettings preferences = _userSettingsManager.Settings.Content;
+        if (!startupContent.HasModLoadOrderPreferences)
+        {
+            foreach (
+                ContentPackDefinition definition in ContentPackLoader.DiscoverPacks(
+                    _contentPack.ContentRootPath
+                )
+            )
+            {
+                if (definition.ID == _contentPack.Definition.ID)
+                    continue;
+                if (
+                    ContentPackLoader.TryDiscoverModResolver(
+                        _contentPack.ContentRootPath,
+                        definition.ID,
+                        startupContent.DisabledModIDs,
+                        out ContentFileResolver resolver,
+                        out _
+                    )
+                )
+                    preferences.SetModLoadOrder(
+                        definition.ID,
+                        resolver.Mods.Select(mod => mod.ID),
+                        resolver.Mods.Select(mod => mod.Version)
+                    );
+            }
+        }
+        if (
+            !(startupContent.GetModLoadOrder(_contentPack.Definition.ID)?.Count > 0)
+            || !_contentPack.FileResolver.ModIssues.Any(issue => issue.BlocksSelection)
+        )
+            preferences.SetModLoadOrder(
+                _contentPack.Definition.ID,
+                _contentPack.FileResolver.Mods.Select(mod => mod.ID),
+                _contentPack.FileResolver.Mods.Select(mod => mod.Version)
+            );
+    }
+
+    /// <summary>
+    /// Remembers which menu content to restore when leaving a saved campaign.
+    /// </summary>
+    /// <param name="menuPack">The menu pack retained by the transition.</param>
+    internal void SetMenuPack(ContentPack menuPack)
+    {
+        _menuPack = menuPack;
     }
 
     /// <summary>
@@ -277,6 +346,17 @@ public sealed class AppBootstrap : MonoBehaviour
     /// <returns>True when the transition was accepted.</returns>
     internal bool LoadScene(string sceneAddress, Action<Exception> loadFailed = null)
     {
+        if (
+            sceneAddress == "MainMenu"
+            && _menuPack != null
+            && !ReferenceEquals(_contentPack, _menuPack)
+            && !LoadingScreenController.IsLoadInProgress
+            && !IsSceneTransitionInProgress
+        )
+        {
+            LoadingScreenController.RestoreMenuContent(this, _menuPack);
+            return true;
+        }
         return _sceneLoader.Load(sceneAddress, loadFailed);
     }
 
@@ -331,8 +411,13 @@ public sealed class AppBootstrap : MonoBehaviour
     /// </summary>
     /// <param name="packID">The installed pack to select.</param>
     /// <param name="disabledModIDs">The mods excluded from the new selection.</param>
+    /// <param name="preferredModOrder">The staged per-pack mod order.</param>
     /// <returns>True when a main-menu content transition was started.</returns>
-    internal bool ReloadContent(string packID, string[] disabledModIDs)
+    internal bool ReloadContent(
+        string packID,
+        string[] disabledModIDs,
+        IReadOnlyList<string> preferredModOrder = null
+    )
     {
         if (
             string.IsNullOrWhiteSpace(packID)
@@ -342,7 +427,7 @@ public sealed class AppBootstrap : MonoBehaviour
         )
             return false;
 
-        LoadingScreenController.ReloadContent(this, packID, disabledModIDs);
+        LoadingScreenController.ReloadContent(this, packID, disabledModIDs, preferredModOrder);
         return true;
     }
 
@@ -355,7 +440,8 @@ public sealed class AppBootstrap : MonoBehaviour
         return new ContentLoadOperation(
             _contentPack,
             _userSettingsManager.Settings.Content,
-            new[] { _mainMenuPreloadID, _strategyPreloadID }
+            new[] { _mainMenuPreloadID, _strategyPreloadID },
+            _menuPack
         );
     }
 

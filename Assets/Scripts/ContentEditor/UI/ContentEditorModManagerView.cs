@@ -10,6 +10,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
 {
+    private const int _sectionHeadingHeight = 36;
+
     [SerializeField]
     private RectTransform panel;
 
@@ -113,6 +115,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI resultCount;
 
     [SerializeField]
+    private TextMeshProUGUI modsHeading;
+
+    [SerializeField]
+    private TextMeshProUGUI erasHeading;
+
+    [SerializeField]
     private TextMeshProUGUI emptyResults;
 
     [SerializeField]
@@ -146,6 +154,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private int inlineFilterHeight;
     private string[] activePackIDs = Array.Empty<string>();
     private bool library;
+    private int libraryModCount;
     private SelectableListView<ContentEditorModCardView, ContentEditorModEntry> packageList;
     private IReadOnlyList<ContentEditorModCardView> Rows =>
         packageList?.Rows ?? Array.Empty<ContentEditorModCardView>();
@@ -232,6 +241,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || clearSearchButton == null
             || resetButton == null
             || resultCount == null
+            || modsHeading == null
+            || erasHeading == null
             || emptyResults == null
             || creator == null
             || popularity == null
@@ -421,6 +432,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         bool resetScroll
     )
     {
+        library = installed;
+        libraryModCount = installed ? items.Count(entry => !entry.IsEra) : 0;
         LayoutResults(items.Count, resetScroll);
         packageList.Render(
             items,
@@ -438,9 +451,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
                     InstallPackage,
                     FindIcon(entry.IconUrl)
                 ),
-            (entry, _) => entry.ID == selectedPackageID
+            installed ? null : (entry, _) => entry.ID == selectedPackageID
         );
-        library = installed;
         pageTitle.text = installed ? "Library" : "Browse";
         defaultPackControls.SetActive(installed);
         search.gameObject.SetActive(!installed);
@@ -451,14 +463,27 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             filterPanel.SetActive(false);
         importButton.gameObject.SetActive(installed && !browseLocked);
         LayoutResults(items.Count, resetScroll);
-        string noun = total == 1 ? " mod" : " mods";
+        if (installed && !browseLocked && !detailOverlay.activeSelf)
+        {
+            ContentEditorModCardView selected = Rows.FirstOrDefault(row =>
+                row.gameObject.activeSelf && row.Entry.ID == selectedPackageID
+            );
+            if (selected != null)
+            {
+                RectTransform rect = (RectTransform)selected.transform;
+                packages.ScrollArea.RevealContentRect(-rect.anchoredPosition.y, rect.rect.height);
+                SelectableListRowView.FocusRowForNavigation(packages.transform, true, selected);
+            }
+        }
+        resultCount.gameObject.SetActive(!installed);
+        string noun = total == 1 ? " package" : " packages";
         resultCount.text =
             items.Count == total ? total + noun : items.Count + " of " + total + noun;
         emptyResults.gameObject.SetActive(items.Count == 0);
         emptyResults.text =
             total == 0 && installed
-                ? "No mods installed yet.\n\nBrowse community mods or install a mod ZIP from your computer."
-                : "No mods found.\n\nTry a shorter search or clear your filters.";
+                ? "No content installed yet.\n\nBrowse community content or install a ZIP from your computer."
+                : "No packages found.\n\nTry a shorter search or clear your filters.";
         UpdateClearControls();
         RequestIcons();
     }
@@ -474,7 +499,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         int expandedTop =
             176 + Mathf.CeilToInt(((RectTransform)filterPanel.transform).rect.height) + 56;
         int contentTop =
-            library ? 248
+            library ? 212
             : hasFilters ? expandedTop
             : 216;
         bool hasStatus = !string.IsNullOrEmpty(status.text);
@@ -517,8 +542,23 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             Mathf.FloorToInt(panel.rect.width),
             160
         );
+        modsHeading.gameObject.SetActive(library && libraryModCount > 0);
+        erasHeading.gameObject.SetActive(library && count > libraryModCount);
+        int modsHeight = modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
+        int erasHeight = erasHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
+        int widthAvailable = Mathf.FloorToInt(packages.ScrollArea.ViewportWidth);
+        UILayout.SetSourceRect(modsHeading.rectTransform, 0, 0, widthAvailable, 28);
+        UILayout.SetSourceRect(
+            erasHeading.rectTransform,
+            0,
+            modsHeight + libraryModCount * _cardHeight,
+            widthAvailable,
+            28
+        );
         packages.SetContentHeight(
             inlineFilterHeight
+                + modsHeight
+                + erasHeight
                 + (
                     inlineFilterHeight > 0 && count == 0
                         ? 208
@@ -534,10 +574,25 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             rect.sizeDelta = new Vector2(width, _cardHeight - 16);
             rect.anchoredPosition = new Vector2(
                 index % _columns * (width + 16),
-                -inlineFilterHeight - (index / _columns) * _cardHeight
+                -GetCardTop(index)
             );
         }
     }
+
+    /// <summary>
+    /// Locates a card in the same coordinate space as the scroll viewport and section headings.
+    /// </summary>
+    /// <param name="index">The ordered card slot.</param>
+    /// <returns>The distance from the content root's top edge.</returns>
+    private int GetCardTop(int index) =>
+        inlineFilterHeight
+        + (index / _columns) * _cardHeight
+        + (modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0)
+        + (
+            erasHeading.gameObject.activeSelf && index >= libraryModCount
+                ? _sectionHeadingHeight
+                : 0
+        );
 
     /// <summary>
     /// Lists installed packs without changing the saved default during rendering.
@@ -550,7 +605,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         activePack.ClearOptions();
         activePack.AddOptions(
             packs.Count == 0
-                ? new List<string> { "No content packs installed" }
+                ? new List<string> { "No eras installed" }
                 : packs.Select(pack => pack.DisplayName).ToList()
         );
         activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
@@ -603,7 +658,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         detailContent.SetActive(entry != null);
         emptyDetails.gameObject.SetActive(entry == null);
         heading.text = entry?.Name ?? "Select a package";
-        creator.text = entry == null ? string.Empty : "by " + entry.Author;
+        creator.text = string.IsNullOrEmpty(entry?.Author) ? string.Empty : "by " + entry.Author;
         popularity.text = entry?.Popularity ?? string.Empty;
         updated.text =
             entry?.Listing == null
@@ -912,8 +967,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         return Rows.Where(
                 (row, index) =>
                     row.gameObject.activeSelf
-                    && inlineFilterHeight + index / _columns * _cardHeight < bottom
-                    && inlineFilterHeight + (index / _columns + 1) * _cardHeight > top
+                    && GetCardTop(index) < bottom
+                    && GetCardTop(index) + _cardHeight > top
             )
             .Select(row => row.Entry?.IconUrl)
             .Append(detailOverlay.activeSelf ? selectedIconUrl : null)
@@ -958,16 +1013,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Opens installation feedback and requests the latest release for the chosen package.
+    /// Starts installation from the card while keeping the current results visible.
     /// </summary>
     /// <param name="id">The package to install or update.</param>
     private void InstallPackage(string id)
     {
-        HideFilters();
-        detailOverlay.SetActive(true);
-        detailOverlay.transform.SetAsLastSibling();
+        selectedPackageID = id;
         QuickInstallRequested?.Invoke(id);
-        RequestIcons();
     }
 
     /// <summary>

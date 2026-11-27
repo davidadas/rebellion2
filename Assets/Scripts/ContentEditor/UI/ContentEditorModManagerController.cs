@@ -16,7 +16,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     private readonly ModPackageStore store;
     private readonly string contentRoot;
     private readonly Func<string[]> protectedIDs;
-    private readonly Action<string, Action> confirm;
+    private readonly Action<string, string, Action> confirm;
     private readonly Action contentChanged;
     private readonly CancellationTokenSource lifetime = new();
     private readonly Dictionary<string, string> compatibilityIssues = new(StringComparer.Ordinal);
@@ -53,7 +53,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         ContentEditorModManagerView view,
         string contentRoot,
         Func<string[]> protectedIDs,
-        Action<string, Action> confirm,
+        Action<string, string, Action> confirm,
         Action contentChanged,
         ModPackageStore packageStore = null
     )
@@ -234,8 +234,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             view.Filters.Read(),
             installedTab ? ContentEditorModSort.Name : view.Sort
         );
-        UserSettingsManager.TryReadContentSelection(out string activePack, out _, out _);
-        activePack = string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack;
+        string activePack = GetActivePack(UserSettingsManager.ReadContentSelection());
         HashSet<string> managedIDs = new(
             installed.SelectMany(item => item.Content).Select(item => item.ID)
         );
@@ -246,7 +245,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
                         .Where(pack => !managedIDs.Contains(pack.ID))
                         .Select(pack => new ContentEditorModEntry(null, null, includedPack: pack))
                 )
-                .OrderBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
+                .OrderBy(entry => entry.IsEra)
+                .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         view.RenderActivePacks(packs, activePack);
         if (!entries.Any(entry => entry.ID == selection))
@@ -292,10 +292,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
         ContentPackDefinition included = packs.FirstOrDefault(pack => pack.ID == selection);
         if (listing == null && current == null && included != null)
         {
-            UserSettingsManager.TryReadContentSelection(out string savedPack, out _, out _);
             bool isDefault =
-                included.ID
-                == (string.IsNullOrWhiteSpace(savedPack) ? catalogDefaultPack : savedPack);
+                included.ID == GetActivePack(UserSettingsManager.ReadContentSelection());
             view.RenderDetails(
                 new ContentEditorModEntry(
                     null,
@@ -303,15 +301,15 @@ internal sealed class ContentEditorModManagerController : IDisposable
                     includedPack: included,
                     isActivePack: isDefault
                 ),
-                isDefault ? "Default content pack" : "Included with the game",
+                isDefault ? "Default era" : "Era",
                 string.Empty,
-                "Included with Rebellion 2.",
-                "Version: " + included.Version,
+                string.Empty,
+                "Version " + included.Version,
                 new List<string>(),
                 0,
                 string.Empty,
                 false,
-                isDefault ? "Active content pack" : "Set as default",
+                isDefault ? "Default era" : "Set as default",
                 !isDefault,
                 false,
                 false
@@ -348,26 +346,24 @@ internal sealed class ContentEditorModManagerController : IDisposable
             if (listing.is_deprecated)
                 text += "\n\nThe author has marked this package as deprecated.";
         }
-        UserSettingsManager.TryReadContentSelection(
-            out string activePack,
-            out _,
-            out string[] disabled
-        );
-        activePack = string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack;
+        UserContentSettings preferences = UserSettingsManager.ReadContentSelection();
+        string activePack = GetActivePack(preferences);
         bool pack = current?.Content.Any(content => content.IsPack) == true;
+        if (current != null)
+            metadata.Insert(0, pack ? "Era" : ContentEditorPackDialogView.ModProjectLabel);
         bool enabled =
             current
                 ?.Content.Where(content => !content.IsPack)
-                .All(content => !disabled.Contains(content.ID)) == true;
+                .All(content => IsAddOnEnabled(content, preferences)) == true;
         bool selected =
             pack && current.Content.Any(content => content.IsPack && content.ID == activePack);
         if (pack)
             text += selected
                 ? "\n\nUsed by default when starting the game."
-                : "\n\nSet as active to use this pack by default.";
+                : "\n\nSet as default to use this era when starting the game.";
         string activateLabel = pack
             ? selected
-                ? "Active content pack"
+                ? "Default era"
                 : "Set as default"
             : enabled
                 ? "Disable add-on"
@@ -385,7 +381,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                     ? "Needs attention"
                     : pack
                         ? selected
-                            ? "Active content pack"
+                            ? "Default era"
                             : "Installed"
                         : enabled
                             ? "Enabled"
@@ -463,18 +459,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
             InstalledModPackage package = installed.Single(item =>
                 item.PackageID == listing.full_name
             );
-            UserSettingsManager.TryReadContentSelection(
-                out string activePack,
-                out _,
-                out string[] disabled
-            );
-            if (
-                IsPackageEnabled(
-                    package,
-                    string.IsNullOrWhiteSpace(activePack) ? catalogDefaultPack : activePack,
-                    disabled
-                )
-            )
+            UserContentSettings preferences = UserSettingsManager.ReadContentSelection();
+            if (IsPackageEnabled(package, GetActivePack(preferences), preferences))
                 EnableRequiredAddOns(package);
             contentChanged();
             view.SetStatus(listing.name + " " + version.version_number + " installed.");
@@ -491,7 +477,6 @@ internal sealed class ContentEditorModManagerController : IDisposable
             return;
         selection = id;
         versionIndex = 0;
-        RenderDetails();
         Install();
     }
 
@@ -556,22 +541,18 @@ internal sealed class ContentEditorModManagerController : IDisposable
             return;
         try
         {
-            UserSettingsManager.TryReadContentSelection(
-                out string activePack,
-                out _,
-                out string[] disabled
-            );
-            string[] mods = current.Content.Select(content => content.ID).ToArray();
-            if (mods.Any(disabled.Contains))
+            UserContentSettings preferences = UserSettingsManager.ReadContentSelection();
+            InstalledModContent[] mods = current
+                .Content.Where(content => !content.IsPack)
+                .ToArray();
+            if (mods.Any(content => !IsAddOnEnabled(content, preferences)))
                 EnableRequiredAddOns(current);
             else
             {
-                activePack = string.IsNullOrWhiteSpace(activePack)
-                    ? catalogDefaultPack
-                    : activePack;
+                string activePack = GetActivePack(preferences);
                 InstalledModPackage dependent = installed.FirstOrDefault(candidate =>
                     candidate.PackageID != current.PackageID
-                    && IsPackageEnabled(candidate, activePack, disabled)
+                    && IsPackageEnabled(candidate, activePack, preferences)
                     && store
                         .GetRequiredPackages(candidate)
                         .Any(required => required.PackageID == current.PackageID)
@@ -579,9 +560,9 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 if (dependent != null)
                     throw new InvalidOperationException(
                         dependent.Name
-                            + " requires this add-on. Disable that package or choose another default pack first."
+                            + " requires this add-on. Disable that package or choose another default era first."
                     );
-                UserSettingsManager.UpdateContentSelection(null, null, mods, false);
+                UserSettingsManager.UpdateContentSelection(contentRoot, null, null, mods, false);
             }
             RenderRows();
             RenderDetails();
@@ -603,19 +584,17 @@ internal sealed class ContentEditorModManagerController : IDisposable
         {
             ContentPackDefinition pack = packs.Single(item => item.ID == id);
             ContentPackLoader.CreatePackResolver(contentRoot, id);
-            UserSettingsManager.TryReadContentSelection(out _, out _, out string[] disabled);
-            string[] mods = installed
-                .Where(item => IsPackageEnabled(item, id, disabled))
+            UserContentSettings preferences = UserSettingsManager.ReadContentSelection();
+            InstalledModContent[] mods = installed
+                .Where(item => IsPackageEnabled(item, id, preferences))
                 .SelectMany(store.GetRequiredPackages)
                 .SelectMany(item => item.Content)
                 .Where(content => !content.IsPack)
-                .Select(content => content.ID)
-                .Distinct(StringComparer.Ordinal)
                 .ToArray();
-            UserSettingsManager.UpdateContentSelection(id, pack.DefaultScenarioID, mods, true);
+            UserSettingsManager.UpdateContentSelection(contentRoot, id, null, mods, true);
             RenderRows();
             RenderDetails();
-            view.SetStatus("Default content pack: " + pack.DisplayName);
+            view.SetStatus("Default era set to " + pack.DisplayName + ".");
         }
         catch (Exception exception)
         {
@@ -630,14 +609,12 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// <param name="package">The package whose add-ons are being enabled.</param>
     private void EnableRequiredAddOns(InstalledModPackage package)
     {
-        string[] mods = store
+        InstalledModContent[] mods = store
             .GetRequiredPackages(package)
             .SelectMany(item => item.Content)
             .Where(content => !content.IsPack)
-            .Select(content => content.ID)
-            .Distinct(StringComparer.Ordinal)
             .ToArray();
-        UserSettingsManager.UpdateContentSelection(null, null, mods, true);
+        UserSettingsManager.UpdateContentSelection(contentRoot, null, null, mods, true);
     }
 
     /// <summary>
@@ -645,18 +622,41 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// </summary>
     /// <param name="package">The installed package to inspect.</param>
     /// <param name="activePack">The selected pack identity.</param>
-    /// <param name="disabled">The add-on identities excluded from loading.</param>
+    /// <param name="preferences">The recorded enabled state for each era.</param>
     /// <returns>Whether this package participates in the selected content.</returns>
     private static bool IsPackageEnabled(
         InstalledModPackage package,
         string activePack,
-        string[] disabled
+        UserContentSettings preferences
     ) =>
         package.Content.Any(content =>
             content.IsPack
                 ? content.ID == activePack
-                : content.BasePackID == activePack && !disabled.Contains(content.ID)
+                : content.BasePackID == activePack && IsAddOnEnabled(content, preferences)
         );
+
+    /// <summary>
+    /// Checks both the disabled list and the last applied membership of an add-on.
+    /// </summary>
+    /// <param name="content">The installed add-on to check.</param>
+    /// <param name="preferences">The saved content selection.</param>
+    /// <returns>Whether the add-on is enabled for its era.</returns>
+    private static bool IsAddOnEnabled(
+        InstalledModContent content,
+        UserContentSettings preferences
+    ) =>
+        !preferences.DisabledModIDs.Contains(content.ID)
+        && preferences.GetModLoadOrder(content.BasePackID)?.Contains(content.ID) != false;
+
+    /// <summary>
+    /// Resolves a blank preference to the installation's default era.
+    /// </summary>
+    /// <param name="preferences">The saved content selection.</param>
+    /// <returns>The selected era's ID.</returns>
+    private string GetActivePack(UserContentSettings preferences) =>
+        string.IsNullOrWhiteSpace(preferences.ActivePackID)
+            ? catalogDefaultPack
+            : preferences.ActivePackID;
 
     /// <summary>
     /// Confirms removal while keeping the exact selected package stable across the prompt.
@@ -670,28 +670,66 @@ internal sealed class ContentEditorModManagerController : IDisposable
             "Uninstall "
                 + current.Name
                 + "?\n\nIts files will be retained in the mod manager's recovery folder. Existing saves may require this content.",
+            "Uninstall",
             () =>
                 Run(token =>
                 {
                     token.ThrowIfCancellationRequested();
                     store.Uninstall(current, protectedIDs());
-                    UserSettingsManager.TryReadContentSelection(
-                        out string activePack,
-                        out _,
-                        out _
-                    );
-                    if (current.Content.Any(content => content.IsPack && content.ID == activePack))
-                        UserSettingsManager.UpdateContentSelection(
-                            string.Empty,
-                            string.Empty,
-                            Array.Empty<string>(),
-                            true
-                        );
-                    contentChanged();
+                    RefreshAfterRemoval(current.Content);
                     view.SetStatus(current.Name + " uninstalled.");
                     return Task.CompletedTask;
                 })
         );
+    }
+
+    /// <summary>
+    /// Offers removal of the exact conflicting copy after the failed install has released its lease.
+    /// </summary>
+    /// <param name="conflict">The existing installation reported by the package store.</param>
+    private void ConfirmConflictRemoval(ModPackageStore.InstallationConflict conflict)
+    {
+        bool hasVersion = !string.IsNullOrWhiteSpace(conflict.Version);
+        string copy = !hasVersion ? conflict.Name : conflict.Name + " " + conflict.Version;
+        confirm(
+            conflict.Message
+                + "\n\nDelete "
+                + (hasVersion ? "version " + conflict.Version : "this copy")
+                + "? Its files will be moved to recovery.",
+            "Delete existing copy",
+            () =>
+                Run(token =>
+                {
+                    token.ThrowIfCancellationRequested();
+                    InstalledModContent[] removed = store.RemoveConflictingInstallation(
+                        conflict,
+                        protectedIDs()
+                    );
+                    RefreshAfterRemoval(removed);
+                    view.SetStatus(copy + " moved to recovery. Retry the install.");
+                    return Task.CompletedTask;
+                })
+        );
+    }
+
+    /// <summary>
+    /// Removes stale selections and reloads available project baselines after deleting installed content.
+    /// </summary>
+    /// <param name="removed">The native definitions removed from the library.</param>
+    private void RefreshAfterRemoval(InstalledModContent[] removed)
+    {
+        string activePack = GetActivePack(UserSettingsManager.ReadContentSelection());
+        string nextPack = removed.Any(content => content.IsPack && content.ID == activePack)
+            ? string.Empty
+            : null;
+        UserSettingsManager.UpdateContentSelection(
+            contentRoot,
+            nextPack,
+            string.Empty,
+            removed.Where(content => !content.IsPack).ToArray(),
+            false
+        );
+        contentChanged();
     }
 
     /// <summary>
@@ -731,6 +769,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         if (IsBusy || disposed)
             return;
         string operationResult = "No active downloads";
+        ModPackageStore.InstallationConflict installConflict = null;
         await operation.RunAsync(
             action,
             value =>
@@ -741,7 +780,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
             },
             exception =>
             {
-                operationResult = "Content operation failed. Open Library for details.";
+                installConflict = exception as ModPackageStore.InstallationConflict;
+                operationResult = "Content operation failed";
                 view.SetStatus(exception.Message);
             },
             () =>
@@ -766,6 +806,8 @@ internal sealed class ContentEditorModManagerController : IDisposable
             },
             lifetime.Token
         );
+        if (installConflict != null && !disposed)
+            ConfirmConflictRemoval(installConflict);
     }
 
     /// <summary>

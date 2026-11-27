@@ -1,4 +1,7 @@
+using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Xml.Linq;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 using UnityEngine;
@@ -269,7 +272,28 @@ public sealed class FactionArtworkDefaults
 /// Provides the serialized collection root for faction themes.
 /// </summary>
 [PersistableObject]
-public sealed class FactionThemes : List<FactionTheme> { }
+public sealed class FactionThemes : List<FactionTheme>
+{
+    /// <summary>
+    /// Recognizes the default presentation used when there is no faction owner.
+    /// </summary>
+    /// <param name="factionID">The ID declared in the theme.</param>
+    /// <returns>Whether the theme is Neutral.</returns>
+    public static bool IsNeutral(string factionID) =>
+        string.IsNullOrEmpty(factionID)
+        || string.Equals(factionID, "DEFAULT", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Reads registered identities from a resolved theme document.
+    /// </summary>
+    /// <param name="xml">The effective theme XML.</param>
+    /// <returns>The declared faction IDs, including Neutral.</returns>
+    public static IEnumerable<string> ReadFactionIDs(string xml) =>
+        XElement
+            .Parse(xml)
+            .DescendantsAndSelf(nameof(FactionTheme))
+            .Select(theme => (string)theme.Element(nameof(FactionTheme.FactionInstanceID)));
+}
 
 /// <summary>
 /// Maps one planet-destroying ship type to its presentation movie.

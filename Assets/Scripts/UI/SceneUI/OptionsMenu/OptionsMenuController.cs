@@ -45,6 +45,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private bool _persistencePending;
     private int _selectedPackIndex = -1;
     private ContentFileResolver _selectedModResolver;
+    private string[] _pendingModOrder;
+    private IReadOnlyDictionary<string, IReadOnlyList<string>> _selectedModOverrides;
     private string _selectedPackError = string.Empty;
     private string _statusMessage = string.Empty;
     private bool _statusIsError;
@@ -268,8 +270,15 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 _showModsTab,
                 _settingsSession.GetGraphicsValues(),
                 _settingsSession.Analytics.IsEnabled,
-                _statusMessage,
+                string.IsNullOrEmpty(_statusMessage) && _activeTab == OptionsMenuTab.Mods
+                    ? _bootstrap.ContentRecoveryMessage
+                    : _statusMessage,
                 _statusIsError
+                    || (
+                        string.IsNullOrEmpty(_statusMessage)
+                        && _activeTab == OptionsMenuTab.Mods
+                        && _bootstrap.ContentRecoveryMessage != null
+                    )
             )
         );
     }
@@ -288,27 +297,44 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _selectedDisabledModIDs,
             StringComparer.Ordinal
         );
-        HashSet<string> loadedIDs = new HashSet<string>(
-            _bootstrap.GetContentPack().FileResolver.Mods.Select(mod => mod.ID),
-            StringComparer.Ordinal
-        );
+        ContentPack activePack = _bootstrap.GetContentPack();
+        var loadedReleases =
+            activePack.Definition.ID == GetSelectedPack()?.ID
+                ? activePack.FileResolver.Mods.Select(mod => (mod.ID, mod.Version)).ToHashSet()
+                : new HashSet<(string, string)>();
+        var selectedOrder = resolver
+            .Mods.Select((mod, index) => (mod.ID, Index: index + 1))
+            .ToDictionary(entry => entry.ID, entry => entry.Index, StringComparer.Ordinal);
+        var issues = resolver.ModIssues.ToLookup(issue => issue.ID, StringComparer.Ordinal);
+        var overrides = _selectedModOverrides ??= resolver.DescribeModOverrides();
+        var available = resolver
+            .AvailableMods.Select(mod => mod.ID)
+            .ToHashSet(StringComparer.Ordinal);
         return resolver
             .AvailableMods.Select(mod => new OptionsModRow(
                 mod.ID,
                 mod.Version,
                 mod.DisplayName,
                 !disabledIDs.Contains(mod.ID),
-                loadedIDs.Contains(mod.ID)
+                loadedReleases.Contains((mod.ID, mod.Version)),
+                string.Join("\n", issues[mod.ID].Select(issue => issue.Message)),
+                selectedOrder.TryGetValue(mod.ID, out int order) ? order : 0,
+                overrides.TryGetValue(mod.ID, out var warnings)
+                    ? string.Join("\n", warnings)
+                    : string.Empty
             ))
             .Concat(
-                resolver.ModIssues.Select(issue => new OptionsModRow(
-                    issue.ID,
-                    string.Empty,
-                    issue.DisplayName,
-                    false,
-                    false,
-                    issue.Message
-                ))
+                resolver
+                    .ModIssues.Where(issue => !available.Contains(issue.ID))
+                    .Select(issue => new OptionsModRow(
+                        issue.ID,
+                        string.Empty,
+                        issue.DisplayName,
+                        issue.IsDuplicate && !disabledIDs.Contains(issue.ID),
+                        false,
+                        issue.Message,
+                        canToggleWithoutVersion: issue.IsDuplicate
+                    ))
             );
     }
 
@@ -318,17 +344,82 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     /// <param name="index">The compatible mod's displayed index.</param>
     private void HandleModToggle(int index)
     {
-        ContentFileResolver resolver = _selectedModResolver;
-        if (resolver == null)
+        OptionsModRow mod = BuildModRows().ElementAtOrDefault(index);
+        if (mod?.CanToggle != true)
             return;
 
-        if (index < 0 || index >= resolver.AvailableMods.Count)
-            return;
-
-        string id = resolver.AvailableMods[index].ID;
+        string id = mod.ID;
         if (!_selectedDisabledModIDs.Add(id))
             _selectedDisabledModIDs.Remove(id);
+        RefreshSelectedModResolver();
         MarkDirty();
+    }
+
+    /// <summary>
+    /// Moves an active mod to a new position within the pending order.
+    /// </summary>
+    /// <param name="modID">The selected stable mod ID.</param>
+    /// <param name="destination">The requested one-based load position after the move.</param>
+    private void HandleModMove(string modID, int destination)
+    {
+        IReadOnlyList<ContentModDefinition> mods = _selectedModResolver?.Mods;
+        InstalledContentPack pack = GetSelectedPack();
+        if (mods == null || pack == null)
+            return;
+
+        string[] ids = mods.Select(mod => mod.ID).ToArray();
+        int from = Array.IndexOf(ids, modID);
+        int to = destination - 1;
+        if (from < 0 || to < 0 || to >= ids.Length || from == to)
+            return;
+
+        string restriction = ContentModLoadOrder.GetMoveRestriction(mods, from, to);
+        if (restriction.Length != 0)
+        {
+            SetStatus(restriction, true);
+            return;
+        }
+
+        string moved = ids[from];
+        if (from < to)
+            Array.Copy(ids, from + 1, ids, from, to - from);
+        else
+            Array.Copy(ids, to, ids, to + 1, from - to);
+        ids[to] = moved;
+        _pendingModOrder = ids;
+        RefreshSelectedModResolver();
+        MarkDirty();
+    }
+
+    /// <summary>
+    /// Reports the rule blocking a proposed drop without changing the installed selection.
+    /// </summary>
+    /// <param name="origin">The current one-based load position.</param>
+    /// <param name="destination">The proposed one-based load position.</param>
+    /// <returns>The blocking rule, or an empty string for a permitted move.</returns>
+    private string GetModMoveRestriction(int origin, int destination)
+    {
+        IReadOnlyList<ContentModDefinition> mods = _selectedModResolver?.Mods;
+        if (
+            mods == null
+            || origin <= 0
+            || origin > mods.Count
+            || destination <= 0
+            || destination > mods.Count
+        )
+            return string.Empty;
+        return ContentModLoadOrder.GetMoveRestriction(mods, origin - 1, destination - 1);
+    }
+
+    /// <summary>
+    /// Gets the order to use when previewing or applying a selected pack.
+    /// </summary>
+    /// <param name="packID">The selected pack identity.</param>
+    /// <returns>The staged order, or the stored order when the player has made no moves.</returns>
+    private IReadOnlyList<string> GetPendingModOrder(string packID)
+    {
+        return _pendingModOrder
+            ?? _bootstrap.GetUserSettingsManager().Settings.Content.GetModLoadOrder(packID);
     }
 
     /// <summary>
@@ -355,8 +446,25 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             _selectedPackIndex >= 0 && _selectedPackIndex < _availablePacks.Count
                 ? _selectedPackIndex
                 : 0;
-        _selectedPackIndex =
+        int nextIndex =
             (currentIndex + Math.Sign(delta) + _availablePacks.Count) % _availablePacks.Count;
+        if (IsModOrderDirty(_bootstrap.GetUserSettingsManager().Settings.Content))
+            RequestConfirm(
+                "Discard the unapplied mod order for this pack?",
+                () => SelectPack(nextIndex)
+            );
+        else
+            SelectPack(nextIndex);
+    }
+
+    /// <summary>
+    /// Selects the content pack shown by the Mods page.
+    /// </summary>
+    /// <param name="index">The index of the installed pack.</param>
+    private void SelectPack(int index)
+    {
+        _pendingModOrder = null;
+        _selectedPackIndex = index;
         RefreshSelectedModResolver();
         MarkDirty();
     }
@@ -367,6 +475,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     private void RefreshSelectedModResolver()
     {
         ContentPack contentPack = _bootstrap.GetContentPack();
+        _selectedModOverrides = null;
         if (!_showModsTab)
         {
             _selectedPackError = string.Empty;
@@ -385,7 +494,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             selectedPack.ID,
             _selectedDisabledModIDs,
             out _selectedModResolver,
-            out _selectedPackError
+            out _selectedPackError,
+            GetPendingModOrder(selectedPack.ID)
         );
     }
 
@@ -396,6 +506,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
         _selectedPackIndex = ResolveSavedPackIndex(content);
+        _pendingModOrder = null;
         _selectedDisabledModIDs.Clear();
         foreach (string disabledModID in content.DisabledModIDs ?? Array.Empty<string>())
             _selectedDisabledModIDs.Add(disabledModID);
@@ -447,8 +558,19 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         UserContentSettings content = _bootstrap.GetUserSettingsManager().Settings.Content;
         return _selectedPackIndex != ResolveSavedPackIndex(content)
-            || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>());
+            || !_selectedDisabledModIDs.SetEquals(content.DisabledModIDs ?? Array.Empty<string>())
+            || IsModOrderDirty(content);
     }
+
+    /// <summary>
+    /// Checks whether the selected pack has an unapplied order preference.
+    /// </summary>
+    /// <param name="content">The applied preferences.</param>
+    /// <returns>True when the staged mod IDs differ from the applied order.</returns>
+    private bool IsModOrderDirty(UserContentSettings content) =>
+        _pendingModOrder?.SequenceEqual(
+            content.GetModLoadOrder(GetSelectedPack()?.ID) ?? Array.Empty<string>()
+        ) == false;
 
     /// <summary>
     /// Reloads the pending content selection through the persistent loading presentation.
@@ -457,14 +579,27 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (_selectedModResolver == null || !string.IsNullOrWhiteSpace(_selectedPackError))
         {
-            SetStatus(BuildContentErrorStatus("Content pack"), true);
+            SetStatus(BuildContentErrorStatus("Era"), true);
+            return;
+        }
+
+        ContentModIssue blocked = _selectedModResolver.ModIssues.FirstOrDefault(issue =>
+            issue.BlocksSelection
+        );
+        if (blocked != null)
+        {
+            SetStatus("Resolve the mod errors before applying.", true);
             return;
         }
 
         InstalledContentPack selectedPack = GetSelectedPack();
         if (
             selectedPack != null
-            && _bootstrap.ReloadContent(selectedPack.ID, _selectedDisabledModIDs.ToArray())
+            && _bootstrap.ReloadContent(
+                selectedPack.ID,
+                _selectedDisabledModIDs.ToArray(),
+                GetPendingModOrder(selectedPack.ID)
+            )
         )
             Close();
         else
@@ -491,6 +626,9 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
             return false;
 
         if (_view.TryCancelLegalDocuments())
+            return true;
+
+        if (_view.TryCancelModOrdering())
             return true;
 
         if (_bindingSession.ListeningRow >= 0)
@@ -538,6 +676,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         target.IdleBarLocationRequested += HandleIdleBarLocationRequested;
         target.GameLaunchSpeedRequested += HandleGameLaunchSpeedRequested;
         target.ModToggleRequested += HandleModToggle;
+        target.ModMoveRequested += HandleModMove;
+        target.CheckModMove = GetModMoveRestriction;
         target.ContentPackStepRequested += HandleContentPackStep;
         target.AutosaveIntervalChanged += HandleAutosaveIntervalChanged;
         target.AutosavesToKeepChanged += HandleAutosavesToKeepChanged;
@@ -953,10 +1093,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 RequestConfirm("Reset all key bindings to their defaults?", ApplyActiveDefaults);
                 break;
             case OptionsMenuTab.Mods:
-                RequestConfirm(
-                    "Reset the content pack and mods to their defaults?",
-                    ApplyActiveDefaults
-                );
+                RequestConfirm("Reset the era and mods to their defaults?", ApplyActiveDefaults);
                 break;
         }
     }
@@ -994,6 +1131,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         if (_selectedPackIndex < 0)
             _selectedPackIndex = ResolvePackIndex(_bootstrap.GetContentPack().Definition.ID);
         _selectedDisabledModIDs.Clear();
+        _pendingModOrder = Array.Empty<string>();
         RefreshSelectedModResolver();
         MarkDirty();
     }
@@ -1320,6 +1458,8 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
         destroyed.IdleBarLocationRequested -= HandleIdleBarLocationRequested;
         destroyed.GameLaunchSpeedRequested -= HandleGameLaunchSpeedRequested;
         destroyed.ModToggleRequested -= HandleModToggle;
+        destroyed.ModMoveRequested -= HandleModMove;
+        destroyed.CheckModMove = null;
         destroyed.ContentPackStepRequested -= HandleContentPackStep;
         destroyed.AutosaveIntervalChanged -= HandleAutosaveIntervalChanged;
         destroyed.AutosavesToKeepChanged -= HandleAutosavesToKeepChanged;

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
@@ -239,13 +240,17 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
     /// <summary>
     /// Combines remembered folders with the open project's live metadata.
     /// </summary>
-    /// <returns>The local projects, with the active working copy first.</returns>
-    private ContentEditorLocalProject[] GetLocalProjects() =>
-        currentEntry != null
-            ? new[] { currentEntry }
-                .Concat(local.Where(item => item.Folder != currentEntry.Folder))
-                .ToArray()
-            : local;
+    /// <returns>Local mods followed by eras, with the working copy first within its type.</returns>
+    private ContentEditorLocalProject[] GetLocalProjects()
+    {
+        IEnumerable<ContentEditorLocalProject> projects =
+            currentEntry != null
+                ? new[] { currentEntry }.Concat(
+                    local.Where(item => item.Folder != currentEntry.Folder)
+                )
+                : local;
+        return projects.OrderBy(item => item.IsEra).ToArray();
+    }
 
     /// <summary>
     /// Reuses both lists at their visible viewport widths.
@@ -273,10 +278,14 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
                 bool active = current?.PackRootPath == item.Folder;
                 row.Render(
                     item.Name,
-                    item.Error ?? (active ? "Open now · " : "Version ") + item.Version,
+                    item.Error
+                        ?? (item.IsEra ? "Era" : ContentEditorPackDialogView.ModProjectLabel)
+                            + " · "
+                            + item.Version
+                            + (active ? " · Open now" : string.Empty),
                     item.Folder,
                     active ? "Edit" : "Open",
-                    item.Error == null && editingEnabled
+                    (item.Error == null || item.NeedsType) && editingEnabled
                         ? () => OpenRequested?.Invoke(item.Folder)
                         : null,
                     "Publish…",

@@ -21,11 +21,12 @@ internal sealed class ContentEditorPublishingSettings
     /// <summary>
     /// Checks the listing and release identity before preparing an installable package.
     /// </summary>
-    /// <param name="definition">The pack whose version and identity are being released.</param>
-    internal void Validate(ContentPackDefinition definition)
+    /// <param name="id">The native project identity being released.</param>
+    /// <param name="version">The native project release version.</param>
+    internal void Validate(string id, string version)
     {
         ValidateListing();
-        ValidateRelease(definition);
+        ValidateRelease(id, version);
     }
 
     /// <summary>
@@ -56,24 +57,22 @@ internal sealed class ContentEditorPublishingSettings
     /// <summary>
     /// Checks the canonical identity and dependency syntax before opening release review.
     /// </summary>
-    /// <param name="definition">The pack whose identity and version will be published.</param>
-    internal void ValidateRelease(ContentPackDefinition definition)
+    /// <param name="id">The native project identity being released.</param>
+    /// <param name="version">The native project release version.</param>
+    internal void ValidateRelease(string id, string version)
     {
         if (
             !Regex.IsMatch(
-                definition.Version ?? string.Empty,
+                version ?? string.Empty,
                 "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$"
             )
         )
             throw new ArgumentException(
-                "Set the pack version to three numbers, such as 1.2.0, before exporting."
+                "Set the project version to three numbers, such as 1.2.0, before exporting."
             );
-        if (
-            string.IsNullOrWhiteSpace(definition.ID)
-            || !Regex.IsMatch(definition.ID, "^[A-Za-z0-9_-]+$")
-        )
+        if (string.IsNullOrWhiteSpace(id) || !Regex.IsMatch(id, "^[A-Za-z0-9_-]+$"))
             throw new ArgumentException(
-                "The pack ID must contain only letters, numbers, underscores, or hyphens."
+                "The project ID must contain only letters, numbers, underscores, or hyphens."
             );
         if (
             GetDependencies()

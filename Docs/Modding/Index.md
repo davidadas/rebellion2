@@ -8,6 +8,11 @@ content can therefore be changed without rebuilding the game.
 A Rebellion 2 mod is a folder containing a `mod.xml` definition and a `Content` folder. It can
 replace art, audio, video, configuration, or game-data files without rebuilding the game.
 
+In the Content Pack Editor, choose **File > New mod** and pick the era it works with. A mod
+saved in the default location appears in **Options > Mods**. Select **Apply** there to activate it.
+Use **Export** to share a ZIP. A content pack that adds units, factions, or scenarios uses this
+same mod workflow. **Open project** supports both mods and eras.
+
 ### 1. Find the Mods directory
 
 Run Rebellion 2 once so the installer or launcher can finish creating the game directories. Open
@@ -53,6 +58,18 @@ Create a new folder directly inside `Mods`. For this example, create `ModExample
 `ID` is the stable identifier stored in saves, `Version` identifies the installed revision, and
 `DisplayName` is shown in the game. `BasePackID` and `BasePackVersion` identify the exact content
 pack release the mod supports.
+
+Use `Requires` for dependencies. Give each required mod an `ID` and optionally a `Version`.
+`LoadAfter` and `LoadBefore` take mod IDs and set the order when those mods are enabled.
+`IncompatibleWith` lists mods that need to be turned off before this one can load.
+
+```xml
+<Requires>
+  <Mod><ID>ship-rebalance</ID><Version>1.2.0</Version></Mod>
+</Requires>
+<LoadAfter><ModID>fleet-art</ModID></LoadAfter>
+<IncompatibleWith><ModID>alternate-balance</ModID></IncompatibleWith>
+```
 
 ### 3. Add replacement content
 
@@ -129,19 +146,38 @@ content and returns to the main menu without closing. If the mod does not appear
 active content pack. Invalid definitions are skipped without preventing other mods from loading; the
 game log identifies the invalid file and reason.
 
-Mods load by folder name in ordinal order. If two enabled mods replace the same file, the later
-folder wins. Custom load-order controls are not yet supported. Files not supplied by a mod fall back
-to the selected content pack and then the shared application content.
+New compatible mods appear checked in the proposed selection. The game uses the last applied
+selection until you select **Apply**. Dependency and ordering rules determine where new mods fit.
 
-## Derived content packs
+Drag a mod card or its left grip to change its position. Click the grip or press Enter on it
+to open **Move earlier** and **Move later**. **Apply** checks the combined rules and campaign
+startup before saving the selection. The Mods page
+shows blocked mods and which mod wins when two mods replace the same file or write the same
+setting. The mod that loads later wins. Files fall back to the selected pack and then shared
+application content.
 
-A selectable content pack can inherit files from another installed pack by declaring its ID in
-`pack.xml`:
+Each mod project needs its own ID. If multiple active folders declare the same ID, the Mods page
+lists the folders and blocks the copies from loading for new games. A save can still load a unique
+match for its recorded version. If that version appears in multiple folders, keep one copy and retry.
+
+Mods can also register campaigns and factions with `ExtendsPack` set to `true` in `mod.xml`.
+Use a sparse `Content/Pack/pack.xml` to add paths under `ScenarioPaths` or `FactionPaths`.
+Keep the base pack's identity in the base manifest. Registered campaigns appear under **Scenario**
+in Custom Game when there is more than one available.
+
+## Creating an era
+
+Choose **New project** in **Projects** when players should select your content pack as its own
+game setup. Pick a base pack. The editor saves your changes in the new project's folder.
+Export records every inherited release in `pack.xml`, starting with the immediate parent.
 
 ```xml
 <ContentPack>
   <ID>example-derived-pack</ID>
   <BasePackID>example-base-pack</BasePackID>
+  <InheritedPacks>
+    <Pack ID="example-base-pack" Version="1.0.0" />
+  </InheritedPacks>
   <!-- The remaining pack definition is omitted here. -->
 </ContentPack>
 ```
@@ -290,10 +326,10 @@ also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a l
 ### Community mods
 
 Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
-choose the default pack or enable add-ons for the next game startup. **Install from file…**
+choose the default era or enable add-ons for the next game startup. **Install from file…**
 accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
 
-### Publishing a content pack
+### Publishing an era or mod
 
 Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
 description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
@@ -305,7 +341,7 @@ For direct publishing, click the Thunderstore connection link. Create a service 
 stored in the operating system's credential store, never in the project or export. Linux requires
 libsecret and a running Secret Service. Click the connection link after restarting to reconnect.
 
-Select **Review release**, then **Publish release**. Every update needs a new content-pack version.
+Select **Review release**, then **Publish release**. Every update needs a new project version.
 If submission times out, check the package's Thunderstore page before retrying.
 
 ### Sharing an add-on mod
@@ -328,5 +364,13 @@ through the ownership-verifying installer.
 
 Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
 Increment a mod's version when publishing compatibility-breaking changes, then test both new games
-and existing saves. Use the Options menu's Mods page to select a content pack and enable or disable
+and existing saves. Use the Options menu's Mods page to select an era and enable or disable
 its compatible mods. Select **Apply** to reload those changes and return to the main menu.
+
+The game restores a save's recorded mod order for that campaign and keeps your new-game
+preferences. You can keep an older pack or mod
+release in its own folder under `Mods/.versions`. The game checks there for the exact saved version
+when the active installation has a different version. For exported derived packs, keep the exact
+inherited releases available there or installed. Older derived packs without these version
+declarations continue to resolve their parents by ID.
+The mod manager retains intact replaced or removed releases for exact-version loading.

@@ -18,22 +18,22 @@ internal static class ContentEditorPublishingStorage
     /// <returns>The editable publishing draft.</returns>
     internal static ContentEditorPublishingSettings Load(ContentPackEditorProject project)
     {
-        string path = Path.Combine(project.PackRootPath, DirectoryName, "settings.json");
+        string path = Path.Combine(project.ProjectRootPath, DirectoryName, "settings.json");
         ContentEditorPublishingSettings settings = File.Exists(path)
             ? JsonUtility.FromJson<ContentEditorPublishingSettings>(
                 AtomicTextFile.ReadAllText(path)
             )
             : new ContentEditorPublishingSettings
             {
-                PackageName = Regex.Replace(project.Definition.ID, "[^A-Za-z0-9_]", "_"),
-                Readme = "# " + project.Definition.DisplayName + "\n\n",
+                PackageName = Regex.Replace(project.ID, "[^A-Za-z0-9_]", "_"),
+                Readme = "# " + project.DisplayName + "\n\n",
             };
         if (settings == null)
             throw new InvalidDataException("The publishing draft could not be read.");
         settings.IconPath = File.Exists(
-            Path.Combine(project.PackRootPath, DirectoryName, "icon.png")
+            Path.Combine(project.ProjectRootPath, DirectoryName, "icon.png")
         )
-            ? Path.Combine(project.PackRootPath, DirectoryName, "icon.png")
+            ? Path.Combine(project.ProjectRootPath, DirectoryName, "icon.png")
             : string.Empty;
         return settings;
     }
@@ -48,15 +48,15 @@ internal static class ContentEditorPublishingStorage
         ContentEditorPublishingSettings settings
     )
     {
-        string folder = Path.Combine(project.PackRootPath, DirectoryName);
+        string folder = Path.Combine(project.ProjectRootPath, DirectoryName);
         string path = Path.Combine(folder, "settings.json");
-        ContentEditorPaths.VerifyWritePath(project, path);
+        ContentEditorPaths.VerifyWritePath(project, path, projectFolder: true);
         Directory.CreateDirectory(folder);
         if (!string.IsNullOrWhiteSpace(settings.IconPath))
         {
             byte[] icon = ReadIcon(settings.IconPath);
             string destination = Path.Combine(folder, "icon.png");
-            ContentEditorPaths.VerifyWritePath(project, destination);
+            ContentEditorPaths.VerifyWritePath(project, destination, projectFolder: true);
             ContentPackEditorStorage.WriteBytesAtomically(destination, icon);
         }
         ContentEditorPublishingSettings copy =
@@ -80,8 +80,8 @@ internal static class ContentEditorPublishingStorage
     internal static string SaveIcon(ContentPackEditorProject project, byte[] bytes)
     {
         ValidateIcon(bytes);
-        string path = Path.Combine(project.PackRootPath, DirectoryName, "icon.png");
-        ContentEditorPaths.VerifyWritePath(project, path);
+        string path = Path.Combine(project.ProjectRootPath, DirectoryName, "icon.png");
+        ContentEditorPaths.VerifyWritePath(project, path, projectFolder: true);
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         ContentPackEditorStorage.WriteBytesAtomically(path, bytes);
         return path;

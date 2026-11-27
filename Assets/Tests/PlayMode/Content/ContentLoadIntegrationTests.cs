@@ -130,6 +130,99 @@ namespace Rebellion.Tests.Content
         }
 
         [UnityTest]
+        public IEnumerator LoadSave_DifferentContent_RestoresMenuContentOnReturn()
+        {
+            SceneManager.sceneLoaded += DisableSceneRendering;
+            string saveName = "mod-order-" + System.Guid.NewGuid().ToString("N");
+            string modID = saveName;
+            string modDirectory = null;
+            try
+            {
+                AppBootstrap previous = AppBootstrap.EnsureExists();
+                ContentPack original = previous.GetContentPack();
+                modDirectory = Path.Combine(
+                    ContentFileResolver.ResolveModsRootPath(original.ContentRootPath),
+                    modID
+                );
+                Directory.CreateDirectory(modDirectory);
+                File.WriteAllText(
+                    Path.Combine(modDirectory, "mod.xml"),
+                    $"<ContentModDefinition><ID>{modID}</ID><Version>1.0.0</Version>"
+                        + $"<DisplayName>Campaign mod</DisplayName><BasePackID>{original.Definition.ID}</BasePackID>"
+                        + $"<BasePackVersion>{original.Definition.Version}</BasePackVersion></ContentModDefinition>"
+                );
+                ContentPack saved = ContentPackLoader.OpenExact(
+                    original.ContentRootPath,
+                    original.Definition.ID,
+                    original.Scenario.ID,
+                    previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                );
+                GameSummary summary = GameLaunchContext.CreateDefaultSummary(saved);
+                summary.GalaxySize = GameSize.Small;
+                SaveGameManager.Instance.SaveGameData(
+                    new GameBuilder(summary, saved.GameData).Build(),
+                    saveName
+                );
+
+                Assert.IsTrue(previous.LoadSave(saveName));
+                LoadingScreenController loading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(loading.gameObject);
+                float deadline = Time.realtimeSinceStartup + 90f;
+                Button continueButton = null;
+                while (Time.realtimeSinceStartup < deadline)
+                {
+                    continueButton = loading
+                        .GetComponentsInChildren<Button>()
+                        .FirstOrDefault(button =>
+                            button.name == "ContinueButton" && button.interactable
+                        );
+                    if (continueButton != null)
+                        break;
+                    yield return null;
+                }
+
+                Assert.IsNotNull(continueButton, "The campaign did not finish loading.");
+                Assert.That(
+                    AppBootstrap.Instance.GetContentPack().FileResolver.Mods.Select(mod => mod.ID),
+                    Does.Contain(modID)
+                );
+                continueButton.onClick.Invoke();
+                while (
+                    LoadingScreenController.IsLoadInProgress && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+
+                AppBootstrap current = AppBootstrap.Instance;
+                current.GetGameSessionManager().EndGame();
+                Assert.IsTrue(current.LoadScene("MainMenu"));
+                LoadingScreenController menuLoading =
+                    Object.FindAnyObjectByType<LoadingScreenController>();
+                DisableRendering(menuLoading.gameObject);
+                deadline = Time.realtimeSinceStartup + 90f;
+                while (
+                    (
+                        SceneManager.GetActiveScene().name != "MainMenu"
+                        || LoadingScreenController.IsLoadInProgress
+                    )
+                    && Time.realtimeSinceStartup < deadline
+                )
+                    yield return null;
+
+                Assert.AreEqual("MainMenu", SceneManager.GetActiveScene().name);
+                Assert.IsFalse(LoadingScreenController.IsLoadInProgress);
+                Assert.AreSame(original, AppBootstrap.Instance.GetContentPack());
+            }
+            finally
+            {
+                SceneManager.sceneLoaded -= DisableSceneRendering;
+                SaveGameManager.Instance.DeleteSave(saveName);
+                if (modDirectory != null && Directory.Exists(modDirectory))
+                    Directory.Delete(modDirectory, true);
+            }
+        }
+
+        [UnityTest]
         public IEnumerator GetMultiplayerCoordinator_ContentReplacement_RetainsMultiplayerService()
         {
             AppBootstrap previous = AppBootstrap.EnsureExists();

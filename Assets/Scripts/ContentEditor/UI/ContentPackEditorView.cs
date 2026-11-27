@@ -286,7 +286,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     private GameDifficulty previewDifficulty = GameDifficulty.Medium;
     private string previewScenario;
 
-    public event Action<string, string, string, string, string> CreateRequested;
+    public event Action<string, string, string, string, string, bool> CreateRequested;
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
@@ -553,7 +553,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         testButton.onClick.AddListener(ShowTestMenu);
         foreach (MenuBarHeadingView heading in menuHeadings)
             heading.Hovered += HoverMenu;
-        newPackButton.onClick.AddListener(ShowNewPackDialog);
+        newPackButton.onClick.AddListener(ShowNewProjectMenu);
         openPackButton.onClick.AddListener(RequestOpenPack);
         searchInput.onValueChanged.AddListener(HandleSearchChanged);
         clearSearchButton.onClick.AddListener(ClearSearch);
@@ -970,7 +970,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             xml.Hide();
             duplicateButton.interactable = false;
             deleteButton.interactable = false;
-            recordTitle.text = value.Definition.DisplayName;
+            recordTitle.text = value.DisplayName;
             recordSubtitle.text = "Choose an entry from the content tree to edit.";
             RenderRecords();
         }
@@ -983,7 +983,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         if (project != null)
             projectLabel.text =
-                project.Definition.DisplayName + (project.IsDirty ? "  /  Unsaved changes" : "");
+                project.DisplayName
+                + (project.Mod == null ? "  /  Era" : "  /  Mod")
+                + (project.IsDirty ? "  /  Unsaved changes" : "");
         if (selectedRecord == null)
             return;
         recordTitle.text =
@@ -1179,30 +1181,26 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         ShowMenu(
             fileButton,
+            new ContentEditorMenuCommand("New", children: NewProjectCommands()),
             new ContentEditorMenuCommand(
-                "New content pack...",
-                ShowNewPackDialog,
-                shortcut: ShortcutModifier + "+N"
-            ),
-            new ContentEditorMenuCommand(
-                "Open content pack...",
+                "Open project...",
                 RequestOpenPack,
                 shortcut: ShortcutModifier + "+O"
             ),
             new ContentEditorMenuCommand(
-                "Save pack",
+                "Save",
                 () => SaveRequested?.Invoke(),
                 project != null,
                 shortcut: ShortcutModifier + "+S"
             ),
             new ContentEditorMenuCommand(
-                "Validate pack",
+                "Validate",
                 () => ValidateRequested?.Invoke(),
                 project != null,
                 shortcut: ShortcutModifier + "+Shift+V"
             ),
             new ContentEditorMenuCommand(
-                "Export pack...",
+                "Export...",
                 () => ExportRequested?.Invoke(),
                 project != null
             ),
@@ -1212,7 +1210,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 project?.IsInstalled == false
             ),
             new ContentEditorMenuCommand(
-                "Close pack",
+                "Close project",
                 () => CloseRequested?.Invoke(),
                 project != null,
                 shortcut: ShortcutModifier + "+W"
@@ -1226,13 +1224,49 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Requests the name, working folder, and inheritance source for a new pack.
+    /// Opens the project type menu from the Projects button or keyboard shortcut.
     /// </summary>
-    public void ShowNewPackDialog()
+    private void ShowNewProjectMenu()
+    {
+        if (packageOperationActive)
+            return;
+        Button anchor = newPackButton.gameObject.activeInHierarchy ? newPackButton : fileButton;
+        ShowMenu(anchor, NewProjectCommands());
+    }
+
+    /// <summary>
+    /// Supplies the same ordered project types to the File menu and Projects button.
+    /// </summary>
+    /// <returns>The two creation commands.</returns>
+    private ContentEditorMenuCommand[] NewProjectCommands() =>
+        new[]
+        {
+            new ContentEditorMenuCommand(
+                ContentEditorPackDialogView.ModProjectLabel,
+                ShowNewModDialog
+            ),
+            new ContentEditorMenuCommand("Era", ShowNewEraDialog),
+        };
+
+    /// <summary>
+    /// Opens the creation form for a selectable era derived from an installed era.
+    /// </summary>
+    public void ShowNewEraDialog() => ShowProjectCreationDialog(asMod: false);
+
+    /// <summary>
+    /// Opens the creation form for a stackable mod or content pack.
+    /// </summary>
+    private void ShowNewModDialog() => ShowProjectCreationDialog(asMod: true);
+
+    /// <summary>
+    /// Opens the shared project form for the selected publication type.
+    /// </summary>
+    /// <param name="asMod">Whether to create a stackable mod.</param>
+    private void ShowProjectCreationDialog(bool asMod)
     {
         if (!TryUseProjects() || !CommitFields())
             return;
-        packDialog.Show();
+        packDialog.Show(asMod);
     }
 
     /// <summary>
@@ -1252,7 +1286,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public void ConfirmUnsaved(Action save, Action discard)
     {
         confirmation.Show(
-            "Save changes to " + project.Definition.DisplayName + "?",
+            "Save changes to " + project.DisplayName + "?",
             "Save",
             save,
             "Discard",
@@ -1268,6 +1302,19 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         confirmation.Show("Discard unsaved changes?", "Discard", discard);
     }
+
+    /// <summary>
+    /// Asks the author to identify a project whose manifest has no recognized type.
+    /// </summary>
+    /// <param name="choose">The action that records the selected type and opens the project.</param>
+    internal void ChoosePackageType(Action<ContentPackageType> choose) =>
+        confirmation.Show(
+            "The project’s type is missing or unrecognized. Choose its type to open it.",
+            "Era",
+            () => choose(ContentPackageType.Era),
+            ContentEditorPackDialogView.ModProjectLabel,
+            () => choose(ContentPackageType.Mod)
+        );
 
     /// <summary>
     /// Asks whether a selected media file should replace the current pack file or be imported separately.
@@ -1341,9 +1388,9 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         resetSectionButton.gameObject.SetActive(false);
         xml.Hide();
         duplicateButton.interactable = deleteButton.interactable = false;
-        recordTitle.text = "Create or open a content pack";
-        recordSubtitle.text = "File / New / Content pack";
-        projectLabel.text = "No content pack open";
+        recordTitle.text = "Create or open a project";
+        recordSubtitle.text = string.Empty;
+        projectLabel.text = "No project open";
         addUnitButton.gameObject.SetActive(false);
     }
 
@@ -1722,9 +1769,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// Confirms removal using the toolkit's existing action dialog.
     /// </summary>
     /// <param name="message">The selected package and consequences.</param>
+    /// <param name="label">The action named on the confirmation button.</param>
     /// <param name="remove">The confirmed operation.</param>
-    internal void ConfirmModRemoval(string message, Action remove) =>
-        confirmation.Show(message, "Uninstall", remove);
+    internal void ConfirmModRemoval(string message, string label, Action remove) =>
+        confirmation.Show(message, label, remove);
 
     /// <summary>
     /// Presents the one-time alpha compatibility notice with an explicit acknowledgement.
@@ -1732,7 +1780,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="confirmed">Persists the user's acknowledgement.</param>
     public void ShowAlphaNotice(Action confirmed) =>
         confirmation.Show(
-            "This editor is in alpha.\n\nContent packs are not guaranteed to work between versions during the alpha.",
+            "This editor is in alpha.\n\nProjects may require updates between releases.",
             "Confirm",
             confirmed,
             allowCancel: false,
@@ -1807,7 +1855,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 if (hasNext)
                     ShowValidationWarning(warnings, index + 1);
             },
-            title: $"Content pack warning {index + 1} of {warnings.Count}"
+            title: $"Project warning {index + 1} of {warnings.Count}"
         );
     }
 
@@ -1867,7 +1915,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             KeyCode.S => () => SaveRequested?.Invoke(),
             KeyCode.V when key.shift && project != null => () => ValidateRequested?.Invoke(),
             KeyCode.O => RequestOpenPack,
-            KeyCode.N => ShowNewPackDialog,
+            KeyCode.N => ShowNewProjectMenu,
             KeyCode.W => () => CloseRequested?.Invoke(),
             KeyCode.Equals or KeyCode.Plus or KeyCode.KeypadPlus => () => ZoomContent(0.1f),
             KeyCode.Minus or KeyCode.KeypadMinus => () => ZoomContent(-0.1f),
@@ -1878,7 +1926,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return false;
         bool applicationCommand =
             key.keyCode
-            is KeyCode.Equals
+            is KeyCode.N
+                or KeyCode.Equals
                 or KeyCode.Plus
                 or KeyCode.KeypadPlus
                 or KeyCode.Minus
@@ -1955,7 +2004,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         {
             ShowMenu(
                 testButton,
-                new ContentEditorMenuCommand("Open a content pack first", enabled: false)
+                new ContentEditorMenuCommand("Open a project first", enabled: false)
             );
             return;
         }
@@ -2843,13 +2892,15 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="displayName">The entered display name.</param>
     /// <param name="version">The entered version.</param>
     /// <param name="folder">The complete working-pack directory.</param>
+    /// <param name="asMod">Whether to create a stackable mod.</param>
     private void ForwardCreateRequest(
         string basePackID,
         string packID,
         string displayName,
         string version,
-        string folder
-    ) => CreateRequested?.Invoke(basePackID, packID, displayName, version, folder);
+        string folder,
+        bool asMod
+    ) => CreateRequested?.Invoke(basePackID, packID, displayName, version, folder, asMod);
 
     /// <summary>
     /// Requests application-owned native folder selection for the creation form.
@@ -2946,7 +2997,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="confirmed">The operation to invoke after acknowledgement.</param>
     internal void ConfirmAdditionalFaction(Action confirmed) =>
         confirmation.Show(
-            "Content packs with three or more factions have not been tested and are not guaranteed to work.",
+            "Projects with three or more factions have not been tested and are not guaranteed to work.",
             "Add faction",
             confirmed,
             title: "Warning"

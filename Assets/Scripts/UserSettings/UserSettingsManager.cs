@@ -141,53 +141,44 @@ public sealed class UserSettingsManager
     /// Reads the saved content selection from the settings file before the settings
     /// system is initialized.
     /// </summary>
-    /// <param name="packID">The selected pack ID, or null.</param>
-    /// <param name="scenarioID">The selected scenario ID, or null.</param>
-    /// <param name="disabledModIDs">The IDs of mods disabled for the next startup.</param>
-    /// <returns>True if a non-empty pack selection was read.</returns>
-    public static bool TryReadContentSelection(
-        out string packID,
-        out string scenarioID,
-        out string[] disabledModIDs
-    )
+    /// <returns>The persisted preferences, or new-installation defaults.</returns>
+    public static UserContentSettings ReadContentSelection()
     {
-        packID = null;
-        scenarioID = null;
-        disabledModIDs = Array.Empty<string>();
         try
         {
             string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
-            if (!File.Exists(path))
-                return false;
-
-            UserSettings settings = JsonUtility.FromJson<UserSettings>(
-                AtomicTextFile.ReadAllText(path)
-            );
-            if (settings?.Content == null)
-                return false;
-
-            packID = settings.Content.ActivePackID;
-            scenarioID = settings.Content.ActiveScenarioID;
-            disabledModIDs = settings.Content.DisabledModIDs ?? Array.Empty<string>();
-            return !string.IsNullOrWhiteSpace(packID);
+            if (File.Exists(path))
+            {
+                UserSettings settings = JsonUtility.FromJson<UserSettings>(
+                    AtomicTextFile.ReadAllText(path)
+                );
+                if (settings?.Content != null)
+                {
+                    settings.Content.Normalize();
+                    return settings.Content;
+                }
+            }
         }
-        catch
+        catch (Exception exception)
         {
-            return false;
+            GameLogger.Warning($"Failed to read content settings: {exception.Message}");
         }
+        return new UserContentSettings { HasModLoadOrderPreferences = true };
     }
 
     /// <summary>
     /// Updates only content selection from the companion toolkit without capturing runtime settings.
     /// </summary>
+    /// <param name="contentRoot">The installed content used to resolve compatible add-ons.</param>
     /// <param name="packID">The selected pack, or null to retain the saved selection.</param>
     /// <param name="scenarioID">The selected scenario when changing packs.</param>
-    /// <param name="modIDs">The add-ons whose enabled state is being changed.</param>
+    /// <param name="mods">The add-ons whose enabled state is being changed.</param>
     /// <param name="enabled">Whether those add-ons should be enabled.</param>
     public static void UpdateContentSelection(
+        string contentRoot,
         string packID,
         string scenarioID,
-        string[] modIDs,
+        IReadOnlyList<InstalledModContent> mods,
         bool enabled
     )
     {
@@ -197,17 +188,84 @@ public sealed class UserSettingsManager
             () =>
             {
                 UserSettings settings = ReadSettingsForUpdate(path);
+                if (!File.Exists(path))
+                    settings.Content.HasModLoadOrderPreferences = true;
                 if (packID != null)
                 {
                     settings.Content.ActivePackID = packID;
                     settings.Content.ActiveScenarioID = scenarioID ?? string.Empty;
                 }
-                settings.Content.SetDisabledModsForPack(
-                    modIDs,
-                    enabled ? Array.Empty<string>() : modIDs
-                );
+                foreach (var group in mods.GroupBy(mod => mod.BasePackID, StringComparer.Ordinal))
+                    UpdateModSelection(contentRoot, settings.Content, group.Key, group, enabled);
                 return JsonUtility.ToJson(settings, true);
             }
+        );
+    }
+
+    /// <summary>
+    /// Applies a package selection to the matching era using the same native load rules as the game.
+    /// </summary>
+    /// <param name="contentRoot">The installation containing the era and add-ons.</param>
+    /// <param name="selection">The preferences read under the publication lock.</param>
+    /// <param name="packID">The era targeted by the selected add-ons.</param>
+    /// <param name="mods">The selected add-ons for this era.</param>
+    /// <param name="enabled">Whether the selected add-ons should load.</param>
+    private static void UpdateModSelection(
+        string contentRoot,
+        UserContentSettings selection,
+        string packID,
+        IEnumerable<InstalledModContent> mods,
+        bool enabled
+    )
+    {
+        string[] ids = mods.Select(mod => mod.ID).Distinct(StringComparer.Ordinal).ToArray();
+        IReadOnlyList<string> previous = selection.GetModLoadOrder(packID);
+        selection.SetDisabledModsForPack(ids, enabled ? Array.Empty<string>() : ids);
+        if (previous == null)
+            return;
+
+        string[] requested = enabled
+            ? previous.Union(ids, StringComparer.Ordinal).ToArray()
+            : previous.Except(ids, StringComparer.Ordinal).ToArray();
+        if (!enabled && requested.Length == previous.Count)
+            return;
+        ContentFileResolver installed = ContentPackLoader.DiscoverModResolver(
+            contentRoot,
+            packID,
+            selection.DisabledModIDs
+        );
+        var requestedIDs = requested.ToHashSet(StringComparer.Ordinal);
+        string[] excluded = selection
+            .DisabledModIDs.Concat(
+                installed
+                    .AvailableMods.Select(mod => mod.ID)
+                    .Concat(
+                        installed
+                            .ModIssues.Where(issue => issue.IsDuplicate)
+                            .Select(issue => issue.ID)
+                    )
+                    .Where(id => !requestedIDs.Contains(id))
+            )
+            .ToArray();
+        ContentPack candidate = ContentPackLoader.OpenDefaultScenario(
+            contentRoot,
+            packID,
+            excluded,
+            requested,
+            requireValidSelection: true
+        );
+        string unavailable = requested.FirstOrDefault(id =>
+            !candidate.FileResolver.Mods.Any(mod => mod.ID == id)
+        );
+        if (unavailable != null)
+            throw new InvalidOperationException(
+                $"Mod '{unavailable}' is unavailable for the selected era."
+            );
+        CampaignContentValidator.ValidateCampaigns(candidate);
+        selection.SetModLoadOrder(
+            packID,
+            candidate.FileResolver.Mods.Select(mod => mod.ID),
+            candidate.FileResolver.Mods.Select(mod => mod.Version)
         );
     }
 
@@ -411,11 +469,35 @@ public sealed class UserSettingsManager
         disabled.UnionWith(
             current.DisabledModIDs.Except(_savedContent.DisabledModIDs, StringComparer.Ordinal)
         );
+        var currentOrders = current.ModLoadOrders.ToLookup(order => order?.PackID);
+        var savedOrders = _savedContent.ModLoadOrders.ToLookup(order => order?.PackID);
+        var changedOrderIDs = currentOrders
+            .Select(order => order.Key)
+            .Union(savedOrders.Select(order => order.Key))
+            .Where(id => !string.IsNullOrEmpty(id))
+            .Where(id =>
+                !SameModOrder(currentOrders[id].FirstOrDefault(), savedOrders[id].FirstOrDefault())
+            )
+            .ToHashSet(StringComparer.Ordinal);
         return new UserContentSettings
         {
             ActivePackID = changedPack ? current.ActivePackID : latest.ActivePackID,
             ActiveScenarioID = changedPack ? current.ActiveScenarioID : latest.ActiveScenarioID,
             DisabledModIDs = disabled.OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+            HasModLoadOrderPreferences =
+                current.HasModLoadOrderPreferences != _savedContent.HasModLoadOrderPreferences
+                    ? current.HasModLoadOrderPreferences
+                    : latest.HasModLoadOrderPreferences,
+            ModLoadOrders = latest
+                .ModLoadOrders.Where(order =>
+                    order != null && !changedOrderIDs.Contains(order.PackID)
+                )
+                .Concat(
+                    current.ModLoadOrders.Where(order =>
+                        order != null && changedOrderIDs.Contains(order.PackID)
+                    )
+                )
+                .ToArray(),
         };
     }
 
@@ -424,12 +506,27 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="content">The successfully loaded or saved selection.</param>
     private void RememberContentSelection(UserContentSettings content) =>
-        _savedContent = new UserContentSettings
-        {
-            ActivePackID = content.ActivePackID,
-            ActiveScenarioID = content.ActiveScenarioID,
-            DisabledModIDs = content.DisabledModIDs.ToArray(),
-        };
+        _savedContent = JsonUtility.FromJson<UserContentSettings>(JsonUtility.ToJson(content));
+
+    /// <summary>
+    /// Compares nullable per-era preferences by their recorded IDs and versions.
+    /// </summary>
+    /// <param name="left">The order to compare.</param>
+    /// <param name="right">The prior order.</param>
+    /// <returns>Whether both describe the same persisted selection.</returns>
+    private static bool SameModOrder(
+        ContentModOrderPreference left,
+        ContentModOrderPreference right
+    ) =>
+        ReferenceEquals(left, right)
+        || left != null
+            && right != null
+            && (left.ModIDs ?? Array.Empty<string>()).SequenceEqual(
+                right.ModIDs ?? Array.Empty<string>()
+            )
+            && (left.ModVersions ?? Array.Empty<string>()).SequenceEqual(
+                right.ModVersions ?? Array.Empty<string>()
+            );
 
     /// <summary>
     /// Captures runtime settings into the active user settings object.

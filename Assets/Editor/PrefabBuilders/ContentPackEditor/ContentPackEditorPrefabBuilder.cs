@@ -39,7 +39,24 @@ public static class ContentPackEditorPrefabBuilder
         {
             Object.DestroyImmediate(root);
         }
-        SceneBuilder.Build(ScenePath, PrefabPath, "ContentPackEditorRoot");
+        SceneBuilder.Build(ScenePath, PrefabPath, "ContentPackEditorRoot", ConfigurePreviewCamera);
+    }
+
+    /// <summary>
+    /// Gives Unity's Game view a display camera for previewing the editor's overlay canvas.
+    /// </summary>
+    private static void ConfigurePreviewCamera()
+    {
+        GameObject preview = new GameObject("Editor preview camera", typeof(Camera))
+        {
+            hideFlags = HideFlags.DontSaveInBuild,
+        };
+        Camera camera = preview.GetComponent<Camera>();
+        camera.clearFlags = CameraClearFlags.SolidColor;
+        camera.backgroundColor = Background;
+        camera.cullingMask = 0;
+        camera.allowHDR = false;
+        camera.allowMSAA = false;
     }
 
     /// <summary>
@@ -97,6 +114,7 @@ public static class ContentPackEditorPrefabBuilder
             Button button = PlainButton(headings[i], menuStrip.transform, headings[i]);
             Rect((RectTransform)button.transform, 12 + i * 52, 0, 50, 28);
             button.GetComponentInChildren<TMP_Text>().fontSize = 13;
+            button.interactable = headings[i] is not ("Edit" or "Test");
             Assign(view, members[i], button);
             MenuBarHeadingView menuHeading = button.gameObject.AddComponent<MenuBarHeadingView>();
             menuHeadings[i] = menuHeading;
@@ -706,6 +724,9 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "menu", menu);
         Assign(view, "checkmark", LoadIcon("Checkmark").texture);
         workbenchLayout.SetZoom(1);
+        projectWorkspace.gameObject.SetActive(false);
+        project.gameObject.SetActive(false);
+        publish.gameObject.SetActive(false);
     }
 
     /// <summary>
@@ -1311,12 +1332,15 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform pageActions = ActionRow(actions, 32, 48);
         Button create = Button("NewPack", pageActions, "New project");
         Rect((RectTransform)create.transform, 0, 0, 160, 44);
+        Stretch(create.GetComponentInChildren<TMP_Text>().rectTransform, 8, 0, 36, 0);
+        AddDropdownArrow(create.transform);
         Button open = Button("OpenPack", pageActions, "Open project…");
         Rect((RectTransform)open.transform, 0, 0, 176, 44);
         Assign(view, "projects", BuildProjects(actions));
         Assign(view, "welcomePane", welcome.gameObject);
         Assign(view, "newPackButton", create);
         Assign(view, "openPackButton", open);
+        pageScroll.SetContentHeight(actions.rect.height, true);
     }
 
     /// <summary>
@@ -1335,9 +1359,9 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform rect = panel.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(640, 600);
-        TextMeshProUGUI title = Label("Heading", rect, "New content pack", 24);
+        TextMeshProUGUI title = Label("Heading", rect, "New era", 24);
         Rect(title.rectTransform, 28, 24, 584, 40);
-        TMP_InputField id = Input("PackID", rect, "Pack ID (for example: my-content-pack)");
+        TMP_InputField id = Input("PackID", rect, "my-era");
         Rect((RectTransform)id.transform, 28, 176, 380, 36);
         TMP_InputField name = Input("DisplayName", rect, "Display name");
         Rect((RectTransform)name.transform, 28, 102, 584, 36);
@@ -1349,13 +1373,7 @@ public static class ContentPackEditorPrefabBuilder
         Rect((RectTransform)folder.transform, 28, 326, 482, 36);
         Button browse = Button("BrowseFolder", rect, "Browse...");
         Rect((RectTransform)browse.transform, 522, 326, 90, 36);
-        TextMeshProUGUI help = Label(
-            "Help",
-            rect,
-            "* Required. Your pack shows the base pack's content. Only edited files are saved locally.",
-            14,
-            true
-        );
+        TextMeshProUGUI help = Label("Help", rect, string.Empty, 14, true);
         TextMeshProUGUI destination = Label("PackFolder", rect, string.Empty, 14, true);
         Rect(destination.rectTransform, 28, 370, 584, 48);
         destination.textWrappingMode = TextWrappingModes.Normal;
@@ -1366,15 +1384,18 @@ public static class ContentPackEditorPrefabBuilder
         error.color = new Color32(255, 130, 130, 255);
         BindColor(error, ContentEditorColorRole.Error);
         error.textWrappingMode = TextWrappingModes.Normal;
-        Button confirm = Button("Confirm", rect, "Create pack");
+        Button confirm = Button("Confirm", rect, "Create era");
         Rect((RectTransform)confirm.transform, 444, 536, 168, 36);
         Button cancel = Button("Cancel", rect, "Cancel");
         Rect((RectTransform)cancel.transform, 322, 536, 110, 36);
         Assign(view, "packDialog", dialog);
-        Rect(Label("NameLabel", rect, "Pack name *", 14).rectTransform, 28, 78, 584, 20);
-        Rect(Label("IDLabel", rect, "Pack ID *", 14).rectTransform, 28, 152, 380, 20);
+        TextMeshProUGUI nameLabel = Label("NameLabel", rect, "Era name *", 14);
+        Rect(nameLabel.rectTransform, 28, 78, 584, 20);
+        TextMeshProUGUI idLabel = Label("IDLabel", rect, "Era ID *", 14);
+        Rect(idLabel.rectTransform, 28, 152, 380, 20);
         Rect(Label("VersionLabel", rect, "Version *", 14).rectTransform, 428, 152, 184, 20);
-        Rect(Label("BaseLabel", rect, "Base pack *", 14).rectTransform, 28, 226, 584, 20);
+        TextMeshProUGUI baseLabel = Label("BaseLabel", rect, "Base era *", 14);
+        Rect(baseLabel.rectTransform, 28, 226, 584, 20);
         Rect(Label("FolderLabel", rect, "Location *", 14).rectTransform, 28, 302, 584, 20);
         Assign(dialog, "newIDInput", id);
         Assign(dialog, "newNameInput", name);
@@ -1382,6 +1403,10 @@ public static class ContentPackEditorPrefabBuilder
         Assign(dialog, "newFolderInput", folder);
         Assign(dialog, "newFolderPathText", destination);
         Assign(dialog, "helpText", help);
+        Assign(dialog, "heading", title);
+        Assign(dialog, "nameLabel", nameLabel);
+        Assign(dialog, "idLabel", idLabel);
+        Assign(dialog, "baseLabel", baseLabel);
         Assign(dialog, "folderBrowseButton", browse);
         Assign(dialog, "packChoiceDropdown", pack);
         Assign(dialog, "dialogError", error);
@@ -1897,7 +1922,7 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform description = Layer("Description", defaults);
         Rect(description, 0, 0, 600, 72);
         Assign(view, "defaultPackDescription", description);
-        Caption(description, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
+        Caption(description, "DefaultLabel", "Default era", 0, 0, 600, 28, 18);
         Caption(
             description,
             "DefaultHelp",
@@ -1914,12 +1939,12 @@ public static class ContentPackEditorPrefabBuilder
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMax = new Vector2(0, label.rectTransform.offsetMax.y);
         }
-        Selector(view, defaults, "activePack", 440, new[] { "No content packs installed" });
+        Selector(view, defaults, "activePack", 440, new[] { "No eras installed" });
         Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(
             "SearchPackages",
             rect,
-            "Search mods by name, creator, or description"
+            "Search by name, creator, or description"
         );
         Vector2 inset = search.textViewport.offsetMax;
         inset.x = -44;
@@ -1948,6 +1973,32 @@ public static class ContentPackEditorPrefabBuilder
         ScrollAreaLayout packages = Scroll("Packages", rect, 8, 8);
         Stretch((RectTransform)packages.transform, 0, 248, -16, 0);
         Assign(view, "packages", packages);
+        TextMeshProUGUI modsHeading = Caption(
+            packages.ScrollArea.ContentRoot,
+            "ModsHeading",
+            "Mods / content packs",
+            0,
+            0,
+            1120,
+            28,
+            20
+        );
+        modsHeading.fontStyle = FontStyles.Bold;
+        modsHeading.gameObject.SetActive(false);
+        Assign(view, "modsHeading", modsHeading);
+        TextMeshProUGUI erasHeading = Caption(
+            packages.ScrollArea.ContentRoot,
+            "ErasHeading",
+            "Eras",
+            0,
+            0,
+            1120,
+            28,
+            20
+        );
+        erasHeading.fontStyle = FontStyles.Bold;
+        erasHeading.gameObject.SetActive(false);
+        Assign(view, "erasHeading", erasHeading);
         Assign(view, "rowTemplate", BuildCard(packages.ScrollArea.ContentRoot));
         TextMeshProUGUI empty = Caption(
             rect,

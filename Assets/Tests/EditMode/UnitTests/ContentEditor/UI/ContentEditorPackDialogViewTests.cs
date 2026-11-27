@@ -104,7 +104,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(item => item.name == "PackChoice");
             selector.value = 1;
             string chosen = null;
-            view.CreateRequested += (source, _, _, _, _) => chosen = source;
+            view.CreateRequested += (source, _, _, _, _, _) => chosen = source;
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "Confirm")
                 .onClick.Invoke();
@@ -144,7 +144,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 location.text
             );
             string destination = null;
-            view.CreateRequested += (_, _, _, _, folderPath) => destination = folderPath;
+            view.CreateRequested += (_, _, _, _, folderPath, _) => destination = folderPath;
             view.GetComponentsInChildren<Button>()
                 .Single(button => button.name == "Confirm")
                 .onClick.Invoke();
@@ -158,6 +158,23 @@ namespace Rebellion.Tests.ContentEditor.UI
             id.text = "custom-id";
             name.text = "Different display name";
             Assert.AreEqual("custom-id", id.text);
+        }
+
+        [Test]
+        public void Show_ModMode_SubmitsStackableModCreation()
+        {
+            view.Show(asMod: true);
+            view.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "DisplayName")
+                .text = "Fleet balance";
+            bool? requestedMod = null;
+            view.CreateRequested += (_, _, _, _, _, asMod) => requestedMod = asMod;
+
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Confirm")
+                .onClick.Invoke();
+
+            Assert.That(requestedMod, Is.True);
         }
 
         [Test]

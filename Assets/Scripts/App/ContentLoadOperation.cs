@@ -22,6 +22,7 @@ internal sealed class ContentLoadOperation
     }
 
     private readonly ContentPack _previousPack;
+    private readonly ContentPack _previousMenuPack;
     private readonly UserContentSettings _previousSettings;
     private readonly string[] _applicationPreloadIDs;
     private readonly object _stateLock = new object();
@@ -30,17 +31,26 @@ internal sealed class ContentLoadOperation
     private string _saveFileName;
     private GameSummary _customGameSummary;
     private bool _isContentReload;
+    private bool _rememberModOrder;
     private LoadState _state;
 
     /// <summary>
     /// Gets the content that the current loading or recovery attempt must initialize.
     /// </summary>
-    internal ContentPack Pack => IsRecovering ? _previousPack : _candidate ?? _previousPack;
+    internal ContentPack Pack =>
+        IsRecovering ? _previousMenuPack ?? _previousPack : _candidate ?? _previousPack;
+
+    /// <summary>
+    /// Gets the menu content to keep available while a saved campaign is active.
+    /// </summary>
+    internal ContentPack MenuPack =>
+        SaveFileName == null ? null : _previousMenuPack ?? _previousPack;
 
     /// <summary>
     /// Gets whether this operation replaces application content and therefore requires reconstruction.
     /// </summary>
-    internal bool RequiresContentRestart => _candidate != null;
+    internal bool RequiresContentRestart =>
+        _candidate != null || (IsRecovering && _previousMenuPack != null);
 
     /// <summary>
     /// Gets whether replacement content and its preferences have already committed successfully.
@@ -76,14 +86,17 @@ internal sealed class ContentLoadOperation
     /// <param name="previousPack">The content to retain if loading fails.</param>
     /// <param name="previousSettings">The preferences to retain if loading fails.</param>
     /// <param name="applicationPreloadIDs">The application manifests required by replacement content.</param>
+    /// <param name="previousMenuPack">The new-game content retained while playing a saved campaign.</param>
     internal ContentLoadOperation(
         ContentPack previousPack,
         UserContentSettings previousSettings,
-        IEnumerable<string> applicationPreloadIDs
+        IEnumerable<string> applicationPreloadIDs,
+        ContentPack previousMenuPack = null
     )
     {
         _previousPack = previousPack ?? throw new ArgumentNullException(nameof(previousPack));
         _previousSettings = CopySettings(previousSettings);
+        _previousMenuPack = previousMenuPack;
         _applicationPreloadIDs = (
             applicationPreloadIDs ?? throw new ArgumentNullException(nameof(applicationPreloadIDs))
         ).ToArray();
@@ -94,15 +107,24 @@ internal sealed class ContentLoadOperation
     /// </summary>
     /// <param name="packID">The installed pack to select.</param>
     /// <param name="disabledModIDs">The complete pending disabled-mod preference list.</param>
+    /// <param name="preferredModOrder">The staged load order for the selected pack.</param>
     /// <returns>A task that completes when replacement content is ready for reconstruction.</returns>
-    internal async Task PrepareContentReloadAsync(string packID, IEnumerable<string> disabledModIDs)
+    internal async Task PrepareContentReloadAsync(
+        string packID,
+        IEnumerable<string> disabledModIDs,
+        IReadOnlyList<string> preferredModOrder = null
+    )
     {
         if (string.IsNullOrWhiteSpace(packID))
             throw new ArgumentException("A content pack identifier is required.", nameof(packID));
 
         BeginPreparation();
         _isContentReload = true;
+        _rememberModOrder = true;
         string[] disabled = (disabledModIDs ?? Array.Empty<string>()).ToArray();
+        string[] order = (
+            preferredModOrder ?? _previousSettings.GetModLoadOrder(packID)
+        )?.ToArray();
         ContentPack candidate = await Task.Run(() =>
             {
                 ContentPackDefinition definition = ContentPackLoader
@@ -115,14 +137,14 @@ internal sealed class ContentLoadOperation
                         $"Content pack '{packID}' is not installed."
                     );
 
-                return OpenValidatedPack(packID, definition.DefaultScenarioID, disabled);
+                return OpenValidatedPack(packID, disabled, order);
             })
             .ConfigureAwait(false);
         AcceptPreparation(candidate, disabled);
     }
 
     /// <summary>
-    /// Resolves the exact content required by a save while preserving other packs' mod preferences.
+    /// Resolves the exact content required by a save while preserving new-game preferences.
     /// </summary>
     /// <param name="saves">The persistence service that owns the requested save.</param>
     /// <param name="fileName">The save identifier to load.</param>
@@ -150,17 +172,18 @@ internal sealed class ContentLoadOperation
                 return required;
             })
             .ConfigureAwait(false);
-        string[] disabled = null;
-        if (selection != null)
-        {
-            UserContentSettings requested = CopySettings(_previousSettings);
-            requested.SetDisabledModsForPack(
-                selection.Pack.FileResolver.AvailableMods.Select(mod => mod.ID),
-                selection.DisabledModIDs
-            );
-            disabled = requested.DisabledModIDs;
-        }
-        AcceptPreparation(selection?.Pack, disabled);
+        AcceptPreparation(selection?.Pack, null);
+    }
+
+    /// <summary>
+    /// Restores the content retained from the main menu before loading a saved campaign.
+    /// </summary>
+    /// <param name="menuPack">The verified content from the previous main menu.</param>
+    internal void PrepareMenuReturn(ContentPack menuPack)
+    {
+        BeginPreparation();
+        _isContentReload = true;
+        AcceptPreparation(menuPack, null);
     }
 
     /// <summary>
@@ -168,7 +191,12 @@ internal sealed class ContentLoadOperation
     /// </summary>
     /// <param name="contentPack">The selected content already opened by the custom-game menu.</param>
     /// <param name="summary">The complete custom-game configuration.</param>
-    internal void PrepareCustomGame(ContentPack contentPack, GameSummary summary)
+    /// <param name="rememberModOrder">Whether the launch uses the player's new-game order.</param>
+    internal void PrepareCustomGame(
+        ContentPack contentPack,
+        GameSummary summary,
+        bool rememberModOrder = true
+    )
     {
         if (contentPack == null)
             throw new ArgumentNullException(nameof(contentPack));
@@ -182,13 +210,24 @@ internal sealed class ContentLoadOperation
         BeginPreparation();
         ValidateApplicationPreloads(contentPack);
         _customGameSummary = summary.CreateCopy();
+        _rememberModOrder =
+            rememberModOrder
+            && _previousSettings.GetModLoadOrder(contentPack.Definition.ID) == null
+            && !contentPack.FileResolver.ModIssues.Any(issue => issue.BlocksSelection);
         UserContentSettings requested = CopySettings(_previousSettings);
-        requested.SetDisabledModsForPack(
-            contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
-            contentPack
-                .FileResolver.AvailableMods.Select(mod => mod.ID)
-                .Except(contentPack.FileResolver.Mods.Select(mod => mod.ID), StringComparer.Ordinal)
-        );
+        if (
+            rememberModOrder
+            && _previousSettings.GetModLoadOrder(contentPack.Definition.ID) == null
+        )
+            requested.SetDisabledModsForPack(
+                contentPack.FileResolver.AvailableMods.Select(mod => mod.ID),
+                contentPack
+                    .FileResolver.AvailableMods.Select(mod => mod.ID)
+                    .Except(
+                        contentPack.FileResolver.Mods.Select(mod => mod.ID),
+                        StringComparer.Ordinal
+                    )
+            );
         AcceptPreparation(contentPack, requested.DisabledModIDs);
     }
 
@@ -238,7 +277,7 @@ internal sealed class ContentLoadOperation
                 return;
             }
 
-            if (_candidate != null)
+            if (_candidate != null && _disabledModIDs != null)
             {
                 UserContentSettings content = settings.Settings.Content;
                 content.ActivePackID = _candidate.Definition.ID;
@@ -248,6 +287,12 @@ internal sealed class ContentLoadOperation
                     .Distinct(StringComparer.Ordinal)
                     .OrderBy(id => id, StringComparer.Ordinal)
                     .ToArray();
+                if (_rememberModOrder)
+                    content.SetModLoadOrder(
+                        _candidate.Definition.ID,
+                        _candidate.FileResolver.Mods.Select(mod => mod.ID),
+                        _candidate.FileResolver.Mods.Select(mod => mod.Version)
+                    );
                 try
                 {
                     settings.Save();
@@ -307,18 +352,20 @@ internal sealed class ContentLoadOperation
     /// Opens one exact content selection and verifies its application preload manifests.
     /// </summary>
     /// <param name="packID">The required installed pack.</param>
-    /// <param name="scenarioID">The required scenario.</param>
     /// <param name="disabledModIDs">The mods excluded from this selection.</param>
+    /// <param name="order">The requested priority of mod IDs.</param>
     /// <returns>The verified pack.</returns>
-    private ContentPack OpenValidatedPack(string packID, string scenarioID, string[] disabledModIDs)
+    private ContentPack OpenValidatedPack(string packID, string[] disabledModIDs, string[] order)
     {
-        ContentPack pack = ContentPackLoader.OpenExact(
+        ContentPack pack = ContentPackLoader.OpenDefaultScenario(
             _previousPack.ContentRootPath,
             packID,
-            scenarioID,
-            disabledModIDs
+            disabledModIDs,
+            order,
+            requireValidSelection: true
         );
         ValidateApplicationPreloads(pack);
+        CampaignContentValidator.ValidateCampaigns(pack);
         return pack;
     }
 
@@ -341,10 +388,12 @@ internal sealed class ContentLoadOperation
         content.ActivePackID = _previousSettings.ActivePackID;
         content.ActiveScenarioID = _previousSettings.ActiveScenarioID;
         content.DisabledModIDs = _previousSettings.DisabledModIDs.ToArray();
+        content.HasModLoadOrderPreferences = _previousSettings.HasModLoadOrderPreferences;
+        content.ModLoadOrders = _previousSettings.ModLoadOrders.ToArray();
     }
 
     /// <summary>
-    /// Copies preferences without sharing their mutable disabled-mod array.
+    /// Copies content preferences for independent staging and recovery.
     /// </summary>
     /// <param name="settings">The preferences to copy.</param>
     /// <returns>An independent preference snapshot.</returns>
@@ -357,6 +406,16 @@ internal sealed class ContentLoadOperation
             ActivePackID = settings.ActivePackID,
             ActiveScenarioID = settings.ActiveScenarioID,
             DisabledModIDs = (settings.DisabledModIDs ?? Array.Empty<string>()).ToArray(),
+            HasModLoadOrderPreferences = settings.HasModLoadOrderPreferences,
+            ModLoadOrders = (settings.ModLoadOrders ?? Array.Empty<ContentModOrderPreference>())
+                .Where(order => order != null)
+                .Select(order => new ContentModOrderPreference
+                {
+                    PackID = order.PackID,
+                    ModIDs = order.ModIDs?.ToArray() ?? Array.Empty<string>(),
+                    ModVersions = order.ModVersions?.ToArray(),
+                })
+                .ToArray(),
         };
     }
 }

@@ -82,56 +82,25 @@ internal static class SaveContentResolver
             );
         }
 
-        ContentFileResolver discovered = ContentPackLoader.DiscoverModResolver(
-            activePack.ContentRootPath,
-            metadata.PackID,
-            Array.Empty<string>()
-        );
-        Dictionary<string, ContentModDefinition> availableMods =
-            discovered.AvailableMods.ToDictionary(mod => mod.ID, StringComparer.Ordinal);
         HashSet<string> requiredModIDSet = new HashSet<string>(StringComparer.Ordinal);
-        for (int index = 0; index < requiredModIDs.Length; index++)
+        foreach (string id in requiredModIDs)
         {
-            string requiredModID = requiredModIDs[index];
-            if (!requiredModIDSet.Add(requiredModID))
-            {
+            if (string.IsNullOrWhiteSpace(id))
+                throw new InvalidOperationException("The save contains an empty mod identifier.");
+            if (!requiredModIDSet.Add(id))
                 throw new InvalidOperationException(
-                    $"Save content lists mod '{requiredModID}' more than once."
+                    $"Save content lists mod '{id}' more than once."
                 );
-            }
-
-            if (!availableMods.TryGetValue(requiredModID, out ContentModDefinition availableMod))
-            {
-                throw new InvalidOperationException(
-                    $"Save requires content mod '{requiredModID}', but it is not installed."
-                );
-            }
-
-            if (
-                !string.Equals(
-                    availableMod.Version,
-                    requiredModVersions[index],
-                    StringComparison.Ordinal
-                )
-            )
-            {
-                throw new InvalidOperationException(
-                    $"Save requires content mod '{requiredModID}' version "
-                        + $"'{requiredModVersions[index]}', but version '{availableMod.Version}' is installed."
-                );
-            }
         }
 
-        string[] disabledModIDs = discovered
-            .AvailableMods.Where(mod => !requiredModIDSet.Contains(mod.ID))
+        ContentPack requiredPack = ContentPackLoader.OpenSaved(
+            activePack.ContentRootPath,
+            metadata
+        );
+        string[] disabledModIDs = requiredPack
+            .FileResolver.AvailableMods.Where(mod => !requiredModIDSet.Contains(mod.ID))
             .Select(mod => mod.ID)
             .ToArray();
-        ContentPack requiredPack = ContentPackLoader.OpenExact(
-            activePack.ContentRootPath,
-            metadata.PackID,
-            metadata.ScenarioID,
-            disabledModIDs
-        );
         if (!requiredPack.MatchesContentIdentity(metadata))
         {
             throw new InvalidOperationException(

@@ -84,7 +84,11 @@ public static class ContentPackLoader
                 .OrderBy(path => Path.GetFileName(path), StringComparer.Ordinal)
             : Enumerable.Empty<string>();
 
-        return installedPackRoots.Concat(authoredPackRoots).Select(DiscoverInstalledPack).ToArray();
+        return installedPackRoots
+            .Concat(authoredPackRoots)
+            .Select(DiscoverInstalledPack)
+            .Where(pack => pack != null)
+            .ToArray();
     }
 
     /// <summary>
@@ -95,18 +99,25 @@ public static class ContentPackLoader
     /// <param name="disabledModIDs">The mod identifiers disabled by the player.</param>
     /// <param name="resolver">The discovered resolver when successful.</param>
     /// <param name="errorMessage">The content error when discovery fails.</param>
+    /// <param name="preferredModOrder">The pending order for the pack.</param>
     /// <returns>True when the selected pack and its mods were discovered.</returns>
     internal static bool TryDiscoverModResolver(
         string contentRootPath,
         string packID,
         IEnumerable<string> disabledModIDs,
         out ContentFileResolver resolver,
-        out string errorMessage
+        out string errorMessage,
+        IReadOnlyList<string> preferredModOrder = null
     )
     {
         try
         {
-            resolver = DiscoverModResolver(contentRootPath, packID, disabledModIDs);
+            resolver = DiscoverModResolver(
+                contentRootPath,
+                packID,
+                disabledModIDs,
+                preferredModOrder
+            );
             errorMessage = string.Empty;
             return true;
         }
@@ -142,11 +153,13 @@ public static class ContentPackLoader
     /// <param name="contentRootPath">The external content root to inspect.</param>
     /// <param name="packID">The selected content-pack identifier.</param>
     /// <param name="disabledModIDs">The mod identifiers disabled by the player.</param>
+    /// <param name="preferredModOrder">The order for the pack, or null to preserve legacy ordering.</param>
     /// <returns>A resolver containing the selected pack's compatible mods.</returns>
     internal static ContentFileResolver DiscoverModResolver(
         string contentRootPath,
         string packID,
-        IEnumerable<string> disabledModIDs
+        IEnumerable<string> disabledModIDs,
+        IReadOnlyList<string> preferredModOrder = null
     )
     {
         IReadOnlyList<string> packRoots = ResolvePackRoots(contentRootPath, packID);
@@ -159,7 +172,8 @@ public static class ContentPackLoader
             pack.ID,
             pack.Version,
             disabledModIDs,
-            packRoots.Skip(1)
+            packRoots.Skip(1),
+            preferredModOrder: preferredModOrder
         );
     }
 
@@ -197,9 +211,15 @@ public static class ContentPackLoader
     {
         if (definition == null)
             throw new ArgumentNullException(nameof(definition));
-        IReadOnlyList<string> inheritedRoots = string.IsNullOrWhiteSpace(definition.BasePackID)
-            ? Array.Empty<string>()
-            : CreatePackResolver(contentRootPath, definition.BasePackID).PackRootPaths;
+        IReadOnlyList<string> inheritedRoots =
+            string.IsNullOrWhiteSpace(definition.BasePackID)
+            && definition.InheritedPacks is not { Count: > 0 }
+                ? Array.Empty<string>()
+                : ResolvePackRoots(
+                    contentRootPath,
+                    definition.BasePackID,
+                    inheritedPacks: definition.InheritedPacks
+                );
         foreach (string inheritedRoot in inheritedRoots)
         {
             ContentPackDefinition inherited =
@@ -217,6 +237,105 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Resolves an authored mod on its declared base with its installed dependencies.
+    /// </summary>
+    /// <param name="contentRootPath">The installed application content.</param>
+    /// <param name="modRootPath">The directory containing mod.xml.</param>
+    /// <param name="mod">The manifest from that directory.</param>
+    /// <returns>The isolated mod and base pack resolver.</returns>
+    public static ContentFileResolver CreateModFolderResolver(
+        string contentRootPath,
+        string modRootPath,
+        ContentModDefinition mod
+    )
+    {
+        ContentFileResolver baseline = CreatePackResolver(contentRootPath, mod.BasePackID);
+        ContentPackDefinition pack = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+            Path.Combine(baseline.PackRootPath, _packFileName)
+        );
+        if (pack.Version != mod.BasePackVersion)
+            throw new InvalidOperationException(
+                $"{mod.DisplayName} requires {mod.BasePackID} version {mod.BasePackVersion}, but {pack.Version} is installed."
+            );
+        if (mod.Requires.Count > 0)
+            return ContentFileResolver.Discover(
+                contentRootPath,
+                baseline.PackRootPath,
+                pack.ID,
+                pack.Version,
+                fallbackPackRootPaths: baseline.PackRootPaths.Skip(1),
+                workingModRoot: modRootPath
+            );
+        return new ContentFileResolver(
+            contentRootPath,
+            baseline.PackRootPath,
+            new[] { Path.Combine(modRootPath, "Content") },
+            new[] { mod },
+            fallbackPackRootPaths: baseline.PackRootPaths.Skip(1)
+        );
+    }
+
+    /// <summary>
+    /// Reads the selected pack manifest with its active mods' campaign overrides.
+    /// </summary>
+    /// <param name="resolver">The selected base and its ordered active mods.</param>
+    /// <returns>The composed manifest with the selected base identity.</returns>
+    public static ContentPackDefinition ReadModPackDefinition(ContentFileResolver resolver) =>
+        ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
+            ReadModPackManifest(resolver)
+        );
+
+    /// <summary>
+    /// Composes campaign overrides and optionally leaves out the file currently being edited.
+    /// </summary>
+    /// <param name="resolver">The base and all resolved mod layers.</param>
+    /// <param name="excludedOverlay">The editor's local override file to omit from its baseline.</param>
+    /// <returns>The effective pack manifest XML.</returns>
+    public static string ReadModPackManifest(
+        ContentFileResolver resolver,
+        string excludedOverlay = null
+    )
+    {
+        string text = File.ReadAllText(Path.Combine(resolver.PackRootPath, _packFileName));
+        var root = System.Xml.Linq.XElement.Parse(text);
+        if (root.Name == ContentPackageManifest.RootName)
+            text = ContentPackageManifest.AsCampaignRoot(root).ToString();
+        foreach (string path in resolver.ResolveModPackOverlays())
+        {
+            if (string.Equals(path, excludedOverlay, StringComparison.Ordinal))
+                continue;
+            string overlay = File.ReadAllText(path);
+            ValidateModPackOverlay(overlay);
+            text = ContentXmlOverrides.Merge(text, overlay);
+        }
+        return text;
+    }
+
+    /// <summary>
+    /// Checks that a mod's campaign overrides preserve the base manifest's identity.
+    /// </summary>
+    /// <param name="overlay">The authored sparse pack manifest.</param>
+    public static void ValidateModPackOverlay(string overlay)
+    {
+        var root = System.Xml.Linq.XElement.Parse(overlay);
+        if (root.Name != "ContentPack" || !ContentXmlOverrides.IsOverlay(overlay))
+            throw new InvalidDataException("A mod's pack.xml must inherit from its base pack.");
+        if (
+            root.Attribute("RemoveAttributes") != null
+            || root.Elements()
+                .Any(element =>
+                    element.Name.LocalName
+                        is "ID"
+                            or "Version"
+                            or "BasePackID"
+                            or "DisplayName"
+                            or "InheritedPacks"
+                )
+        )
+            throw new InvalidDataException("Change the mod identity in its package manifest.");
+    }
+
+    /// <summary>
     /// Loads an exact content-pack folder without registering it or changing saved preferences.
     /// </summary>
     /// <param name="contentRootPath">The installed application and base-pack content.</param>
@@ -229,10 +348,19 @@ public static class ContentPackLoader
         string scenarioID = null
     )
     {
-        ContentPackDefinition definition =
-            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
-                Path.Combine(Path.GetFullPath(packRootPath), "pack.xml")
+        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.Era);
+        if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
+        {
+            ContentModDefinition mod = ContentFileResolver.ReadValidatedMod(packRootPath);
+            ContentFileResolver resolver = CreateModFolderResolver(
+                contentRootPath,
+                packRootPath,
+                mod
             );
+            return LoadPack(resolver, ReadModPackDefinition(resolver), scenarioID);
+        }
+        ContentPackDefinition definition =
+            ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
         return LoadPack(
             CreateFolderResolver(contentRootPath, packRootPath, definition),
             definition,
@@ -290,12 +418,18 @@ public static class ContentPackLoader
     /// <param name="packIdOverride">Selected pack ID, or null/empty for the catalog default.</param>
     /// <param name="scenarioIdOverride">Selected scenario ID, or null/empty for the catalog default.</param>
     /// <param name="disabledModIDs">Mod IDs that must not enter the active content layers.</param>
+    /// <param name="getModLoadOrder">Provides the preferred order for the pack actually loaded.</param>
+    /// <param name="reportRecovery">Reports why startup had to open a pack without the requested mods.</param>
+    /// <param name="getModVersions">Provides the exact applied versions in order, if recorded.</param>
     /// <returns>The loaded active content pack.</returns>
     internal static ContentPack OpenActive(
         string contentRootPath,
         string packIdOverride,
         string scenarioIdOverride,
-        IEnumerable<string> disabledModIDs = null
+        IEnumerable<string> disabledModIDs = null,
+        Func<string, IReadOnlyList<string>> getModLoadOrder = null,
+        Action<string> reportRecovery = null,
+        Func<string, IReadOnlyList<string>> getModVersions = null
     )
     {
         string absoluteContentRoot = Path.GetFullPath(
@@ -322,17 +456,88 @@ public static class ContentPackLoader
             && !string.Equals(packID, catalog.ActivePackID, StringComparison.Ordinal);
         try
         {
-            return OpenPack(absoluteContentRoot, packID, scenarioID, disabledModIDs);
+            return OpenStartupSelection(
+                absoluteContentRoot,
+                packID,
+                scenarioID,
+                disabledModIDs,
+                string.IsNullOrWhiteSpace(scenarioIdOverride),
+                getModLoadOrder?.Invoke(packID),
+                getModVersions?.Invoke(packID),
+                reportRecovery
+            );
         }
         catch (Exception) when (usingOverride && !string.IsNullOrWhiteSpace(catalog.ActivePackID))
         {
             // Selected pack unavailable; fall back to the shipped default.
-            return OpenPack(
+            return OpenStartupSelection(
                 absoluteContentRoot,
                 catalog.ActivePackID,
                 catalog.ActiveScenarioID,
-                disabledModIDs
+                disabledModIDs,
+                true,
+                getModLoadOrder?.Invoke(catalog.ActivePackID),
+                getModVersions?.Invoke(catalog.ActivePackID),
+                reportRecovery
             );
+        }
+    }
+
+    /// <summary>
+    /// Opens the remembered selection and recovers to the same pack's clean default if its mods fail.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="packID">The requested pack.</param>
+    /// <param name="scenarioID">The requested scenario.</param>
+    /// <param name="disabledModIDs">The disabled mod IDs.</param>
+    /// <param name="allowModDefault">Whether a mod may set the initial scenario.</param>
+    /// <param name="appliedModIDs">The last applied mod IDs, or null for legacy preferences.</param>
+    /// <param name="appliedModVersions">The last applied mod releases, when recorded.</param>
+    /// <param name="reportRecovery">The startup recovery callback, when recovery is enabled.</param>
+    /// <returns>The requested selection or the clean pack after recovery.</returns>
+    private static ContentPack OpenStartupSelection(
+        string contentRootPath,
+        string packID,
+        string scenarioID,
+        IEnumerable<string> disabledModIDs,
+        bool allowModDefault,
+        IReadOnlyList<string> appliedModIDs,
+        IReadOnlyList<string> appliedModVersions,
+        Action<string> reportRecovery
+    )
+    {
+        try
+        {
+            ContentPack selected = OpenPack(
+                contentRootPath,
+                packID,
+                scenarioID,
+                disabledModIDs,
+                allowModDefault: allowModDefault,
+                preferredModOrder: appliedModIDs,
+                appliedModVersions: appliedModVersions
+            );
+            string missing = appliedModIDs
+                ?.Except(selected.FileResolver.Mods.Select(mod => mod.ID), StringComparer.Ordinal)
+                .FirstOrDefault();
+            if (reportRecovery != null && missing != null)
+                throw new InvalidDataException($"Applied mod '{missing}' could not be loaded.");
+            return selected;
+        }
+        catch (Exception exception)
+            when (reportRecovery != null && IsContentDiscoveryException(exception))
+        {
+            ContentPack clean = OpenPack(
+                contentRootPath,
+                packID,
+                null,
+                disabledModIDs,
+                preferredModOrder: Array.Empty<string>()
+            );
+            reportRecovery(
+                $"Opened {clean.Definition.DisplayName} with mods off. {GetContentErrorMessage(exception)}"
+            );
+            return clean;
         }
     }
 
@@ -363,21 +568,88 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Opens an installed or retained pack and mods at the exact saved versions.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content directory.</param>
+    /// <param name="saved">The already validated save identity.</param>
+    /// <returns>The content required to load the save.</returns>
+    internal static ContentPack OpenSaved(string contentRootPath, GameMetadata saved)
+    {
+        if (
+            string.IsNullOrWhiteSpace(saved.PackID)
+            || string.IsNullOrWhiteSpace(saved.PackVersion)
+            || string.IsNullOrWhiteSpace(saved.ScenarioID)
+        )
+            throw new InvalidOperationException(
+                "The save does not identify its pack, version, and scenario."
+            );
+        return OpenPack(
+            Path.GetFullPath(contentRootPath),
+            saved.PackID,
+            saved.ScenarioID,
+            null,
+            saved
+        );
+    }
+
+    /// <summary>
+    /// Opens a selected pack at the scenario declared by its active content.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content directory.</param>
+    /// <param name="packID">The selected pack identity.</param>
+    /// <param name="disabledModIDs">Mods excluded from this selection.</param>
+    /// <param name="preferredModOrder">The player-selected priority of mod IDs.</param>
+    /// <param name="requireValidSelection">Whether to reject blocked mods instead of using the applied set.</param>
+    /// <param name="appliedModVersions">The recorded releases when opening applied content.</param>
+    /// <returns>The selected content and its effective default scenario.</returns>
+    internal static ContentPack OpenDefaultScenario(
+        string contentRootPath,
+        string packID,
+        IEnumerable<string> disabledModIDs,
+        IReadOnlyList<string> preferredModOrder = null,
+        bool requireValidSelection = false,
+        IReadOnlyList<string> appliedModVersions = null
+    ) =>
+        OpenPack(
+            Path.GetFullPath(contentRootPath),
+            packID,
+            null,
+            disabledModIDs,
+            preferredModOrder: preferredModOrder,
+            requireValidSelection: requireValidSelection,
+            appliedModVersions: appliedModVersions
+        );
+
+    /// <summary>
     /// Loads and validates a specific pack + scenario from a resolved content root.
     /// </summary>
     /// <param name="absoluteContentRoot">The resolved external content root.</param>
     /// <param name="packID">The pack ID to open.</param>
     /// <param name="scenarioID">The scenario ID to open, or empty for the pack default.</param>
     /// <param name="disabledModIDs">Mod IDs that must not enter the active content layers.</param>
+    /// <param name="saved">The exact content identity when restoring saved content.</param>
+    /// <param name="allowModDefault">Whether an authored default supersedes a catalog default.</param>
+    /// <param name="preferredModOrder">The saved or staged order for a new game.</param>
+    /// <param name="requireValidSelection">Whether every requested mod must be loadable.</param>
+    /// <param name="appliedModVersions">The exact releases when opening an applied stack.</param>
     /// <returns>The loaded content pack.</returns>
     private static ContentPack OpenPack(
         string absoluteContentRoot,
         string packID,
         string scenarioID,
-        IEnumerable<string> disabledModIDs
+        IEnumerable<string> disabledModIDs,
+        GameMetadata saved = null,
+        bool allowModDefault = false,
+        IReadOnlyList<string> preferredModOrder = null,
+        bool requireValidSelection = false,
+        IReadOnlyList<string> appliedModVersions = null
     )
     {
-        IReadOnlyList<string> packRoots = ResolvePackRoots(absoluteContentRoot, packID);
+        IReadOnlyList<string> packRoots = ResolvePackRoots(
+            absoluteContentRoot,
+            packID,
+            saved?.PackVersion
+        );
         string packRoot = packRoots[0];
         ContentPackDefinition pack = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
             Path.Combine(packRoot, _packFileName)
@@ -395,10 +667,32 @@ public static class ContentPackLoader
             pack.ID,
             pack.Version,
             disabledModIDs,
-            packRoots.Skip(1)
+            packRoots.Skip(1),
+            saved,
+            preferredModOrder: preferredModOrder,
+            appliedModIDs: requireValidSelection ? null : preferredModOrder,
+            appliedModVersions: appliedModVersions
         );
+        if (requireValidSelection)
+        {
+            ContentModIssue issue = fileResolver.ModIssues.FirstOrDefault(issue =>
+                issue.BlocksSelection
+            );
+            if (issue != null)
+                throw new InvalidOperationException($"{issue.DisplayName}: {issue.Message}");
+        }
 
-        return LoadPack(fileResolver, pack, scenarioID);
+        fileResolver.ValidateArtworkAliases();
+        ContentPackDefinition effective = fileResolver.Mods.Any(mod => mod.ExtendsPack)
+            ? ReadModPackDefinition(fileResolver)
+            : pack;
+        return LoadPack(
+            fileResolver,
+            effective,
+            allowModDefault && effective.DefaultScenarioID != pack.DefaultScenarioID
+                ? null
+                : scenarioID
+        );
     }
 
     /// <summary>
@@ -447,7 +741,8 @@ public static class ContentPackLoader
             scenario,
             factions,
             gameData,
-            LoadPreloadManifests(fileResolver, pack.Preloads)
+            LoadPreloadManifests(fileResolver, pack.Preloads),
+            scenarios
         );
     }
 
@@ -661,11 +956,19 @@ public static class ContentPackLoader
             pack.EncyclopediaEntriesPath,
             nameof(EncyclopediaEntries)
         );
-        FactionThemes themes = DeserializeGameData<FactionThemes>(
-            fileResolver,
-            pack.NeutralThemePath,
-            nameof(FactionThemes)
-        );
+        FactionThemes themes = new();
+        foreach (
+            string path in ResolveThemePaths(
+                pack,
+                factions,
+                path => ContentXmlOverrides.Load(fileResolver, _packAddressPrefix + path)
+            )
+        )
+            themes.AddRange(
+                DeserializeGameData<FactionThemes>(fileResolver, path, nameof(FactionThemes))
+            );
+        if (themes.Count(theme => FactionThemes.IsNeutral(theme.FactionInstanceID)) != 1)
+            throw new InvalidDataException("A content pack must define exactly one Neutral theme.");
 
         List<Faction> factionData = new List<Faction>();
         List<CapitalShip> capitalShips = new List<CapitalShip>();
@@ -713,14 +1016,6 @@ public static class ContentPackLoader
                 )
             )
                 encyclopediaEntries.Add(entry);
-            foreach (
-                FactionTheme theme in DeserializeGameData<FactionThemes>(
-                    fileResolver,
-                    faction.ThemePath,
-                    nameof(FactionThemes)
-                )
-            )
-                themes.Add(theme);
         }
 
         return new GameDataCatalog(
@@ -900,6 +1195,63 @@ public static class ContentPackLoader
     }
 
     /// <summary>
+    /// Reads theme paths registered by the pack and by legacy faction manifests.
+    /// </summary>
+    /// <param name="resolver">The installed content and inheritance layers.</param>
+    /// <param name="pack">The effective pack manifest.</param>
+    /// <returns>The pack-relative paths to the theme catalogs.</returns>
+    public static IEnumerable<string> ReadThemePaths(
+        ContentFileResolver resolver,
+        ContentPackDefinition pack
+    ) =>
+        ResolveThemePaths(
+            pack,
+            LoadDefinitions<ContentFactionDefinition>(resolver, pack.FactionPaths),
+            path => ContentXmlOverrides.Load(resolver, _packAddressPrefix + path)
+        );
+
+    /// <summary>
+    /// Resolves the shared list and fills in themes still registered by legacy manifests.
+    /// </summary>
+    /// <param name="pack">The effective pack manifest.</param>
+    /// <param name="factions">The registered faction manifests.</param>
+    /// <param name="readTheme">Reads a theme at its pack-relative path.</param>
+    /// <returns>The unique theme paths in declaration order.</returns>
+    public static IEnumerable<string> ResolveThemePaths(
+        ContentPackDefinition pack,
+        IEnumerable<ContentFactionDefinition> factions,
+        Func<string, string> readTheme
+    )
+    {
+        string[] paths = pack
+            .ThemePaths.Select(path => path.Replace('\\', '/'))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
+        var remaining = factions
+            .Select(faction => (faction.ID, Path: faction.ThemePath))
+            .Prepend((null, pack.LegacyNeutralThemePath))
+            .Where(theme => !string.IsNullOrWhiteSpace(theme.Path))
+            .Select(theme => (theme.ID, Path: theme.Path.Replace('\\', '/')))
+            .Where(theme => !paths.Contains(theme.Path, StringComparer.Ordinal))
+            .ToArray();
+        if (remaining.Length == 0)
+            return paths;
+        HashSet<string> registeredIDs = paths
+            .SelectMany(path => FactionThemes.ReadFactionIDs(readTheme(path)))
+            .ToHashSet(StringComparer.Ordinal);
+        bool hasNeutral = registeredIDs.Any(FactionThemes.IsNeutral);
+        return paths
+            .Concat(
+                remaining
+                    .Where(theme =>
+                        theme.ID == null ? !hasNeutral : !registeredIDs.Contains(theme.ID)
+                    )
+                    .Select(theme => theme.Path)
+            )
+            .Distinct(StringComparer.Ordinal);
+    }
+
+    /// <summary>
     /// Loads every preload manifest declared by a pack.
     /// </summary>
     /// <param name="fileResolver">The layered content file resolver.</param>
@@ -1064,6 +1416,9 @@ public static class ContentPackLoader
         string definitionPath = Path.Combine(packRoot, _packFileName);
         try
         {
+            definitionPath = ContentPackageManifest.Find(packRoot, ContentPackageType.Era);
+            if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.Mod)
+                return null;
             ContentPackDefinition definition =
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(definitionPath);
             if (string.IsNullOrWhiteSpace(definition.ID))
@@ -1144,8 +1499,15 @@ public static class ContentPackLoader
     /// </summary>
     /// <param name="contentRootPath">The installed Content directory.</param>
     /// <param name="packID">The stable pack ID selected by the catalog.</param>
+    /// <param name="requiredVersion">The exact saved version, when restoring a save.</param>
+    /// <param name="inheritedPacks">The published parent chain of an explicit working folder.</param>
     /// <returns>The absolute pack roots from the selected pack through its furthest ancestor.</returns>
-    private static IReadOnlyList<string> ResolvePackRoots(string contentRootPath, string packID)
+    private static IReadOnlyList<string> ResolvePackRoots(
+        string contentRootPath,
+        string packID,
+        string requiredVersion = null,
+        IReadOnlyList<ContentPackDependency> inheritedPacks = null
+    )
     {
         string packsRootPath = Path.Combine(Path.GetFullPath(contentRootPath), _packsDirectoryName);
         if (
@@ -1185,6 +1547,7 @@ public static class ContentPackLoader
         List<string> roots = new List<string>();
         HashSet<string> visited = new HashSet<string>(StringComparer.Ordinal);
         string currentPackID = packID;
+        int inheritedIndex = 0;
         while (!string.IsNullOrWhiteSpace(currentPackID))
         {
             if (!visited.Add(currentPackID))
@@ -1193,7 +1556,24 @@ public static class ContentPackLoader
                     $"Content pack inheritance contains a cycle at '{currentPackID}'."
                 );
             }
-            if (!packs.TryGetValue(currentPackID, out var matches))
+            if (inheritedPacks is { Count: > 0 })
+            {
+                ContentPackDependency inherited = inheritedPacks.ElementAtOrDefault(
+                    inheritedIndex++
+                );
+                if (inherited?.ID != currentPackID || string.IsNullOrWhiteSpace(inherited.Version))
+                    throw new InvalidOperationException(
+                        $"The published inheritance chain does not specify a version for '{currentPackID}'."
+                    );
+                requiredVersion = inherited.Version;
+            }
+            packs.TryGetValue(currentPackID, out var matches);
+            if (requiredVersion != null)
+            {
+                matches = FindPackRelease(contentRootPath, currentPackID, requiredVersion, matches);
+                requiredVersion = null;
+            }
+            if (matches == null)
             {
                 string discovered = string.Join(
                     "; ",
@@ -1225,10 +1605,90 @@ public static class ContentPackLoader
                 );
             }
             roots.Add(currentPack.Root);
+            if (currentPack.Definition.InheritedPacks is { Count: > 0 } parentPins)
+            {
+                if (inheritedPacks is not { Count: > 0 })
+                {
+                    inheritedPacks = parentPins;
+                    inheritedIndex = 0;
+                }
+                else if (
+                    !inheritedPacks
+                        .Skip(inheritedIndex)
+                        .Select(pin => (pin?.ID, pin?.Version))
+                        .SequenceEqual(parentPins.Select(pin => (pin?.ID, pin?.Version)))
+                )
+                    throw new InvalidDataException(
+                        $"The published inheritance chain disagrees with '{currentPackID}'."
+                    );
+            }
             currentPackID = currentPack.Definition.BasePackID;
         }
 
+        if (inheritedPacks != null && inheritedIndex != inheritedPacks.Count)
+            throw new InvalidDataException("The published inheritance chain has unused entries.");
         return roots;
+    }
+
+    /// <summary>
+    /// Finds a required pack release in the installed and retained package locations.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content root.</param>
+    /// <param name="packID">The required pack ID.</param>
+    /// <param name="version">The required version.</param>
+    /// <param name="installed">The active installations with that ID.</param>
+    /// <returns>The matching installations, with duplicates retained for validation.</returns>
+    private static List<(string Root, ContentPackDefinition Definition)> FindPackRelease(
+        string contentRootPath,
+        string packID,
+        string version,
+        List<(string Root, ContentPackDefinition Definition)> installed
+    )
+    {
+        var matches = installed?.Where(entry => entry.Definition.Version == version).ToList();
+        if (matches == null || matches.Count == 0)
+            matches = ReadRetainedPack(contentRootPath, packID, version);
+        if (matches.Count == 0)
+            throw new InvalidOperationException(
+                $"Required content pack '{packID}' version '{version}' is not installed."
+            );
+        return matches;
+    }
+
+    /// <summary>
+    /// Finds a retained release matching the save's selected pack.
+    /// </summary>
+    /// <param name="contentRootPath">The installation whose archive is inspected.</param>
+    /// <param name="id">The saved pack ID.</param>
+    /// <param name="version">The saved pack version.</param>
+    /// <returns>Matching retained pack roots and manifests.</returns>
+    private static List<(string Root, ContentPackDefinition Definition)> ReadRetainedPack(
+        string contentRootPath,
+        string id,
+        string version
+    )
+    {
+        var results = new List<(string, ContentPackDefinition)>();
+        foreach (
+            IEnumerable<string> archives in new[]
+            {
+                ContentFileResolver.GetArchivedPackageFolders(contentRootPath),
+                ModPackageStore.GetRetainedReleaseFolders(contentRootPath),
+            }
+        )
+        {
+            foreach (string folder in archives)
+            {
+                if (!File.Exists(Path.Combine(folder, _packFileName)))
+                    continue;
+                InstalledContentPack pack = DiscoverInstalledPack(folder);
+                if (pack?.Definition?.ID == id && pack.Definition.Version == version)
+                    results.Add((folder, pack.Definition));
+            }
+            if (results.Count > 0)
+                break;
+        }
+        return results;
     }
 
     /// <summary>
@@ -1247,6 +1707,12 @@ public static class ContentPackLoader
             ContentPackDefinition definition;
             try
             {
+                string manifest = ContentPackageManifest.Find(
+                    Path.GetDirectoryName(path),
+                    ContentPackageType.Era
+                );
+                if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
+                    continue;
                 definition = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(path);
             }
             catch (Exception exception) when (IsContentDiscoveryException(exception))

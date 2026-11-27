@@ -107,6 +107,22 @@ public sealed class ContentEditorThunderstoreConnectionView : MonoBehaviour, ICa
     }
 
     /// <summary>
+    /// Opens account controls for setup or management after verifying the connection.
+    /// </summary>
+    /// <param name="teams">The teams verified for this connection.</param>
+    /// <param name="manageAccount">Whether the request started from an already connected account.</param>
+    internal void ShowAfterVerification(string[] teams, bool manageAccount)
+    {
+        bool connected = teams.Length > 0;
+        if (connected && !manageAccount)
+            return;
+        Show();
+        RenderConnection(teams);
+        if (!connected)
+            ShowStatus("Paste a token to connect this device.");
+    }
+
+    /// <summary>
     /// Clears the masked field and its undo history when dismissing account setup.
     /// </summary>
     internal void Hide()

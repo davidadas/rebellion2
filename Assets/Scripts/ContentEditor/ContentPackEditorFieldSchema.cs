@@ -36,7 +36,7 @@ internal static class ContentPackEditorFieldSchema
     {
         Type definition = record.Name.LocalName switch
         {
-            "ContentPack" => typeof(ContentPackDefinition),
+            "ContentPack" or ContentPackageManifest.RootName => typeof(ContentPackDefinition),
             "Faction" when record.Element("FactionDataPath") != null =>
                 typeof(ContentFactionDefinition),
             "Scenario" => typeof(ContentScenarioDefinition),

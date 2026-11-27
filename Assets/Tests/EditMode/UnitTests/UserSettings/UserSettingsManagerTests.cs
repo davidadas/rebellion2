@@ -181,6 +181,51 @@ namespace Rebellion.Tests.Managers
         }
 
         [Test]
+        public void Save_BothInstancesChangeDifferentEraOrders_MergesTheOrdersAndVersions()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "era-orders-" + Guid.NewGuid().ToString("N")
+            );
+            string path = Path.Combine(directory, "user-settings.json");
+            try
+            {
+                var game = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                var toolkit = new UserSettingsManager(null, CreateDisplayManager(), null, path);
+                game.Load();
+                toolkit.Load();
+                game.Settings.Content.SetModLoadOrder(
+                    "classic",
+                    new[] { "balance", "art" },
+                    new[] { "1.1", "2.0" }
+                );
+                toolkit.Settings.Content.SetModLoadOrder(
+                    "frontier",
+                    new[] { "ships" },
+                    new[] { "3.0" }
+                );
+                toolkit.Save();
+
+                game.Save();
+
+                toolkit.Load();
+                Assert.That(
+                    toolkit.Settings.Content.GetModVersions("classic"),
+                    Is.EqualTo(new[] { "1.1", "2.0" })
+                );
+                Assert.That(
+                    toolkit.Settings.Content.GetModVersions("frontier"),
+                    Is.EqualTo(new[] { "3.0" })
+                );
+            }
+            finally
+            {
+                if (Directory.Exists(directory))
+                    Directory.Delete(directory, true);
+            }
+        }
+
+        [Test]
         public void Save_BothInstancesChangeDifferentAddOns_MergesTheirChanges()
         {
             string directory = Path.Combine(

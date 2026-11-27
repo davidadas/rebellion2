@@ -12,6 +12,8 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
 {
+    internal const string ModProjectLabel = "Mod / content pack";
+
     [SerializeField]
     private TMP_InputField newIDInput;
 
@@ -29,6 +31,18 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
 
     [SerializeField]
     private TextMeshProUGUI helpText;
+
+    [SerializeField]
+    private TextMeshProUGUI heading;
+
+    [SerializeField]
+    private TextMeshProUGUI nameLabel;
+
+    [SerializeField]
+    private TextMeshProUGUI idLabel;
+
+    [SerializeField]
+    private TextMeshProUGUI baseLabel;
 
     [SerializeField]
     private Button folderBrowseButton;
@@ -50,8 +64,9 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     private string defaultLocation;
     private string automaticPackID = string.Empty;
     private bool bound;
+    private bool createAsMod;
 
-    public event Action<string, string, string, string, string> CreateRequested;
+    public event Action<string, string, string, string, string, bool> CreateRequested;
     public event Action<string> BrowseRequested;
     public bool IsOpen => gameObject.activeSelf;
     public bool HasOpenChoice => packChoiceDropdown.IsExpanded;
@@ -75,6 +90,10 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
             || newFolderInput == null
             || newFolderPathText == null
             || helpText == null
+            || heading == null
+            || nameLabel == null
+            || idLabel == null
+            || baseLabel == null
             || folderBrowseButton == null
             || packChoiceDropdown == null
             || dialogError == null
@@ -128,9 +147,22 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     /// <summary>
     /// Opens a fresh creation form while retaining the installed base-pack choices.
     /// </summary>
-    public void Show()
+    /// <param name="asMod">Whether to create a stackable mod.</param>
+    public void Show(bool asMod = false)
     {
         BindControls();
+        createAsMod = asMod;
+        heading.text = asMod ? "New mod / content pack" : "New era";
+        nameLabel.text = asMod ? "Name *" : "Era name *";
+        idLabel.text = asMod ? "ID *" : "Era ID *";
+        baseLabel.text = asMod ? "Compatible era *" : "Base era *";
+        ((TMP_Text)newIDInput.placeholder).text = asMod ? "my-mod" : "my-era";
+        dialogConfirmButton.GetComponentInChildren<TMP_Text>(true).text = asMod
+            ? "Create project"
+            : "Create era";
+        helpText.text = asMod
+            ? "Players can enable this project alongside other mods for the selected era."
+            : "Players can select this era when starting a game. Edits are saved in its own project folder.";
         automaticPackID = string.Empty;
         newNameInput.SetTextWithoutNotify(string.Empty);
         newIDInput.SetTextWithoutNotify(string.Empty);
@@ -268,7 +300,7 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     private void UpdateCreateAvailability()
     {
         newFolderPathText.text = string.IsNullOrWhiteSpace(newIDInput.text)
-            ? "The pack folder is named automatically from its ID."
+            ? "The project folder is named from its ID."
             : "Creates: "
                 + newFolderInput.text.TrimEnd(
                     Path.DirectorySeparatorChar,
@@ -303,13 +335,16 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     /// </summary>
     private void Submit()
     {
+        if (!dialogConfirmButton.interactable)
+            return;
         dialogError.text = string.Empty;
         CreateRequested?.Invoke(
             chosenPackID,
             newIDInput.text,
             newNameInput.text,
             newVersionInput.text,
-            newFolderInput.text
+            newFolderInput.text,
+            createAsMod
         );
     }
 }
