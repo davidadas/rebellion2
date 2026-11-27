@@ -21,6 +21,11 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             _session = session ?? throw new ArgumentNullException(nameof(session));
         }
 
+        /// <summary>
+        /// Reads the model ordinal used by the inspection display.
+        /// </summary>
+        /// <param name="unit">The inspected participant.</param>
+        /// <returns>The ordinal from the unit type's content entry.</returns>
         private int GetPresentationIndex(CombatUnit unit) =>
             _session.Definition?.FindUnit(unit.TypeID)?.PresentationIndex ?? 0;
 
