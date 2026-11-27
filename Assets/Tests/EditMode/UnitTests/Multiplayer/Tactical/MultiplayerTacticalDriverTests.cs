@@ -659,8 +659,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                                 item.SystemDamage.Weapons,
                                 item.SystemDamage.TractorBeam,
                                 item.SystemDamage.Engines,
-                                item.SystemDamage.PrimaryHyperdrive,
-                                item.SystemDamage.BackupHyperdrive
+                                string.Join(",", item.SystemDamage.HyperdriveDamage)
                             )
                         ),
                     guest
@@ -674,8 +673,7 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                                 item.SystemDamage.Weapons,
                                 item.SystemDamage.TractorBeam,
                                 item.SystemDamage.Engines,
-                                item.SystemDamage.PrimaryHyperdrive,
-                                item.SystemDamage.BackupHyperdrive
+                                string.Join(",", item.SystemDamage.HyperdriveDamage)
                             )
                         )
                 );
