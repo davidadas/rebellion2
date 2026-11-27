@@ -122,6 +122,12 @@ namespace Rebellion.Tests.ContentEditor.UI
             ContentEditorFieldView description = fields.Single(field =>
                 field.Field.MemberName == descriptionMember
             );
+            Assert.IsFalse(
+                image
+                    .GetComponentsInChildren<TMP_Text>(true)
+                    .Single(text => text.name == "SelectedMedia")
+                    .gameObject.activeSelf
+            );
             RectTransform imageRect = (RectTransform)image.transform;
             RectTransform descriptionRect = (RectTransform)description.transform;
             Assert.GreaterOrEqual(
@@ -2571,11 +2577,12 @@ namespace Rebellion.Tests.ContentEditor.UI
                 .Single(field => field.name == "EncyclopediaimagepathField");
             TMP_InputField input = field.GetComponentInChildren<TMP_InputField>(true);
             TMP_Text selected = field
-                .GetComponentsInChildren<TMP_Text>()
+                .GetComponentsInChildren<TMP_Text>(true)
                 .Single(text => text.name == "SelectedMedia");
 
             Assert.IsFalse(input.gameObject.activeSelf);
             Assert.AreEqual("image.png", selected.text);
+            Assert.IsFalse(selected.gameObject.activeSelf);
             Assert.IsTrue(
                 field.GetComponentsInChildren<Button>().Any(button => button.name == "Import")
             );

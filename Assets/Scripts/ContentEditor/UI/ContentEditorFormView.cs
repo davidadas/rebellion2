@@ -1245,7 +1245,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                         0,
                         y,
                         group.Key == "Image" ? Mathf.Min(448, width) : width,
-                        stacked ? 0 : Mathf.Min(244, width * 0.45f)
+                        stacked ? 0 : Mathf.Min(244, width * 0.45f),
+                        showMediaName: group.Key != "Image"
                     );
                 }
             y += 16;
@@ -6437,6 +6438,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// <param name="editArtwork">Opens the gameplay artwork editor when one is available.</param>
     /// <param name="hasEffectArtwork">Whether the associated effect image could be loaded.</param>
     /// <param name="videoPreviewAddress">The effective video address for a cutscene action row.</param>
+    /// <param name="showMediaName">Whether the media filename adds context beyond the surrounding preview.</param>
     private int PlaceField(
         ContentPackEditorField field,
         int index,
@@ -6449,7 +6451,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         IReadOnlyDictionary<string, string> referenceLabels = null,
         Action editArtwork = null,
         bool hasEffectArtwork = false,
-        string videoPreviewAddress = null
+        string videoPreviewAddress = null,
+        bool showMediaName = true
     )
     {
         while (fieldViews.Count <= index)
@@ -6499,7 +6502,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
             return view.SetVideoActionLayout(rect, videoPreviewAddress, videoResolutions);
         return artworkAction
             ? view.SetArtworkActionLayout(rect, editArtwork, hasEffectArtwork)
-            : view.SetLayout(rect, labelWidth);
+            : view.SetLayout(rect, labelWidth, showMediaName);
     }
 
     /// <summary>

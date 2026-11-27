@@ -46,6 +46,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private ContentPackEditorField field;
     private ContentPackEditorFieldRenderData presentation;
     private string renderedMediaValue;
+    private bool mediaNameVisible = true;
     private Action changed;
     private Action<ContentPackEditorField> importRequested;
     private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
@@ -145,9 +146,11 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// </summary>
     /// <param name="bounds">The content-space field bounds.</param>
     /// <param name="labelWidth">The space reserved for its label, or zero for a skill value cell.</param>
+    /// <param name="showMediaName">Whether a media row needs its filename beside the preview controls.</param>
     /// <returns>The row height, including the complete wrapped caption.</returns>
-    public int SetLayout(Rect bounds, float labelWidth)
+    public int SetLayout(Rect bounds, float labelWidth, bool showMediaName = true)
     {
+        mediaNameVisible = showMediaName;
         if (presentation.MediaChoices != null || IsAudioList(field))
             return SetMediaSelectorLayout(bounds, labelWidth);
         error.gameObject.SetActive(true);
@@ -244,7 +247,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 );
             }
         }
-        bool stackedMedia = field.IsMedia && bounds.width < 600;
+        bool stackedMedia = field.IsMedia && (bounds.width < 600 || !mediaNameVisible);
         float valueTop = stackedMedia ? 0 : 4 + labelExtra + markerInset;
         int importWidth = Mathf.Max(
             86,
@@ -264,6 +267,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         value.offsetMax = new Vector2(-valueRight, -valueTop);
         if (compactMedia)
         {
+            selectedMedia.gameObject.SetActive(mediaNameVisible);
             UILayout.SetSourceRect(
                 selectedMedia.rectTransform,
                 Mathf.RoundToInt(valueLeft + 8),
@@ -586,6 +590,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private int PreferredHeight(float width, float labelWidth) =>
         field == null || selectItemsButton.gameObject.activeSelf ? 56
         : field.IsMediaDirectory ? (field.IsList ? 104 : 80)
+        : IsCompactMedia(field) && !mediaNameVisible ? 56
         : IsCompactMedia(field) && width < 600 ? 88
         : field.IsList
         && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
@@ -775,6 +780,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             presentation = value;
             field = value.Field;
             renderedMediaValue = field.Value;
+            mediaNameVisible = true;
             backgroundRole = ContentEditorColorRole.Input;
             help.Configure(field.HelpText, input, label.font);
             IReadOnlyDictionary<string, string> referenceLabels =
