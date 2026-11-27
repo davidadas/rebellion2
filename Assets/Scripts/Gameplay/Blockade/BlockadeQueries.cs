@@ -34,8 +34,7 @@ namespace Rebellion.Gameplay
         public static bool IsBlockaded(GameRoot game, Planet planet)
         {
             if (
-                planet == null
-                || planet.IsDestroyed
+                planet?.IsDestroyed != false
                 || !planet.IsColonized && string.IsNullOrEmpty(planet.OwnerInstanceID)
             )
                 return false;
