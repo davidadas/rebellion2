@@ -1032,13 +1032,8 @@ namespace Rebellion.Tests.Tactical
                 DamageControl = damageControl,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 20, 20, 20, 20, 100 };
-            return new(ship, side, index)
-            {
-                PresentationIndex = 1,
-                Heading = heading,
-                DesiredHeading = heading,
-            };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 20, 20, 20, 20, 100 });
+            return new(ship, side, index) { Heading = heading, DesiredHeading = heading };
         }
 
         /// <summary>

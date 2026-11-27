@@ -212,7 +212,7 @@ namespace Rebellion.Gameplay
         private static int GetDestroyedUnitValue(IEnumerable<CombatUnitSnapshot> snapshots) =>
             (snapshots ?? Enumerable.Empty<CombatUnitSnapshot>())
                 .Where(snapshot => snapshot?.Destroyed == true)
-                .Sum(snapshot => CombatUnitSnapshot.GetMilitaryValue(snapshot.Unit));
+                .Sum(snapshot => SpaceCombatQueries.GetMilitaryValue(snapshot.Unit));
 
         /// <summary>
         /// Totals eligible values for destroyed live-unit records.
@@ -222,7 +222,7 @@ namespace Rebellion.Gameplay
         /// <returns>The eligible destroyed-unit value.</returns>
         private static int GetDestroyedUnitValue<T>(IEnumerable<T> units)
             where T : class, ISceneNode =>
-            (units ?? Enumerable.Empty<T>()).Sum(CombatUnitSnapshot.GetMilitaryValue);
+            (units ?? Enumerable.Empty<T>()).Sum(SpaceCombatQueries.GetMilitaryValue);
 
         /// <summary>
         /// Calculates and applies the configured battle-loss loyalty formula.

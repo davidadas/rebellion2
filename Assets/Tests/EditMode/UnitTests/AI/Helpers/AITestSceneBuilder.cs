@@ -581,7 +581,11 @@ namespace Rebellion.Tests.AI.Helpers
                 Maneuverability = 1,
                 WeaponRecharge = 1,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = combatStrength;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                combatStrength
+            );
             return ship;
         }
 

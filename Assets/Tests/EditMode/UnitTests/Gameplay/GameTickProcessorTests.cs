@@ -302,7 +302,9 @@ namespace Rebellion.Tests.Gameplay
                 {
                     foreach (BlockadeChangedResult result in results)
                         if (result.Blockaded && ReferenceEquals(result.Planet, blockadedPlanet))
-                            observedStartStates.Add(result.Planet.IsBlockaded(_game));
+                            observedStartStates.Add(
+                                BlockadeQueries.IsBlockaded(_game, result.Planet)
+                            );
                 }
             );
 
@@ -578,7 +580,7 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(origin, sector);
             _game.AttachNode(destination, sector);
             Fleet fleet = AttachOperationalFleet(origin, "FNEMP1", "UNRELATED_FLEET");
-            Assert.IsTrue(origin.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, origin));
             MovementCommands movement = _session.GetService<MovementCommands>();
             List<BlockadeChangedResult> blockades = new();
             bool departureObserved = false;
@@ -1044,14 +1046,10 @@ namespace Rebellion.Tests.Gameplay
                     ship.SublightSpeed = 100;
                     ship.WeaponRecharge = 1;
                     if (factionId == playerFactionId)
-                        ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-                        {
-                            100000,
-                            100000,
-                            100000,
-                            100000,
-                            100,
-                        };
+                        ship.SetPrimaryWeapon(
+                            PrimaryWeaponType.Turbolaser,
+                            new[] { 100000, 100000, 100000, 100000, 100 }
+                        );
                 }
             }
 
@@ -1083,14 +1081,10 @@ namespace Rebellion.Tests.Gameplay
         private static void ConfigureDecisiveAutomaticFire(CapitalShip ship)
         {
             ship.WeaponRecharge = 1000;
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                1000,
-                1000,
-                1000,
-                1000,
-                100,
-            };
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { 1000, 1000, 1000, 1000, 100 }
+            );
         }
 
         /// <summary>

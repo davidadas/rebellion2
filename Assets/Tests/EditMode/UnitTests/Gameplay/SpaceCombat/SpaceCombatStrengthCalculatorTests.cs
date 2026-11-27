@@ -51,7 +51,7 @@ namespace Rebellion.Tests.Gameplay
         private static CapitalShip CreateTurbolaserShip()
         {
             CapitalShip ship = new CapitalShip { Maneuverability = 2, WeaponRecharge = 3 };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 4;
+            ship.SetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore, 4);
             return ship;
         }
     }

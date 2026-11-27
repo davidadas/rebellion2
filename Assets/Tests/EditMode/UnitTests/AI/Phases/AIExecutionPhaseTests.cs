@@ -43,7 +43,12 @@ namespace Rebellion.Tests.AI.Phases
                 .GetEnumerator();
 
             Assert.IsTrue(execution.MoveNext());
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] *= 2;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore)
+                    * 2
+            );
 
             Assert.Greater(
                 context.Assessment.GetReadyFleetCombatValueAgainstCapitalShips(fleet),

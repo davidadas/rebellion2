@@ -287,7 +287,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 73, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            double recharge = systems.GetWeaponRecharge();
+            double recharge = TacticalCombatFireControl.GetWeaponRecharge(systems);
 
             Assert.AreEqual(0x40411d2afc800000L, BitConverter.DoubleToInt64Bits(recharge));
         }
@@ -298,7 +298,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateSystems(currentHull: 500);
             systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
 
-            Assert.AreEqual(18.75f, systems.GetWeaponRecharge());
+            Assert.AreEqual(18.75f, TacticalCombatFireControl.GetWeaponRecharge(systems));
         }
 
         [Test]
@@ -316,7 +316,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            double ratio = systems.GetWeaponRechargeRatio();
+            double ratio = TacticalCombatFireControl.GetWeaponRechargeRatio(systems);
 
             Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
         }
@@ -325,10 +325,10 @@ namespace Rebellion.Tests.Tactical
         public void GetWeaponRechargeRatio_FighterLosesHalfHull_UsesUpdatedRechargeSample()
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
-            systems.GetWeaponRecharge();
+            TacticalCombatFireControl.GetWeaponRecharge(systems);
             systems.ApplyHullLoss(48);
 
-            double ratio = systems.GetWeaponRechargeRatio();
+            double ratio = TacticalCombatFireControl.GetWeaponRechargeRatio(systems);
 
             Assert.AreEqual(0x3fefffffe9402186L, BitConverter.DoubleToInt64Bits(ratio));
         }
@@ -337,11 +337,11 @@ namespace Rebellion.Tests.Tactical
         public void GetWeaponRechargeRatio_DestroyedFighter_UpdatesSampleBeforeDivisionThenStopsAtZero()
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
-            systems.GetWeaponRecharge();
+            TacticalCombatFireControl.GetWeaponRecharge(systems);
             systems.ApplyHullLoss(96);
 
-            double first = systems.GetWeaponRechargeRatio();
-            double second = systems.GetWeaponRechargeRatio();
+            double first = TacticalCombatFireControl.GetWeaponRechargeRatio(systems);
+            double second = TacticalCombatFireControl.GetWeaponRechargeRatio(systems);
 
             Assert.IsTrue(double.IsNaN(first));
             Assert.AreEqual(0, second);
@@ -353,8 +353,8 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.Destroy();
 
-            Assert.AreEqual(0, systems.GetWeaponRecharge());
-            Assert.AreEqual(0, systems.GetWeaponRechargeRatio());
+            Assert.AreEqual(0, TacticalCombatFireControl.GetWeaponRecharge(systems));
+            Assert.AreEqual(0, TacticalCombatFireControl.GetWeaponRechargeRatio(systems));
         }
 
         [Test]
@@ -363,7 +363,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateUnitWithPools(false, 1000, 500, 0, 0, 0, 0, 0, 8, 1, 0);
             systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
 
-            Assert.AreEqual(0.25d, systems.GetTractorRatio());
+            Assert.AreEqual(0.25d, TacticalCombatMotion.GetTractorRatio(systems));
         }
 
         [Test]
@@ -372,9 +372,9 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 20, 0, 0, 1, 0);
             systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            Assert.AreEqual(1d, systems.GetMovementRatio(8, 4));
+            Assert.AreEqual(1d, TacticalCombatMotion.GetMovementRatio(systems, 8, 4));
             systems.ApplyDisruption(0, 1);
-            Assert.AreEqual(0d, systems.GetMovementRatio(8, 4));
+            Assert.AreEqual(0d, TacticalCombatMotion.GetMovementRatio(systems, 8, 4));
         }
 
         [Test]
@@ -382,8 +382,8 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            Assert.AreEqual(0d, systems.GetMovementRatio(9, 0));
-            Assert.AreEqual(9d, systems.GetMovementBudget(9, 0));
+            Assert.AreEqual(0d, TacticalCombatMotion.GetMovementRatio(systems, 9, 0));
+            Assert.AreEqual(9d, TacticalCombatMotion.GetMovementBudget(systems, 9, 0));
         }
 
         [TestCase(false, 5f)]
@@ -397,9 +397,9 @@ namespace Rebellion.Tests.Tactical
             for (int index = 0; index < 3; index++)
                 systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            float turnBudget = systems.GetTurnBudget(float.Epsilon, 0);
+            float turnBudget = TacticalCombatMotion.GetTurnBudget(systems, float.Epsilon, 0);
 
-            Assert.AreEqual(0, systems.GetMovementBudget(float.Epsilon, 0));
+            Assert.AreEqual(0, TacticalCombatMotion.GetMovementBudget(systems, float.Epsilon, 0));
             Assert.AreEqual(expected, turnBudget);
         }
 
@@ -437,12 +437,12 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
 
-            double recharge = systems.GetShieldRecharge();
+            double recharge = TacticalCombatDamage.GetShieldRecharge(systems);
 
             Assert.AreEqual(0.30000000447034836d, recharge);
             Assert.AreEqual(
                 0x3feffffff2aaaab4L,
-                BitConverter.DoubleToInt64Bits(systems.GetShieldRechargeRatio())
+                BitConverter.DoubleToInt64Bits(TacticalCombatDamage.GetShieldRechargeRatio(systems))
             );
         }
 
@@ -452,8 +452,8 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.ApplyHullLoss(96);
 
-            double first = systems.GetShieldRechargeRatio();
-            double second = systems.GetShieldRechargeRatio();
+            double first = TacticalCombatDamage.GetShieldRechargeRatio(systems);
+            double second = TacticalCombatDamage.GetShieldRechargeRatio(systems);
 
             Assert.IsTrue(double.IsNaN(first));
             Assert.AreEqual(0, second);
@@ -464,9 +464,9 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 0, 0, 0, 1, 0);
             systems.ApplyHullLoss(96);
-            Assert.AreEqual(0, systems.GetShieldRecharge());
+            Assert.AreEqual(0, TacticalCombatDamage.GetShieldRecharge(systems));
 
-            double ratio = systems.GetShieldRechargeRatio();
+            double ratio = TacticalCombatDamage.GetShieldRechargeRatio(systems);
 
             Assert.AreEqual(0, ratio);
         }
@@ -489,7 +489,7 @@ namespace Rebellion.Tests.Tactical
                 0
             );
 
-            double ratio = systems.GetShieldRechargeRatio();
+            double ratio = TacticalCombatDamage.GetShieldRechargeRatio(systems);
 
             Assert.AreEqual(0, ratio);
         }
@@ -511,12 +511,12 @@ namespace Rebellion.Tests.Tactical
                 0,
                 new CapitalShipSystemDamage { Shields = 4 }
             );
-            Assert.AreEqual(0, systems.GetShieldRechargeRatio());
+            Assert.AreEqual(0, TacticalCombatDamage.GetShieldRechargeRatio(systems));
 
             systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
 
-            Assert.AreEqual(0.25d, systems.GetShieldRechargeRatio());
-            Assert.AreEqual(2d, systems.GetShieldRecharge());
+            Assert.AreEqual(0.25d, TacticalCombatDamage.GetShieldRechargeRatio(systems));
+            Assert.AreEqual(2d, TacticalCombatDamage.GetShieldRecharge(systems));
         }
 
         [Test]
@@ -577,7 +577,7 @@ namespace Rebellion.Tests.Tactical
             for (int hit = 0; hit < 4; hit++)
                 systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            Assert.AreEqual(0, systems.GetMovementBudget(1, 0));
+            Assert.AreEqual(0, TacticalCombatMotion.GetMovementBudget(systems, 1, 0));
         }
 
         [Test]
@@ -753,7 +753,7 @@ namespace Rebellion.Tests.Tactical
 
             _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
-            Assert.AreEqual(0, systems.GetShieldRechargeRatio());
+            Assert.AreEqual(0, TacticalCombatDamage.GetShieldRechargeRatio(systems));
         }
 
         [Test]
@@ -1010,10 +1010,10 @@ namespace Rebellion.Tests.Tactical
         public void GetMovementBudget_UnorderedMovementDelay_EvaluatesMovement()
         {
             CombatUnit systems = CreateSystems();
-            float budget = systems.GetMovementBudget(1, 0);
+            float budget = TacticalCombatMotion.GetMovementBudget(systems, 1, 0);
             systems.ApplyDisruption(0, float.NaN);
 
-            Assert.AreEqual(budget, systems.GetMovementBudget(1, 0));
+            Assert.AreEqual(budget, TacticalCombatMotion.GetMovementBudget(systems, 1, 0));
         }
 
         /// <summary>

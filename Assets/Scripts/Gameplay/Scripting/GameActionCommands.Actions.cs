@@ -1230,7 +1230,10 @@ namespace Rebellion.Gameplay.Scripting
                 .Select(root => root as Planet ?? root.GetParentOfType<Planet>())
                 .Where(planet => planet != null)
                 .Distinct()
-                .ToDictionary(planet => planet, planet => planet.IsBlockaded(game));
+                .ToDictionary(
+                    planet => planet,
+                    planet => BlockadeQueries.IsBlockaded(game, planet)
+                );
             List<ISceneNode> destroyed = new List<ISceneNode>();
 
             foreach (ISceneNode root in destroyedRoots)

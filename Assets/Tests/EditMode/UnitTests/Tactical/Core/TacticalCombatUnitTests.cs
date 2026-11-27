@@ -81,7 +81,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void Constructor_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
+        public void InitializeUnit_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
         {
             CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition
@@ -96,7 +96,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void Constructor_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
+        public void InitializeUnit_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
         {
             CombatUnit unit = CreateWithLegacyGeometry(
                 new TacticalCombatUnitDefinition { PresentationIndex = 21 }
@@ -114,7 +114,7 @@ namespace Rebellion.Tests.Tactical
         private static CombatUnit CreateWithLegacyGeometry(TacticalCombatUnitDefinition definition)
         {
             CombatUnit unit = CombatUnit.Create(CreateShip());
-            definition.InitializeCombatant(unit, CombatSide.Attacker, 1);
+            TacticalCombatDeployment.InitializeUnit(unit, definition, CombatSide.Attacker, 1);
             return unit;
         }
 

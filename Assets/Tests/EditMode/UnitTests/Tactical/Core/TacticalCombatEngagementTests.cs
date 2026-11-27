@@ -88,9 +88,9 @@ namespace Rebellion.Tests.Tactical
                 WeaponRecharge = recharge,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { lasers, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { ions, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { turbolasers, 0, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { lasers, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { ions, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { turbolasers, 0, 0, 0, 10 });
             return new CombatUnit(ship, CombatSide.Defender, 1000001);
         }
 

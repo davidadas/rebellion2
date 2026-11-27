@@ -3277,7 +3277,7 @@ namespace Rebellion.Tests.Gameplay
                 game
             );
 
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
             BlockadeChangedResult blockade = results
                 .OfType<BlockadeChangedResult>()
                 .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
@@ -3300,12 +3300,12 @@ namespace Rebellion.Tests.Gameplay
                 Hyperdrive = 1,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
 
             movement.RequestMove(fighter, destination);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
             Assert.IsNotNull(fighter.Movement);
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
@@ -3327,13 +3327,13 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
 
             movement.RequestMove(fighter, origin, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsNull(blockade.BlockadingFleet);
@@ -3364,16 +3364,16 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, destination);
-            Assert.IsTrue(origin.IsBlockaded(game));
-            Assert.IsTrue(destination.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, destination));
 
             movement.RequestMove(fighter, destination, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreSame(origin, fighter.GetParent());
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded(game));
-            Assert.IsTrue(destination.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, destination));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsFalse(blockade.Blockaded);
@@ -3418,7 +3418,7 @@ namespace Rebellion.Tests.Gameplay
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, origin);
 
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -7880,7 +7880,7 @@ namespace Rebellion.Tests.Gameplay
             };
             game.AttachNode(hostileShip, hostile);
 
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
 
             MovementCommands movement = new MovementCommands(
                 game,

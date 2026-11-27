@@ -1,5 +1,6 @@
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -50,7 +51,7 @@ namespace Rebellion.Tests.Tactical
 
             motion.Advance(unit, group, null, 100, spatial, 1000);
 
-            Assert.AreEqual(0, unit.GetSpeed());
+            Assert.AreEqual(0, TacticalCombatMotion.GetSpeed(unit));
             Assert.That(unit.Heading.X, Is.GreaterThan(0));
         }
 
@@ -112,17 +113,24 @@ namespace Rebellion.Tests.Tactical
         /// Creates a squadron whose stored direction can turn toward a group heading.
         /// </summary>
         /// <returns>The complete tactical squadron.</returns>
-        private static CombatUnit CreateFighter() =>
-            new(
+        private static CombatUnit CreateFighter()
+        {
+            CombatUnit unit = CombatUnit.Create(
                 new Starfighter
                 {
                     InstanceID = "fighter",
                     MaxSquadronSize = 12,
                     CurrentSquadronSize = 12,
                     Agility = 5,
-                },
+                }
+            );
+            TacticalCombatDeployment.InitializeUnit(
+                unit,
+                new TacticalCombatUnitDefinition(),
                 CombatSide.Attacker,
                 1
             );
+            return unit;
+        }
     }
 }

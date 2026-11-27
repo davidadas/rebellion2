@@ -69,14 +69,11 @@ namespace Rebellion.Tests.ContentEditor
             CapitalShip unit = (CapitalShip)
                 new GameSerializer(typeof(CapitalShip)).Deserialize(text);
 
-            CollectionAssert.AreEquivalent(
-                Enum.GetValues(typeof(PrimaryWeaponType)),
-                unit.PrimaryWeapons.Keys
-            );
-            foreach (int[] weapon in unit.PrimaryWeapons.Values)
+            Assert.AreEqual(CapitalShip.PrimaryWeaponArcs.Count, unit.HardpointGroups.Count);
+            foreach (PrimaryWeaponType weapon in Enum.GetValues(typeof(PrimaryWeaponType)))
             {
-                Assert.AreEqual(CapitalShip.PrimaryWeaponRangeIndex + 1, weapon.Length);
-                Assert.IsTrue(weapon.All(value => value == 0));
+                Assert.AreEqual(0, unit.GetPrimaryWeaponStrength(weapon));
+                Assert.AreEqual(0, unit.GetPrimaryWeaponRange(weapon));
             }
             Assert.AreEqual(unit.MaxHullStrength, unit.CurrentHullStrength);
             Assert.IsNotNull(definition.Element(nameof(CapitalShip.HyperdriveCount)));

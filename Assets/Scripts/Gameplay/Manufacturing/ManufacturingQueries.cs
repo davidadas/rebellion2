@@ -345,7 +345,7 @@ namespace Rebellion.Gameplay
                     Regiment _ => true,
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits()
-                        && !planet.IsBlockadedFor(ownerInstanceId, game),
+                        && !BlockadeQueries.IsBlockadedFor(game, planet, ownerInstanceId),
                     Building building => planet.GetAvailableEnergy()
                         + CountReplacedItems<Building>(
                             replacedItems,
@@ -646,7 +646,7 @@ namespace Rebellion.Gameplay
             int blockadePercent = producer.GetBlockadeProductionModifier(
                 game.Config.Blockade.CapitalShipProductionPenaltyPercent,
                 game.Config.Blockade.FighterProductionPenaltyPercent,
-                game
+                BlockadeQueries.IsBlockaded(game, producer)
             );
             int difficultyPercent = game.GetDifficultyModifier(
                 producer.GetOwnerInstanceID()

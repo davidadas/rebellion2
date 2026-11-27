@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.ShipComponents;
+using Rebellion.Game.Units;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -49,6 +50,97 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatFireControl
     {
+        /// <summary>
+        /// Calculates the squadron's torpedo attack after entry and battle losses.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The torpedo attack strength.</returns>
+        internal static float GetTorpedoDamage(CombatUnit unit) => (float)GetTorpedoAttack(unit);
+
+        /// <summary>
+        /// Retains the hull-scaled torpedo contribution until its consumer chooses the stored boundary.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The live torpedo attack strength after the per-mount scalar store.</returns>
+        internal static double GetTorpedoAttack(CombatUnit unit)
+        {
+            float strength = (float)(
+                (double)(
+                    unit.Unit is Starfighter fighter
+                        ? fighter.Torpedoes * fighter.MaxSquadronSize
+                        : 0
+                ) * 0.53333336f
+            );
+            return (double)unit.Hull * strength / unit.MaximumHull;
+        }
+
+        /// <summary>
+        /// Gets the weapon recharge available for one second.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The weapon recharge budget after hull and component damage.</returns>
+        internal static double GetWeaponRecharge(CombatUnit unit)
+        {
+            if (unit.IsFighter)
+            {
+                double recharge = (double)unit.Hull * 3.751f / 8.0f;
+                unit.WeaponRechargeSample = (float)recharge;
+                return recharge;
+            }
+            float scaled = unit.ScaleByHull(unit.WeaponRechargeSample);
+            double remaining =
+                scaled
+                - (double)unit.WeaponRechargeSample
+                    * 0.25f
+                    * unit.GetDamage(TacticalShipSystem.Weapons);
+            return double.IsNaN(remaining) || remaining < 0 ? 0 : remaining;
+        }
+
+        /// <summary>
+        /// Compares live weapon recharge with its stored rate after the getter updates its sample.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The recharge ratio, or zero when the stored rate is zero or unordered.</returns>
+        internal static double GetWeaponRechargeRatio(CombatUnit unit)
+        {
+            if (unit.WeaponRechargeSample == 0 || float.IsNaN(unit.WeaponRechargeSample))
+                return 0;
+            double recharge = GetWeaponRecharge(unit);
+            return recharge / unit.WeaponRechargeSample;
+        }
+
+        /// <summary>
+        /// Advances queued batteries using the unit's recharge budget.
+        /// </summary>
+        /// <param name="unit">The ship or squadron whose batteries are recharging.</param>
+        /// <param name="seconds">The elapsed recharge interval in seconds.</param>
+        /// <param name="rechargeRate">The unit's available recharge per second.</param>
+        internal static void RechargeBatteries(CombatUnit unit, float seconds, double rechargeRate)
+        {
+            double available = rechargeRate * seconds;
+            for (int order = 0; order < unit.QueuedBatteryCount && available > 0; order++)
+            {
+                TacticalWeaponArc arc = unit.GetQueuedBattery(order);
+                float capacity = unit.GetBatteryCapacity(arc);
+                float charge = unit.GetBatteryCharge(arc);
+                double remaining = (double)capacity - charge;
+                if (double.IsNaN(remaining) || available < remaining)
+                {
+                    unit.SetBatteryCharge(arc, (float)(available + charge));
+                    // Partial fills retain the remaining budget for subsequent batteries.
+                }
+                else
+                {
+                    unit.SetBatteryCharge(arc, capacity, true);
+                    available -= remaining;
+                }
+            }
+
+            for (int order = 0; order < unit.QueuedBatteryCount; order++)
+                if (unit.IsBatteryReady(unit.GetQueuedBattery(order)))
+                    unit.RemoveQueuedBattery(order);
+        }
+
         private readonly float[,] _scores = new float[4, 3];
         private readonly CombatUnit[,] _targets = new CombatUnit[4, 3];
         private readonly List<CombatUnit> _neighbors = new();
@@ -317,7 +409,7 @@ namespace Rebellion.Tactical
                         unit,
                         target,
                         TacticalWeaponType.Torpedo,
-                        unit.GetTorpedoDamage()
+                        GetTorpedoDamage(unit)
                     )
                 );
             unit.DischargeBattery((TacticalWeaponArc)arc, weapon);

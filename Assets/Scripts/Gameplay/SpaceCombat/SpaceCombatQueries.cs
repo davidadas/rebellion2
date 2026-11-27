@@ -29,6 +29,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reads the military value of a ship, squadron, or regiment.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <returns>The unit's military value, or zero for other entities.</returns>
+        internal static int GetMilitaryValue(ISceneNode unit) =>
+            unit switch
+            {
+                Regiment regiment => regiment.UprisingDefense,
+                CapitalShip ship => ship.UprisingDefense,
+                Starfighter fighter => fighter.UprisingDefense,
+                _ => 0,
+            };
+
+        /// <summary>
         /// Returns whether both sides belong to AI-controlled factions.
         /// </summary>
         /// <param name="decision">The combat decision to evaluate.</param>

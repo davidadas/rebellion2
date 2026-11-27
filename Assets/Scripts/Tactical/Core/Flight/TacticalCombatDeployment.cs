@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
+using Rebellion.Game.Units;
 
 namespace Rebellion.Tactical
 {
@@ -28,7 +31,7 @@ namespace Rebellion.Tactical
             public CapitalShipRank(CombatUnit unit)
             {
                 Unit = unit;
-                float movement = unit.GetSpeed();
+                float movement = TacticalCombatMotion.GetSpeed(unit);
                 bool armed = false;
                 bool laser = false;
                 float maximum = 0;
@@ -70,6 +73,29 @@ namespace Rebellion.Tactical
                     return 1;
                 return ((uint)first.Unit.Index).CompareTo((uint)second.Unit.Index);
             }
+        }
+
+        /// <summary>
+        /// Initializes the detached participant with its tactical registration and ship equipment.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <param name="definition">The content entry supplying equipment defaults.</param>
+        /// <param name="side">The side identified by the encounter.</param>
+        /// <param name="index">The tactical registration index.</param>
+        internal static void InitializeUnit(
+            CombatUnit unit,
+            TacticalCombatUnitDefinition definition,
+            CombatSide side,
+            int index
+        )
+        {
+            if (unit.Unit is CapitalShip ship)
+                definition.MigrateCapitalShip(ship);
+            else if (unit.Unit is Starfighter fighter)
+                fighter.MigrateBackupHyperdrive(definition.BackupHyperdrive);
+
+            unit.InitializeTacticalState(side, index);
+            unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
         }
 
         /// <summary>

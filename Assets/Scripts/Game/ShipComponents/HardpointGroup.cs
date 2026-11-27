@@ -42,9 +42,9 @@ namespace Rebellion.Game.ShipComponents
         /// </summary>
         /// <param name="weaponType">The authored weapon type that identifies the matching mounts.</param>
         /// <returns>The maximum range, or zero when no mount matches.</returns>
-        internal float GetRange(HardpointWeaponType weaponType)
+        internal double GetRange(HardpointWeaponType weaponType)
         {
-            float? range = null;
+            double? range = null;
             foreach (Hardpoint hardpoint in _hardpoints)
                 if (hardpoint.Weapon is { } weapon && weapon.WeaponType == weaponType)
                     range = range.HasValue
@@ -126,7 +126,7 @@ namespace Rebellion.Game.ShipComponents
         public HardpointWeaponType WeaponType { get; set; }
         public WeaponDeliveryMode DeliveryMode { get; set; }
         public int Damage { get; set; }
-        public float Range { get; set; }
+        public double Range { get; set; }
         public float FireIntervalSeconds { get; set; }
         public float ProjectileSpeed { get; set; }
         public float EffectDurationSeconds { get; set; }

@@ -243,18 +243,14 @@ namespace Rebellion.Game.Galaxy
 
         /// <summary>
         /// Checks if the planet is blockaded.
-        /// In a configured two-faction campaign, ready orbital presence from both factions
-        /// prevents a blockade. Other faction domains retain fleet-based ownership rules.
+        /// Uses the locally attached fleets.
         /// A neutral planet can be blockaded only while it has a civilian population.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
         /// <returns>True if the planet is blockaded, false otherwise.</returns>
-        public bool IsBlockaded(GameRoot game = null)
+        public bool IsBlockaded()
         {
             if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
                 return false;
-            if (game != null && TryCalculateOrbitalBlockade(game, out bool blockaded))
-                return blockaded;
             IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
             bool hasHostile = fleets.Any(f =>
                 f.Movement == null
@@ -271,122 +267,15 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Evaluates blockade using the configured orbital forces.
-        /// </summary>
-        /// <param name="game">The active campaign providing the required state.</param>
-        /// <param name="blockaded">The resulting blockade state when it can be determined.</param>
-        /// <returns>Whether the configured faction data supports a blockade assessment.</returns>
-        private bool TryCalculateOrbitalBlockade(GameRoot game, out bool blockaded)
-        {
-            blockaded = false;
-            if (
-                !TryGetFactionPair(
-                    game.GetFactions(),
-                    game.BlockadeFactionIds,
-                    out string first,
-                    out string second
-                )
-                || !string.IsNullOrEmpty(OwnerInstanceID)
-                    && OwnerInstanceID != first
-                    && OwnerInstanceID != second
-                || !IsRegistered(game, this)
-            )
-                return false;
-
-            bool firstPresent = false;
-            bool secondPresent = false;
-            bool hasOpposingFleet = false;
-            foreach (Fleet fleet in DirectOrbitalFleets)
-            {
-                if (
-                    !fleet.IsEnabled
-                    || fleet.Movement != null
-                    || !IsRegistered(game, fleet)
-                    || !fleet.HasOperationalCapitalShips()
-                )
-                    continue;
-
-                string owner = fleet.OwnerInstanceID;
-                firstPresent |= owner == first;
-                secondPresent |= owner == second;
-                if (firstPresent && secondPresent)
-                    return true;
-
-                hasOpposingFleet |= (owner ?? "") != (OwnerInstanceID ?? "") && fleet.IsActive();
-            }
-
-            if (!hasOpposingFleet)
-                return true;
-
-            foreach (Starfighter fighter in DirectOrbitalStarfighters)
-            {
-                if (
-                    !fighter.IsEnabled
-                    || fighter.ManufacturingStatus != ManufacturingStatus.Complete
-                    || fighter.Movement != null
-                    || !IsRegistered(game, fighter)
-                )
-                    continue;
-
-                firstPresent |= fighter.OwnerInstanceID == first;
-                secondPresent |= fighter.OwnerInstanceID == second;
-                if (firstPresent && secondPresent)
-                    return true;
-            }
-
-            blockaded = true;
-            return true;
-        }
-
-        /// <summary>
-        /// Checks whether this exact scene node is registered in the campaign.
-        /// </summary>
-        /// <param name="game">The campaign owning the scene registry.</param>
-        /// <param name="node">The planet or orbital unit to check.</param>
-        /// <returns>True when the registered instance is the supplied node.</returns>
-        private static bool IsRegistered(GameRoot game, ISceneNode node) =>
-            !string.IsNullOrEmpty(node.InstanceID)
-            && game.NodesByInstanceID.TryGetValue(node.InstanceID, out ISceneNode registered)
-            && ReferenceEquals(registered, node);
-
-        /// <summary>
-        /// Checks whether the live campaign still has its original two factions.
-        /// </summary>
-        /// <param name="factions">The current campaign factions.</param>
-        /// <param name="factionIds">The saved faction order.</param>
-        /// <param name="first">The first configured identity.</param>
-        /// <param name="second">The second configured identity.</param>
-        /// <returns>Whether both configured identities are present in the current pair.</returns>
-        private static bool TryGetFactionPair(
-            IReadOnlyList<Faction> factions,
-            IReadOnlyList<string> factionIds,
-            out string first,
-            out string second
-        )
-        {
-            first = null;
-            second = null;
-            if (factions.Count != 2 || factionIds.Count != 2)
-                return false;
-
-            first = factionIds[0];
-            second = factionIds[1];
-            string firstOwner = factions[0]?.InstanceID;
-            string secondOwner = factions[1]?.InstanceID;
-            return firstOwner == first && secondOwner == second
-                || firstOwner == second && secondOwner == first;
-        }
-
-        /// <summary>
         /// Returns whether the active blockade opposes a faction.
         /// </summary>
         /// <param name="factionInstanceID">The faction whose access is being evaluated.</param>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>True when the planet is blockaded by another faction.</returns>
-        public bool IsBlockadedFor(string factionInstanceID, GameRoot game = null)
+        public bool IsBlockadedFor(string factionInstanceID, bool? blockaded = null)
         {
             return !string.IsNullOrEmpty(factionInstanceID)
-                && IsBlockaded(game)
+                && (blockaded ?? IsBlockaded())
                 && _fleets.Any(fleet =>
                     fleet.Movement == null
                     && fleet.GetOwnerInstanceID() != factionInstanceID
@@ -397,11 +286,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Returns whether resource collection is suspended at this planet.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>True when destroyed, blockaded, or in uprising.</returns>
-        public bool IsResourceProductionSuspended(GameRoot game = null)
+        public bool IsResourceProductionSuspended(bool? blockaded = null)
         {
-            return IsDestroyed || IsBlockaded(game) || IsInUprising;
+            return IsDestroyed || (blockaded ?? IsBlockaded()) || IsInUprising;
         }
 
         /// <summary>
@@ -520,11 +409,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of resource nodes available while production is active.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
-        public int GetAvailableResourceNodes(GameRoot game = null)
+        public int GetAvailableResourceNodes(bool? blockaded = null)
         {
-            return IsResourceProductionSuspended(game) ? 0 : GetRawResourceNodes();
+            return IsResourceProductionSuspended(blockaded) ? 0 : GetRawResourceNodes();
         }
 
         /// <summary>
@@ -566,11 +455,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the number of mined resources available while production is active.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
-        public int GetAvailableMinedResources(GameRoot game = null)
+        public int GetAvailableMinedResources(bool? blockaded = null)
         {
-            return IsResourceProductionSuspended(game) ? 0 : GetActiveMinedResources();
+            return IsResourceProductionSuspended(blockaded) ? 0 : GetActiveMinedResources();
         }
 
         /// <summary>
@@ -595,11 +484,11 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Gets the completed refinement capacity available while production is active.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
-        public int GetAvailableRefinementCapacity(GameRoot game = null)
+        public int GetAvailableRefinementCapacity(bool? blockaded = null)
         {
-            return IsResourceProductionSuspended(game) ? 0 : GetActiveRefinementCapacity();
+            return IsResourceProductionSuspended(blockaded) ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -1187,15 +1076,15 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
         /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="blockaded">The projected blockade state, when available.</param>
         /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
         public int GetBlockadeProductionModifier(
             int capitalShipPenalty,
             int fighterPenalty,
-            GameRoot game = null
+            bool? blockaded = null
         )
         {
-            if (!IsBlockaded(game) || HasOperationalIonCannon())
+            if (!(blockaded ?? IsBlockaded()) || HasOperationalIonCannon())
                 return _maximumProductionModifier;
 
             List<CapitalShip> capitalShips = _fleets

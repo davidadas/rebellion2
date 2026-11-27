@@ -101,7 +101,7 @@ namespace Rebellion.Tests.Game.Combat
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.SystemDamage.Engines = 1;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 10, 20, 30, 40, 50 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 10, 20, 30, 40, 50 });
             CombatUnit combatant = CombatUnit.Create(ship);
 
             ship.DisplayName = "Changed name";
@@ -109,7 +109,11 @@ namespace Rebellion.Tests.Game.Combat
             ship.MaxHullStrength = 200;
             ship.Hyperdrive = 0;
             ship.SystemDamage.Engines = 4;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 999;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                999
+            );
             combatant.InitializeTacticalState(CombatSide.Attacker, 1);
             CombatUnit unit = combatant;
 

@@ -3415,7 +3415,11 @@ namespace Rebellion.Tests.AI
             game.AttachNode(inboundFleet, planet);
             game.AttachNode(inboundShip, inboundFleet);
             AITestSceneBuilder.RevealPlanet(game, empire, planet);
-            inboundShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 300;
+            inboundShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                300
+            );
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 

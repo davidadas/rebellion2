@@ -402,7 +402,7 @@ namespace Rebellion.Tests.PlayerRequests
             host.WeaponRecharge = 1;
             host.ShieldRechargeRate = 5;
             host.SystemDamage.Weapons = 1;
-            host.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100000, 0, 0, 0, 100 };
+            host.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100000, 0, 0, 0, 100 });
             guest.TypeID = "ALCS008";
             guest.MaxHullStrength = guest.CurrentHullStrength = 10;
             _session = new GameSession(_game, TacticalTestData.CreateCatalog(_game.Config));

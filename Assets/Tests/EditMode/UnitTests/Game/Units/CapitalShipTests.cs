@@ -624,48 +624,47 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
-        public void PrimaryWeapons_DefaultCapitalShip_HasCorrectTypes()
+        public void Deserialize_LegacyPrimaryWeapons_InstallsHardpointsAndPreservesRange()
         {
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.Turbolaser));
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.IonCannon));
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
-        }
+            const string legacy =
+                "<CapitalShip><PrimaryWeapons><Entry>"
+                + "<Key><PrimaryWeaponType>Turbolaser</PrimaryWeaponType></Key>"
+                + "<Value><ArrayOfInt><int>10</int><int>20</int><int>30</int><int>40</int>"
+                + "<int>16777217</int></ArrayOfInt></Value></Entry></PrimaryWeapons></CapitalShip>";
 
-        [Test]
-        public void PrimaryWeapons_DefaultCapitalShip_HasCorrectArraySizes()
-        {
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser].Length);
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon].Length);
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
+            CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(legacy);
+
+            Assert.AreEqual(
+                10,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore)
+            );
+            Assert.AreEqual(
+                20,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Aft)
+            );
+            Assert.AreEqual(
+                30,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Port)
+            );
+            Assert.AreEqual(
+                40,
+                ship.GetPrimaryWeaponStrength(
+                    PrimaryWeaponType.Turbolaser,
+                    PrimaryWeaponArc.Starboard
+                )
+            );
+            Assert.AreEqual(16777217, ship.GetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser));
+            string saved = SerializationHelper.Serialize(ship);
+            StringAssert.Contains("<HardpointGroups>", saved);
+            StringAssert.DoesNotContain("<PrimaryWeapons>", saved);
         }
 
         [Test]
         public void GetPrimaryWeaponStrength_WeaponRangeValues_IgnoresRange()
         {
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-            {
-                10,
-                20,
-                30,
-                40,
-                900,
-            };
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new int[]
-            {
-                1,
-                2,
-                3,
-                4,
-                900,
-            };
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
-            {
-                5,
-                0,
-                0,
-                0,
-                900,
-            };
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, 10, 20, 30, 40, 900);
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, 1, 2, 3, 4, 900);
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, 5, 0, 0, 0, 900);
 
             int strength = _capitalShip.GetPrimaryWeaponStrength();
 
@@ -783,7 +782,11 @@ namespace Rebellion.Tests.Game.Units
                 CurrentHullStrength = hullStrength,
                 MaxShieldStrength = shieldStrength,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = attackStrength;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                attackStrength
+            );
             return ship;
         }
     }

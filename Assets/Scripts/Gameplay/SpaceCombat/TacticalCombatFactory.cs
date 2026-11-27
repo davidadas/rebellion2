@@ -378,8 +378,9 @@ namespace Rebellion.Gameplay
                 CombatUnit unit = battle.AddCombatant(participant.Source);
                 if (participant.Source is CapitalShip ship)
                     unit.HasPlanetaryProtection = HasPlanetaryProtection(ship, planet);
-                participant.Definition.InitializeCombatant(
+                TacticalCombatDeployment.InitializeUnit(
                     unit,
+                    participant.Definition,
                     participant.Side,
                     participant.Index
                 );

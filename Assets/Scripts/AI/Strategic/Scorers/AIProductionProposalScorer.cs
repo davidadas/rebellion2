@@ -41,7 +41,9 @@ namespace Rebellion.AI.Scorers
                 AIFacilityRemovalProposal => 0,
                 AIMaintenanceRecoveryProposal => Math.Max(
                     0,
-                    -context.Faction.GetProjectedMaintenanceHeadroom(context.Game)
+                    -context.Faction.GetProjectedMaintenanceHeadroom(ownedPlanet =>
+                        BlockadeQueries.IsBlockaded(context.Game, ownedPlanet)
+                    )
                 ),
                 AIManufactureProposal manufactureProposal => ScoreManufactureProposal(
                     context,

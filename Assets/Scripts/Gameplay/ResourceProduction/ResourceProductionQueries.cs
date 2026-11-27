@@ -223,7 +223,9 @@ namespace Rebellion.Gameplay
         {
             return faction
                 .GetOwnedUnitsByType<Planet>()
-                .Where(planet => !planet.IsResourceProductionSuspended(game))
+                .Where(planet =>
+                    !planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet))
+                )
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .Select(planet =>
                     (
@@ -380,7 +382,7 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (planet.IsResourceProductionSuspended(game))
+                if (planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet)))
                     continue;
 
                 facilities.AddRange(
@@ -445,7 +447,9 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (planet.IsResourceProductionSuspended(_game))
+                if (
+                    planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(_game, planet))
+                )
                     continue;
 
                 IEnumerable<Building> planetFacilities = planet
@@ -795,7 +799,9 @@ namespace Rebellion.Gameplay
         )
         {
             int materialCapacity = Math.Min(
-                faction.GetTotalAvailableResourceNodes(_game),
+                faction.GetTotalAvailableResourceNodes(ownedPlanet =>
+                    BlockadeQueries.IsBlockaded(_game, ownedPlanet)
+                ),
                 Math.Min(mineCount, refineryCount)
             );
             return IntegerMath.SaturatingMultiply(
@@ -831,7 +837,9 @@ namespace Rebellion.Gameplay
                 return 0;
 
             return IntegerMath.SaturatingMultiply(
-                faction.GetTotalAvailableMaterialsRaw(game),
+                faction.GetTotalAvailableMaterialsRaw(ownedPlanet =>
+                    BlockadeQueries.IsBlockaded(game, ownedPlanet)
+                ),
                 CalculateMaintenanceCapacityPerFacility(game, faction)
             );
         }
@@ -854,7 +862,9 @@ namespace Rebellion.Gameplay
             return CalculateMaintenanceCapacity(
                 CaptureResourcePlanets(game, faction),
                 excluded,
-                faction.GetTotalAvailableResourceNodes(game),
+                faction.GetTotalAvailableResourceNodes(ownedPlanet =>
+                    BlockadeQueries.IsBlockaded(game, ownedPlanet)
+                ),
                 CalculateMaintenanceCapacityPerFacility(game, faction)
             );
         }
@@ -1008,7 +1018,9 @@ namespace Rebellion.Gameplay
                     new HashSet<string>()
                 ).Committed;
                 _maintenanceCapacity = CalculateMaintenanceCapacity(queries._game, faction);
-                _availableNodes = faction.GetTotalAvailableResourceNodes(queries._game);
+                _availableNodes = faction.GetTotalAvailableResourceNodes(ownedPlanet =>
+                    BlockadeQueries.IsBlockaded(queries._game, ownedPlanet)
+                );
                 _facilityCapacity = CalculateMaintenanceCapacityPerFacility(queries._game, faction);
                 foreach (
                     Building building in faction.GetAllOwnedManufacturables().OfType<Building>()

@@ -100,7 +100,11 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -130,7 +134,11 @@ namespace Rebellion.Tests.Gameplay
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
             attacker.Maneuverability = 2;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 80;
             Starfighter target = CreateFighter("target", 12, 0);
             target.Agility = 8;
@@ -161,7 +169,11 @@ namespace Rebellion.Tests.Gameplay
             if (!carrierSurvives)
                 flagship.CurrentHullStrength = 0;
             CapitalShip escort = CreateShip("escort", 100, 0);
-            escort.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            escort.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             escort.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -209,7 +221,11 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_CommanderCombat_DoesNotChangeFighterTurnRate(int combat)
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -258,7 +274,11 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                60
+            );
             attacker.WeaponRecharge = 20;
             CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -284,7 +304,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[weapon][0] = 20;
+            attacker.SetPrimaryWeaponStrength(weapon, PrimaryWeaponArc.Fore, 20);
             attacker.WeaponRecharge = 2;
             Starfighter target = CreateFighter("target", 10, 0);
             target.ShieldStrength = 0;
@@ -307,7 +327,11 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_CapitalLaserFormationWithMixedTargets_PrefersFighterCandidates()
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                20
+            );
             attacker.WeaponRecharge = 8;
             CapitalShip targetShip = CreatePassiveTarget("ship", 100);
             Starfighter targetFighter = CreateFighter("fighter", 12, 0);
@@ -427,7 +451,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_WeaponRange_DoesNotGateSustainedFire(int range)
         {
             CapitalShip attacker = CreateShip("attacker", 100, 10);
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = range;
+            attacker.SetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser, range);
             CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
 
@@ -1264,8 +1288,12 @@ namespace Rebellion.Tests.Gameplay
                 weaponStrength: 0
             );
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 0);
-            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
-            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            defender.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                60
+            );
+            defender.SetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon, 100);
             defender.WeaponRecharge = 60;
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -2337,8 +2365,12 @@ namespace Rebellion.Tests.Gameplay
             GameConfig.SpaceCombatConfig config = CreateConfig();
             CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
-            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
-            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            picket.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                500
+            );
+            picket.SetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon, 100);
             picket.WeaponRecharge = 500;
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
 
@@ -2623,9 +2655,13 @@ namespace Rebellion.Tests.Gameplay
             };
             int armedArcCount = armEveryArc ? 4 : 1;
             for (int arc = 0; arc < armedArcCount; arc++)
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][arc] = weaponStrength;
+                ship.SetPrimaryWeaponStrength(
+                    PrimaryWeaponType.Turbolaser,
+                    (PrimaryWeaponArc)arc,
+                    weaponStrength
+                );
             if (weaponStrength > 0)
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 100;
+                ship.SetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser, 100);
             return ship;
         }
 
@@ -2642,7 +2678,7 @@ namespace Rebellion.Tests.Gameplay
             ship.SublightSpeed = 6;
             ship.Maneuverability = 3;
             ship.WeaponRecharge = 8;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 120, 90, 120, 120, 17 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 120, 90, 120, 120, 17 });
             return ship;
         }
 
@@ -2659,8 +2695,8 @@ namespace Rebellion.Tests.Gameplay
             ship.SublightSpeed = 4;
             ship.Maneuverability = 1;
             ship.WeaponRecharge = 20;
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 40, 60, 60, 50 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 100, 40, 40, 40, 35 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100, 40, 60, 60, 50 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 100, 40, 40, 40, 35 });
             return ship;
         }
 

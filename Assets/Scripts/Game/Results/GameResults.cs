@@ -728,20 +728,6 @@ namespace Rebellion.Game.Results
         public bool Captured { get; set; }
 
         /// <summary>
-        /// Reads the military value of a ship, squadron, or regiment.
-        /// </summary>
-        /// <param name="unit">The battle participant being evaluated or updated.</param>
-        /// <returns>The unit's military value, or zero for other entities.</returns>
-        internal static int GetMilitaryValue(ISceneNode unit) =>
-            unit switch
-            {
-                Regiment regiment => regiment.UprisingDefense,
-                CapitalShip ship => ship.UprisingDefense,
-                Starfighter fighter => fighter.UprisingDefense,
-                _ => 0,
-            };
-
-        /// <summary>
         /// Restores an existing detached snapshot without copying its unit reference again.
         /// </summary>
         private CombatUnitSnapshot() { }

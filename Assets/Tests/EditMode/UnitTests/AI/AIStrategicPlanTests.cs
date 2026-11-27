@@ -271,7 +271,11 @@ namespace Rebellion.Tests.AI
         {
             AITurnContext context = CreateDefender(out Fleet fleet, out CapitalShip spare);
             CapitalShip anchor = fleet.GetChildren<CapitalShip>()[0];
-            anchor.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = remainingStrength;
+            anchor.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                remainingStrength
+            );
 
             Assert.AreEqual(expected, context.StrategicPlan.CanReleaseCapitalShip(fleet, spare));
         }
@@ -327,7 +331,7 @@ namespace Rebellion.Tests.AI
             if (!defending)
                 fleet.Order = null;
             CapitalShip anchor = fleet.GetChildren<CapitalShip>()[0];
-            anchor.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
+            anchor.SetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore, 0);
             context.Game.AttachNode(
                 AITestSceneBuilder.CreateStarfighter(
                     "defense-fighters",
@@ -362,8 +366,9 @@ namespace Rebellion.Tests.AI
         public void CanReleaseCapitalShip_OtherLocalDonorAlreadyCommitted_PreservesLocalDefense()
         {
             AITurnContext context = CreateDefender(out Fleet first, out CapitalShip firstSpare);
-            first.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] =
-                600;
+            first
+                .GetChildren<CapitalShip>()[0]
+                .SetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore, 600);
             Fleet second = EntityFactory.CreateFleet("second", context.Faction.InstanceID);
             second.RoleType = FleetRoleType.Battle;
             context.Game.AttachNode(second, first.GetParent());
@@ -406,8 +411,9 @@ namespace Rebellion.Tests.AI
         {
             AITurnContext context = CreateDefender(out Fleet donor, out CapitalShip spare);
             donor.Order = null;
-            donor.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] =
-                600;
+            donor
+                .GetChildren<CapitalShip>()[0]
+                .SetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore, 600);
             Fleet cover = EntityFactory.CreateFleet("cover", context.Faction.InstanceID);
             cover.RoleType = FleetRoleType.Battle;
             if (orderType.HasValue)

@@ -616,10 +616,10 @@ namespace Rebellion.Game.Factions
         /// Available resource nodes take into account external factors such as blockaded planets
         /// or buildings still under construction that might reduce usability.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="isBlockaded">The blockade status to use for each planet, when available.</param>
         /// <returns>The total number of available resource nodes.</returns>
-        public int GetTotalAvailableResourceNodes(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableResourceNodes(game));
+        public int GetTotalAvailableResourceNodes(Func<Planet, bool> isBlockaded = null) =>
+            SumPlanetaryResources(p => p.GetAvailableResourceNodes(isBlockaded?.Invoke(p)));
 
         /// <summary>
         /// Gets the total number of raw mined resources across all owned planets.
@@ -635,10 +635,10 @@ namespace Rebellion.Game.Factions
         /// Available mined resources consider blockaded planets or buildings under construction
         /// that might limit resource collection.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="isBlockaded">The blockade status to use for each planet, when available.</param>
         /// <returns>The total number of available mined resources.</returns>
-        public int GetTotalAvailableMinedResources(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableMinedResources(game));
+        public int GetTotalAvailableMinedResources(Func<Planet, bool> isBlockaded = null) =>
+            SumPlanetaryResources(p => p.GetAvailableMinedResources(isBlockaded?.Invoke(p)));
 
         /// <summary>
         /// Gets the total raw refinement capacity across all owned planets.
@@ -654,26 +654,26 @@ namespace Rebellion.Game.Factions
         /// Available refinement capacity accounts for factors like blockaded planets or buildings
         /// that are still under construction.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="isBlockaded">The blockade status to use for each planet, when available.</param>
         /// <returns>The total available refinement capacity.</returns>
-        public int GetTotalAvailableRefinementCapacity(GameRoot game = null) =>
-            SumPlanetaryResources(p => p.GetAvailableRefinementCapacity(game));
+        public int GetTotalAvailableRefinementCapacity(Func<Planet, bool> isBlockaded = null) =>
+            SumPlanetaryResources(p => p.GetAvailableRefinementCapacity(isBlockaded?.Invoke(p)));
 
         /// <summary>
         /// Calculates the total available refined capacity count (before multiplier).
         /// This includes only resources and capacities that are available after accounting for
         /// blockades, buildings under construction, and other limiting factors.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="isBlockaded">The blockade status to use for each planet, when available.</param>
         /// <returns>The available refined capacity count.</returns>
-        public int GetTotalAvailableMaterialsRaw(GameRoot game = null)
+        public int GetTotalAvailableMaterialsRaw(Func<Planet, bool> isBlockaded = null)
         {
             int resourceNodes = 0;
             int minedResources = 0;
             int refinementCapacity = 0;
             foreach (Planet planet in GetOwnedUnitsByType<Planet>())
             {
-                if (planet.IsResourceProductionSuspended(game))
+                if (planet.IsResourceProductionSuspended(isBlockaded?.Invoke(planet)))
                     continue;
                 checked
                 {
@@ -689,11 +689,11 @@ namespace Rebellion.Game.Factions
         /// <summary>
         /// Returns maintenance capacity after committed and ordered units are accounted for.
         /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
+        /// <param name="isBlockaded">The blockade status to use for each planet, when available.</param>
         /// <returns>The projected spare maintenance capacity.</returns>
-        internal int GetProjectedMaintenanceHeadroom(GameRoot game = null) =>
+        internal int GetProjectedMaintenanceHeadroom(Func<Planet, bool> isBlockaded = null) =>
             IntegerMath.SaturatingMultiply(
-                GetTotalAvailableMaterialsRaw(game),
+                GetTotalAvailableMaterialsRaw(isBlockaded),
                 Settings.ResourceProcessingPointsPerFacility
             ) - GetTotalProjectedMaintenanceCost();
 

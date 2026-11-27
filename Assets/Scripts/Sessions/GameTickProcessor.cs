@@ -864,7 +864,7 @@ namespace Rebellion.Gameplay
             )
             {
                 bool wasBlockaded = !orderedTransitions[0].Blockaded;
-                bool isBlockaded = orderedTransitions[0].Planet.IsBlockaded(_game);
+                bool isBlockaded = BlockadeQueries.IsBlockaded(_game, orderedTransitions[0].Planet);
                 if (wasBlockaded != isBlockaded)
                 {
                     BlockadeChangedResult finalTransition = orderedTransitions.Last(result =>

@@ -7,6 +7,41 @@ namespace Rebellion.Tactical
 {
     internal sealed class TacticalCombatDamage
     {
+        /// <summary>
+        /// Gets the shield recharge available for one second and updates the fighter's stored sample.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The live recharge budget after hull and component damage.</returns>
+        internal static double GetShieldRecharge(CombatUnit unit)
+        {
+            if (unit.IsFighter)
+            {
+                double recharge = (double)unit.Hull * 0.025f / 8.0f;
+                unit.ShieldRechargeSample = (float)recharge;
+                return recharge;
+            }
+            float scaled = unit.ScaleByHull(unit.ShieldRechargeSample);
+            double remaining =
+                scaled
+                - (double)unit.ShieldRechargeSample
+                    * 0.25f
+                    * unit.GetDamage(TacticalShipSystem.Shields);
+            return double.IsNaN(remaining) || remaining < 0 ? 0 : remaining;
+        }
+
+        /// <summary>
+        /// Compares live recharge with its current stored rate, retaining the getter's sample update.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The recharge ratio, or zero when the stored rate is zero or unordered.</returns>
+        internal static double GetShieldRechargeRatio(CombatUnit unit)
+        {
+            if (unit.ShieldRechargeSample == 0 || float.IsNaN(unit.ShieldRechargeSample))
+                return 0;
+            double recharge = GetShieldRecharge(unit);
+            return recharge / unit.ShieldRechargeSample;
+        }
+
         internal event Action<CombatUnit, TacticalSystemEvent> SystemChangeRequested;
         internal event Action<CombatUnit, string> LethalHit;
         internal event Action<
@@ -34,7 +69,7 @@ namespace Rebellion.Tactical
                 unit.ShieldLimit = (float)limit;
                 unit.Shields = (float)(limit > unit.Shields ? unit.Shields : limit);
             }
-            double recharge = unit.GetShieldRecharge() * seconds;
+            double recharge = GetShieldRecharge(unit) * seconds;
             if (unit.ShieldLimit - unit.Shields > 0)
             {
                 double charged = recharge + unit.Shields;

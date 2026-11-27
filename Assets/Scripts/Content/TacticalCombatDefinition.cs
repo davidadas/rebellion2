@@ -1,5 +1,4 @@
 using System.Collections.Generic;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
@@ -26,6 +25,14 @@ namespace Rebellion.Content
         public string AttackRunFailureMoviePath { get; set; }
         public int FastSystemRepairTicks { get; set; }
         public int NormalSystemRepairTicks { get; set; }
+
+        /// <summary>
+        /// Finds the authored entry for a unit type.
+        /// </summary>
+        /// <param name="typeID">The unit's content type.</param>
+        /// <returns>The matching entry, when present.</returns>
+        public TacticalCombatUnitDefinition FindUnit(string typeID) =>
+            Units?.Find(unit => unit.UnitTypeID == typeID);
     }
 
     /// <summary>
@@ -159,23 +166,6 @@ namespace Rebellion.Content
                 HullHeight = HullHeight,
                 HullDepth = HullDepth,
             };
-        }
-
-        /// <summary>
-        /// Initializes the detached participant with its tactical registration and ship equipment.
-        /// </summary>
-        /// <param name="unit">The battle participant being evaluated or updated.</param>
-        /// <param name="side">The side identified by the encounter.</param>
-        /// <param name="index">The tactical registration index.</param>
-        internal void InitializeCombatant(CombatUnit unit, CombatSide side, int index)
-        {
-            if (unit.Unit is CapitalShip ship)
-                MigrateCapitalShip(ship);
-            else if (unit.Unit is Starfighter fighter)
-                fighter.MigrateBackupHyperdrive(BackupHyperdrive);
-
-            unit.PresentationIndex = PresentationIndex;
-            unit.InitializeTacticalState(side, index);
         }
     }
 
