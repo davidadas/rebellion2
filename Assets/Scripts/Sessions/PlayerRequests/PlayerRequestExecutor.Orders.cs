@@ -273,12 +273,15 @@ namespace Rebellion.PlayerRequests
         /// <returns>The created fleet identity or an explicit rejection.</returns>
         private PlayerRequestOutcome CreateFleet(Faction actor, CreateFleetRequest request)
         {
+            List<GameResult> results = new();
             Fleet fleet = TryResolveSelection(request.ItemIDs, out List<CapitalShip> ships)
-                ? _session.GetService<FleetCommands>().CreateFleet(ships, actor.InstanceID)
+                ? _session.GetService<FleetCommands>().CreateFleet(ships, actor.InstanceID, results)
                 : null;
-            return fleet == null
-                ? Reject("The selected ships cannot form a fleet.")
-                : new PlayerRequestOutcome(true, createdEntityID: fleet.InstanceID);
+            if (fleet == null)
+                return Reject("The selected ships cannot form a fleet.");
+
+            _session.Pipeline.ProcessImmediate(results);
+            return new PlayerRequestOutcome(true, createdEntityID: fleet.InstanceID);
         }
 
         /// <summary>

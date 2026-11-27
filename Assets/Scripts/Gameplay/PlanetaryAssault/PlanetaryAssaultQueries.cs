@@ -108,7 +108,7 @@ namespace Rebellion.Gameplay
                     && !fleet.IsInCombat
                     && fleet.GetParent() == planet
                 )
-                && planet.IsBlockaded(game);
+                && BlockadeQueries.IsBlockaded(game, planet);
         }
     }
 }

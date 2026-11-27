@@ -1911,6 +1911,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(65, displayed.ObjectiveSuccessProbability);
             Assert.Zero(operational.ObjectiveSuccessProbability);
+            Assert.AreEqual(10, target.GetPopularSupport("empire"));
+            Assert.AreEqual(90, target.GetPopularSupport("rebels"));
         }
 
         [Test]

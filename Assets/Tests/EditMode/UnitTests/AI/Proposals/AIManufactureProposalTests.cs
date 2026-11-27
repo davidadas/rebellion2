@@ -106,7 +106,7 @@ namespace Rebellion.Tests.AI.Proposals
                 false
             );
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
-            Assert.AreEqual(0, context.Faction.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(0, context.AvailableProjectedMaintenanceHeadroom);
 
             proposal.Execute(context);
 

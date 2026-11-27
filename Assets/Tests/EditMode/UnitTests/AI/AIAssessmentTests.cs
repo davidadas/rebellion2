@@ -1589,10 +1589,13 @@ namespace Rebellion.Tests.AI
             starfighter.MaintenanceCost = 11;
             empire.RefinedMaterialStockpile++;
 
-            Assert.AreEqual(empire.MaintenanceCapacity, assessment.MaintenanceCapacity);
+            Assert.AreEqual(
+                ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire),
+                assessment.MaintenanceCapacity
+            );
             Assert.AreEqual(cachedHeadroom, assessment.ProjectedMaintenanceHeadroom);
             Assert.AreNotEqual(
-                empire.ProjectedMaintenanceHeadroom,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(game, empire),
                 assessment.ProjectedMaintenanceHeadroom
             );
             Assert.AreEqual(cachedSupply, assessment.RefinedMaterialSupply);

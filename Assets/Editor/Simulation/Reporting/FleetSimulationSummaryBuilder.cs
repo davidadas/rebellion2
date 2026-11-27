@@ -322,7 +322,7 @@ public static partial class HeadlessSimulationRunner
     /// <returns>True if the planet can use production capacity.</returns>
     private static bool IsProductionEligiblePlanet(Planet planet)
     {
-        return planet?.IsBlockaded() == false && !planet.IsDestroyed && !planet.IsInUprising;
+        return planet != null && !ResourceProductionQueries.IsProductionSuspended(null, planet);
     }
 
     /// <summary>
@@ -392,6 +392,10 @@ public static partial class HeadlessSimulationRunner
             foreach (Faction faction in game.GetFactions())
             {
                 FactionIdleCounters counters = GetOrCreateFactionCounters(faction.InstanceID);
+                int maintenanceHeadroom = ResourceProductionQueries.GetBaseMaintenanceHeadroom(
+                    game,
+                    faction
+                );
                 foreach (
                     Planet planet in game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
                 )
@@ -399,9 +403,27 @@ public static partial class HeadlessSimulationRunner
                     if (!IsProductionEligiblePlanet(planet))
                         continue;
 
-                    RecordPlanetType(counters, faction, planet, ManufacturingType.Building);
-                    RecordPlanetType(counters, faction, planet, ManufacturingType.Ship);
-                    RecordPlanetType(counters, faction, planet, ManufacturingType.Troop);
+                    RecordPlanetType(
+                        counters,
+                        faction,
+                        maintenanceHeadroom,
+                        planet,
+                        ManufacturingType.Building
+                    );
+                    RecordPlanetType(
+                        counters,
+                        faction,
+                        maintenanceHeadroom,
+                        planet,
+                        ManufacturingType.Ship
+                    );
+                    RecordPlanetType(
+                        counters,
+                        faction,
+                        maintenanceHeadroom,
+                        planet,
+                        ManufacturingType.Troop
+                    );
                 }
             }
         }
@@ -456,11 +478,13 @@ public static partial class HeadlessSimulationRunner
         /// </summary>
         /// <param name="counters">The faction counters to update.</param>
         /// <param name="faction">The faction that owns the production facilities.</param>
+        /// <param name="maintenanceHeadroom">The faction's available maintenance for this sample.</param>
         /// <param name="planet">The planet to inspect.</param>
         /// <param name="type">The manufacturing type to inspect.</param>
         private static void RecordPlanetType(
             FactionIdleCounters counters,
             Faction faction,
+            int maintenanceHeadroom,
             Planet planet,
             ManufacturingType type
         )
@@ -483,7 +507,7 @@ public static partial class HeadlessSimulationRunner
             int idleCapacity = completedFacilityCount;
             PlanetIdleCounters planetCounters = counters.GetOrCreatePlanet(planet);
             IdleResourceCounters resourceCounters = counters.GetResourceCounters(type);
-            resourceCounters.Record(faction, type, idleCapacity);
+            resourceCounters.Record(faction, type, idleCapacity, maintenanceHeadroom);
             switch (type)
             {
                 case ManufacturingType.Building:
@@ -607,11 +631,16 @@ public static partial class HeadlessSimulationRunner
             /// <param name="faction">The faction whose resources are sampled.</param>
             /// <param name="type">The idle manufacturing type.</param>
             /// <param name="idleCapacity">The unused facility capacity.</param>
-            public void Record(Faction faction, ManufacturingType type, int idleCapacity)
+            /// <param name="maintenanceHeadroom">The faction's available maintenance for this sample.</param>
+            public void Record(
+                Faction faction,
+                ManufacturingType type,
+                int idleCapacity,
+                int maintenanceHeadroom
+            )
             {
                 int rawMaterialStockpile = faction.RawMaterialStockpile;
                 int refinedMaterialStockpile = faction.RefinedMaterialStockpile;
-                int maintenanceHeadroom = faction.MaintenanceHeadroom;
 
                 SampleCount++;
                 _rawMaterialStockpileTotal += rawMaterialStockpile;

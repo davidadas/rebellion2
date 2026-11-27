@@ -416,7 +416,13 @@ namespace Rebellion.Gameplay
 
                 int previousSupport = planet.GetPopularSupport(faction.InstanceID);
                 Faction previousOwner = _queries.GetPlanetOwner(planet);
-                _commands.ChangePopularSupport(planet, faction, shift);
+                PlanetSupportChangedResult supportChange = _commands.ChangePopularSupport(
+                    planet,
+                    faction,
+                    shift
+                );
+                if (supportChange != null)
+                    results.Add(supportChange);
                 if (previousSupport == planet.GetPopularSupport(faction.InstanceID))
                     continue;
 
@@ -450,10 +456,18 @@ namespace Rebellion.Gameplay
                 return results;
 
             int oldSupport = request.Planet.GetPopularSupport(request.Faction.InstanceID);
-            _commands.ChangePopularSupport(request.Planet, request.Faction, request.Shift);
+            PlanetSupportChangedResult supportChange = _commands.ChangePopularSupport(
+                request.Planet,
+                request.Faction,
+                request.Shift
+            );
             int newSupport = request.Planet.GetPopularSupport(request.Faction.InstanceID);
             if (oldSupport == newSupport)
+            {
+                if (supportChange != null)
+                    results.Add(supportChange);
                 return results;
+            }
 
             results.Add(
                 new PlanetStatChangedResult
@@ -553,7 +567,13 @@ namespace Rebellion.Gameplay
                 }
 
                 Faction previousController = _queries.GetPlanetOwner(planet);
-                _commands.ChangePopularSupport(planet, beneficiary, shift);
+                PlanetSupportChangedResult supportChange = _commands.ChangePopularSupport(
+                    planet,
+                    beneficiary,
+                    shift
+                );
+                if (supportChange != null)
+                    results.Add(supportChange);
                 Faction controller = _queries.GetPlanetController(planet);
                 if (previousController?.InstanceID == controller?.InstanceID)
                     continue;

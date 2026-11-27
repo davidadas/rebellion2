@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 
 namespace Rebellion.AI.Planners
 {
@@ -344,7 +345,10 @@ namespace Rebellion.AI.Planners
                         )
                 );
 
-                bool productionActive = !planet.IsResourceProductionSuspended(context.Game);
+                bool productionActive = !ResourceProductionQueries.IsProductionSuspended(
+                    context.Game,
+                    planet
+                );
                 int availableMinedAfterRemoval = Math.Max(
                     0,
                     assessment.AvailableMinedResourceCapacity

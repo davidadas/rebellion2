@@ -214,7 +214,12 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             _game.AttachNode(planet, sector);
             Officer luke = EntityFactory.CreateOfficer("LUKE_SKYWALKER", "FNALL1");
             luke.ForceValue = forceRank;
-            luke.TryCapture("FNEMP1", _game, _game.Random);
+            luke.TryCapture(
+                "FNEMP1",
+                _game.Config?.Captive?.EscapeAttemptInterval,
+                _game.CurrentTick,
+                _game.Random
+            );
             Officer vader = EntityFactory.CreateOfficer("DARTH_VADER", "FNEMP1");
             Officer emperor = EntityFactory.CreateOfficer("EMPEROR_PALPATINE", "FNEMP1");
             _game.AttachNode(luke, planet);
@@ -263,7 +268,13 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             _game.EventRuntime.Variables["jabba.bounty.capture.completed"] =
                 previouslyCapturedByBountyHunters ? 1 : 0;
             _game.EventRuntime.Variables["jabba.rescue.completed"] = previouslyRescued ? 1 : 0;
-            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random);
+            officers["HAN_SOLO"]
+                .TryCapture(
+                    "FNEMP1",
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _game.Random
+                );
             _game.SetNodeEnabled(officers["HAN_SOLO"], hanIsActive);
             foreach (string rescuer in new[] { "LUKE", "LEIA", "CHEWBACCA" })
                 CompletePalaceEvent($"{rescuer}_RESCUE_OF_HAN_RESOLVES", 355);
@@ -305,7 +316,14 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         {
             Dictionary<string, Officer> officers = CreatePalaceScenario();
             _game.EventRuntime.Variables["jabba.bounty.capture.completed"] = 1;
-            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random, canEscape: false);
+            officers["HAN_SOLO"]
+                .TryCapture(
+                    "FNEMP1",
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _game.Random,
+                    canEscape: false
+                );
             _game.SetNodeEnabled(officers["HAN_SOLO"], false);
             foreach (string other in new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" })
                 if (other != officerID)
@@ -336,7 +354,14 @@ namespace Rebellion.Tests.Gameplay.GameEvents
         {
             Dictionary<string, Officer> officers = CreatePalaceScenario(0.9999);
             _game.EventRuntime.Variables["jabba.bounty.capture.completed"] = 1;
-            officers["HAN_SOLO"].TryCapture("FNEMP1", _game, _game.Random, canEscape: false);
+            officers["HAN_SOLO"]
+                .TryCapture(
+                    "FNEMP1",
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _game.Random,
+                    canEscape: false
+                );
             _game.SetNodeEnabled(officers["HAN_SOLO"], false);
             foreach (string officerID in new[] { "LUKE_SKYWALKER", "LEIA_ORGANA", "CHEWBACCA" })
                 officers[officerID].SetBaseRating(SkillRating.Combat, 0);
@@ -405,8 +430,18 @@ namespace Rebellion.Tests.Gameplay.GameEvents
             vader.DisplayStatus = "On Mission (Jabba's Palace)";
             Officer leia = officers["LEIA_ORGANA"];
             Officer chewbacca = officers["CHEWBACCA"];
-            leia.TryCapture("FNEMP1", _game, _game.Random);
-            chewbacca.TryCapture("FNEMP1", _game, _game.Random);
+            leia.TryCapture(
+                "FNEMP1",
+                _game.Config?.Captive?.EscapeAttemptInterval,
+                _game.CurrentTick,
+                _game.Random
+            );
+            chewbacca.TryCapture(
+                "FNEMP1",
+                _game.Config?.Captive?.EscapeAttemptInterval,
+                _game.CurrentTick,
+                _game.Random
+            );
             ISceneNode leiaParent = leia.GetParent();
             ISceneNode chewbaccaParent = chewbacca.GetParent();
             _game.CurrentTick = 600;

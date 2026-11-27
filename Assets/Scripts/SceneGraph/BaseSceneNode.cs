@@ -418,9 +418,22 @@ namespace Rebellion.SceneGraph
         /// <param name="action">The action to perform on each node.</param>
         internal void TraverseIncludingDisabled(Action<ISceneNode> action)
         {
-            action(this);
+            foreach (ISceneNode node in EnumerateSubtreeIncludingDisabled())
+                action(node);
+        }
+
+        /// <summary>
+        /// Enumerates this node and all descendants in depth-first order, including disabled branches.
+        /// </summary>
+        /// <returns>The nodes in traversal order.</returns>
+        internal IEnumerable<ISceneNode> EnumerateSubtreeIncludingDisabled()
+        {
+            yield return this;
             foreach (ISceneNode child in GetChildren(includeDisabled: true))
-                ((BaseSceneNode)child).TraverseIncludingDisabled(action);
+            foreach (
+                ISceneNode descendant in ((BaseSceneNode)child).EnumerateSubtreeIncludingDisabled()
+            )
+                yield return descendant;
         }
 
         /// <summary>

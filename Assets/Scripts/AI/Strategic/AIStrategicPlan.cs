@@ -589,7 +589,7 @@ namespace Rebellion.AI
                 || !planet.IsColonized
                 || planet.IsDestroyed
                 || planet.IsInUprising
-                || planet.IsBlockadedFor(planet.GetOwnerInstanceID(), _game)
+                || BlockadeQueries.IsBlockadedFor(_game, planet, planet.GetOwnerInstanceID())
             )
                 return Array.Empty<Building>();
             int needed = Math.Max(

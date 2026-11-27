@@ -61,7 +61,6 @@ namespace Rebellion.Gameplay
             && (
                 GetService<MovementCommands>().HasPendingResults
                 || GetService<ManufacturingCommands>().HasPendingResults
-                || GetService<PlanetNotificationObserver>().HasPendingChanges
             );
 
         private bool HasPendingOwnershipChanges =>
@@ -203,11 +202,6 @@ namespace Rebellion.Gameplay
 
             PrepareGameReplacement();
             Game = game;
-            Game.ConfigureBlockadeFactions(
-                Game.Summary.StartingFactionIDs is { Length: > 0 } factionIds
-                    ? factionIds
-                    : Game.GetFactions().Select(faction => faction?.InstanceID).ToArray()
-            );
             EnsureGameConfiguration();
             Game.RebuildSceneState();
             RestoreSectorSuppressionDefaults();
