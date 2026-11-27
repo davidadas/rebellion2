@@ -85,6 +85,9 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     private Button save;
 
     [SerializeField]
+    private Button applyToAll;
+
+    [SerializeField]
     private Button undo;
 
     [SerializeField]
@@ -213,6 +216,8 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         undo.interactable = commands.Undo != null;
         redo.interactable = commands.Redo != null;
         save.interactable = dirty;
+        save.GetComponentInChildren<TMP_Text>().text = commands.SaveLabel ?? "Save artwork";
+        applyToAll.gameObject.SetActive(commands.ApplyToAllCards != null);
         add.GetComponentInChildren<TMP_Text>().text = commands.AddLabel;
         rebuild.GetComponentInChildren<TMP_Text>().text = commands.RebuildLabel;
         add.gameObject.SetActive(commands.Add != null);
@@ -238,6 +243,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         bound = true;
         back.onClick.AddListener(() => TryCancel());
         save.onClick.AddListener(() => actions?.Save());
+        applyToAll.onClick.AddListener(() => actions?.ApplyToAllCards?.Invoke());
         undo.onClick.AddListener(() => actions?.Undo?.Invoke());
         redo.onClick.AddListener(() => actions?.Redo?.Invoke());
         draftButton.onClick.AddListener(() => Compare(false));
@@ -542,7 +548,16 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         float width = panel.rect.width;
         float height = panel.rect.height;
         bool narrow = width < 790;
-        float headerHeight = width < 760 ? 104 : 74;
+        bool bulk = applyToAll.gameObject.activeSelf;
+        float saveWidth = Mathf.Max(
+            132,
+            save.GetComponentInChildren<TMP_Text>().preferredWidth + 24
+        );
+        float saveExtra = saveWidth - 132;
+        float headerHeight =
+            bulk && width < 640 ? 144
+            : width < (bulk ? 1000 : 760) + saveExtra ? 104
+            : 74;
         float outputHeight = width < 740 ? 88 : 50;
         float top = headerHeight + outputHeight;
         float room = Mathf.Max(140, height - top);
@@ -562,19 +577,57 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         );
 
         Place(back.transform, 16, 18, 76, 32);
-        Place(title.transform, 108, 8, Mathf.Max(120, width - (headerHeight > 74 ? 126 : 520)), 34);
+        Place(
+            title.transform,
+            108,
+            8,
+            Mathf.Max(
+                120,
+                width
+                    - saveExtra
+                    - (
+                        headerHeight > 74 ? 126
+                        : bulk ? 736
+                        : 560
+                    )
+            ),
+            34
+        );
         Place(
             detail.transform,
             109,
             41,
-            Mathf.Max(120, width - (headerHeight > 74 ? 127 : 522)),
+            Mathf.Max(
+                120,
+                width
+                    - saveExtra
+                    - (
+                        headerHeight > 74 ? 127
+                        : bulk ? 737
+                        : 561
+                    )
+            ),
             22
         );
         float actionY = headerHeight > 74 ? 68 : 20;
-        Place(save.transform, width - 148, actionY, 132, 34);
-        Place(redo.transform, width - 219, actionY, 64, 34);
-        Place(undo.transform, width - 290, actionY, 64, 34);
-        Place(status.transform, Mathf.Max(12, width - 440), actionY, 138, 34);
+        Place(save.transform, width - saveWidth - 16, actionY, saveWidth, 34);
+        Place(
+            applyToAll.transform,
+            width < 640 ? 16 : width - 324 - saveExtra,
+            width < 640 ? 108 : actionY,
+            168,
+            34
+        );
+        bool bulkOnActionRow = bulk && width >= 640;
+        Place(redo.transform, width - (bulkOnActionRow ? 395 : 219) - saveExtra, actionY, 64, 34);
+        Place(undo.transform, width - (bulkOnActionRow ? 466 : 290) - saveExtra, actionY, 64, 34);
+        Place(
+            status.transform,
+            Mathf.Max(12, width - (bulkOnActionRow ? 616 : 440) - saveExtra),
+            actionY,
+            138,
+            34
+        );
         float compareY = outputHeight > 50 ? 49 : 8;
         Place(currentButton.transform, width - 144, compareY, 128, 34);
         Place(draftButton.transform, width - 218, compareY, 66, 34);
@@ -763,6 +816,33 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     }
 
     /// <summary>
+    /// Captures a way to reopen refreshed artwork on the same card and viewport.
+    /// </summary>
+    /// <returns>The restoration action, or null when this draft has no reload owner.</returns>
+    internal Action CaptureReopen()
+    {
+        if (actions?.Reopen == null)
+            return null;
+        Action<int> reopen = actions.Reopen;
+        int output = outputIndex;
+        int layer = selectedIndex;
+        var state = artworkCanvas.CaptureView();
+        return () =>
+        {
+            reopen(output);
+            if (!gameObject.activeSelf || frames == null)
+                return;
+            if (frames[outputIndex].Layers.Any(item => item.Index == layer))
+            {
+                selectedIndex = layer;
+                actions.Select?.Invoke(layer);
+            }
+            Present(false);
+            artworkCanvas.RestoreView(state);
+        };
+    }
+
+    /// <summary>
     /// Detaches the resolved draft before returning to the artwork page.
     /// </summary>
     internal void Dismiss()
@@ -809,9 +889,12 @@ internal sealed class ArtworkEffectActions
     internal Action Rebuild;
     internal Action VaryShipWakes;
     internal Action Save;
+    internal Action ApplyToAllCards;
+    internal string SaveLabel;
     internal Action Undo;
     internal Action Redo;
     internal Action Close;
+    internal Action<int> Reopen;
     internal Func<IReadOnlyList<ArtworkEffectPreviewFrame>> ReadCurrent;
     internal string AddLabel;
     internal string RebuildLabel;

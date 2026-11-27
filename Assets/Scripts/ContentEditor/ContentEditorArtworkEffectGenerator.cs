@@ -732,6 +732,51 @@ internal static class ContentEditorArtworkEffectGenerator
         }
 
         /// <summary>
+        /// Captures an effect's unmasked pixels at their original canvas position for reuse.
+        /// </summary>
+        /// <param name="layer">The effect layer before its authored transform.</param>
+        /// <param name="outputSize">The card dimensions receiving the same normalized layer placement.</param>
+        /// <returns>The full-canvas PNG, or null for an empty layer.</returns>
+        internal byte[] CaptureLayerSource(ContentEditorArtworkLayer layer, Vector2Int outputSize)
+        {
+            if (layer.Role != ContentEditorArtworkLayerRole.Effect)
+                throw new ArgumentException("Choose an effect layer.", nameof(layer));
+            var piece = GetLayer(layer);
+            if (piece.Texture == null)
+                return null;
+            Texture2D canvas = CreateTexture(Size, new Color[Size.x * Size.y]);
+            try
+            {
+                canvas.SetPixels(
+                    piece.Bounds.x,
+                    piece.Bounds.y,
+                    piece.Bounds.width,
+                    piece.Bounds.height,
+                    piece.Texture.GetPixels()
+                );
+                canvas.Apply();
+                if (outputSize == Size)
+                    return ImageConversion.EncodeToPNG(canvas);
+                Texture2D output = CreateTexture(
+                    outputSize,
+                    FitToCanvas(canvas, outputSize, stretchSource: true, filterAlpha: true)
+                );
+                try
+                {
+                    return ImageConversion.EncodeToPNG(output);
+                }
+                finally
+                {
+                    Release(output);
+                }
+            }
+            finally
+            {
+                Release(canvas);
+            }
+        }
+
+        /// <summary>
         /// Creates the initial stack in the same order used by the current runtime presentation.
         /// </summary>
         /// <returns>The background, generated effects, and unit artwork in back-to-front order.</returns>

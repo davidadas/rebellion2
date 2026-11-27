@@ -49,6 +49,56 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Save_ShipCombinedOrder_AppliesOnlyToTheSelectedShipType()
+        {
+            var ships = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind is "CapitalShip" or "Starfighter")
+                .ToArray();
+            var ship = ships.First(record => record.Kind == "CapitalShip");
+            var before = ships.ToDictionary(record => record, record => record.Element.ToString());
+            new ContentEditorGameplayArtworkEditor(
+                view,
+                project,
+                ship,
+                new ArtworkEffectPreviewFrame(
+                    "Combined",
+                    texture,
+                    new[]
+                    {
+                        new ArtworkEffectLayerPreview(
+                            0,
+                            "Ship",
+                            texture,
+                            new Rect(0, 0, 1, 1),
+                            linked: true
+                        ),
+                        new ArtworkEffectLayerPreview(
+                            2,
+                            "Damage",
+                            texture,
+                            new Rect(0, 0, 1, 1),
+                            linked: true
+                        ),
+                    }
+                ),
+                () => { },
+                action => action()
+            ).Show();
+            Assert.AreEqual(
+                "Apply to all cards",
+                Button("SaveArtwork").GetComponentInChildren<TMP_Text>().text
+            );
+            SelectLayer("Damage");
+            Button("MoveLayerBackward").onClick.Invoke();
+            Button("SaveArtwork").onClick.Invoke();
+            Assert.AreEqual("Damage", ship.GetField("ArtworkLayerOrder").Values.First());
+            foreach (var other in ships.Where(record => record != ship))
+                Assert.AreEqual(before[other], other.Element.ToString());
+        }
+
+        [Test]
         public void Save_InjuryAboveCapture_StoresOrderWithoutChangingImageReferences()
         {
             string[] artwork = officer

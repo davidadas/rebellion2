@@ -2,6 +2,7 @@ using System.Linq;
 using NUnit.Framework;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Rebellion.Tests.ContentEditor.UI
@@ -23,6 +24,142 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Object.DestroyImmediate(small);
             if (large != null)
                 Object.DestroyImmediate(large);
+        }
+
+        [Test]
+        public void CaptureReopen_ProjectRefresh_RetainsTheCardLayerAndViewport()
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(800, 500);
+            Canvas.ForceUpdateCanvases();
+            var commands = new ArtworkEffectActions();
+            int reopened = -1;
+            commands.Reopen = output =>
+            {
+                Texture2D oldSmall = small;
+                Texture2D oldLarge = large;
+                commands.ReadCurrent = null;
+                ShowArtwork(commands, initialOutput: output);
+                Object.DestroyImmediate(oldSmall);
+                Object.DestroyImmediate(oldLarge);
+                reopened = output;
+            };
+            var workspace = ShowArtwork(commands);
+            GetButton(workspace, "ArtworkOutput1").onClick.Invoke();
+            GetButton(workspace, "ActualPixels").onClick.Invoke();
+            var canvas = workspace.GetComponentInChildren<ContentEditorArtworkCanvas>();
+            Vector2 center = RectTransformUtility.WorldToScreenPoint(
+                null,
+                canvas.transform.position
+            );
+            canvas.OnScroll(
+                new PointerEventData(EventSystem.current)
+                {
+                    position = center,
+                    scrollDelta = new Vector2(0, 20),
+                }
+            );
+            var drag = new PointerEventData(EventSystem.current)
+            {
+                button = PointerEventData.InputButton.Middle,
+                pressPosition = center,
+                position = center + new Vector2(10, 10),
+            };
+            canvas.OnBeginDrag(drag);
+            canvas.OnDrag(drag);
+            canvas.OnEndDrag(drag);
+            var before = canvas.CaptureView();
+            Assert.AreNotEqual(Vector2.zero, before.Pan);
+            var restore = view.CaptureArtworkReopen();
+
+            workspace.Dismiss();
+            restore();
+
+            Assert.AreEqual(1, reopened);
+            Assert.IsTrue(workspace.gameObject.activeSelf);
+            Assert.AreEqual(before, canvas.CaptureView());
+        }
+
+        [Test]
+        public void CaptureReopen_DraftWithoutReloadOwner_ReturnsNoRestoreAction()
+        {
+            ShowArtwork();
+            Assert.IsNull(view.CaptureArtworkReopen());
+        }
+
+        [TestCase(600)]
+        [TestCase(800)]
+        [TestCase(1600)]
+        public void ShowGeneratedArtwork_CardVariantsButton_DoesNotOverlapSaveOrTitle(int width)
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 1000);
+            Canvas.ForceUpdateCanvases();
+            int clicked = 0;
+            var workspace = ShowArtwork(
+                new ArtworkEffectActions { ApplyToAllCards = () => clicked++ }
+            );
+            Canvas.ForceUpdateCanvases();
+            var button = GetButton(workspace, "ApplyArtworkToAllCards");
+            button.onClick.Invoke();
+            Assert.AreEqual(1, clicked);
+            Assert.AreEqual("Apply to all cards", button.GetComponentInChildren<TMP_Text>().text);
+            var other = GetButton(workspace, "SaveArtwork");
+            var first = new Vector3[4];
+            var second = new Vector3[4];
+            ((RectTransform)button.transform).GetWorldCorners(first);
+            ((RectTransform)other.transform).GetWorldCorners(second);
+            Assert.IsFalse(
+                new Rect(first[0], first[2] - first[0]).Overlaps(
+                    new Rect(second[0], second[2] - second[0])
+                )
+            );
+            workspace
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(label => label.name == "ArtworkTitle")
+                .rectTransform.GetWorldCorners(second);
+            Assert.IsFalse(
+                new Rect(first[0], first[2] - first[0]).Overlaps(
+                    new Rect(second[0], second[2] - second[0])
+                )
+            );
+            Assert.GreaterOrEqual(((RectTransform)button.transform).anchoredPosition.x, 0);
+        }
+
+        [Test]
+        public void ShowGeneratedArtwork_CardVariantsButton_HasAFilledBackgroundBesideSave()
+        {
+            var workspace = ShowArtwork(new ArtworkEffectActions { ApplyToAllCards = () => { } });
+            var apply = GetButton(workspace, "ApplyArtworkToAllCards");
+            var save = GetButton(workspace, "SaveArtwork");
+            Assert.AreNotEqual(
+                apply.transform.parent.GetComponent<Image>().color,
+                apply.targetGraphic.color
+            );
+            Assert.AreEqual(save.targetGraphic.color, apply.targetGraphic.color);
+            Assert.AreEqual(
+                ((RectTransform)save.transform).anchoredPosition.y,
+                ((RectTransform)apply.transform).anchoredPosition.y
+            );
+            float gap =
+                ((RectTransform)save.transform).anchoredPosition.x
+                - (
+                    ((RectTransform)apply.transform).anchoredPosition.x
+                    + ((RectTransform)apply.transform).rect.width
+                );
+            Assert.AreEqual(8, gap);
+        }
+
+        [Test]
+        public void ShowGeneratedArtwork_ReusedForNonShipDraft_HidesPreviousBatchAction()
+        {
+            var workspace = ShowArtwork(new ArtworkEffectActions { ApplyToAllCards = () => { } });
+            Assert.IsTrue(GetButton(workspace, "ApplyArtworkToAllCards").gameObject.activeSelf);
+            ShowArtwork();
+            Assert.IsFalse(
+                workspace
+                    .GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ApplyArtworkToAllCards")
+                    .gameObject.activeSelf
+            );
         }
 
         [Test]
@@ -233,13 +370,15 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <param name="sizeSpecificLayers">Whether each output shows a different layer stack.</param>
         /// <param name="linkedFirst">Whether the first fixture layer represents linked unit artwork.</param>
         /// <param name="crop">The optional visible source rectangle of the first layer.</param>
+        /// <param name="initialOutput">The card selected when restoring an artwork workspace.</param>
         /// <returns>The rendered workspace.</returns>
         private ContentEditorArtworkWorkspace ShowArtwork(
             ArtworkEffectActions commands = null,
             bool changed = false,
             bool sizeSpecificLayers = false,
             bool linkedFirst = false,
-            Rect? crop = null
+            Rect? crop = null,
+            int initialOutput = 0
         )
         {
             small = new Texture2D(32, 16);
@@ -289,7 +428,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 "Travel artwork",
                 "Test unit",
                 frames,
-                0,
+                initialOutput,
                 1,
                 changed,
                 commands

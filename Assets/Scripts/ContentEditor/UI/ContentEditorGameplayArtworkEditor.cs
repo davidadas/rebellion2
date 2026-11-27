@@ -70,7 +70,7 @@ internal sealed class ContentEditorGameplayArtworkEditor
     {
         view.ShowGeneratedArtwork(
             "Combined gameplay layers",
-            record.Name + " · Order applies to all gameplay cards",
+            record.Name + " · Order applies to this unit’s cards and states",
             new[] { Preview(order) },
             0,
             selected,
@@ -80,6 +80,7 @@ internal sealed class ContentEditorGameplayArtworkEditor
                 Select = index => selected = index,
                 Reorder = Reorder,
                 Save = () => execute(Save),
+                SaveLabel = "Apply to all cards",
                 Undo = undo.Count > 0 ? Undo : null,
                 Redo = redo.Count > 0 ? Redo : null,
                 ReadCurrent = () => new[] { Preview(saved) },

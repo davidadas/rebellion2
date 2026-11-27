@@ -127,6 +127,23 @@ public sealed class ContentEditorArtworkCanvas
     }
 
     /// <summary>
+    /// Captures the viewport independently of the textures owned by the current draft.
+    /// </summary>
+    /// <returns>The current zoom and pan.</returns>
+    internal (float Zoom, Vector2 Pan) CaptureView() => (zoom, pan);
+
+    /// <summary>
+    /// Restores the viewport after refreshed artwork has been attached.
+    /// </summary>
+    /// <param name="state">The previously captured zoom and pan.</param>
+    internal void RestoreView((float Zoom, Vector2 Pan) state)
+    {
+        zoom = state.Zoom;
+        pan = state.Pan;
+        PlaceArtwork();
+    }
+
+    /// <summary>
     /// Fits the complete card inside the current viewport.
     /// </summary>
     internal void Fit()

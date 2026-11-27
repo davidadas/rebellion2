@@ -508,6 +508,34 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(chosen, $"{requested.Size.Value.x} × {requested.Size.Value.y}");
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfirmShipArtworkCards_RespondingToConfirmation_AppliesOnlyWhenAccepted(
+            bool accept
+        )
+        {
+            var ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            int applications = 0;
+            view.ConfirmShipArtworkCards(ship, "damage", () => applications++);
+            var dialog = view.GetComponentInChildren<ActionDialogView>();
+            Assert.IsTrue(
+                dialog
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text.Contains("every card for " + ship.Name))
+            );
+            dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>().text
+                    == (accept ? "Apply to all cards" : "Cancel")
+                )
+                .onClick.Invoke();
+            Assert.AreEqual(accept ? 1 : 0, applications);
+        }
+
         [TestCase("InjuredImagePath")]
         [TestCase("CapturedOverlayImagePath")]
         [TestCase("InTransitImagePath")]

@@ -1076,6 +1076,43 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Applies the active effect to every card size belonging to the selected ship type.
+    /// </summary>
+    /// <param name="record">The selected ship definition.</param>
+    /// <param name="templates">The active effect fitted to each of this ship's output sizes.</param>
+    private async void ApplyArtworkToAllCards(
+        ContentPackEditorRecord record,
+        IReadOnlyList<ContentEditorShipArtworkVariants> templates
+    )
+    {
+        int? changed = null;
+        await RunOperationAsync(async cancellationToken =>
+        {
+            view.RenderStatus("Preparing card artwork. Press Escape to cancel.", false);
+            changed = await ContentEditorShipArtworkVariants.ApplyAsync(
+                project,
+                record,
+                templates,
+                ResolveArtworkFile,
+                view.GetShipEffectBackground,
+                cancellationToken
+            );
+        });
+        if (changed is not int count || this == null)
+            return;
+        RunOperation(() =>
+        {
+            Action reopen = view.CaptureArtworkReopen();
+            OpenProject(project);
+            reopen?.Invoke();
+            view.RenderStatus(
+                $"Artwork applied to {count} cards for {record.Name}. Save pack to keep the changes. Undo restores the entire edit.",
+                false
+            );
+        });
+    }
+
+    /// <summary>
     /// Begins a repeatable preview of the applicable gameplay images for one unit.
     /// </summary>
     /// <param name="selectedField">The state image selected on the artwork page.</param>
@@ -1090,6 +1127,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         RunOperation(() =>
         {
             ContentPackEditorRecord record = selectedField.Record;
+            string recordKey = record.Key;
             project.RequireOwnedRecord(record);
             if (!ContentEditorArtworkEffectGenerator.TryGetStyle(record, effect, out var style))
                 throw new ArgumentException(
@@ -1810,6 +1848,35 @@ public sealed class ContentPackEditorController : MonoBehaviour
                     || savedRecipes[index] != JsonUtility.ToJson(drafts[index])
                 );
 
+            ContentEditorShipArtworkVariants[] CaptureCardArtwork()
+            {
+                var draft = JsonUtility.FromJson<ContentEditorArtworkRecipe>(
+                    JsonUtility.ToJson(drafts[activeOutput])
+                );
+                for (int index = 0; index < draft.Layers.Count; index++)
+                {
+                    var layer = draft.Layers[index];
+                    layer.Name = LayerName(layer, index, frames[activeOutput], draft);
+                    draft.Layers[index] = layer;
+                }
+                return outputs
+                    .Select(output => new ContentEditorShipArtworkVariants(
+                        output.Field,
+                        frames[activeOutput],
+                        draft
+                    ))
+                    .ToArray();
+            }
+
+            void ApplyToAllCards()
+            {
+                view.ConfirmShipArtworkCards(
+                    record,
+                    effect == ContentEditorArtworkEffect.Travel ? "hyperspace" : "damage",
+                    () => RunOperation(() => ApplyArtworkToAllCards(record, CaptureCardArtwork()))
+                );
+            }
+
             void Save()
             {
                 var images = new List<(ContentPackEditorField Field, byte[] Png, string Layers)>();
@@ -2056,6 +2123,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                                 ? "Rebuild travel artwork"
                                 : "Regenerate damage artwork",
                         Save = () => RunOperation(Save),
+                        ApplyToAllCards = shipEffects ? () => RunOperation(ApplyToAllCards) : null,
                         Undo =
                             undo.Count == 0
                                 ? null
@@ -2069,6 +2137,19 @@ public sealed class ContentPackEditorController : MonoBehaviour
                             IReadOnlyList<ArtworkEffectPreviewFrame> result = null;
                             RunOperation(() => result = ReadCurrent());
                             return result;
+                        },
+                        Reopen = output =>
+                        {
+                            var refreshed = project
+                                .GetCatalogs()
+                                .SelectMany(catalog => catalog.Records)
+                                .FirstOrDefault(candidate => candidate.Key == recordKey);
+                            if (refreshed != null)
+                                PreviewArtworkEffect(
+                                    refreshed.GetField(outputs[output].Field.MemberName),
+                                    effect,
+                                    false
+                                );
                         },
                         Close = () =>
                         {

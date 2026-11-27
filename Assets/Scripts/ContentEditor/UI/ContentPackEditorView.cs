@@ -2650,6 +2650,12 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
 
     /// <summary>
+    /// Retains the active artwork card and viewport across a media-store refresh.
+    /// </summary>
+    /// <returns>The action that restores the refreshed artwork workspace, when available.</returns>
+    internal Action CaptureArtworkReopen() => artworkWorkspace.CaptureReopen();
+
+    /// <summary>
     /// Guards native window closure while a draft has unsaved edits.
     /// </summary>
     /// <param name="next">Resumes closing after the artwork decision.</param>
@@ -2769,6 +2775,24 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             apply
         );
     }
+
+    /// <summary>
+    /// Confirms applying the current effect to every card size for the selected ship type.
+    /// </summary>
+    /// <param name="source">The ship whose card artwork is being edited.</param>
+    /// <param name="effect">The damage or hyperspace effect being copied.</param>
+    /// <param name="apply">Applies the card variants after confirmation.</param>
+    internal void ConfirmShipArtworkCards(
+        ContentPackEditorRecord source,
+        string effect,
+        Action apply
+    ) =>
+        confirmation.Show(
+            $"Apply these {effect} layers to every card for {source.Name}? "
+                + $"This replaces its small, large and battle-report {effect} artwork.",
+            "Apply to all cards",
+            apply
+        );
 
     /// <summary>
     /// Opens the combined linked artwork in the shared layer workspace.
