@@ -390,7 +390,6 @@ namespace Rebellion.Gameplay
                     participant.Side,
                     participant.Index
                 );
-                unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
                 rosters[(int)participant.Side].Add(unit);
                 byID.Add(unit.InstanceID, unit);
             }
