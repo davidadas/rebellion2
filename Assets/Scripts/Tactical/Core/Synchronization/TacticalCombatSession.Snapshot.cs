@@ -446,7 +446,13 @@ namespace Rebellion.Tactical
                     || !Enum.IsDefined(typeof(TacticalCombatEventKind), effect.Kind)
                     || effect.HasRecipient && !IsSynchronizedSide(effect.Recipient)
                     || effect.Kind is TacticalCombatEventKind.Shot or TacticalCombatEventKind.Impact
-                        && !Enum.IsDefined(typeof(TacticalWeaponType), effect.Weapon)
+                        && effect.Weapon
+                            is not (
+                                HardpointWeaponType.LaserCannon
+                                or HardpointWeaponType.IonCannon
+                                or HardpointWeaponType.Turbolaser
+                                or HardpointWeaponType.TorpedoLauncher
+                            )
                     || effect.Kind == TacticalCombatEventKind.Impact
                         && !Enum.IsDefined(typeof(TacticalCombatImpactKind), effect.Impact)
                     || effect.Kind == TacticalCombatEventKind.Notification

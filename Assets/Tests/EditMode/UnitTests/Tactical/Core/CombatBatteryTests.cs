@@ -30,7 +30,7 @@ namespace Rebellion.Tests.Tactical
             double damage = TacticalCombatFireControl.GetOpportunityDamage(
                 weapons,
                 TacticalWeaponArc.Forward,
-                TacticalWeaponType.LaserCannon
+                HardpointWeaponType.LaserCannon
             );
 
             Assert.AreEqual(0x3fe99999b0000000L, BitConverter.DoubleToInt64Bits(damage));
@@ -64,7 +64,7 @@ namespace Rebellion.Tests.Tactical
                 1,
                 0
             );
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
 
             TacticalCombatFireControl.RechargeBatteries(
                 weapons,
@@ -121,7 +121,7 @@ namespace Rebellion.Tests.Tactical
                 TacticalCombatFireControl.GetTargetDamage(
                     CreateWeapons(),
                     TacticalWeaponArc.Forward,
-                    TacticalWeaponType.IonCannon,
+                    HardpointWeaponType.IonCannon,
                     true
                 )
             );
@@ -134,7 +134,7 @@ namespace Rebellion.Tests.Tactical
                 TacticalCombatFireControl.GetTargetDamage(
                     CreateWeapons(),
                     TacticalWeaponArc.Forward,
-                    TacticalWeaponType.LaserCannon,
+                    HardpointWeaponType.LaserCannon,
                     false
                 ),
                 Is.EqualTo(0.44533336f).Within(0.000001f)
@@ -145,8 +145,8 @@ namespace Rebellion.Tests.Tactical
         public void Discharge_MultipleLanes_ConsumesTheirCombinedStrength()
         {
             CombatUnit weapons = CreateWeapons();
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.IonCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.IonCannon);
 
             Assert.AreEqual(30, weapons.GetBatteryCharge(TacticalWeaponArc.Forward));
             Assert.IsFalse(weapons.IsBatteryReady(TacticalWeaponArc.Forward));
@@ -156,7 +156,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_PartialRecharge_ReadiesOnlyAfterRestoringConsumedCharge()
         {
             CombatUnit weapons = CreateWeapons();
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
             TacticalCombatFireControl.RechargeBatteries(weapons, 0.5f, 10);
 
             Assert.AreEqual(55, weapons.GetBatteryCharge(TacticalWeaponArc.Forward));
@@ -172,7 +172,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_SurplusBudget_CapsBatteryAtItsFullCapacity()
         {
             CombatUnit weapons = CreateWeapons();
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
 
             TacticalCombatFireControl.RechargeBatteries(weapons, 10, 10);
 
@@ -215,8 +215,8 @@ namespace Rebellion.Tests.Tactical
             TacticalCombatFireControl.RechargeBatteries(weapons, 1, 100);
             for (int arc = 0; arc < 4; arc++)
                 Assert.IsTrue(weapons.IsBatteryReady((TacticalWeaponArc)arc));
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
-            weapons.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Starboard, HardpointWeaponType.LaserCannon);
 
             TacticalCombatFireControl.RechargeBatteries(weapons, 1, 25);
 
@@ -228,7 +228,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_ZeroBudget_PreservesDischargedState()
         {
             CombatUnit weapons = CreateWeapons();
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
             TacticalCombatFireControl.RechargeBatteries(weapons, 0, 10);
 
             Assert.AreEqual(50, weapons.GetBatteryCharge(TacticalWeaponArc.Forward));
@@ -286,7 +286,7 @@ namespace Rebellion.Tests.Tactical
                 true
             );
 
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
 
             Assert.AreEqual(-3, weapons.GetBatteryCharge(TacticalWeaponArc.Forward));
             Assert.IsFalse(weapons.IsBatteryReady(TacticalWeaponArc.Forward));
@@ -351,7 +351,7 @@ namespace Rebellion.Tests.Tactical
         public void ClearBattery_PartiallyChargedBattery_RemovesItsRemainingCharge()
         {
             CombatUnit weapons = CreateWeapons();
-            weapons.DischargeBattery(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon);
+            weapons.DischargeBattery(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon);
             weapons.ClearBattery(TacticalWeaponArc.Forward);
 
             Assert.AreEqual(0, weapons.GetBatteryCharge(TacticalWeaponArc.Forward));

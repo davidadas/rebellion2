@@ -39,16 +39,16 @@ namespace Rebellion.Tactical
                 for (int arc = 0; arc < 4; arc++)
                 for (int profile = 0; profile < 3; profile++)
                 {
-                    TacticalWeaponType weapon = profile switch
+                    HardpointWeaponType weapon = profile switch
                     {
-                        0 => TacticalWeaponType.IonCannon,
-                        1 => TacticalWeaponType.LaserCannon,
-                        _ => TacticalWeaponType.Turbolaser,
+                        0 => HardpointWeaponType.IonCannon,
+                        1 => HardpointWeaponType.LaserCannon,
+                        _ => HardpointWeaponType.Turbolaser,
                     };
                     if (unit.GetWeaponStrength((TacticalWeaponArc)arc, weapon) == 0)
                         continue;
                     armed = true;
-                    laser |= weapon == TacticalWeaponType.LaserCannon;
+                    laser |= weapon == HardpointWeaponType.LaserCannon;
                     float range = unit.GetWeaponRange((TacticalWeaponArc)arc, weapon);
                     if (maximum < range)
                         maximum = range;

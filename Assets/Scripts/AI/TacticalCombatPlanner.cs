@@ -309,7 +309,7 @@ namespace Rebellion.AI.Tactical
         {
             for (int arc = 0; arc < 4; arc++)
                 if (
-                    unit.GetWeaponStrength((TacticalWeaponArc)arc, TacticalWeaponType.LaserCannon)
+                    unit.GetWeaponStrength((TacticalWeaponArc)arc, HardpointWeaponType.LaserCannon)
                     != 0
                 )
                     return true;

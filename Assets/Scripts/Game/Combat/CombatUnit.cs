@@ -40,21 +40,10 @@ namespace Rebellion.Game.Combat
     }
 
     /// <summary>
-    /// Identifies the damage delivered by a tactical weapon.
-    /// </summary>
-    public enum TacticalWeaponType
-    {
-        LaserCannon,
-        IonCannon,
-        Turbolaser,
-        Torpedo,
-    }
-
-    /// <summary>
     /// Owns the independently mutable copy of one strategic battle participant.
     /// </summary>
     [PersistableObject]
-    public sealed class CombatUnit : BaseGameEntity
+    public sealed class CombatUnit
     {
         private BaseSceneNode _unit;
         private CapitalShipSystemDamage _fighterDamage;
@@ -197,26 +186,10 @@ namespace Rebellion.Game.Combat
         [PersistableIgnore]
         public BaseSceneNode Unit => _unit;
 
-        [PersistableIgnore]
-        public new string InstanceID
-        {
-            get => Unit?.InstanceID ?? base.InstanceID;
-            private set => base.InstanceID = value;
-        }
+        public string InstanceID => Unit?.InstanceID;
+        public string TypeID => Unit?.TypeID;
+        public string DisplayName => Unit?.GetDisplayName();
 
-        [PersistableIgnore]
-        public new string TypeID
-        {
-            get => Unit?.TypeID ?? base.TypeID;
-            private set => base.TypeID = value;
-        }
-
-        [PersistableIgnore]
-        public new string DisplayName
-        {
-            get => Unit?.GetDisplayName() ?? base.DisplayName;
-            private set => base.DisplayName = value;
-        }
         public CombatSide Side { get; internal set; }
         public bool IsFighter => Unit is Starfighter;
         internal int DriveSlotCount => Unit is CapitalShip ship ? ship.Hyperdrives.Length : 2;
@@ -410,8 +383,8 @@ namespace Rebellion.Game.Combat
                     nameof(sourceUnit)
                 );
 
-            _unit = (BaseSceneNode)sourceUnit.CreateCopy();
             SourceUnitInstanceID = sourceUnit.InstanceID;
+            _unit = (BaseSceneNode)sourceUnit.CreateCopy();
             if (sourceUnit is Starfighter)
                 CarrierID = (sourceUnit.ParentNode as CapitalShip)?.InstanceID;
             else if (sourceUnit is CapitalShip ship)
@@ -550,42 +523,28 @@ namespace Rebellion.Game.Combat
         /// <returns>The battery's recharge target.</returns>
         public float GetBatteryCapacity(TacticalWeaponArc arc) =>
             (float)(
-                (double)GetWeaponStrength(arc, TacticalWeaponType.LaserCannon)
-                + GetWeaponStrength(arc, TacticalWeaponType.IonCannon)
-                + GetWeaponStrength(arc, TacticalWeaponType.Turbolaser)
+                (double)GetWeaponStrength(arc, HardpointWeaponType.LaserCannon)
+                + GetWeaponStrength(arc, HardpointWeaponType.IonCannon)
+                + GetWeaponStrength(arc, HardpointWeaponType.Turbolaser)
             );
 
         /// <summary>
         /// Reads the combined rating for a weapon in one battery arc.
         /// </summary>
         /// <param name="arc">The requested ship-relative weapon arc.</param>
-        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <param name="weapon">The weapon type on the authored mounts.</param>
         /// <returns>The weapon strength across matching mounts.</returns>
-        public int GetWeaponStrength(TacticalWeaponArc arc, TacticalWeaponType weapon) =>
-            Batteries[(int)arc].GetStrength(GetMountWeaponType(weapon));
+        public int GetWeaponStrength(TacticalWeaponArc arc, HardpointWeaponType weapon) =>
+            Batteries[(int)arc].GetStrength(weapon);
 
         /// <summary>
         /// Reads the range of a weapon in one battery arc.
         /// </summary>
         /// <param name="arc">The requested ship-relative weapon arc.</param>
-        /// <param name="weapon">The weapon type being read or translated.</param>
+        /// <param name="weapon">The weapon type on the authored mounts.</param>
         /// <returns>The matching weapon range, or zero when absent.</returns>
-        public float GetWeaponRange(TacticalWeaponArc arc, TacticalWeaponType weapon) =>
-            (float)Batteries[(int)arc].GetRange(GetMountWeaponType(weapon));
-
-        /// <summary>
-        /// Maps a tactical discharge to its authored mount category.
-        /// </summary>
-        /// <param name="weapon">The weapon type being read or translated.</param>
-        /// <returns>The corresponding hardpoint weapon category.</returns>
-        private static HardpointWeaponType GetMountWeaponType(TacticalWeaponType weapon) =>
-            weapon switch
-            {
-                TacticalWeaponType.LaserCannon => HardpointWeaponType.LaserCannon,
-                TacticalWeaponType.IonCannon => HardpointWeaponType.IonCannon,
-                TacticalWeaponType.Turbolaser => HardpointWeaponType.Turbolaser,
-                _ => throw new ArgumentOutOfRangeException(nameof(weapon)),
-            };
+        public float GetWeaponRange(TacticalWeaponArc arc, HardpointWeaponType weapon) =>
+            (float)Batteries[(int)arc].GetRange(weapon);
 
         /// <summary>
         /// Consumes the authored strength of a fired lane and schedules its battery for recharge.
@@ -593,7 +552,7 @@ namespace Rebellion.Game.Combat
         /// </summary>
         /// <param name="arc">The firing battery.</param>
         /// <param name="weapon">The fired battery weapon.</param>
-        public void DischargeBattery(TacticalWeaponArc arc, TacticalWeaponType weapon)
+        public void DischargeBattery(TacticalWeaponArc arc, HardpointWeaponType weapon)
         {
             int index = (int)arc;
             _batteryCharge[index] = (float)(

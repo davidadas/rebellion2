@@ -178,7 +178,7 @@ namespace Rebellion.Tests.Tactical
 
             fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
 
-            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots.Single().Weapon);
+            Assert.AreEqual(HardpointWeaponType.LaserCannon, shots.Single().Weapon);
         }
 
         [TestCase(0f, 0)]
@@ -203,7 +203,7 @@ namespace Rebellion.Tests.Tactical
             fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
 
             CollectionAssert.AreEqual(
-                new[] { TacticalWeaponType.LaserCannon, TacticalWeaponType.Torpedo },
+                new[] { HardpointWeaponType.LaserCannon, HardpointWeaponType.TorpedoLauncher },
                 shots.Select(shot => shot.Weapon).ToArray()
             );
         }
@@ -231,7 +231,7 @@ namespace Rebellion.Tests.Tactical
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreSame(target, shots.Single().Target);
-            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots[0].Weapon);
+            Assert.AreEqual(HardpointWeaponType.LaserCannon, shots[0].Weapon);
             Assert.AreEqual(0, source.GetBatteryCharge(TacticalWeaponArc.Forward));
             Assert.IsFalse(source.IsBatteryReady(TacticalWeaponArc.Forward));
         }
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.Tactical
             fireControl.AcquireTargets(source, group, index, new FixedRandomProvider(new[] { 0d }));
 
             Assert.AreSame(target, shots.Single().Target);
-            Assert.AreEqual(TacticalWeaponType.LaserCannon, shots[0].Weapon);
+            Assert.AreEqual(HardpointWeaponType.LaserCannon, shots[0].Weapon);
         }
 
         /// <summary>

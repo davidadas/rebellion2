@@ -10,17 +10,17 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatEngagement
     {
-        private static readonly TacticalWeaponType[] _attackOrder =
+        private static readonly HardpointWeaponType[] _attackOrder =
         {
-            TacticalWeaponType.IonCannon,
-            TacticalWeaponType.LaserCannon,
-            TacticalWeaponType.Turbolaser,
+            HardpointWeaponType.IonCannon,
+            HardpointWeaponType.LaserCannon,
+            HardpointWeaponType.Turbolaser,
         };
-        private static readonly TacticalWeaponType[] _rangeOrder =
+        private static readonly HardpointWeaponType[] _rangeOrder =
         {
-            TacticalWeaponType.IonCannon,
-            TacticalWeaponType.Turbolaser,
-            TacticalWeaponType.LaserCannon,
+            HardpointWeaponType.IonCannon,
+            HardpointWeaponType.Turbolaser,
+            HardpointWeaponType.LaserCannon,
         };
         private readonly List<WeaponRange> _weapons = new();
         private readonly List<float> _boundaries = new();
@@ -127,9 +127,9 @@ namespace Rebellion.Tactical
             TacticalWeaponArc arc = selected.Value;
             uint total = unchecked(
                 (uint)(
-                    unit.GetWeaponStrength(arc, TacticalWeaponType.LaserCannon)
-                    + unit.GetWeaponStrength(arc, TacticalWeaponType.IonCannon)
-                    + unit.GetWeaponStrength(arc, TacticalWeaponType.Turbolaser)
+                    unit.GetWeaponStrength(arc, HardpointWeaponType.LaserCannon)
+                    + unit.GetWeaponStrength(arc, HardpointWeaponType.IonCannon)
+                    + unit.GetWeaponStrength(arc, HardpointWeaponType.Turbolaser)
                 )
             );
             if (unit.IsFighter)
@@ -156,11 +156,11 @@ namespace Rebellion.Tactical
             float damage = 0;
             for (int index = 0; index < _attackOrder.Length; index++)
             {
-                TacticalWeaponType weapon = _attackOrder[index];
+                HardpointWeaponType weapon = _attackOrder[index];
                 if (unit.GetWeaponStrength(arc, weapon) <= 0)
                     continue;
                 float value = TacticalCombatFireControl.GetTargetDamage(unit, arc, weapon, fighter);
-                if (fighter && weapon != TacticalWeaponType.IonCannon)
+                if (fighter && weapon != HardpointWeaponType.IonCannon)
                     value = (float)((double)value * maneuverRatio);
                 double contribution = unit.IsFighter
                     ? (double)unit.Hull * value / unit.MaximumHull
@@ -200,10 +200,10 @@ namespace Rebellion.Tactical
             );
             if (selected == null)
                 return;
-            TacticalWeaponType[] order = _rangeOrder;
+            HardpointWeaponType[] order = _rangeOrder;
             for (int index = 0; index < order.Length; index++)
             {
-                TacticalWeaponType weapon = order[index];
+                HardpointWeaponType weapon = order[index];
                 if (unit.GetWeaponStrength(selected.Value, weapon) == 0)
                     continue;
                 float range = unit.GetWeaponRange(selected.Value, weapon);
