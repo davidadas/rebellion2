@@ -15,7 +15,6 @@ namespace Rebellion.Gameplay
         internal bool IsProcessing => _processingDepth > 0;
         private readonly Func<GameResultBus> _getResults;
         private readonly Func<MessageObserver> _getMessageObserver;
-        private readonly Func<IReadOnlyList<GameResult>, List<GameResult>> _settleCombat;
 
         public event Action<IReadOnlyList<GameResult>> ResultsResolved;
         public event Action<IReadOnlyList<PlanetaryAssaultResult>> PlanetaryAssaultsResolved;
@@ -30,17 +29,14 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="getResults">Returns the current gameplay result bus.</param>
         /// <param name="getMessageObserver">Returns the current automatic-message observer.</param>
-        /// <param name="settleCombat">Applies campaign effects after combat loss reactions.</param>
         internal GameResultPipeline(
             Func<GameResultBus> getResults,
-            Func<MessageObserver> getMessageObserver,
-            Func<IReadOnlyList<GameResult>, List<GameResult>> settleCombat = null
+            Func<MessageObserver> getMessageObserver
         )
         {
             _getResults = getResults ?? throw new ArgumentNullException(nameof(getResults));
             _getMessageObserver =
                 getMessageObserver ?? throw new ArgumentNullException(nameof(getMessageObserver));
-            _settleCombat = settleCombat;
         }
 
         /// <summary>
@@ -64,17 +60,19 @@ namespace Rebellion.Gameplay
         /// <param name="results">The result batch entering this operation.</param>
         /// <param name="processMessages">Whether to create faction messages for this batch.</param>
         /// <param name="collectPending">Drains command-owned facts into the next ordinary reaction wave.</param>
+        /// <param name="afterReactions">Applies the producing operation's follow-up effects once its reactions have settled.</param>
         /// <returns>All initial results and reactions in settlement order.</returns>
         internal List<GameResult> ProcessResults(
             IEnumerable<GameResult> results,
             bool processMessages,
-            Func<IReadOnlyList<GameResult>> collectPending
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> afterReactions = null
         )
         {
             _processingDepth++;
             try
             {
-                return ProcessResultsCore(results, processMessages, collectPending);
+                return ProcessResultsCore(results, processMessages, collectPending, afterReactions);
             }
             finally
             {
@@ -88,15 +86,17 @@ namespace Rebellion.Gameplay
         /// <param name="results">The completed facts.</param>
         /// <param name="processMessages">Whether to release message reactions.</param>
         /// <param name="collectPending">Drains commands caused by the current combat encounter.</param>
+        /// <param name="afterReactions">Applies the producing operation's follow-up effects.</param>
         /// <returns>The settled results.</returns>
         private List<GameResult> ProcessResultsCore(
             IEnumerable<GameResult> results,
             bool processMessages,
-            Func<IReadOnlyList<GameResult>> collectPending
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> afterReactions
         )
         {
             List<GameResult> resolvedResults = _getResults()
-                .Publish(results, collectPending, _settleCombat);
+                .Publish(results, collectPending, afterReactions);
             if (resolvedResults.Count > 0)
                 ResultsResolved?.Invoke(resolvedResults);
             List<PlanetaryAssaultResult> assaultResults = resolvedResults
@@ -170,8 +170,7 @@ namespace Rebellion.Gameplay
                 deferred = null;
                 if (deliveredResults.Count == 0)
                     return;
-                List<GameResult> deliveryReactions = _getResults()
-                    .Publish(deliveredResults, null, _settleCombat);
+                List<GameResult> deliveryReactions = _getResults().Publish(deliveredResults);
                 resolvedResults.AddRange(deliveryReactions);
                 pendingMessageResults = deliveryReactions;
             }

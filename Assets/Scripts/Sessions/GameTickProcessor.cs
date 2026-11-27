@@ -97,6 +97,7 @@ namespace Rebellion.Gameplay
             IEnumerable<GameResult>,
             bool,
             Func<IReadOnlyList<GameResult>>,
+            Func<IReadOnlyList<GameResult>, List<GameResult>>,
             List<GameResult>
         > _processResults;
         private readonly Action<List<GameResult>> _processMessages;
@@ -124,6 +125,7 @@ namespace Rebellion.Gameplay
         private ITickProcessor _research;
         private ITickProcessor _resourceProduction;
         private SpaceCombatCommands _spaceCombatCommands;
+        private SpaceCombatAftermath _spaceCombatAftermath;
         private SpaceCombatTickProcessor _spaceCombat;
         private BlockadeTransitionResolver _blockadeTransitionResolver;
         private ITickProcessor _uprising;
@@ -179,6 +181,7 @@ namespace Rebellion.Gameplay
                 IEnumerable<GameResult>,
                 bool,
                 Func<IReadOnlyList<GameResult>>,
+                Func<IReadOnlyList<GameResult>, List<GameResult>>,
                 List<GameResult>
             > processResults,
             Action<List<GameResult>> processMessages
@@ -209,6 +212,7 @@ namespace Rebellion.Gameplay
             _movementCommands = services.GetService<MovementCommands>();
             _fogOfWarObserver = services.GetService<FogOfWarObserver>();
             _spaceCombatCommands = services.GetService<SpaceCombatCommands>();
+            _spaceCombatAftermath = services.GetService<SpaceCombatAftermath>();
             _messageObserver = services.GetService<MessageObserver>();
             _blockadeTransitionResolver = new BlockadeTransitionResolver(_game);
             _messages = new MessageTickProcessor();
@@ -670,7 +674,10 @@ namespace Rebellion.Gameplay
                         new[] { combat },
                         processMessages: false,
                         collectPending: () =>
-                            CollectPendingCombatResults(combat.Planet, blockadeTransitions)
+                            CollectPendingCombatResults(combat.Planet, blockadeTransitions),
+                        afterReactions: combat.IsTacticalCombat
+                            ? _spaceCombatAftermath.HandleResults
+                            : null
                     )
                 );
                 results.AddRange(ProcessPendingEncounterResults(blockadeTransitions));
@@ -913,14 +920,16 @@ namespace Rebellion.Gameplay
         /// <param name="results">The results produced by one phase.</param>
         /// <param name="processMessages">Whether messages may be generated now.</param>
         /// <param name="collectPending">Drains commands caused by the current combat encounter.</param>
+        /// <param name="afterReactions">Applies battle aftermath after losses, withdrawals, and blockades settle.</param>
         /// <returns>The batch extended with its reactions.</returns>
         private List<GameResult> ProcessResults(
             IEnumerable<GameResult> results,
             bool processMessages = true,
-            Func<IReadOnlyList<GameResult>> collectPending = null
+            Func<IReadOnlyList<GameResult>> collectPending = null,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> afterReactions = null
         )
         {
-            return _processResults(results, processMessages, collectPending);
+            return _processResults(results, processMessages, collectPending, afterReactions);
         }
     }
 }
