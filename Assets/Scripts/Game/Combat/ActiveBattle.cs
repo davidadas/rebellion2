@@ -431,6 +431,7 @@ namespace Rebellion.Game.Combat
             public int Value { get; set; }
             public Vector3 Position { get; set; }
             public HardpointWeaponType Weapon { get; set; }
+            public TacticalWeaponArc? FiringArc { get; set; }
             public float Strength { get; set; }
             public TacticalShipSystem System { get; set; }
             public bool IsRepair { get; set; }
@@ -544,7 +545,8 @@ namespace Rebellion.Game.Combat
         internal sealed class NotificationState
         {
             public uint QueueID { get; set; }
-            public int MessageID { get; set; }
+            public int? MessageID { get; set; }
+            public string SoundName { get; set; }
             public uint AgeMilliseconds { get; set; }
             public bool Loop { get; set; }
             public int VariantIndex { get; set; }

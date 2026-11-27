@@ -650,11 +650,7 @@ namespace Rebellion.Tactical
                 case CommandKind.Fire:
                     if (IsActiveDisplayObject(source) && IsActiveDisplayObject(target))
                     {
-                        Audio.Enqueue(
-                            command.Shot.GetFiringSound(
-                                GetSide(command.Shot.Source.Side).FactionIndex
-                            )
-                        );
+                        Audio.EnqueueFiringSound(command.Shot, GetSide(source.Side).FactionIndex);
                         ShotFired?.Invoke(command.Shot);
                     }
                     break;

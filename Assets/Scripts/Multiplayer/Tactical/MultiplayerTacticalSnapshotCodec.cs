@@ -491,6 +491,8 @@ namespace Rebellion.Multiplayer.Tactical
                 _writer.Write(value.MovieID);
                 _writer.Write(value.HasRecipient);
                 _writer.Write((int)value.Recipient);
+                if (value.Kind == TacticalCombatEventKind.FiringSound)
+                    ID(value.SoundName);
             }
 
             /// <summary>
@@ -742,6 +744,7 @@ namespace Rebellion.Multiplayer.Tactical
                     MovieID = _reader.ReadInt32(),
                     HasRecipient = Boolean(),
                     Recipient = (CombatSide)_reader.ReadInt32(),
+                    SoundName = kind == TacticalCombatEventKind.FiringSound ? ID() : null,
                 };
             }
 

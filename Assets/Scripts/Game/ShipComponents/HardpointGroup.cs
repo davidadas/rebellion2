@@ -76,6 +76,7 @@ namespace Rebellion.Game.ShipComponents
     public sealed class Hardpoint : ShipComponent
     {
         public float FiringArcDegrees { get; set; }
+        public string FiringSound { get; set; }
         public WeaponData Weapon { get; set; }
 
         /// <summary>
@@ -87,6 +88,7 @@ namespace Rebellion.Game.ShipComponents
             Hardpoint copy = new Hardpoint
             {
                 FiringArcDegrees = FiringArcDegrees,
+                FiringSound = FiringSound,
                 Weapon = Weapon?.CreateCopy(),
             };
             CopyComponentStateTo(copy);

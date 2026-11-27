@@ -92,6 +92,8 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 {
                     TacticalCombatEvent effect = CreateEffect();
                     effect.Kind = kind;
+                    if (kind == TacticalCombatEventKind.FiringSound)
+                        effect.SoundName = "bow-laser";
                     return effect;
                 })
                 .ToArray();

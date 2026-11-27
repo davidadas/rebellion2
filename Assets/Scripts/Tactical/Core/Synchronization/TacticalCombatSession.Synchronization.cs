@@ -84,6 +84,7 @@ namespace Rebellion.Tactical
                     }
                 );
             Audio.NotificationRequested += CaptureSynchronizedNotification;
+            Audio.SoundRequested += CaptureSynchronizedFiringSound;
             CombatSide remote =
                 PlayerSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
             _remoteNotificationBriefing = new TacticalCombatBriefingSequence(
@@ -508,6 +509,19 @@ namespace Rebellion.Tactical
         /// <param name="effect">The detached presentation edge.</param>
         private void RecordSynchronizedEvent(TacticalCombatEvent effect) =>
             _synchronizedEvents.Add(effect);
+
+        /// <summary>
+        /// Sends the hardpoint's sound name to the other combat view.
+        /// </summary>
+        /// <param name="name">The sound named by the firing hardpoint.</param>
+        private void CaptureSynchronizedFiringSound(string name)
+        {
+            if (_synchronizedEntryPresentation || !Audio.Notifications.Enabled)
+                return;
+            RecordSynchronizedEvent(
+                new() { Kind = TacticalCombatEventKind.FiringSound, SoundName = name }
+            );
+        }
 
         /// <summary>
         /// Captures shared sounds and addressed notifications while keeping selection loops local to each view.

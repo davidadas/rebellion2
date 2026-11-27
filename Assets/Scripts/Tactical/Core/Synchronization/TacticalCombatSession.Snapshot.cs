@@ -258,6 +258,9 @@ namespace Rebellion.Tactical
                     if (!effect.HasRecipient || effect.Recipient == PlayerSide)
                         Audio.EnqueueNotification(effect.MessageID, effect.Enabled);
                     break;
+                case TacticalCombatEventKind.FiringSound:
+                    Audio.EnqueueSound(effect.SoundName);
+                    break;
             }
         }
 
@@ -454,6 +457,8 @@ namespace Rebellion.Tactical
                         && !Enum.IsDefined(typeof(TacticalCombatImpactKind), effect.Impact)
                     || effect.Kind == TacticalCombatEventKind.Notification
                         && (uint)effect.MessageID >= 317
+                    || effect.Kind == TacticalCombatEventKind.FiringSound
+                        && string.IsNullOrWhiteSpace(effect.SoundName)
                     || effect.Kind == TacticalCombatEventKind.Movie && effect.MovieID <= 0
                 )
                     throw new ArgumentException(
@@ -465,6 +470,7 @@ namespace Rebellion.Tactical
                 if (
                     effect.Kind
                         is not TacticalCombatEventKind.Notification
+                            and not TacticalCombatEventKind.FiringSound
                             and not TacticalCombatEventKind.Movie
                         && GetUnit(effect.TargetID) == null
                     || effect.Kind

@@ -13,6 +13,46 @@ namespace Rebellion.Tests.Tactical.Audio
     public sealed class TacticalCombatAudioTests
     {
         [Test]
+        public void Restore_NamedSound_RebindsByNameAfterSoundBankIsReordered()
+        {
+            TacticalCombatSoundDefinition bow = new()
+            {
+                Name = "bow-gun",
+                Variants = new() { new() { Path = "test/bow-laser" } },
+            };
+            TacticalCombatSoundDefinition stern = new()
+            {
+                Name = "stern-gun",
+                Variants = new() { new() { Path = "test/stern-laser" } },
+            };
+            using TacticalCombatAudio before = new(
+                new[] { bow, stern },
+                new SystemRandomProvider(42)
+            );
+            before.Playback = (_, loop) => new Playback(100, loop, () => 0);
+            before.EnqueueSound(bow.Name);
+            string xml = SerializationHelper.Serialize(before.Notifications.CaptureState());
+            Assert.That(xml, Does.Contain("<SoundName>bow-gun</SoundName>"));
+
+            using TacticalCombatAudio after = new(
+                new[] { stern, bow },
+                new SystemRandomProvider(42)
+            );
+            List<string> played = new();
+            after.Playback = (clip, loop) =>
+            {
+                played.Add(clip.Path);
+                return new Playback(100, loop, () => 0);
+            };
+            after.Notifications.RestoreState(
+                SerializationHelper.Deserialize<ActiveBattle.NotificationQueue>(xml)
+            );
+            after.Update();
+
+            CollectionAssert.AreEqual(new[] { "test/bow-laser" }, played);
+        }
+
+        [Test]
         public void Enqueue_SingleVariant_DoesNotDrawFromBattleStream()
         {
             SystemRandomProvider random = new(42);

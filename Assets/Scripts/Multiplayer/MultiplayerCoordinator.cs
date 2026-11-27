@@ -14,7 +14,7 @@ namespace Rebellion.Multiplayer
     /// </summary>
     public sealed partial class MultiplayerCoordinator : MonoBehaviour, IGameSessionOwner
     {
-        private const int _protocolVersion = 13;
+        private const int _protocolVersion = 14;
 
         private readonly List<MultiplayerGameListing> _games = new();
         private readonly MultiplayerSnapshotAdmission _snapshotAdmission = new();

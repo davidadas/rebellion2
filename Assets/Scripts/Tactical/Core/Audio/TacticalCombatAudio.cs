@@ -18,6 +18,7 @@ namespace Rebellion.Tactical
     {
         private bool _playbackAvailable = true;
         public event Action<int, bool> NotificationRequested;
+        internal event Action<string> SoundRequested;
         internal TacticalCombatNotifications Notifications { get; }
         public IReadOnlyList<TacticalCombatSoundClip> Clips { get; }
         public Func<
@@ -100,6 +101,9 @@ namespace Rebellion.Tactical
             if (definitions == null)
                 throw new ArgumentNullException(nameof(definitions));
             Dictionary<int, TacticalCombatNotificationDefinition> messages = new();
+            Dictionary<string, TacticalCombatNotificationDefinition> sounds = new(
+                StringComparer.Ordinal
+            );
             foreach (TacticalCombatSoundDefinition definition in definitions)
             {
                 if (definition.Variants.Count == 0)
@@ -111,15 +115,24 @@ namespace Rebellion.Tactical
                         throw new InvalidDataException(
                             "A tactical sound requires an addressed clip."
                         );
-                int messageID = GetMessageID(definition.Kind);
-                messages.Add(
-                    messageID,
-                    new TacticalCombatNotificationDefinition
-                    {
-                        MessageID = messageID,
-                        Variants = definition.Variants,
-                    }
+                TacticalCombatNotificationDefinition playback = new()
+                {
+                    Variants = definition.Variants,
+                };
+                string name = definition.Name?.Trim();
+                if (!string.IsNullOrEmpty(name))
+                {
+                    if (!sounds.TryAdd(name, playback))
+                        throw new InvalidDataException(
+                            $"The tactical sound '{name}' is declared twice."
+                        );
+                    continue;
+                }
+
+                playback.MessageID = GetMessageID(
+                    definition.Kind ?? TacticalCombatSound.CapitalLaser
                 );
+                messages.Add(playback.MessageID, playback);
             }
             if (notifications != null)
             {
@@ -139,15 +152,69 @@ namespace Rebellion.Tactical
                 }
             }
             Clips = Array.AsReadOnly(
-                messages.Values.SelectMany(message => message.Variants).ToArray()
+                messages
+                    .Values.Concat(sounds.Values)
+                    .SelectMany(message => message.Variants)
+                    .ToArray()
             );
             Notifications = new TacticalCombatNotifications(
                 messages.Values.ToArray(),
                 random,
                 clock ?? CreatePresentationClock(),
                 isPaused ?? (() => false),
-                Play
+                Play,
+                sounds
             );
+        }
+
+        /// <summary>
+        /// Queues the sounds named by the installed mounts contributing to this discharge.
+        /// </summary>
+        /// <param name="shot">The discharged weapon lane and its battery.</param>
+        /// <param name="factionIndex">The firing faction used by legacy content.</param>
+        internal void EnqueueFiringSound(TacticalCombatShot shot, int factionIndex)
+        {
+            HashSet<string> sounds = null;
+            if (shot.Arc is TacticalWeaponArc arc && (uint)arc < (uint)shot.Source.Batteries.Count)
+            {
+                foreach (Hardpoint mount in shot.Source.Batteries[(int)arc].GetHardpoints())
+                {
+                    if (
+                        mount.Weapon is not { Damage: not 0 } weapon
+                        || weapon.WeaponType != shot.Weapon
+                        || string.IsNullOrWhiteSpace(mount.FiringSound)
+                    )
+                        continue;
+
+                    sounds ??= new(StringComparer.Ordinal);
+                    string name = mount.FiringSound.Trim();
+                    if (sounds.Add(name))
+                        EnqueueSound(name);
+                }
+            }
+
+            if (sounds == null)
+                Enqueue(shot.GetDefaultFiringSound(factionIndex));
+        }
+
+        /// <summary>
+        /// Requests a named effect from the shared sound bank.
+        /// </summary>
+        /// <param name="name">The authored sound name.</param>
+        internal void EnqueueSound(string name)
+        {
+            if (Notifications.HasSound(name))
+            {
+                SoundRequested?.Invoke(name);
+                Notifications.EnqueueSound(name);
+            }
+            else if (
+                Enum.TryParse(name, out TacticalCombatSound legacy)
+                && legacy.ToString() == name
+            )
+            {
+                Enqueue(legacy);
+            }
         }
 
         /// <summary>

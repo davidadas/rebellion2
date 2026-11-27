@@ -27,6 +27,7 @@ namespace Rebellion.Tactical
         private const uint _otherLifetimeMilliseconds = 3000;
         private const int _pausedLifetimeShift = 2;
         private readonly Dictionary<int, TacticalCombatNotificationDefinition> _definitions = new();
+        private readonly IReadOnlyDictionary<string, TacticalCombatNotificationDefinition> _sounds;
         private readonly LinkedList<Notification> _active = new();
         private readonly LinkedList<Notification> _pending = new();
         private readonly IRandomNumberProvider _random;
@@ -53,12 +54,14 @@ namespace Rebellion.Tactical
         /// <param name="clock">The unscaled presentation clock in unsigned milliseconds.</param>
         /// <param name="isPaused">Whether tactical simulation is currently paused.</param>
         /// <param name="play">Starts an owned playback, or returns null when playback fails.</param>
+        /// <param name="sounds">Named sound effects from the same battle content.</param>
         public TacticalCombatNotifications(
             IReadOnlyList<TacticalCombatNotificationDefinition> definitions,
             IRandomNumberProvider random,
             Func<uint> clock,
             Func<bool> isPaused,
-            Func<TacticalCombatSoundClip, bool, ITacticalCombatNotificationPlayback> play
+            Func<TacticalCombatSoundClip, bool, ITacticalCombatNotificationPlayback> play,
+            IReadOnlyDictionary<string, TacticalCombatNotificationDefinition> sounds = null
         )
         {
             if (definitions == null)
@@ -67,6 +70,7 @@ namespace Rebellion.Tactical
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _isPaused = isPaused ?? throw new ArgumentNullException(nameof(isPaused));
             _play = play ?? throw new ArgumentNullException(nameof(play));
+            _sounds = sounds;
             foreach (TacticalCombatNotificationDefinition definition in definitions)
             {
                 if (
@@ -102,25 +106,44 @@ namespace Rebellion.Tactical
         /// <param name="messageID">The addressed notification.</param>
         /// <param name="loop">Whether playback repeats until its returned queue handle is stopped.</param>
         /// <returns>The active or pending queue handle, or zero when the request is rejected.</returns>
-        public uint Enqueue(int messageID, bool loop = false)
+        public uint Enqueue(int messageID, bool loop = false) => Enqueue(messageID, null, loop);
+
+        /// <summary>
+        /// Checks for an authored effect with the supplied name.
+        /// </summary>
+        /// <param name="name">The authored sound name.</param>
+        /// <returns>Whether the sound is present in the bank.</returns>
+        internal bool HasSound(string name) => name != null && _sounds?.ContainsKey(name) == true;
+
+        /// <summary>
+        /// Requests one playback of a named sound effect.
+        /// </summary>
+        /// <param name="name">The authored effect name.</param>
+        /// <returns>The active or pending queue handle.</returns>
+        internal uint EnqueueSound(string name) => Enqueue(null, name, loop: false);
+
+        /// <summary>
+        /// Admits a numbered message or a named effect to the existing playback queue.
+        /// </summary>
+        /// <param name="messageID">The numbered message, when supplied.</param>
+        /// <param name="soundName">The named effect, when supplied.</param>
+        /// <param name="loop">Whether the playback repeats.</param>
+        /// <returns>The accepted queue handle, or zero when rejected.</returns>
+        private uint Enqueue(int? messageID, string soundName, bool loop)
         {
             ThrowIfDisposed();
             ResumePlayback();
             uint timestamp = _clock();
             uint queueID = _nextQueueID = unchecked(_nextQueueID + 1);
-            if (!Enabled || messageID < 0 || messageID >= _messageCount)
+            if (!Enabled || messageID is < 0 or >= _messageCount)
                 return 0;
-            if (
-                !_definitions.TryGetValue(
-                    messageID,
-                    out TacticalCombatNotificationDefinition definition
-                )
-            )
-                throw new InvalidDataException(
-                    $"Tactical notification {messageID} has no authored sound bank."
+            TacticalCombatNotificationDefinition definition =
+                FindDefinition(messageID, soundName)
+                ?? throw new InvalidDataException(
+                    $"Tactical audio '{soundName ?? messageID.ToString()}' has no authored sound bank."
                 );
 
-            Notification record = new(queueID, definition, timestamp, loop);
+            Notification record = new(queueID, definition, timestamp, loop, soundName);
             Update();
             if (TryStart(record))
             {
@@ -166,7 +189,7 @@ namespace Rebellion.Tactical
             {
                 LinkedListNode<Notification> next = node.Next;
                 Notification record = node.Value;
-                int group = GetGroup(record.Definition.MessageID);
+                int group = GetGroup(record);
                 uint lifetime = GetPendingLifetime(group);
                 if (group == _spokenGroup && _isPaused())
                     lifetime <<= _pausedLifetimeShift;
@@ -232,7 +255,9 @@ namespace Rebellion.Tactical
             new()
             {
                 QueueID = notification.QueueID,
-                MessageID = notification.Definition.MessageID,
+                MessageID =
+                    notification.SoundName == null ? notification.Definition.MessageID : null,
+                SoundName = notification.SoundName,
                 AgeMilliseconds = unchecked(now - notification.Created),
                 Loop = notification.Loop,
                 VariantIndex = notification.VariantIndex,
@@ -259,6 +284,8 @@ namespace Rebellion.Tactical
             foreach (ActiveBattle.NotificationState active in state.Active)
             {
                 Notification notification = RestoreNotification(active, now);
+                if (notification == null)
+                    continue;
                 if (active.PlaybackSample is int sample)
                 {
                     TacticalCombatSoundClip clip = notification.Definition.Variants[
@@ -274,7 +301,8 @@ namespace Rebellion.Tactical
                 _active.AddLast(notification);
             }
             foreach (ActiveBattle.NotificationState pending in state.Pending)
-                _pending.AddLast(RestoreNotification(pending, now));
+                if (RestoreNotification(pending, now) is Notification notification)
+                    _pending.AddLast(notification);
         }
 
         /// <summary>
@@ -283,16 +311,40 @@ namespace Rebellion.Tactical
         /// <param name="state">The saved notification.</param>
         /// <param name="now">The loaded presentation clock sample.</param>
         /// <returns>The restored queue entry.</returns>
-        private Notification RestoreNotification(ActiveBattle.NotificationState state, uint now) =>
-            new(
+        private Notification RestoreNotification(ActiveBattle.NotificationState state, uint now)
+        {
+            TacticalCombatNotificationDefinition definition = FindDefinition(
+                state.MessageID,
+                state.SoundName
+            );
+            if (definition == null || (uint)state.VariantIndex >= (uint)definition.Variants.Count)
+                return null;
+
+            return new Notification(
                 state.QueueID,
-                _definitions[state.MessageID],
+                definition,
                 unchecked(now - state.AgeMilliseconds),
-                state.Loop
+                state.Loop,
+                state.SoundName
             )
             {
                 VariantIndex = state.VariantIndex,
             };
+        }
+
+        /// <summary>
+        /// Resolves a stored sound without depending on its position in the content file.
+        /// </summary>
+        /// <param name="messageID">The legacy message ID.</param>
+        /// <param name="soundName">The authored effect name.</param>
+        /// <returns>The available definition for this cue.</returns>
+        private TacticalCombatNotificationDefinition FindDefinition(
+            int? messageID,
+            string soundName
+        ) =>
+            soundName == null
+                ? _definitions.GetValueOrDefault(messageID.GetValueOrDefault())
+                : _sounds?.GetValueOrDefault(soundName);
 
         /// <summary>
         /// Reports whether an owned active record remains started after its latest playback refresh.
@@ -357,7 +409,7 @@ namespace Rebellion.Tactical
             List<TacticalCombatSoundClip> variants = record.Definition.Variants;
             int index = variants.Count > 1 ? _random.NextInt(0, variants.Count) : 0;
             TacticalCombatSoundClip clip = variants[index];
-            int group = GetGroup(record.Definition.MessageID);
+            int group = GetGroup(record);
             if (CountActive(group) >= GetActiveLimit(group))
             {
                 record.Started = false;
@@ -380,19 +432,20 @@ namespace Rebellion.Tactical
         {
             int count = 0;
             foreach (Notification record in _active)
-                if (GetGroup(record.Definition.MessageID) == group)
+                if (GetGroup(record) == group)
                     count++;
             return count;
         }
 
         /// <summary>
-        /// Maps a bounded message ID to its notification scheduling group.
+        /// Selects the scheduling group for an effect or numbered message.
         /// </summary>
-        /// <param name="messageID">The addressed message.</param>
+        /// <param name="record">The queued playback.</param>
         /// <returns>The scheduling group from one to three.</returns>
-        private static int GetGroup(int messageID) =>
-            messageID < _firstSpokenMessageID ? _effectGroup
-            : messageID < _firstOtherMessageID ? _spokenGroup
+        private static int GetGroup(Notification record) =>
+            record.SoundName != null || record.Definition.MessageID < _firstSpokenMessageID
+                ? _effectGroup
+            : record.Definition.MessageID < _firstOtherMessageID ? _spokenGroup
             : _otherGroup;
 
         /// <summary>
@@ -483,6 +536,7 @@ namespace Rebellion.Tactical
         {
             public uint QueueID { get; set; }
             public TacticalCombatNotificationDefinition Definition { get; }
+            public string SoundName { get; }
             public uint Created { get; }
             public bool Loop { get; }
             public bool Started { get; set; }
@@ -496,15 +550,18 @@ namespace Rebellion.Tactical
             /// <param name="definition">The addressed message bank.</param>
             /// <param name="created">The request's unscaled clock timestamp.</param>
             /// <param name="loop">Whether playback repeats until explicitly stopped.</param>
+            /// <param name="soundName">The effect name when it comes from the sound bank.</param>
             public Notification(
                 uint queueID,
                 TacticalCombatNotificationDefinition definition,
                 uint created,
-                bool loop
+                bool loop,
+                string soundName
             )
             {
                 QueueID = queueID;
                 Definition = definition;
+                SoundName = soundName;
                 Created = created;
                 Loop = loop;
             }

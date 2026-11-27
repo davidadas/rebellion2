@@ -928,12 +928,14 @@ namespace Rebellion.Tests.Tactical
         /// <param name="random">The encounter's local random stream.</param>
         /// <param name="additionalDefender">Whether to include another own-faction inspection choice.</param>
         /// <param name="defenderDamageControl">The defender's component repair chance out of 100.</param>
+        /// <param name="definition">The optional combat content.</param>
         /// <returns>The captured encounter.</returns>
         private static TacticalCombatSession CreateSession(
             CombatSide player,
             IRandomNumberProvider random,
             bool additionalDefender = false,
-            int defenderDamageControl = 0
+            int defenderDamageControl = 0,
+            TacticalCombatDefinition definition = null
         )
         {
             CombatUnit empire = CreateUnit("empire", CombatSide.Attacker, 1000001, -Vector3.UnitZ);
@@ -996,7 +998,8 @@ namespace Rebellion.Tests.Tactical
                 player,
                 100,
                 random,
-                TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach,
+                definition: definition
             );
         }
 

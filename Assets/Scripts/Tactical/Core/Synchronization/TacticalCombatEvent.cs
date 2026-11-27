@@ -21,6 +21,7 @@ namespace Rebellion.Tactical.Synchronization
         public int MovieID;
         public bool HasRecipient;
         public CombatSide Recipient;
+        public string SoundName;
     }
 
     /// <summary>
@@ -39,5 +40,6 @@ namespace Rebellion.Tactical.Synchronization
         GravityWell,
         Movie,
         Notification,
+        FiringSound,
     }
 }

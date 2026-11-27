@@ -1,12 +1,14 @@
 using System;
 using System.Collections.Generic;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
+using Rebellion.Util.Random;
 
 namespace Rebellion.Tests.Tactical
 {
@@ -32,6 +34,55 @@ namespace Rebellion.Tests.Tactical
                 replica.GetUnit("empire").Position
             );
             Assert.AreEqual(authority.GetUnit("alliance").Hull, replica.GetUnit("alliance").Hull);
+        }
+
+        [Test]
+        public void ApplyCapturedProjection_FiringSound_PlaysTheHardpointSoundForTheOtherPlayer()
+        {
+            TacticalCombatDefinition definition = new();
+            definition.Sounds.Add(
+                new TacticalCombatSoundDefinition
+                {
+                    Name = "bow-laser",
+                    Variants = new() { new() { Path = "test/forward-battery" } },
+                }
+            );
+            TacticalCombatSession authority = CreateSession(
+                CombatSide.Attacker,
+                new SystemRandomProvider(12),
+                definition: definition
+            );
+            TacticalCombatSession replica = CreateSession(
+                CombatSide.Defender,
+                new SystemRandomProvider(12),
+                definition: definition
+            );
+            authority.ConfigureSynchronizedAuthority();
+            replica.ConfigureSynchronizedReplica();
+            CombatUnit source = authority.GetUnit("empire");
+            source.Batteries[(int)TacticalWeaponArc.Forward].GetHardpoints()[0].FiringSound =
+                "bow-laser";
+            List<string> played = new();
+            replica.Audio.Playback = (clip, _) =>
+            {
+                played.Add(clip.Path);
+                return null;
+            };
+
+            authority.Audio.EnqueueFiringSound(
+                new TacticalCombatShot(
+                    source,
+                    authority.GetUnit("alliance"),
+                    HardpointWeaponType.LaserCannon,
+                    1,
+                    TacticalWeaponArc.Forward
+                ),
+                1
+            );
+            ApplyCapturedProjection(replica, authority.CaptureSnapshot(1));
+            replica.Audio.Update();
+
+            CollectionAssert.AreEqual(new[] { "test/forward-battery" }, played);
         }
 
         [Test]
