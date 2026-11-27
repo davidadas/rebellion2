@@ -114,14 +114,60 @@ namespace Rebellion.Game.Units
         }
 
         // Movement Info.
-        private int _hyperdrive;
+        private Hyperdrive[] _hyperdrives = Array.Empty<Hyperdrive>();
+        private bool _hasAuthoredHyperdrives;
+        private int _legacyDriveComponents;
 
         [PersistableMember(Name = nameof(Hyperdrive))]
-        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        [PersistableIgnore]
+        [SuppressMessage(
+            "Roslynator",
+            "RCS1213",
+            Justification = "Reads older ship content and saves."
+        )]
         private int? LegacyHyperdrive
         {
-            get => PrimaryDrive == null ? _hyperdrive : null;
-            set => _hyperdrive = value.GetValueOrDefault();
+            get => null;
+            set => ReadLegacyDriveRating(0, value);
+        }
+
+        [PersistableMember(Name = "BackupHyperdrive")]
+        [PersistableIgnore]
+        [SuppressMessage(
+            "Roslynator",
+            "RCS1213",
+            Justification = "Reads older ship content and saves."
+        )]
+        private int? LegacyBackupHyperdrive
+        {
+            get => null;
+            set => ReadLegacyDriveRating(1, value);
+        }
+
+        [PersistableMember(Name = "PrimaryDrive")]
+        [PersistableIgnore]
+        [SuppressMessage(
+            "Roslynator",
+            "RCS1213",
+            Justification = "Reads older ship content and saves."
+        )]
+        private Hyperdrive LegacyPrimaryDrive
+        {
+            get => null;
+            set => ReadLegacyDriveComponent(0, value);
+        }
+
+        [PersistableMember(Name = "BackupDrive")]
+        [PersistableIgnore]
+        [SuppressMessage(
+            "Roslynator",
+            "RCS1213",
+            Justification = "Reads older ship content and saves."
+        )]
+        private Hyperdrive LegacyBackupDrive
+        {
+            get => null;
+            set => ReadLegacyDriveComponent(1, value);
         }
 
         [PersistableMember(Name = nameof(HyperdriveCount))]
@@ -130,8 +176,17 @@ namespace Rebellion.Game.Units
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
         public CapitalShipGeometry PhysicalGeometry { get; set; }
         public Engine Engine { get; set; }
-        public Hyperdrive PrimaryDrive { get; set; }
-        public Hyperdrive BackupDrive { get; set; }
+        public Hyperdrive[] Hyperdrives
+        {
+            get => _hyperdrives;
+            set
+            {
+                _hyperdrives = value ?? Array.Empty<Hyperdrive>();
+                _hasAuthoredHyperdrives = true;
+            }
+        }
+
+        internal bool HasAuthoredHyperdrives => _hasAuthoredHyperdrives || _hyperdrives.Length > 1;
         public ShieldGenerator ShieldGenerator { get; set; }
         public StarfighterBay StarfighterBay { get; set; }
         public GravityWellGenerator GravityWellGenerator { get; set; }
@@ -149,16 +204,6 @@ namespace Rebellion.Game.Units
                 if (value is { Count: > 0 })
                     _hardpointGroups = value;
             }
-        }
-
-        private int? _backupHyperdrive;
-
-        [PersistableMember(Name = nameof(BackupHyperdrive))]
-        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
-        private int? LegacyBackupHyperdrive
-        {
-            get => BackupDrive == null ? _backupHyperdrive : null;
-            set => _backupHyperdrive = value;
         }
 
         private int _sublightSpeed;
@@ -389,24 +434,13 @@ namespace Rebellion.Game.Units
         [PersistableIgnore]
         public int Hyperdrive
         {
-            get => PrimaryDrive?.Rating ?? _hyperdrive;
+            get => GetHyperdriveRating(0);
             set
             {
-                if (PrimaryDrive != null)
-                    PrimaryDrive.Rating = value;
-                _hyperdrive = value;
-            }
-        }
-
-        [PersistableIgnore]
-        public int BackupHyperdrive
-        {
-            get => BackupDrive?.Rating ?? _backupHyperdrive ?? 0;
-            set
-            {
-                if (BackupDrive != null)
-                    BackupDrive.Rating = value;
-                _backupHyperdrive = value;
+                if (_hyperdrives.Length > 0 && _hyperdrives[0] != null)
+                    _hyperdrives[0].Rating = value;
+                else if (value != 0 || _hyperdrives.Length > 0)
+                    SetHyperdrive(0, new Hyperdrive { Rating = value });
             }
         }
 
@@ -521,15 +555,67 @@ namespace Rebellion.Game.Units
         // Owner Info.
         public string InitialParentInstanceID { get; set; }
 
-        // Old content and saves omitted the rating and used the tactical definition.
         /// <summary>
-        /// Promotes a legacy backup drive rating into ship-owned equipment.
+        /// Adds the legacy catalog drive when older ship data omitted its rating.
         /// </summary>
         /// <param name="rating">The fallback rating from the legacy tactical catalog.</param>
-        internal void MigrateBackupHyperdrive(int rating)
+        internal void ApplyLegacyDriveRating(int rating)
         {
-            if (BackupDrive == null && (rating != 0 || _backupHyperdrive.HasValue))
-                BackupDrive = new Hyperdrive { Rating = _backupHyperdrive ?? rating };
+            if (!HasAuthoredHyperdrives && rating != 0)
+                SetHyperdrive(1, new Hyperdrive { Rating = rating });
+        }
+
+        /// <summary>
+        /// Reads a drive rating in ship order.
+        /// </summary>
+        /// <param name="index">The drive index.</param>
+        /// <returns>The rating, or zero when the slot is empty.</returns>
+        internal int GetHyperdriveRating(int index) =>
+            index < _hyperdrives.Length ? _hyperdrives[index]?.Rating ?? 0 : 0;
+
+        /// <summary>
+        /// Reads a rating from the legacy flat ship XML.
+        /// </summary>
+        /// <param name="index">The legacy drive index.</param>
+        /// <param name="rating">The serialized rating, when supplied.</param>
+        private void ReadLegacyDriveRating(int index, int? rating)
+        {
+            if (
+                !_hasAuthoredHyperdrives
+                && (_legacyDriveComponents & (1 << index)) == 0
+                && rating.HasValue
+            )
+                SetHyperdrive(index, new Hyperdrive { Rating = rating.Value });
+        }
+
+        /// <summary>
+        /// Reads a component from older ship XML with separate drive elements.
+        /// </summary>
+        /// <param name="index">The legacy drive index.</param>
+        /// <param name="drive">The serialized drive.</param>
+        private void ReadLegacyDriveComponent(int index, Hyperdrive drive)
+        {
+            if (_hasAuthoredHyperdrives || drive == null)
+                return;
+            _legacyDriveComponents |= 1 << index;
+            SetHyperdrive(index, drive);
+        }
+
+        /// <summary>
+        /// Stores a drive without changing the order of existing equipment.
+        /// </summary>
+        /// <param name="index">The drive index.</param>
+        /// <param name="drive">The installed drive.</param>
+        private void SetHyperdrive(int index, Hyperdrive drive)
+        {
+            int previousLength = _hyperdrives.Length;
+            if (index >= previousLength)
+            {
+                Array.Resize(ref _hyperdrives, index + 1);
+                for (int slot = previousLength; slot < index; slot++)
+                    _hyperdrives[slot] = new Hyperdrive();
+            }
+            _hyperdrives[index] = drive;
         }
 
         /// <summary>
@@ -571,8 +657,6 @@ namespace Rebellion.Game.Units
                 SublightSpeed = _sublightSpeed,
                 Maneuverability = _maneuverability,
             };
-            PrimaryDrive ??= new Hyperdrive { Rating = _hyperdrive };
-            MigrateBackupHyperdrive(0);
             ShieldGenerator ??= new ShieldGenerator
             {
                 Capacity = _maxShieldStrength,
@@ -623,12 +707,16 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Returns the ship's surviving installed hyperdrive rating.
         /// </summary>
-        /// <returns>The primary rating, surviving backup rating, or zero when neither drive works.</returns>
+        /// <returns>The rating of the first usable drive, or zero when all drives are unavailable.</returns>
         public int GetOperationalHyperdrive()
         {
-            if (Hyperdrive > 0 && SystemDamage.PrimaryHyperdrive == 0)
-                return Hyperdrive;
-            return SystemDamage.BackupHyperdrive == 0 ? BackupHyperdrive : 0;
+            for (int index = 0; index < _hyperdrives.Length; index++)
+            {
+                int rating = GetHyperdriveRating(index);
+                if (rating > 0 && SystemDamage.GetHyperdriveDamage(index) == 0)
+                    return rating;
+            }
+            return 0;
         }
 
         /// <summary>
@@ -709,9 +797,7 @@ namespace Rebellion.Game.Units
             copy.DamageControl = DamageControl;
             copy.MaxShieldStrength = MaxShieldStrength;
             copy.ShieldRechargeRate = ShieldRechargeRate;
-            copy.Hyperdrive = Hyperdrive;
             copy._hyperdriveCount = _hyperdriveCount;
-            copy._backupHyperdrive = _backupHyperdrive;
             copy.PhysicalGeometry = PhysicalGeometry?.CreateCopy();
             copy.SystemDamage = SystemDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             copy.SublightSpeed = SublightSpeed;
@@ -736,8 +822,11 @@ namespace Rebellion.Game.Units
             copy.SectorSuppression = SectorSuppression;
             copy.DetectionRating = DetectionRating;
             copy.Engine = (Engine)Engine?.CreateCopy();
-            copy.PrimaryDrive = (Hyperdrive)PrimaryDrive?.CreateCopy();
-            copy.BackupDrive = (Hyperdrive)BackupDrive?.CreateCopy();
+            copy._hyperdrives = Array.ConvertAll(
+                _hyperdrives,
+                drive => (Hyperdrive)drive?.CreateCopy()
+            );
+            copy._hasAuthoredHyperdrives = _hasAuthoredHyperdrives;
             copy.ShieldGenerator = (ShieldGenerator)ShieldGenerator?.CreateCopy();
             copy.StarfighterBay = (StarfighterBay)StarfighterBay?.CreateCopy();
             copy.GravityWellGenerator = (GravityWellGenerator)GravityWellGenerator?.CreateCopy();

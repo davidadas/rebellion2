@@ -155,7 +155,7 @@ namespace Rebellion.Content
         /// <param name="ship">The capital ship receiving migrated defaults.</param>
         internal void MigrateCapitalShip(CapitalShip ship)
         {
-            ship.MigrateBackupHyperdrive(BackupHyperdrive);
+            ship.ApplyLegacyDriveRating(BackupHyperdrive);
             bool largeHull = PresentationIndex == 21;
             ship.PhysicalGeometry ??= new CapitalShipGeometry
             {

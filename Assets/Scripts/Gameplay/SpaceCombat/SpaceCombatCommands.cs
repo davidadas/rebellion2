@@ -304,7 +304,7 @@ namespace Rebellion.Gameplay
                         && (
                             shipState.Hull < 0
                             || shipState.Hull > Math.Max(1, (int)unit.MaximumHull)
-                            || !IsValidTacticalComponentDamage(shipState.SystemDamage, unit, ship)
+                            || !IsValidTacticalComponentDamage(shipState.SystemDamage, unit)
                         )
                     )
                         throw new InvalidDataException("A tactical ship outcome is invalid.");
@@ -390,21 +390,28 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="damage">The authoritative component damage.</param>
         /// <param name="unit">The captured tactical participant.</param>
-        /// <param name="ship">Its immutable campaign source during the encounter.</param>
         /// <returns>Whether all component fields are within their supported ranges.</returns>
         private static bool IsValidTacticalComponentDamage(
             CapitalShipSystemDamage damage,
-            CombatUnit unit,
-            CapitalShip ship
-        ) =>
-            damage?.Shields is >= 0 and <= 4
-            && damage.Weapons is >= 0 and <= 4
-            && damage.TractorBeam is >= 0 and <= 4
-            && damage.Engines is >= 0 and <= 4
-            && damage.PrimaryHyperdrive >= 0
-            && damage.PrimaryHyperdrive <= (ship.Hyperdrive != 0 ? 1 : 0)
-            && damage.BackupHyperdrive >= 0
-            && damage.BackupHyperdrive <= (unit.HasBackupHyperdrive ? 1 : 0);
+            CombatUnit unit
+        )
+        {
+            if (
+                damage?.Shields is not (>= 0 and <= 4)
+                || damage.Weapons is not (>= 0 and <= 4)
+                || damage.TractorBeam is not (>= 0 and <= 4)
+                || damage.Engines is not (>= 0 and <= 4)
+            )
+                return false;
+
+            for (int index = 0; index < damage.HyperdriveDamage.Length; index++)
+            {
+                int level = damage.HyperdriveDamage[index];
+                if (level != 0 && (level != 1 || !unit.HasHyperdriveAt(index)))
+                    return false;
+            }
+            return true;
+        }
 
         /// <summary>
         /// Applies captured tactical pools through the shared campaign loss and withdrawal boundary.

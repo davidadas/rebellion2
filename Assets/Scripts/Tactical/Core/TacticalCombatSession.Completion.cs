@@ -120,10 +120,7 @@ namespace Rebellion.Tactical
                 if (!unit.IsFighter)
                 {
                     int hull = GetCapitalResultHull(unit);
-                    CapitalShipSystemDamage damage = unit.CaptureDamage(
-                        unit.HasPrimaryHyperdrive,
-                        unit.HasBackupHyperdrive
-                    );
+                    CapitalShipSystemDamage damage = unit.CaptureDamage();
                     ships.Add(
                         new TacticalCombatOutcome.ShipOutcome
                         {

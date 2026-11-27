@@ -10,6 +10,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -5123,8 +5124,8 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip companion = (CapitalShip)attacker.CreateCopy();
             companion.InstanceID = "mobile-companion";
             game.AttachNode(companion, fleet);
-            attacker.SystemDamage.PrimaryHyperdrive = 1;
-            attacker.SystemDamage.BackupHyperdrive = 1;
+            attacker.SystemDamage.SetHyperdriveDamage(0, 1);
+            attacker.SystemDamage.SetHyperdriveDamage(1, 1);
             foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.DamageControl = 0;
@@ -6343,10 +6344,14 @@ namespace Rebellion.Tests.Gameplay
                 else
                 {
                     attacker.Hyperdrive = 2;
-                    attacker.BackupHyperdrive = 2;
+                    attacker.Hyperdrives = new[]
+                    {
+                        attacker.Hyperdrives[0],
+                        new Hyperdrive { Rating = 2 },
+                    };
                     attacker.SystemDamage.Engines = 2;
-                    attacker.SystemDamage.PrimaryHyperdrive = 1;
-                    attacker.SystemDamage.BackupHyperdrive = 1;
+                    attacker.SystemDamage.SetHyperdriveDamage(0, 1);
+                    attacker.SystemDamage.SetHyperdriveDamage(1, 1);
                     attacker.DamageControl = 100;
                 }
             }
@@ -6466,7 +6471,7 @@ namespace Rebellion.Tests.Gameplay
                 {
                     Assert.Less(attacker.SystemDamage.Total, 5);
                     trace.Add(
-                        $"campaign-components {attacker.SystemDamage.Engines} {attacker.SystemDamage.PrimaryHyperdrive} {attacker.SystemDamage.BackupHyperdrive}"
+                        $"campaign-components {attacker.SystemDamage.Engines} {attacker.SystemDamage.GetHyperdriveDamage(0)} {attacker.SystemDamage.GetHyperdriveDamage(1)}"
                     );
                 }
             }
