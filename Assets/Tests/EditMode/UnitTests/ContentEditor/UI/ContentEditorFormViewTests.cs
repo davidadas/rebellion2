@@ -4549,6 +4549,43 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_CombinedGameplayLayers_SupportsPixelSelectionOnTheSharedCanvas()
+        {
+            ArtworkEffectPreviewFrame? requested = null;
+            view.GameplayArtworkRequested += (_, frame) => requested = frame;
+            SelectRecord(GetArtworkUnit("Officer"));
+            RenderSection("Artwork");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "EditCombinedLayers")
+                .onClick.Invoke();
+            Assert.IsTrue(requested.HasValue);
+            ContentEditorArtworkCanvas surface =
+                UIComponentTestHelper.InstantiatePrefabComponent<ContentEditorArtworkCanvas>(
+                    "Assets/Prefabs/UI/ContentPackEditor/ContentPackEditorRoot.prefab"
+                );
+            surface.transform.SetParent(canvas.transform, false);
+            ((RectTransform)surface.transform).sizeDelta = new Vector2(800, 600);
+            surface.Show(requested.Value, -1, true, true);
+            Canvas.ForceUpdateCanvases();
+            RectTransform artwork = (RectTransform)surface.transform.Find("Artwork");
+            Vector2 position = RectTransformUtility.WorldToScreenPoint(
+                null,
+                artwork.TransformPoint(artwork.rect.center)
+            );
+
+            Assert.DoesNotThrow(() =>
+                surface.OnPointerClick(
+                    new PointerEventData(null)
+                    {
+                        position = position,
+                        button = PointerEventData.InputButton.Left,
+                    }
+                )
+            );
+            Assert.IsTrue(requested.Value.Layers.All(layer => layer.Texture.isReadable));
+        }
+
+        [Test]
         public void Render_OfficerCustomLayerOrder_ShowsInjuryAboveCapture()
         {
             ContentPackEditorRecord unit = GetArtworkUnit("Officer");

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
@@ -6,6 +7,7 @@ using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.SceneGraph;
 using UnityEngine;
 using GalaxyPlanetSector = Rebellion.Game.Galaxy.PlanetSector;
 
@@ -111,6 +113,13 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
                 SmallDisplayImagePath = definition.SmallDisplayImagePath,
                 CapturedOverlayImagePath = definition.CapturedOverlayImagePath,
                 IsCaptured = true,
+                ArtworkLayerOrder = new List<GameplayArtworkLayer>
+                {
+                    GameplayArtworkLayer.Captured,
+                    GameplayArtworkLayer.Entity,
+                    GameplayArtworkLayer.Travel,
+                    GameplayArtworkLayer.Damage,
+                },
             };
             _planet.AddTestChild(officer);
             _session.Reconcile();
@@ -133,6 +142,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Defense
             Assert.IsNull(data.Tabs[1].PressedTexture);
             Assert.AreEqual(1, data.Items.Count);
             StrategyUnitCardRenderData card = data.Items[0];
+            CollectionAssert.AreEqual(officer.ArtworkLayerOrder, card.ArtworkLayerOrder);
             Assert.AreEqual("Captured Officer", card.Name);
             Assert.AreEqual(
                 (Color32)_uiContext.GetTheme(_ownerId).GetPrimaryColor(),

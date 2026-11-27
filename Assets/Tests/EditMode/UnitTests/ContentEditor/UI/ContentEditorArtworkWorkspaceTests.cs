@@ -210,6 +210,21 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(requested, Is.EqualTo((0, 1)));
         }
 
+        [Test]
+        public void ShowGeneratedArtwork_CroppedLayer_PreservesTheVisibleAspectRatio()
+        {
+            var workspace = ShowArtwork(crop: new Rect(0.25f, 0, 0.5f, 1));
+            ContentEditorArtworkLayerRow row = workspace
+                .GetComponentsInChildren<ContentEditorArtworkLayerRow>()
+                .Single(item =>
+                    item.GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == "Lower wake")
+                );
+            AspectRatioFitter thumbnail = row.GetComponentInChildren<AspectRatioFitter>();
+
+            Assert.AreEqual(1f, thumbnail.aspectRatio);
+        }
+
         /// <summary>
         /// Opens the artwork workspace with the fixture layer stacks.
         /// </summary>
@@ -217,12 +232,14 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// <param name="changed">Whether the draft starts with unsaved changes.</param>
         /// <param name="sizeSpecificLayers">Whether each output shows a different layer stack.</param>
         /// <param name="linkedFirst">Whether the first fixture layer represents linked unit artwork.</param>
+        /// <param name="crop">The optional visible source rectangle of the first layer.</param>
         /// <returns>The rendered workspace.</returns>
         private ContentEditorArtworkWorkspace ShowArtwork(
             ArtworkEffectActions commands = null,
             bool changed = false,
             bool sizeSpecificLayers = false,
-            bool linkedFirst = false
+            bool linkedFirst = false,
+            Rect? crop = null
         )
         {
             small = new Texture2D(32, 16);
@@ -234,7 +251,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                     "Lower wake",
                     small,
                     new Rect(0, 0, 1, 1),
-                    linked: linkedFirst
+                    linked: linkedFirst,
+                    uv: crop
                 ),
                 new ArtworkEffectLayerPreview(
                     1,

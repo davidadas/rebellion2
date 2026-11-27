@@ -2618,7 +2618,10 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 gameplayLayersButton.onClick.AddListener(() =>
                 {
                     if (Commit())
-                        GameplayArtworkRequested?.Invoke(record, combined);
+                        GameplayArtworkRequested?.Invoke(
+                            record,
+                            ReadGameplayArtworkFrame(combined)
+                        );
                 });
                 SetFormRect(
                     (RectTransform)gameplayLayersButton.transform,
@@ -2704,6 +2707,35 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         }
         return y + rowHeight + 8;
     }
+
+    /// <summary>
+    /// Borrows readable layer images from the asset store when opening pixel-based selection.
+    /// </summary>
+    /// <param name="frame">The displayed composition with its existing crop and placement.</param>
+    /// <returns>The same composition backed by the asset store's readable texture cache.</returns>
+    private ArtworkEffectPreviewFrame ReadGameplayArtworkFrame(ArtworkEffectPreviewFrame frame) =>
+        new(
+            frame.Caption,
+            frame.BaseImage,
+            frame
+                .Layers.Select(layer => new ArtworkEffectLayerPreview(
+                    layer.Index,
+                    layer.Name,
+                    assets.TryGetTextureAddress(layer.Texture, out string address)
+                        ? assets.GetReadableTexture(address)
+                        : layer.Texture,
+                    layer.Bounds,
+                    layer.Offset,
+                    layer.Hidden,
+                    layer.Linked,
+                    layer.ScalePercent,
+                    layer.Uv
+                ))
+                .ToArray(),
+            frame.IsMissing,
+            frame.Size,
+            frame.BaseUv
+        );
 
     /// <summary>
     /// Captures the actual card bounds and source crops for the shared layer workspace.

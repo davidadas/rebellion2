@@ -3,7 +3,7 @@ using NUnit.Framework;
 using Rebellion.SceneGraph;
 using UnityEngine;
 
-namespace Rebellion.Tests.UI.Runtime
+namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
 {
     [TestFixture]
     public sealed class GameplayArtworkLayoutTests
