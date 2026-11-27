@@ -163,6 +163,23 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void GetOperationalHyperdriveCount_LegacyLimit_CountsWorkingBackup()
+        {
+            _capitalShip.HyperdriveCount = 1;
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+            };
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+
+            Assert.AreEqual(8, _capitalShip.GetOperationalHyperdrive());
+            Assert.AreEqual(1, _capitalShip.GetOperationalHyperdriveCount());
+            _capitalShip.SystemDamage.SetHyperdriveDamage(1, 1);
+            Assert.AreEqual(0, _capitalShip.GetOperationalHyperdriveCount());
+        }
+
+        [Test]
         public void GetOperationalHyperdrive_WithThreeDrives_UsesFirstWorkingDrive()
         {
             _capitalShip.Hyperdrives = new[]
