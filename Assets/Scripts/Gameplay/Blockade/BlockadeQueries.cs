@@ -1,4 +1,3 @@
-using System;
 using System.Collections.Generic;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
