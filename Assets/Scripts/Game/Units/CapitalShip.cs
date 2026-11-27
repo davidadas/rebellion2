@@ -738,14 +738,21 @@ namespace Rebellion.Game.Units
         /// <returns>The number of functioning drives up to the legacy auto-resolve limit.</returns>
         internal int GetOperationalHyperdriveCount()
         {
-            int disabled = 0;
+            int installed = 0;
+            int working = 0;
             for (int index = 0; index < _hyperdrives.Length; index++)
-                if (
-                    GetHyperdriveRating(index) > 0
-                    && (SystemDamage?.GetHyperdriveDamage(index) ?? 0) != 0
-                )
-                    disabled++;
-            return Math.Max(0, HyperdriveCount - disabled);
+            {
+                if (GetHyperdriveRating(index) <= 0)
+                    continue;
+                installed++;
+                if ((SystemDamage?.GetHyperdriveDamage(index) ?? 0) == 0)
+                    working++;
+            }
+
+            // Older auto-resolve data can specify systems without individual drive ratings.
+            int legacyLimit = Math.Max(_hyperdriveCount ?? installed, 0);
+            int unrated = Math.Max(legacyLimit - installed, 0);
+            return Math.Min(legacyLimit, working + unrated);
         }
 
         /// <summary>
