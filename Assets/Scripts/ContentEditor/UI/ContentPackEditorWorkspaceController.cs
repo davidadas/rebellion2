@@ -42,6 +42,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
+        view.AudioClipRemovalRequested += RemoveAudioClip;
         view.ArtworkPlacementSubmitted += ApplyArtworkPlacement;
         view.FieldValidationRequested += ValidateField;
         view.SectionInheritanceResetRequested += ResetSectionInheritance;
@@ -182,6 +183,17 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             Project.SetFieldValues(field, values);
         else
             Project.SetField(field, values.Single());
+    }
+
+    /// <summary>
+    /// Removes only the selected audio entry through the project's undoable mutation boundary.
+    /// </summary>
+    /// <param name="field">The list owning the selected audio file.</param>
+    /// <param name="index">The selected stored entry index.</param>
+    private void RemoveAudioClip(ContentPackEditorField field, int index)
+    {
+        Project.RemoveAudioClip(field, index);
+        view.StopAudioPreview();
     }
 
     /// <summary>
@@ -517,6 +529,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
+        view.AudioClipRemovalRequested -= RemoveAudioClip;
         view.ArtworkPlacementSubmitted -= ApplyArtworkPlacement;
         view.FieldValidationRequested -= ValidateField;
         view.SectionInheritanceResetRequested -= ResetSectionInheritance;

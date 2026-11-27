@@ -53,6 +53,131 @@ namespace Rebellion.Tests.ContentEditor.UI
                 Object.DestroyImmediate(canvas);
         }
 
+        [Test]
+        public void Render_EmptyAudioList_OffersAddingAClipWithoutAnEditablePath()
+        {
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            ContentPackEditorField requested = null;
+            string before = field.Document.Text;
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                null,
+                value => requested = value,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            Assert.IsFalse(
+                control.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf
+            );
+            TMP_Dropdown clips = control.GetComponentInChildren<TMP_Dropdown>();
+            Assert.AreEqual("No clips", clips.options.Single().text);
+            Assert.IsFalse(clips.interactable);
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Preview")
+                    .interactable
+            );
+            Assert.IsFalse(
+                control
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "SelectItems")
+                    .interactable
+            );
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Import")
+                .onClick.Invoke();
+            Assert.AreSame(field, requested);
+            Assert.AreEqual(before, field.Document.Text);
+        }
+
+        [Test]
+        public void SelectDropdownValue_AudioList_SelectsPlaybackWithoutEditingTheList()
+        {
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            WriteFixtureFile("Audio/two.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" });
+            string before = field.Document.Text;
+            string played = null;
+            control.Render(
+                ContentPackEditorProjector.BuildField(project, field),
+                null,
+                null,
+                (_, address, _) => played = address
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            control.GetComponentInChildren<TMP_Dropdown>().value = 1;
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Preview")
+                .onClick.Invoke();
+
+            Assert.AreEqual("Pack/Audio/two.wav", played);
+            Assert.AreEqual(before, field.Document.Text);
+            CollectionAssert.AreEqual(
+                new[] { "one.wav", "two.wav" },
+                control.GetComponentInChildren<TMP_Dropdown>().options.Select(option => option.text)
+            );
+        }
+
+        [Test]
+        public void Render_AudioList_RejectsEditsFromTheHiddenTextInput()
+        {
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            control.Submitted += project.SetFieldValues;
+            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
+
+            control.GetComponentInChildren<TMP_InputField>(true).onEndEdit.Invoke("arbitrary text");
+
+            Assert.IsEmpty(field.Values);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RequestSelection_AudioList_RemovesOnlyTheSelectedClipAndSupportsUndo()
+        {
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            WriteFixtureFile("Audio/two.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" });
+            control.AudioClipRemovalRequested += project.RemoveAudioClip;
+            control.Render(ContentPackEditorProjector.BuildField(project, field), null, null, null);
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+            control.GetComponentInChildren<TMP_Dropdown>().value = 1;
+
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { "Pack/Audio/one.wav" }, field.Values);
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(
+                new[] { "Pack/Audio/one.wav", "Pack/Audio/two.wav" },
+                ContentEditorUnitAudio
+                    .GetFields(
+                        project
+                            .GetCatalogs()
+                            .Single(catalog => catalog.Name == "Officers")
+                            .Records.Single()
+                    )
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+        }
+
         [TestCase("Officers", "RecruitingFactionInstanceIDs")]
         [TestCase("Starfighters", "ManufacturingFactionInstanceIDs")]
         [TestCase("Capital ships", "ManufacturingFactionInstanceIDs")]

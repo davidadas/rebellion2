@@ -45,6 +45,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     private HelpTooltipView help;
     private ContentPackEditorField field;
     private ContentPackEditorFieldRenderData presentation;
+    private string renderedMediaValue;
     private Action changed;
     private Action<ContentPackEditorField> importRequested;
     private readonly List<UICheckboxView> choices = new List<UICheckboxView>();
@@ -65,13 +66,21 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     public event Action<ContentPackEditorField, IReadOnlyList<string>> Submitted;
     public event Action<ContentPackEditorField> ValidationRequested;
     public event Action<ContentPackEditorField> SelectionRequested;
+    internal event Action<ContentPackEditorField> MediaReplacementRequested;
+    internal event Action<ContentPackEditorField, int> AudioClipRemovalRequested;
 
-    public int Height => PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
+    public int Height =>
+        presentation?.MediaChoices != null || IsAudioList(field)
+            ? Mathf.CeilToInt(((RectTransform)transform).rect.height)
+            : PreferredHeight(((RectTransform)transform).rect.width, lastLabelWidth);
 
     public bool HasError => error != null && !string.IsNullOrEmpty(error.text);
     public bool HasRejectedDraft => hasRejectedDraft;
     public bool HasOpenChoice => choiceDropdown.IsExpanded;
     public ContentPackEditorField Field => this.field;
+    internal bool NeedsMediaRefresh =>
+        (presentation?.MediaChoices != null || IsAudioList(field))
+        && field.Value != renderedMediaValue;
 
     /// <summary>
     /// Displays the authored asset name when the editor field has no replacement value.
@@ -139,6 +148,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <returns>The row height, including the complete wrapped caption.</returns>
     public int SetLayout(Rect bounds, float labelWidth)
     {
+        if (presentation.MediaChoices != null || IsAudioList(field))
+            return SetMediaSelectorLayout(bounds, labelWidth);
         error.gameObject.SetActive(true);
         bool hasHelp = labelWidth > 0 && !string.IsNullOrWhiteSpace(field.HelpText);
         RectTransform helpRect = (RectTransform)help.transform;
@@ -206,10 +217,39 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             labelHeight
         );
         help.gameObject.SetActive(hasHelp);
+        int markerInset = 0;
         if (hasHelp)
+        {
             help.PositionBeside(label, 4, 4);
+            markerInset = Mathf.Max(0, -UILayout.GetSourceRect(helpRect).yMin);
+            if (markerInset > 0)
+            {
+                UILayout.SetSourceRect(
+                    label.rectTransform,
+                    4,
+                    4 + markerInset,
+                    Mathf.RoundToInt(captionWidth),
+                    labelHeight
+                );
+                help.PositionBeside(label, 4, 4 + markerInset);
+                height += markerInset;
+                bodyHeight += markerInset;
+                bounds.height += markerInset;
+                UILayout.SetSourceRect(
+                    root,
+                    Mathf.RoundToInt(bounds.x),
+                    Mathf.RoundToInt(bounds.y),
+                    Mathf.RoundToInt(bounds.width),
+                    Mathf.RoundToInt(bounds.height)
+                );
+            }
+        }
         bool stackedMedia = field.IsMedia && bounds.width < 600;
-        float valueTop = stackedMedia ? 0 : 4 + labelExtra;
+        float valueTop = stackedMedia ? 0 : 4 + labelExtra + markerInset;
+        int importWidth = Mathf.Max(
+            86,
+            Mathf.CeilToInt(importButton.GetComponentInChildren<TMP_Text>().preferredWidth) + 24
+        );
         float valueHeight =
             field.IsMediaDirectory ? (field.IsList ? 48 : 32)
             : multiline ? bodyHeight - valueTop - 20
@@ -219,7 +259,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         value.anchorMax = Vector2.one;
         value.pivot = Vector2.up;
         value.offsetMin = new Vector2(valueLeft, -valueTop - valueHeight);
-        float valueRight = field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? 190 : 8;
+        float valueRight =
+            field.IsMedia && !field.IsMediaDirectory && !stackedMedia ? importWidth + 104 : 8;
         value.offsetMax = new Vector2(-valueRight, -valueTop);
         if (compactMedia)
         {
@@ -298,7 +339,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             RectTransform preview = (RectTransform)previewButton.transform;
             RectTransform import = (RectTransform)importButton.transform;
             UILayout.SetSourceRect(preview, 0, bodyHeight - 54, 90, 32);
-            UILayout.SetSourceRect(import, 100, bodyHeight - 54, 90, 32);
+            UILayout.SetSourceRect(import, 100, bodyHeight - 54, Mathf.Max(90, importWidth), 32);
         }
         else
         {
@@ -307,13 +348,91 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             preview.anchorMin = preview.anchorMax = preview.pivot = new Vector2(1, 1);
             preview.anchoredPosition = field.IsMediaDirectory
                 ? new Vector2(-4, -choiceTop)
-                : new Vector2(-96, -valueTop);
+                : new Vector2(-importWidth - 10, -valueTop);
             preview.sizeDelta = new Vector2(86, 32);
             import.anchorMin = import.anchorMax = import.pivot = new Vector2(1, 1);
             import.anchoredPosition = new Vector2(-4, -valueTop);
-            import.sizeDelta = new Vector2(86, 32);
+            import.sizeDelta = new Vector2(importWidth, 32);
         }
         return Mathf.CeilToInt(bounds.height);
+    }
+
+    /// <summary>
+    /// Fits a shared media selector and its file, preview, and removal or replacement actions.
+    /// </summary>
+    /// <param name="bounds">The available content-space row bounds.</param>
+    /// <param name="labelWidth">The width reserved for the field caption.</param>
+    /// <returns>The full height, including wrapped actions and validation feedback.</returns>
+    private int SetMediaSelectorLayout(Rect bounds, float labelWidth)
+    {
+        lastLabelWidth = labelWidth;
+        int left = Mathf.CeilToInt(Mathf.Max(4, labelWidth));
+        int available = Mathf.Max(1, Mathf.FloorToInt(bounds.width) - left - 4);
+        Button[] actions = { previewButton, importButton, selectItemsButton };
+        int[] widths = actions
+            .Select(button =>
+                Mathf.CeilToInt(button.GetComponentInChildren<TMP_Text>().preferredWidth) + 20
+            )
+            .ToArray();
+        int actionWidth = widths.Sum() + 8 * (actions.Length - 1);
+        bool inline = available >= actionWidth + 8 + 180;
+        int chooserWidth = inline ? available - actionWidth - 8 : available;
+        UILayout.SetSourceRect((RectTransform)choiceDropdown.transform, left, 4, chooserWidth, 32);
+        int x = inline ? left + chooserWidth + 8 : left;
+        int y = inline ? 4 : 44;
+        for (int index = 0; index < actions.Length; index++)
+        {
+            int width = Mathf.Min(available, widths[index]);
+            if (x > left && x + width > bounds.width - 4)
+            {
+                x = left;
+                y += 40;
+            }
+            UILayout.SetSourceRect((RectTransform)actions[index].transform, x, y, width, 32);
+            x += width + 8;
+        }
+        int captionHeight =
+            labelWidth > 0
+                ? Mathf.CeilToInt(
+                    label
+                        .GetPreferredValues(
+                            label.text,
+                            Mathf.Max(1, labelWidth - 12),
+                            float.PositiveInfinity
+                        )
+                        .y
+                )
+                : 0;
+        int height = Mathf.Max(y + 44, captionHeight + 8);
+        int feedbackHeight = HasError
+            ? Mathf.Max(
+                32,
+                Mathf.CeilToInt(
+                    error.GetPreferredValues(error.text, available, float.PositiveInfinity).y
+                )
+            )
+            : 0;
+        if (HasError)
+        {
+            UILayout.SetSourceRect(error.rectTransform, left, height, available, feedbackHeight);
+            height += feedbackHeight + 8;
+        }
+        PlaceMediaActions(bounds, height, showChoice: true);
+        label.gameObject.SetActive(labelWidth > 0);
+        label.textWrappingMode = TextWrappingModes.Normal;
+        label.overflowMode = TextOverflowModes.Overflow;
+        UILayout.SetSourceRect(
+            label.rectTransform,
+            4,
+            4,
+            Mathf.Max(1, Mathf.RoundToInt(labelWidth - 12)),
+            captionHeight
+        );
+        importButton.gameObject.SetActive(true);
+        previewButton.gameObject.SetActive(true);
+        selectItemsButton.gameObject.SetActive(true);
+        error.gameObject.SetActive(HasError);
+        return height;
     }
 
     /// <summary>
@@ -468,7 +587,6 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         field == null || selectItemsButton.gameObject.activeSelf ? 56
         : field.IsMediaDirectory ? (field.IsList ? 104 : 80)
         : IsCompactMedia(field) && width < 600 ? 88
-        : IsCompactMediaList(field) ? 64
         : field.IsList
         && (choiceValues.Count > 0 || field.IsFactionReference || field.IsTraitReference)
             ? Math.Max(
@@ -597,6 +715,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (rendering)
             return;
+        if (IsAudioList(field))
+            return;
         if (videoPreviewAddress != null)
         {
             if (
@@ -646,11 +766,19 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         try
         {
             BindControls();
+            int selectedClip =
+                IsAudioList(field)
+                && field.Record.Key == value.Field.Record.Key
+                && field.Name == value.Field.Name
+                    ? choiceDropdown.value
+                    : 0;
             presentation = value;
             field = value.Field;
+            renderedMediaValue = field.Value;
             backgroundRole = ContentEditorColorRole.Input;
             help.Configure(field.HelpText, input, label.font);
-            IReadOnlyDictionary<string, string> referenceLabels = value.ReferenceLabels;
+            IReadOnlyDictionary<string, string> referenceLabels =
+                value.MediaChoices ?? value.ReferenceLabels;
             choiceValues =
                 referenceLabels != null
                     ? referenceLabels
@@ -666,12 +794,21 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             videoPreviewAddress = null;
             videoResolutions = null;
             editArtwork = null;
+            ((MenuDropdown)choiceDropdown).SetOptions(new List<TMP_Dropdown.OptionData>());
             previewButton.GetComponentInChildren<TextMeshProUGUI>().text =
                 field.MediaType == ContentPackEditorMediaType.Audio ? "Play/stop" : "Preview";
+            string mediaName =
+                field.MediaType == ContentPackEditorMediaType.Image
+                && (
+                    field.MemberName == "EncyclopediaImagePath"
+                    || field.Record.Kind == "EncyclopediaEntry"
+                )
+                    ? " image"
+                    : string.Empty;
             importButton.GetComponentInChildren<TextMeshProUGUI>().text =
                 field.IsList ? "Add..."
-                : string.IsNullOrWhiteSpace(field.Value) ? "Choose..."
-                : "Change...";
+                : string.IsNullOrWhiteSpace(field.Value) ? $"Choose{mediaName}..."
+                : $"Change{mediaName}...";
             label.text = field.Caption;
             error.text = string.Empty;
             error.gameObject.SetActive(true);
@@ -719,14 +856,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             }
             if (isChoice)
             {
-                choiceDropdown.ClearOptions();
-                choiceDropdown.AddOptions(
+                ((MenuDropdown)choiceDropdown).SetOptions(
                     choiceValues
-                        .Select(choice =>
+                        .Select(choice => new TMP_Dropdown.OptionData(
                             referenceLabels == null ? ContentPackEditorField.FormatName(choice)
-                            : referenceLabels.TryGetValue(choice, out string caption) ? caption
-                            : "Missing: " + choice
-                        )
+                                : referenceLabels.TryGetValue(choice, out string caption) ? caption
+                                : "Missing: " + choice,
+                            value.MediaImages != null
+                            && value.MediaImages.TryGetValue(choice, out Sprite image)
+                                ? image
+                                : null,
+                            Color.white
+                        ))
                         .ToList()
                 );
                 choiceDropdown.SetValueWithoutNotify(
@@ -739,8 +880,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 !showBoolean && !isChoice && !isChecklist && !isPicker && !compactMedia
             );
             selectedMedia.text = GetMediaDisplayName(field.Value);
-            selectedMedia.gameObject.SetActive(compactMedia);
-            selectItemsButton.gameObject.SetActive(isPicker);
+            selectedMedia.gameObject.SetActive(compactMedia && value.MediaChoices == null);
+            selectItemsButton.gameObject.SetActive(isPicker || value.MediaChoices != null);
+            selectItemsButton.interactable = value.MediaChoices == null || value.CanReplaceMedia;
+            if (value.MediaChoices != null)
+            {
+                importButton.GetComponentInChildren<TMP_Text>().text = "Add image...";
+                selectItemsButton.GetComponentInChildren<TMP_Text>().text =
+                    "Replace shared image...";
+            }
             if (isPicker)
                 selectItemsButton.GetComponentInChildren<TMP_Text>().text =
                     field.Values.Count == 0
@@ -828,6 +976,8 @@ public sealed class ContentEditorFieldView : MonoBehaviour
             }
             if (field.IsMediaDirectory)
                 RenderMediaFiles();
+            if (IsAudioList(field))
+                RenderAudioClips(selectedClip);
             input.GetComponent<TextInputHistory>()?.ClearHistory();
             ApplyBackgroundRole();
             gameObject.SetActive(true);
@@ -845,6 +995,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         field = null;
         presentation = null;
+        renderedMediaValue = null;
         changed = null;
         importRequested = null;
         previewRequested = null;
@@ -852,6 +1003,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         videoResolutions = null;
         editArtwork = null;
         choiceValues = mediaFiles = Array.Empty<string>();
+        ((MenuDropdown)choiceDropdown).SetOptions(new List<TMP_Dropdown.OptionData>());
         help.Configure(null, input);
         help.gameObject.SetActive(false);
         input.GetComponent<TextInputHistory>()?.ClearHistory();
@@ -893,7 +1045,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <param name="text">The proposed value.</param>
     private void ApplyText(string text)
     {
-        if (field == null || rendering)
+        if (field == null || rendering || IsAudioList(field))
             return;
         try
         {
@@ -910,7 +1062,7 @@ public sealed class ContentEditorFieldView : MonoBehaviour
                 return;
             }
             if (field.IsList)
-                Submitted?.Invoke(field, GetSubmittedListValues(field, text));
+                Submitted?.Invoke(field, GetSubmittedListValues(text));
             else
                 Submitted?.Invoke(field, new[] { text });
             input.GetComponent<TextInputHistory>()?.ClearHistory();
@@ -1002,6 +1154,63 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     }
 
     /// <summary>
+    /// Shows assigned clips as read-only file choices with explicit add, play, and remove actions.
+    /// </summary>
+    /// <param name="selected">The selected nonempty clip index to retain when possible.</param>
+    private void RenderAudioClips(int selected)
+    {
+        string[] clips = field.Values.Where(value => !string.IsNullOrWhiteSpace(value)).ToArray();
+        input.gameObject.SetActive(false);
+        selectedMedia.gameObject.SetActive(false);
+        choiceDropdown.gameObject.SetActive(true);
+        ((MenuDropdown)choiceDropdown).SetOptions(
+            clips
+                .Select(GetMediaDisplayName)
+                .DefaultIfEmpty("No clips")
+                .Select(name => new TMP_Dropdown.OptionData(name, null, Color.white))
+                .ToList()
+        );
+        choiceDropdown.SetValueWithoutNotify(
+            Mathf.Clamp(selected, 0, Mathf.Max(0, clips.Length - 1))
+        );
+        choiceDropdown.interactable = clips.Length > 0;
+        label.text = field.Caption + (clips.Length > 0 ? " (" + clips.Length + ")" : string.Empty);
+        importButton.GetComponentInChildren<TMP_Text>().text = "Add clip...";
+        previewButton.GetComponentInChildren<TMP_Text>().text = "Play/stop";
+        selectItemsButton.GetComponentInChildren<TMP_Text>().text = "Remove";
+        importButton.gameObject.SetActive(true);
+        previewButton.gameObject.SetActive(true);
+        selectItemsButton.gameObject.SetActive(true);
+        previewButton.interactable = selectItemsButton.interactable = clips.Length > 0;
+    }
+
+    /// <summary>
+    /// Removes exactly the selected stored clip, preserving duplicate clips and other responses.
+    /// </summary>
+    private void RemoveSelectedAudioClip()
+    {
+        int[] indices = field
+            .Values.Select((value, index) => (value, index))
+            .Where(item => !string.IsNullOrWhiteSpace(item.value))
+            .Select(item => item.index)
+            .ToArray();
+        int selected = choiceDropdown.value;
+        if (selected < 0 || selected >= indices.Length)
+            return;
+        try
+        {
+            AudioClipRemovalRequested?.Invoke(field, indices[selected]);
+            error.text = string.Empty;
+            RenderAudioClips(selected);
+            changed?.Invoke();
+        }
+        catch (ArgumentException exception)
+        {
+            ShowError(exception, false);
+        }
+    }
+
+    /// <summary>
     /// Presents a concise field error and forwards the complete notice to the workspace.
     /// </summary>
     /// <param name="exception">The rejected edit or accepted-value failure.</param>
@@ -1041,6 +1250,15 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         }
         if (field?.IsMedia != true)
             return;
+        if (IsAudioList(field))
+        {
+            string clip = field
+                .Values.Where(value => !string.IsNullOrWhiteSpace(value))
+                .ElementAtOrDefault(choiceDropdown.value);
+            if (clip != null)
+                previewRequested?.Invoke(field, clip, null);
+            return;
+        }
         Commit();
         if (HasError)
             return;
@@ -1072,7 +1290,21 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     /// <summary>
     /// Requests named selection without exposing reference identifiers as free text.
     /// </summary>
-    private void RequestSelection() => SelectionRequested?.Invoke(field);
+    private void RequestSelection()
+    {
+        if (IsAudioList(field))
+        {
+            RemoveSelectedAudioClip();
+            return;
+        }
+        if (presentation?.MediaChoices != null)
+        {
+            if (presentation.CanReplaceMedia)
+                MediaReplacementRequested?.Invoke(field);
+        }
+        else
+            SelectionRequested?.Invoke(field);
+    }
 
     /// <summary>
     /// Reports whether one media field can use the compact chooser instead of an editable address.
@@ -1083,12 +1315,14 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         value?.IsMedia == true && !value.IsMediaDirectory && !value.IsList;
 
     /// <summary>
-    /// Reports whether a media list should show compact clip names while retaining line removal.
+    /// Reports whether a field owns a list of audio clips selected through file controls.
     /// </summary>
     /// <param name="value">The field being presented.</param>
-    /// <returns>True for imported audio lists.</returns>
-    private static bool IsCompactMediaList(ContentPackEditorField value) =>
-        value?.MediaType == ContentPackEditorMediaType.Audio && value.IsList;
+    /// <returns>True for audio clip lists.</returns>
+    private static bool IsAudioList(ContentPackEditorField value) =>
+        value?.MediaType == ContentPackEditorMediaType.Audio
+        && value.IsList
+        && !value.IsMediaDirectory;
 
     /// <summary>
     /// Produces editable text without exposing importer-owned content addresses.
@@ -1099,36 +1333,21 @@ public sealed class ContentEditorFieldView : MonoBehaviour
     {
         if (!value.IsList)
             return value.Value;
-        IEnumerable<string> values = value.Values;
-        if (IsCompactMediaList(value))
-            values = values.Select(GetMediaDisplayName);
-        return string.Join("\n", values);
+        return string.Join("\n", value.Values);
     }
 
     /// <summary>
-    /// Restores stored media addresses for unchanged compact names and preserves additions or removals.
+    /// Reads the line-oriented draft for ordinary scalar lists.
     /// </summary>
-    /// <param name="value">The list field being submitted.</param>
     /// <param name="text">The visible line-oriented draft.</param>
     /// <returns>The stored values represented by the draft.</returns>
-    private static IReadOnlyList<string> GetSubmittedListValues(
-        ContentPackEditorField value,
-        string text
-    )
+    private static IReadOnlyList<string> GetSubmittedListValues(string text)
     {
         string[] submitted = text.Split('\n')
             .Select(item => item.TrimEnd('\r'))
             .Where(item => item.Length > 0)
             .ToArray();
-        if (!IsCompactMediaList(value))
-            return submitted;
-        IReadOnlyDictionary<string, string> storedByName = value
-            .Values.GroupBy(GetMediaDisplayName, StringComparer.Ordinal)
-            .Where(group => group.Count() == 1)
-            .ToDictionary(group => group.Key, group => group.Single(), StringComparer.Ordinal);
-        return submitted
-            .Select(item => storedByName.TryGetValue(item, out string stored) ? stored : item)
-            .ToArray();
+        return submitted;
     }
 
     /// <summary>

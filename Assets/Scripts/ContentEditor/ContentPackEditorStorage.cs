@@ -528,6 +528,16 @@ public static class ContentPackEditorStorage
             return WriteUnitArtwork(project, field, candidate, bytes, null);
         }
         string root = field.MediaRoot;
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return Path.ChangeExtension(
+                ImportAssetToFolder(
+                    project,
+                    sourcePath,
+                    ContentEditorPlanetArtwork.PoolAddress,
+                    preserveInherited: true
+                ),
+                null
+            );
         string folder =
             ContentEditorContentSections.IsFactionMissionIcon(field)
             && field.Record.Catalog.Faction != "Shared"
@@ -965,11 +975,13 @@ public static class ContentPackEditorStorage
     /// <param name="project">The project receiving the imported file.</param>
     /// <param name="sourcePath">The selected source file.</param>
     /// <param name="directoryAddress">The pack-scoped destination folder.</param>
+    /// <param name="preserveInherited">Whether inherited image names must also remain untouched.</param>
     /// <returns>The imported content address.</returns>
     private static string ImportAssetToFolder(
         ContentPackEditorProject project,
         string sourcePath,
-        string directoryAddress
+        string directoryAddress,
+        bool preserveInherited = false
     )
     {
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, project.PackRootPath);
@@ -990,13 +1002,44 @@ public static class ContentPackEditorStorage
         string fileName = Path.GetFileName(source);
         string target = Path.Combine(directory, fileName);
         int suffix = 2;
-        while (File.Exists(target))
+        HashSet<string> reserved = preserveInherited
+            ? resolver
+                .EnumerateFileAddresses(directoryAddress)
+                .Where(address =>
+                    new[] { ".png", ".jpg", ".jpeg" }.Contains(
+                        Path.GetExtension(address),
+                        StringComparer.OrdinalIgnoreCase
+                    )
+                )
+                .Concat(
+                    resolver.PackRootPaths.SelectMany(root => ContentArtworkAliases.Load(root).Keys)
+                )
+                .Select(address => Path.ChangeExtension(address, null))
+                .ToHashSet(StringComparer.OrdinalIgnoreCase)
+            : null;
+        while (
+            File.Exists(target)
+            || reserved?.Contains(
+                directoryAddress.TrimEnd('/') + "/" + Path.GetFileNameWithoutExtension(target)
+            ) == true
+        )
         {
-            using SHA256 hash = SHA256.Create();
-            using FileStream original = File.OpenRead(source);
-            using FileStream existing = File.OpenRead(target);
-            if (hash.ComputeHash(original).SequenceEqual(hash.ComputeHash(existing)))
-                return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
+            string existing = preserveInherited
+                ? resolver.ResolveFile(
+                    directoryAddress.TrimEnd('/') + "/" + Path.GetFileNameWithoutExtension(target),
+                    ".png",
+                    ".jpg",
+                    ".jpeg"
+                )
+                : target;
+            if (existing != null)
+            {
+                using SHA256 hash = SHA256.Create();
+                using FileStream original = File.OpenRead(source);
+                using FileStream occupied = File.OpenRead(existing);
+                if (hash.ComputeHash(original).SequenceEqual(hash.ComputeHash(occupied)))
+                    return directoryAddress.TrimEnd('/') + "/" + Path.GetFileName(target);
+            }
             target = Path.Combine(
                 directory,
                 Path.GetFileNameWithoutExtension(fileName)

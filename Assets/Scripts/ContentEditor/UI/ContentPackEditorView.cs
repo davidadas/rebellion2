@@ -290,6 +290,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    internal event Action<ContentPackEditorField> MediaReplacementRequested;
+    internal event Action<ContentPackEditorField, int> AudioClipRemovalRequested;
     internal event Action<ContentPackEditorField> OfficerStatusArtworkRequested;
     public event Action<
         ContentPackEditorField,
@@ -609,6 +611,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
+        form.MediaReplacementRequested += RequestMediaReplacement;
+        form.AudioClipRemovalRequested += RequestAudioClipRemoval;
         form.OfficerStatusArtworkRequested += RequestOfficerStatusArtwork;
         form.ArtworkCutsRequested += RequestArtworkCuts;
         form.ArtworkEffectRequested += RequestArtworkEffect;
@@ -697,6 +701,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
+            form.MediaReplacementRequested -= RequestMediaReplacement;
+            form.AudioClipRemovalRequested -= RequestAudioClipRemoval;
             form.OfficerStatusArtworkRequested -= RequestOfficerStatusArtwork;
             form.ArtworkCutsRequested -= RequestArtworkCuts;
             form.ArtworkEffectRequested -= RequestArtworkEffect;
@@ -2247,6 +2253,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         );
         artworkTab.gameObject.SetActive(
             selectedRecord.Kind != "PlanetSectors"
+                && selectedRecord.Kind != "EncyclopediaEntry"
                 && fields.Any(field =>
                     field.IsMedia
                     && field.MediaType != ContentPackEditorMediaType.Audio
@@ -2255,6 +2262,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                         || field.MediaType != ContentPackEditorMediaType.Video
                     )
                     && !ContentEditorContentSections.IsEncyclopediaField(field)
+                    && !ContentEditorPlanetArtwork.IsImageField(field)
                 )
         );
         audioTab.gameObject.SetActive(
@@ -2816,6 +2824,24 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (CommitFields())
             ImportRequested?.Invoke(field);
     }
+
+    /// <summary>
+    /// Commits the form before requesting replacement of a shared image file.
+    /// </summary>
+    /// <param name="field">The shared image being replaced.</param>
+    private void RequestMediaReplacement(ContentPackEditorField field)
+    {
+        if (CommitFields())
+            MediaReplacementRequested?.Invoke(field);
+    }
+
+    /// <summary>
+    /// Forwards an explicit audio-list removal to the project-owning workspace.
+    /// </summary>
+    /// <param name="field">The owning audio list.</param>
+    /// <param name="index">The selected stored entry index.</param>
+    private void RequestAudioClipRemoval(ContentPackEditorField field, int index) =>
+        AudioClipRemovalRequested?.Invoke(field, index);
 
     /// <summary>
     /// Routes a dropped image to the visible artwork draft or image slot at the drop position.
@@ -3469,6 +3495,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             return ContentEditorContentSections.CutscenesSection;
         if (page?.MissionID != null)
             return field.Record.Kind == "GameConfig" ? "Rules" : "General";
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return ContentEditorPlanetArtwork.GetSection(field);
         if (
             record.Element != field.Record.Element
             || ContentEditorContentSections.HasEncyclopedia(record)

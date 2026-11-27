@@ -13,6 +13,70 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void RenderProject_NewOfficer_OffersTheAudioTabAndEveryVoiceResponse()
+        {
+            ContentPackEditorRecord officer = project.AddUnit(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers")
+            );
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+
+            Button audio = view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio");
+            audio.onClick.Invoke();
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.AreEqual(
+                Enum.GetValues(typeof(Rebellion.Game.Units.OfficerVoiceLineType)).Length,
+                fields.Length
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    field
+                        .GetComponentsInChildren<Button>()
+                        .Any(button =>
+                            button.GetComponentInChildren<TMP_Text>()?.text == "Add clip..."
+                        )
+                )
+            );
+        }
+
+        [Test]
+        public void RenderProject_RemovingAudioClip_CancelsPreviewAndKeepsTheOtherClip()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            string source = ContentEditorUnitAudio
+                .GetFields(catalog.Records.First())
+                .SelectMany(field => field.Values)
+                .First(value => !string.IsNullOrWhiteSpace(value));
+            ContentPackEditorRecord officer = project.AddUnit(catalog);
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { source, source });
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio")
+                .onClick.Invoke();
+            int cancelled = 0;
+            view.PreviewCancelled += () => cancelled++;
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field.MemberName == "Order");
+
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { source }, control.Field.Values);
+            Assert.AreEqual(1, cancelled);
+        }
+
         [TestCase(false)]
         [TestCase(true)]
         public void RenderConnection_PublishingDialogIsHidden_UpdatesConnectionLabel(bool connected)

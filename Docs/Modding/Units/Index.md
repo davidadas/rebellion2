@@ -112,6 +112,17 @@ Encyclopedia statistics preserve their authored order:
 </EncyclopediaStats>
 ```
 
+### Gameplay layers and shared officer effects
+
+In a unit's **Artwork** tab, open **Edit layers** beside the combined gameplay preview to change
+the drawing order of the unit, travel, damage or injury, and capture images. This reuses the
+existing image files. Saving applies the order to gameplay cards; packs without a custom order
+retain their current appearance.
+
+For officers, **Apply to all** beside an injury, capture, or hyperspace effect offers a confirmation
+before assigning that image to every officer in the pack. Officers share the selected file, so
+replacing it updates every officer that uses it. Individual portrait images are unchanged.
+
 Manufacturable definitions also share these authored fields:
 
 | Field | Purpose |

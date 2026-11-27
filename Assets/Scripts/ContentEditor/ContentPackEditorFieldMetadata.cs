@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Missions;
 using UnityEngine;
@@ -393,6 +394,8 @@ internal static class ContentPackEditorFieldMetadata
     /// <returns>The label to display.</returns>
     internal static string GetCaption(ContentPackEditorField field, string fallback)
     {
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+            return field.MemberName == "PlanetIconPath" ? "Map image" : "Encyclopedia image";
         if (IsAIDecisionInterval(field))
             return "Decision interval (ticks)";
 
@@ -604,7 +607,9 @@ internal static class ContentPackEditorFieldMetadata
 
         string ancestry = string.Join(
             "/",
-            field.XmlElement.AncestorsAndSelf().Select(parent => parent.Name.LocalName)
+            (field.Container?.AncestorsAndSelf() ?? Enumerable.Empty<XElement>())
+                .Append(field.XmlElement)
+                .Select(parent => parent.Name.LocalName)
         );
         bool referenceKey =
             field.MemberName.EndsWith("Key", StringComparison.Ordinal)

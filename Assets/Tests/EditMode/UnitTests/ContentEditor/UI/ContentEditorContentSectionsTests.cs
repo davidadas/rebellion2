@@ -74,6 +74,90 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void EncyclopediaArticleFields_ReorderedXml_PlacesImageBeforeStatsAndDescription(
+            bool standalone
+        )
+        {
+            string prefix = standalone ? string.Empty : "Encyclopedia";
+            string image = standalone ? "ImagePath" : "EncyclopediaImagePath";
+            string kind = standalone ? "EncyclopediaEntry" : "Officer";
+            string root = standalone ? "EncyclopediaEntries" : "Officers";
+            ContentPackEditorCatalog catalog = Catalog(
+                "article-order",
+                $"<{root}><{kind}><TypeID>TEST</TypeID>"
+                    + $"<{prefix}Description>Article</{prefix}Description>"
+                    + $"<{prefix}Stats><EncyclopediaEntryStat><Label>Speed</Label><Value>4</Value>"
+                    + $"</EncyclopediaEntryStat></{prefix}Stats>"
+                    + $"<{image}>Pack/Art/test</{image}></{kind}></{root}>"
+            );
+            string before = catalog.Document.Text;
+
+            var fields = ContentEditorContentSections.EncyclopediaArticleFields(catalog.Records[0]);
+
+            CollectionAssert.AreEqual(
+                standalone
+                    ? new[] { image, "TypeID", prefix + "Stats", prefix + "Description" }
+                    : new[] { image, prefix + "Stats", prefix + "Description" },
+                fields.Select(field => field.Group).Distinct().ToArray()
+            );
+            CollectionAssert.AreEqual(
+                new[] { "Label", "Value" },
+                fields
+                    .Where(field => field.Group == prefix + "Stats")
+                    .Select(field => field.MemberName)
+            );
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(catalog.Document.IsDirty);
+        }
+
+        [Test]
+        public void EncyclopediaFields_FallbackWithoutImage_OffersAnImageOnTheOwningArticle()
+        {
+            ContentPackEditorCatalog units = Catalog(
+                "officers",
+                "<Officers><Officer><TypeID>OFF1</TypeID></Officer></Officers>"
+            );
+            ContentPackEditorCatalog articles = Catalog(
+                "articles",
+                "<EncyclopediaEntries><EncyclopediaEntry><TypeID>OFF1</TypeID>"
+                    + "<Description>Existing article</Description></EncyclopediaEntry></EncyclopediaEntries>"
+            );
+
+            ContentPackEditorField image = ContentEditorContentSections
+                .EncyclopediaFields(units.Records[0], new[] { units, articles })
+                .First();
+
+            Assert.AreEqual("ImagePath", image.MemberName);
+            Assert.AreEqual(ContentPackEditorMediaType.Image, image.MediaType);
+            Assert.IsFalse(articles.Document.IsDirty);
+            Assert.IsNull(articles.Records[0].Element.Element("ImagePath"));
+            image.SetValue("Pack/Art/new-image");
+            Assert.AreEqual("Pack/Art/new-image", articles.Records[0].GetField("ImagePath").Value);
+            Assert.IsNull(units.Records[0].Element.Element("EncyclopediaImagePath"));
+            Assert.IsFalse(units.Document.IsDirty);
+        }
+
+        [Test]
+        public void EncyclopediaArticleFields_EmptyStandaloneArticle_OffersControlsWithoutWritingValues()
+        {
+            ContentPackEditorCatalog catalog = Catalog(
+                "empty-article",
+                "<EncyclopediaEntries><EncyclopediaEntry><TypeID>EMPTY</TypeID></EncyclopediaEntry></EncyclopediaEntries>"
+            );
+            string before = catalog.Document.Text;
+
+            var fields = ContentEditorContentSections.EncyclopediaArticleFields(catalog.Records[0]);
+
+            CollectionAssert.AreEqual(
+                new[] { "ImagePath", "TypeID", "Description" },
+                fields.Select(field => field.MemberName)
+            );
+            Assert.AreEqual(before, catalog.Document.Text);
+            Assert.IsFalse(catalog.Document.IsDirty);
+        }
+
         [TestCase("<EncyclopediaDescription>Embedded article</EncyclopediaDescription>")]
         [TestCase("<EncyclopediaImagePath>Pack/test-image</EncyclopediaImagePath>")]
         [TestCase(

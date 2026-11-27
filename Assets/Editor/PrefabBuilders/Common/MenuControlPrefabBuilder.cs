@@ -539,6 +539,17 @@ public static class MenuControlPrefabBuilder
         SetSourceRect(caption.rectTransform, 7, 1, controlWidth - 25, controlHeight - 2);
         dropdown.captionText = caption;
 
+        Image selectedImage = new GameObject(
+            "Selected image",
+            typeof(RectTransform),
+            typeof(Image)
+        ).GetComponent<Image>();
+        selectedImage.transform.SetParent(surface.transform, false);
+        selectedImage.preserveAspect = true;
+        selectedImage.raycastTarget = false;
+        selectedImage.enabled = false;
+        dropdown.captionImage = selectedImage;
+
         if (style == MenuControlStyle.Flat)
             CreateDropdownArrow(surface.transform);
         else
@@ -720,6 +731,16 @@ public static class MenuControlPrefabBuilder
         scrollbarObject.SetActive(false);
         dropdown.template = template;
         dropdown.itemText = itemLabel;
+        Image optionImage = new GameObject(
+            "Item image",
+            typeof(RectTransform),
+            typeof(Image)
+        ).GetComponent<Image>();
+        optionImage.transform.SetParent(itemImage.transform, false);
+        optionImage.preserveAspect = true;
+        optionImage.raycastTarget = false;
+        optionImage.enabled = false;
+        dropdown.itemImage = optionImage;
         dropdown.options.Clear();
         foreach (string option in options)
             dropdown.options.Add(new TMP_Dropdown.OptionData(option));

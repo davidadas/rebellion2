@@ -57,6 +57,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             view.FieldSubmitted += SubmitField;
             view.FieldValidationRequested += project.ValidateField;
             view.ClearFieldsRequested += project.ClearFields;
+            view.AudioClipRemovalRequested += project.RemoveAudioClip;
             Canvas.ForceUpdateCanvases();
         }
 
@@ -70,6 +71,468 @@ namespace Rebellion.Tests.ContentEditor.UI
                 UnityEngine.Object.DestroyImmediate(canvas);
             if (Directory.Exists(folder))
                 Directory.Delete(folder, true);
+        }
+
+        [TestCase("Officer")]
+        [TestCase("SpecialForce")]
+        [TestCase("Regiment")]
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        [TestCase("Building")]
+        [TestCase("Planet")]
+        [TestCase("EncyclopediaEntry")]
+        public void Render_EncyclopediaArticle_PlacesItsImageChooserBeforeStatsAndDescription(
+            string kind
+        )
+        {
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .First(item => item.Kind == kind);
+            bool standalone = kind == "EncyclopediaEntry";
+            string imageMember = standalone ? "ImagePath" : "EncyclopediaImagePath";
+            string descriptionMember = standalone ? "Description" : "EncyclopediaDescription";
+            string before = record.Catalog.Document.Text;
+            ContentPackEditorField requested = null;
+            view.ImportRequested += field => requested = field;
+
+            SelectRecord(record);
+            if (!standalone)
+                RenderSection("Encyclopedia");
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            TMP_Text[] headings = view.GetComponentsInChildren<TMP_Text>()
+                .Where(text => text.fontSize == 17)
+                .ToArray();
+            Assert.AreEqual(1, headings.Count(text => text.text == "Image"));
+            Assert.AreEqual(1, headings.Count(text => text.text == "Description"));
+            Assert.IsFalse(
+                headings.Any(text => text.text.StartsWith("Encyclopedia", StringComparison.Ordinal))
+            );
+            Assert.IsFalse(
+                headings.Any(text => text.text.StartsWith("Stat ", StringComparison.Ordinal))
+            );
+            ContentEditorFieldView image = fields.Single(field =>
+                field.Field.MemberName == imageMember
+            );
+            ContentEditorFieldView description = fields.Single(field =>
+                field.Field.MemberName == descriptionMember
+            );
+            RectTransform imageRect = (RectTransform)image.transform;
+            RectTransform descriptionRect = (RectTransform)description.transform;
+            Assert.GreaterOrEqual(
+                imageRect.anchoredPosition.y - imageRect.rect.height,
+                descriptionRect.anchoredPosition.y
+            );
+            foreach (
+                ContentEditorFieldView stat in fields.Where(field =>
+                    field.Field.Group is "Stats" or "EncyclopediaStats"
+                )
+            )
+            {
+                RectTransform statRect = (RectTransform)stat.transform;
+                Assert.GreaterOrEqual(
+                    imageRect.anchoredPosition.y - imageRect.rect.height,
+                    statRect.anchoredPosition.y
+                );
+                Assert.GreaterOrEqual(
+                    statRect.anchoredPosition.y - statRect.rect.height,
+                    descriptionRect.anchoredPosition.y
+                );
+            }
+            Button import = image
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Import");
+            string caption = import.GetComponentInChildren<TMP_Text>().text;
+            Assert.IsTrue(
+                caption.Contains("image", StringComparison.Ordinal)
+                    || caption.Contains("portrait", StringComparison.Ordinal),
+                caption
+            );
+            import.onClick.Invoke();
+            Assert.AreSame(image.Field, requested);
+            Assert.AreEqual(before, record.Catalog.Document.Text);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [TestCase("Planet", 420)]
+        [TestCase("Planet", 1000)]
+        [TestCase("CapitalShip", 420)]
+        [TestCase("CapitalShip", 1000)]
+        public void Render_EncyclopediaStats_UsesAlignedEditableRowsAndRetainsUndo(
+            string kind,
+            int width
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .First(item => item.Kind == kind);
+            SelectRecord(record);
+            RenderSection("Encyclopedia");
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorFieldView[] fields = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Where(field => field.Field.Group == "EncyclopediaStats")
+                .ToArray();
+            Assert.IsTrue(fields.Length > 0);
+            foreach (var row in fields.GroupBy(field => field.Field.Container))
+            {
+                ContentEditorFieldView label = row.Single(field =>
+                    field.Field.MemberName == "Label"
+                );
+                ContentEditorFieldView value = row.Single(field =>
+                    field.Field.MemberName == "Value"
+                );
+                RectTransform labelRect = (RectTransform)label.transform;
+                RectTransform valueRect = (RectTransform)value.transform;
+                Assert.AreEqual(labelRect.anchoredPosition.y, valueRect.anchoredPosition.y);
+                Assert.LessOrEqual(
+                    labelRect.anchoredPosition.x + labelRect.rect.width,
+                    valueRect.anchoredPosition.x
+                );
+            }
+            TMP_Text[] headings = view.GetComponentsInChildren<TMP_Text>()
+                .Where(text => text.fontSize == 17)
+                .ToArray();
+            CollectionAssert.AreEqual(
+                new[] { "Image", "Stats", "Description" },
+                headings
+                    .OrderByDescending(text => ((RectTransform)text.transform).anchoredPosition.y)
+                    .Select(text => text.text)
+            );
+            ContentEditorFieldView edited = fields.First(field =>
+                field.Field.MemberName == "Value"
+            );
+            string before = edited.Field.Value;
+            TMP_InputField input = edited.GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("Updated stat");
+            input.onEndEdit.Invoke(input.text);
+            Assert.AreEqual("Updated stat", edited.Field.Value);
+            Assert.IsTrue(project.Undo());
+            RenderForm();
+            Assert.AreEqual(
+                before,
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .First(field =>
+                        field.Field.Group == "EncyclopediaStats"
+                        && field.Field.MemberName == "Value"
+                    )
+                    .Field.Value
+            );
+        }
+
+        [TestCase(300)]
+        [TestCase(420)]
+        [TestCase(1000)]
+        public void Render_EmptyStandaloneArticle_KeepsItsImageChooserAvailableWithoutChangingTheFile(
+            int width
+        )
+        {
+            ContentPackEditorRecord article = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "EncyclopediaEntry");
+            XDocument xml = XDocument.Parse(article.Catalog.Document.Text);
+            XElement entry = xml
+                .Root.Elements()
+                .Single(element => element.Element("TypeID")?.Value == article.ID);
+            entry.Element("ImagePath")?.Remove();
+            entry.Element("Description")?.Remove();
+            project.SetDocumentText(article.Catalog.Document, xml.ToString());
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            string before = article.Catalog.Document.Text;
+
+            SelectRecord(article);
+
+            ContentEditorFieldView image = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "ImagePath");
+            Assert.AreEqual(
+                "Choose image...",
+                image
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Import")
+                    .GetComponentInChildren<TMP_Text>()
+                    .text
+            );
+            Assert.IsNotNull(
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Single(field => field.Field.MemberName == "Description")
+            );
+            ContentEditorFieldView identity = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "TypeID");
+            Assert.IsTrue(identity.transform.Find("Label").gameObject.activeSelf);
+            Assert.AreEqual(before, article.Catalog.Document.Text);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_FactionArticleWithoutImage_PlacesAChooserBeforeItsDescription(
+            bool mission
+        )
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = mission
+                ? navigation
+                    .Find("factions/Alliance")
+                    .MissionPages.First(node =>
+                        node.Fields.Any(field => field.Record.Kind == "EncyclopediaEntry")
+                    )
+                : navigation.Find("factions/Alliance");
+            ContentPackEditorRecord article = mission
+                ? page.Fields.First(field => field.Record.Kind == "EncyclopediaEntry").Record
+                : page.RelatedRecords.Single(record =>
+                    record.Kind == "EncyclopediaEntry" && record.ID == "FLEET"
+                );
+            XDocument xml = XDocument.Parse(article.Catalog.Document.Text);
+            xml.Root.Elements()
+                .Single(element => element.Element("TypeID")?.Value == article.ID)
+                .Element("ImagePath")
+                ?.Remove();
+            project.SetDocumentText(article.Catalog.Document, xml.ToString());
+            string before = article.Catalog.Document.Text;
+            ContentPackEditorField requested = null;
+            view.ImportRequested += field => requested = field;
+
+            SelectPage(page);
+            if (!mission)
+                RenderSection("Encyclopedia");
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            ContentEditorFieldView image = fields.Single(field =>
+                field.Field.MemberName == "ImagePath"
+            );
+            ContentEditorFieldView description = fields.Single(field =>
+                field.Field.MemberName == "Description"
+            );
+            Assert.GreaterOrEqual(
+                ((RectTransform)image.transform).anchoredPosition.y
+                    - ((RectTransform)image.transform).rect.height,
+                ((RectTransform)description.transform).anchoredPosition.y
+            );
+            Assert.IsFalse(
+                fields.Any(field =>
+                    field.Field.Record.Kind == "EncyclopediaEntry"
+                    && field.Field.MemberName == "TypeID"
+                )
+            );
+            image
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "Import")
+                .onClick.Invoke();
+            Assert.AreEqual(article.ID, requested.Record.ID);
+            Assert.AreEqual("ImagePath", requested.MemberName);
+            Assert.AreEqual(before, article.Catalog.Document.Text);
+        }
+
+        [TestCase("PlanetIconPath")]
+        [TestCase("EncyclopediaImagePath")]
+        public void Render_PlanetArtworkChoice_ChangesOnlyTheSelectedPlanetWithoutCopyingImages(
+            string member
+        )
+        {
+            ContentPackEditorRecord[] planets = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .Take(2)
+                .ToArray();
+            ContentPackEditorField source = planets[0].GetField(member);
+            string original = source.Value;
+            string other = planets[1].GetField(member).Value;
+            string[] files = Directory.GetFiles(folder, "*", SearchOption.AllDirectories);
+            SelectRecord(planets[0]);
+            if (member == "EncyclopediaImagePath")
+                RenderSection("Encyclopedia");
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == member);
+            var options = ContentEditorPlanetArtwork.GetChoices(project, source).Keys.ToArray();
+            string selected = options.First(address => address.Length > 0 && address != original);
+            TMP_Dropdown dropdown = field.GetComponentInChildren<TMP_Dropdown>();
+            Assert.IsTrue(dropdown.options.Any(option => option.image != null));
+            Assert.IsNotNull(dropdown.captionImage.sprite);
+
+            dropdown.value = Array.IndexOf(options, selected);
+
+            Assert.AreEqual(selected, source.Value);
+            Assert.AreEqual(other, planets[1].GetField(member).Value);
+            CollectionAssert.AreEquivalent(
+                files,
+                Directory.GetFiles(folder, "*", SearchOption.AllDirectories)
+            );
+            Assert.IsTrue(project.Undo());
+            Assert.AreEqual(
+                original,
+                project
+                    .GetCatalogs()
+                    .Where(catalog => catalog.IsMap)
+                    .SelectMany(catalog => catalog.Records)
+                    .SelectMany(record => record.Planets)
+                    .First()
+                    .GetField(member)
+                    .Value
+            );
+        }
+
+        [Test]
+        public void Render_PlanetGeneral_ShowsOnlyTheMapImageSelectorBesideItsMapProperties()
+        {
+            ContentPackEditorRecord planet = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .First();
+
+            SelectRecord(planet);
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.IsTrue(fields.Any(field => field.Field.MemberName == "PlanetIconPath"));
+            Assert.IsFalse(fields.Any(field => field.Field.MemberName == "EncyclopediaImagePath"));
+            Assert.IsTrue(fields.Any(field => field.Field.MemberName == "PositionX"));
+            Assert.IsTrue(
+                fields
+                    .Where(field => ContentEditorPlanetArtwork.IsImageField(field.Field))
+                    .All(field =>
+                        field
+                            .GetComponentInChildren<TMP_Dropdown>()
+                            .options.Any(option => option.image != null)
+                    )
+            );
+            RenderSection("Encyclopedia");
+            fields = view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.IsTrue(fields.Any(field => field.Field.MemberName == "EncyclopediaImagePath"));
+            Assert.IsFalse(fields.Any(field => field.Field.MemberName == "PlanetIconPath"));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_PlanetImageSelectionChanged_RefreshesSharedReplacementAvailability(
+            bool selectImage
+        )
+        {
+            ContentPackEditorRecord planet = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .First();
+            ContentPackEditorField source = planet.GetField("PlanetIconPath");
+            if (selectImage)
+                project.SetField(source, string.Empty);
+            SelectRecord(planet);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == "PlanetIconPath");
+            string[] choices = ContentEditorPlanetArtwork
+                .GetChoices(project, field.Field)
+                .Keys.ToArray();
+            string selected = selectImage
+                ? choices.First(address => address.Length > 0)
+                : string.Empty;
+
+            field.GetComponentInChildren<TMP_Dropdown>().value = Array.IndexOf(choices, selected);
+            view.Render(project, assets, selectedRecord, null, "General", false);
+
+            Button replace = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == "PlanetIconPath")
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Replace shared image..."
+                );
+            Assert.AreEqual(selectImage, replace.interactable);
+        }
+
+        [Test]
+        public void Render_PlanetArtworkActions_SeparatesAddingFromReplacingSharedImages()
+        {
+            ContentPackEditorRecord planet = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .First();
+            ContentPackEditorField added = null;
+            ContentPackEditorField replaced = null;
+            view.ImportRequested += field => added = field;
+            view.MediaReplacementRequested += field => replaced = field;
+            SelectRecord(planet);
+            ContentEditorFieldView image = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == "PlanetIconPath");
+            string original = image.Field.Value;
+            Button add = image
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Add image..."
+                );
+            Button replace = image
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Replace shared image..."
+                );
+
+            add.onClick.Invoke();
+            Assert.AreSame(image.Field, added);
+            Assert.IsNull(replaced);
+            Assert.IsTrue(replace.interactable);
+            replace.onClick.Invoke();
+
+            Assert.AreSame(image.Field, replaced);
+            Assert.AreEqual(original, image.Field.Value);
+        }
+
+        [TestCase(260)]
+        [TestCase(800)]
+        [TestCase(1200)]
+        public void SetLayout_PlanetArtworkSelector_KeepsChoicesAndActionsInsideTheRowWithoutOverlaps(
+            int width
+        )
+        {
+            ContentPackEditorRecord planet = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog => catalog.Records)
+                .SelectMany(record => record.Planets)
+                .First();
+            SelectRecord(planet);
+            ContentEditorFieldView image = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == "PlanetIconPath");
+
+            int height = image.SetLayout(new Rect(0, 0, width, 0), width < 600 ? 0 : 128);
+            Canvas.ForceUpdateCanvases();
+
+            RectTransform root = (RectTransform)image.transform;
+            RectInt[] controls = image
+                .GetComponentsInChildren<Button>()
+                .Select(button => UILayout.GetSourceRect((RectTransform)button.transform, root))
+                .Append(
+                    UILayout.GetSourceRect(
+                        (RectTransform)image.GetComponentInChildren<TMP_Dropdown>().transform,
+                        root
+                    )
+                )
+                .ToArray();
+            foreach (RectInt control in controls)
+            {
+                Assert.GreaterOrEqual(control.x, 0);
+                Assert.LessOrEqual(control.xMax, width);
+                Assert.LessOrEqual(control.yMax, height);
+            }
+            for (int index = 0; index < controls.Length; index++)
+                foreach (RectInt other in controls.Skip(index + 1))
+                    Assert.IsFalse(controls[index].Overlaps(other));
         }
 
         [Test]
@@ -3697,15 +4160,96 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
             Assert.IsTrue(
                 audio.All(field =>
-                    !field
-                        .GetComponentInChildren<TMP_InputField>()
-                        .text.Contains("Pack/", StringComparison.Ordinal)
+                    !field.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf
                 )
             );
             ContentPackEditorField removable = audio[0].Field;
             Assert.IsNotEmpty(removable.Values);
-            audio[0].GetComponentInChildren<TMP_InputField>().onEndEdit.Invoke(string.Empty);
-            Assert.IsEmpty(removable.Values);
+            int before = removable.Values.Count;
+            audio[0]
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+            Assert.AreEqual(before - 1, removable.Values.Count);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_OfficerWithoutAudio_OffersAllVoiceCategoriesAndFileImport(
+            bool newlyCreated
+        )
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            ContentPackEditorRecord unit = newlyCreated
+                ? project.AddUnit(catalog)
+                : catalog.Records.First();
+            XDocument xml = XDocument.Parse(catalog.Document.Text);
+            xml.Root.Elements()
+                .Single(element => element.Element("TypeID")?.Value == unit.ID)
+                .Element("VoiceSet")
+                ?.Remove();
+            project.SetDocumentText(catalog.Document, xml.ToString());
+            string before = catalog.Document.Text;
+            ContentPackEditorField requested = null;
+            view.ImportRequested += field => requested = field;
+
+            SelectRecord(unit);
+            RenderSection("Audio");
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.AreEqual(
+                Enum.GetValues(typeof(Rebellion.Game.Units.OfficerVoiceLineType)).Length,
+                fields.Length
+            );
+            foreach (ContentEditorFieldView field in fields)
+            {
+                Assert.IsFalse(
+                    field.GetComponentInChildren<TMP_InputField>(true).gameObject.activeSelf
+                );
+                Assert.AreEqual(
+                    "No clips",
+                    field.GetComponentInChildren<TMP_Dropdown>().options.Single().text
+                );
+                field
+                    .GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "Import")
+                    .onClick.Invoke();
+                Assert.AreSame(field.Field, requested);
+            }
+            Assert.AreEqual(before, catalog.Document.Text);
+        }
+
+        [TestCase("PlanetSector", 420)]
+        [TestCase("PlanetSector", 1000)]
+        [TestCase("Planet", 420)]
+        [TestCase("Planet", 1000)]
+        public void Render_MapIdentityHelp_KeepsTheWholeIconInsideItsRow(string kind, int width)
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Where(catalog => catalog.IsMap)
+                .SelectMany(catalog =>
+                    catalog.Records.Concat(catalog.Records.SelectMany(item => item.Planets))
+                )
+                .First(item => item.Kind == kind);
+
+            SelectRecord(record);
+
+            ContentEditorFieldView identity = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(field => field.Field.MemberName == "TypeID");
+            HelpTooltipView help = identity.GetComponentInChildren<HelpTooltipView>();
+            Assert.IsNotNull(help);
+            RectInt bounds = UILayout.GetSourceRect((RectTransform)help.transform);
+            Rect row = ((RectTransform)identity.transform).rect;
+            Assert.GreaterOrEqual(bounds.xMin, 0);
+            Assert.GreaterOrEqual(bounds.yMin, 0);
+            Assert.LessOrEqual(bounds.xMax, row.width);
+            Assert.LessOrEqual(bounds.yMax, row.height);
         }
 
         [Test]

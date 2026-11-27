@@ -35,6 +35,15 @@ internal static class ContentEditorInspectorLayout
     internal static IReadOnlyList<ContentPackEditorField> GetFields(ContentPackEditorRecord record)
     {
         List<ContentPackEditorField> fields = record.GetFields().ToList();
+        if (record.Kind == nameof(Officer))
+        {
+            fields.RemoveAll(field => field.Group == nameof(Officer.VoiceSet));
+            fields.AddRange(ContentEditorUnitAudio.GetFields(record));
+        }
+        if (record.Kind == "Planet")
+            foreach (string member in ContentEditorPlanetArtwork.Members)
+                if (!fields.Any(field => field.MemberName == member))
+                    fields.Add(record.GetField(member));
         if (record.Kind == "ContentPack")
             foreach (
                 string member in new[]

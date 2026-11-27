@@ -55,6 +55,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.OpenRequested += ChooseOpenPack;
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
+        view.MediaReplacementRequested += ReplaceSharedMedia;
         view.OfficerStatusArtworkRequested += ApplyOfficerStatusArtwork;
         view.ArtworkCutsRequested += PreviewArtworkCuts;
         view.ArtworkEffectRequested += PreviewArtworkEffect;
@@ -244,6 +245,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.OpenRequested -= ChooseOpenPack;
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
+            view.MediaReplacementRequested -= ReplaceSharedMedia;
             view.OfficerStatusArtworkRequested -= ApplyOfficerStatusArtwork;
             view.ArtworkCutsRequested -= PreviewArtworkCuts;
             view.ArtworkEffectRequested -= PreviewArtworkEffect;
@@ -590,6 +592,41 @@ public sealed class ContentPackEditorController : MonoBehaviour
     }
 
     /// <summary>
+    /// Confirms a shared image replacement that writes only into the working pack.
+    /// </summary>
+    /// <param name="field">The selected planet artwork slot.</param>
+    private void ReplaceSharedMedia(ContentPackEditorField field)
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            project.RequireOwnedRecord(field.Record);
+            string target =
+                ContentEditorPlanetArtwork.GetReplacementPath(project, field)
+                ?? throw new ArgumentException("Choose an existing pack image.");
+            string source = ContentEditorFileDialog.OpenFile(
+                GetImageImportDirectory(),
+                field.MediaExtensions
+            );
+            if (!string.IsNullOrEmpty(source))
+                view.ConfirmMediaReplacement(
+                    Path.GetFileName(target),
+                    ContentPackEditorStorage.HasMatchingMediaFormat(source, target)
+                        ? () =>
+                            RunOperation(() =>
+                            {
+                                ContentEditorPlanetArtwork.Replace(project, field, source);
+                                RememberImageImportDirectory(source);
+                                OpenProject(project);
+                            })
+                        : null,
+                    () => RunOperation(() => ApplyMediaImport(field, source, false))
+                );
+        });
+    }
+
+    /// <summary>
     /// Uses the same preview and replacement flow for selected and dropped files.
     /// </summary>
     /// <param name="field">The media slot receiving the file.</param>
@@ -605,6 +642,11 @@ public sealed class ContentPackEditorController : MonoBehaviour
             throw new ArgumentException("Unsupported file type.");
         if (!File.Exists(source))
             throw new FileNotFoundException("The selected media file does not exist.", source);
+        if (ContentEditorPlanetArtwork.IsImageField(field))
+        {
+            ApplyMediaImport(field, source, false);
+            return;
+        }
         string current = ContentPackEditorStorage.GetReplaceableAssetPath(project, field);
         if (current == null)
         {
@@ -694,7 +736,13 @@ public sealed class ContentPackEditorController : MonoBehaviour
         }
 
         ContentPackEditorField[] emptyCuts = GetFirstArtworkCutTargets(field);
-        using (project.BeginEdit("Import artwork"))
+        using (
+            project.BeginEdit(
+                field.MediaType == ContentPackEditorMediaType.Audio
+                    ? "Import audio clip"
+                    : "Import artwork"
+            )
+        )
         {
             string address = ContentPackEditorStorage.ImportAsset(project, source, field);
             if (field.IsList)

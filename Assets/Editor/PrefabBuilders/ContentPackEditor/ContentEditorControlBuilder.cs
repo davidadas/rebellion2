@@ -287,7 +287,11 @@ internal static class ContentEditorControlBuilder
         Transform arrow = dropdown.transform.Find("Arrow");
         foreach (Image image in dropdown.GetComponentsInChildren<Image>(true))
         {
-            if (image.GetComponent<Mask>() == null)
+            if (
+                image.GetComponent<Mask>() == null
+                && image != dropdown.captionImage
+                && image != dropdown.itemImage
+            )
                 BindColor(
                     image,
                     image.transform.IsChildOf(arrow) ? ContentEditorColorRole.Text

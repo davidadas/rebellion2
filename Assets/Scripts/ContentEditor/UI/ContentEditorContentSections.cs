@@ -858,6 +858,8 @@ internal static class ContentEditorContentSections
         IReadOnlyList<ContentPackEditorCatalog> catalogs
     )
     {
+        if (record.Kind == "EncyclopediaEntry")
+            return EncyclopediaArticleFields(record);
         bool embedded =
             !string.IsNullOrEmpty(record.Element.Element("EncyclopediaImagePath")?.Value)
             || !string.IsNullOrEmpty(record.Element.Element("EncyclopediaDescription")?.Value)
@@ -869,17 +871,62 @@ internal static class ContentEditorContentSections
                 .FirstOrDefault(candidate =>
                     candidate.Kind == "EncyclopediaEntry" && candidate.ID == record.ID
                 );
-        if (article != null)
-            return article.GetFields().Where(field => field.Group != "TypeID").ToArray();
+        return EncyclopediaArticleFields(article ?? record)
+            .Where(field => field.Group != "TypeID")
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Orders article controls consistently and offers absent image and description fields without writing them.
+    /// </summary>
+    /// <param name="record">The definition owning the article's editable values.</param>
+    /// <returns>Images, article settings, stats, and description in presentation order.</returns>
+    internal static IReadOnlyList<ContentPackEditorField> EncyclopediaArticleFields(
+        ContentPackEditorRecord record
+    )
+    {
+        bool standalone = record.Kind == "EncyclopediaEntry";
         List<ContentPackEditorField> fields = record
             .GetFields()
-            .Where(IsEncyclopediaField)
+            .Where(field => standalone || IsEncyclopediaField(field))
             .ToList();
-        foreach (string member in new[] { "EncyclopediaImagePath", "EncyclopediaDescription" })
+        string[] optional = standalone
+            ? new[] { "ImagePath", "Description" }
+            : new[] { "EncyclopediaImagePath", "EncyclopediaDescription" };
+        foreach (string member in optional)
             if (!fields.Any(field => field.Group == member))
                 fields.Add(record.GetField(member));
-        return fields;
+        return OrderEncyclopediaFields(fields);
     }
+
+    /// <summary>
+    /// Arranges article fields without changing which settings their owning page exposes.
+    /// </summary>
+    /// <param name="fields">The editable article fields selected by the page.</param>
+    /// <returns>Image controls, settings, stats, and description in presentation order.</returns>
+    internal static IReadOnlyList<ContentPackEditorField> OrderEncyclopediaFields(
+        IEnumerable<ContentPackEditorField> fields
+    ) =>
+        fields
+            .OrderBy(field =>
+                field.Group is "EncyclopediaImagePath" or "ImagePath" ? 0
+                : field.MediaType == ContentPackEditorMediaType.Image ? 1
+                : field.Group is "EncyclopediaStats" or "Stats" ? 3
+                : field.Group is "EncyclopediaDescription" or "Description" ? 4
+                : 2
+            )
+            .ToArray();
+
+    /// <summary>
+    /// Gives embedded and standalone article members the same presentation sections.
+    /// </summary>
+    /// <param name="field">The article field being presented.</param>
+    /// <returns>The common section heading for the field's role.</returns>
+    internal static string EncyclopediaSection(ContentPackEditorField field) =>
+        field.MediaType == ContentPackEditorMediaType.Image ? "Image"
+        : field.Group is "EncyclopediaStats" or "Stats" ? "Stats"
+        : field.Group is "EncyclopediaDescription" or "Description" ? "Description"
+        : "Entry settings";
 
     /// <summary>
     /// Keeps encyclopedia-only properties out of the entity's general and media forms.

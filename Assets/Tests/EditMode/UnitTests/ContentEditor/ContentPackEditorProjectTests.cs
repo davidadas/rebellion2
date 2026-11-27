@@ -27,6 +27,100 @@ namespace Rebellion.Tests.ContentEditor
             "InTransitSmallImagePath",
         };
 
+        [Test]
+        public void RemoveAudioClip_MultipleMissingFiles_RemovesOnlyTheSelectedEntryAndSupportsUndo()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/missing-one</Path><Path>Pack/missing-two</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 1);
+
+            CollectionAssert.AreEqual(new[] { "Pack/missing-one" }, field.Values);
+            Assert.IsTrue(project.Undo());
+            CollectionAssert.AreEqual(
+                new[] { "Pack/missing-one", "Pack/missing-two" },
+                ContentEditorUnitAudio
+                    .GetFields(GetAudioOfficer(project))
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+        }
+
+        [Test]
+        public void RemoveAudioClip_DuplicateReferences_RemovesOnlyOneOccurrence()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/same</Path><Path>Pack/same</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 1);
+
+            CollectionAssert.AreEqual(new[] { "Pack/same" }, field.Values);
+        }
+
+        [Test]
+        public void RemoveAudioClip_LastInheritedClip_KeepsTheCategoryEmptyAfterSave()
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/Audio/one.wav</Path></Order></VoiceSet>"
+            );
+            WriteFixtureFile("Audio/one.wav", "fixture");
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            project.RemoveAudioClip(field, 0);
+            ContentPackEditorStorage.Save(project);
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            Assert.IsEmpty(
+                ContentEditorUnitAudio
+                    .GetFields(GetAudioOfficer(reopened))
+                    .Single(item => item.MemberName == "Order")
+                    .Values
+            );
+            Assert.IsTrue(File.Exists(Path.Combine(contentRoot, "Packs/BasePack/Audio/one.wav")));
+        }
+
+        [TestCase(-1)]
+        [TestCase(2)]
+        public void RemoveAudioClip_InvalidIndex_RejectsTheRemovalWithoutChangingTheList(int index)
+        {
+            using ContentPackEditorProject project = CreateAudioProject(
+                "<VoiceSet><Order><Path>Pack/one</Path></Order></VoiceSet>"
+            );
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(GetAudioOfficer(project))
+                .Single(item => item.MemberName == "Order");
+
+            Assert.Throws<ArgumentOutOfRangeException>(() => project.RemoveAudioClip(field, index));
+
+            CollectionAssert.AreEqual(new[] { "Pack/one" }, field.Values);
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void RemoveAudioClip_ScalarField_RejectsTheRemovalWithoutEditingIt()
+        {
+            using ContentPackEditorProject project = CreateAudioProject();
+            ContentPackEditorField field = GetAudioOfficer(project).GetField("DisplayName");
+
+            Assert.Throws<ArgumentException>(() => project.RemoveAudioClip(field, 0));
+
+            Assert.AreEqual("Officer", field.Value);
+            Assert.IsFalse(project.IsDirty);
+        }
+
         [TestCaseSource(nameof(_officerStatusMembers))]
         public void ApplyOfficerStatusArtwork_DifferentIndividualImages_SharesSelectedImageAcrossOfficers(
             string member
@@ -2377,5 +2471,33 @@ namespace Rebellion.Tests.ContentEditor
                     "Pack/Shared/Icons/" + image
                 ))
             );
+
+        /// <summary>
+        /// Creates an inherited officer catalog with optional fixture voice data.
+        /// </summary>
+        /// <param name="voice">The existing authored voice set, when needed by a test.</param>
+        /// <returns>The isolated editable project.</returns>
+        private ContentPackEditorProject CreateAudioProject(string voice = "")
+        {
+            WriteFixtureFile(
+                "Data/officers.xml",
+                "<Officers><Officer><TypeID>OFF1</TypeID><DisplayName>Officer</DisplayName>"
+                    + voice
+                    + "</Officer></Officers>"
+            );
+            UpdateBaseFactionDefinition(faction => faction.OfficersPath = "Data/officers.xml");
+            return CreateWorkingProject();
+        }
+
+        /// <summary>
+        /// Finds the fixture officer in the project's current document generation.
+        /// </summary>
+        /// <param name="project">The project owning the effective officer.</param>
+        /// <returns>The fixture officer.</returns>
+        private static ContentPackEditorRecord GetAudioOfficer(ContentPackEditorProject project) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Officers")
+                .Records.First(record => record.ID == "OFF1");
     }
 }

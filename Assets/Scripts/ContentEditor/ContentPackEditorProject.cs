@@ -465,6 +465,29 @@ public sealed class ContentPackEditorProject : IDisposable
     }
 
     /// <summary>
+    /// Removes one existing audio-list entry without requiring other stored clips to resolve.
+    /// </summary>
+    /// <param name="field">The project-owned audio list.</param>
+    /// <param name="index">The stored entry index, including any empty entries.</param>
+    internal void RemoveAudioClip(ContentPackEditorField field, int index)
+    {
+        RequireOwnedRecord(field.Record);
+        if (
+            !field.IsList
+            || field.IsMediaDirectory
+            || field.MediaType != ContentPackEditorMediaType.Audio
+        )
+            throw new ArgumentException("Choose an audio clip list.", nameof(field));
+        if (index < 0 || index >= field.Values.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        using (BeginEdit("Remove audio clip"))
+        {
+            field.SetListValues(field.Values.Where((_, position) => position != index).ToArray());
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
     /// Checks media address scope and containment through the production resolver before editing.
     /// </summary>
     /// <param name="field">The edited member.</param>
