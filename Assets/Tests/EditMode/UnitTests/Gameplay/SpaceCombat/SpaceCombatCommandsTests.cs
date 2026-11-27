@@ -561,7 +561,7 @@ namespace Rebellion.Tests.Gameplay
                 out List<GameResult> results
             );
 
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, planet));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, planet));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, blockade.Planet);
             Assert.AreSame(attackingFleet, blockade.BlockadingFleet);
@@ -3438,7 +3438,7 @@ namespace Rebellion.Tests.Gameplay
             new SpaceCombatTickProcessor(manager).ProcessTick(game);
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, combatPlanet));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, combatPlanet));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(combatPlanet, blockade.Planet);
             Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);

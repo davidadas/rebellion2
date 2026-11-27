@@ -32,16 +32,6 @@ namespace Rebellion.Game
     [PersistableObject(Name = "Game")]
     public class GameRoot
     {
-        /// <summary>
-        /// Reports completed membership or ownership changes with their affected planet locations.
-        /// Observers defer reactions until the enclosing simulation operation has settled.
-        /// </summary>
-        internal IObserver<(
-            ISceneNode Node,
-            Planet Origin,
-            Planet Destination
-        )> PresenceObserver { get; set; }
-
         // Scene graph.
         private GalaxyMap _galaxy;
 
@@ -548,7 +538,6 @@ namespace Rebellion.Game
                 throw new InvalidOperationException(
                     $"Cannot delete '{node.GetDisplayName()}' because it has no parent."
                 );
-            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
             node.GetParent().RemoveChild(node);
             node.SetParent(null);
             foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
@@ -556,11 +545,10 @@ namespace Rebellion.Game
                 DeregsiterOwnedUnit(child);
                 RemoveSceneNodeByInstanceID(child);
             }
-            PresenceObserver?.OnNext((node, origin, null));
         }
 
         /// <summary>
-        /// Applies an authored active-state change and reports the affected live location.
+        /// Updates a node's local active state.
         /// </summary>
         /// <param name="node">The node whose local active state changes.</param>
         /// <param name="enabled">Whether the node should be locally active.</param>
@@ -571,11 +559,6 @@ namespace Rebellion.Game
             if (node.IsEnabled == enabled)
                 return;
             node.IsEnabled = enabled;
-            if (PresenceObserver != null)
-            {
-                Planet planet = GetContainingPlanet(node);
-                PresenceObserver.OnNext((node, planet, planet));
-            }
         }
 
         /// <summary>
@@ -597,11 +580,6 @@ namespace Rebellion.Game
             DeregsiterOwnedUnit(node);
             node.SetOwnerInstanceID(ownerInstanceId);
             RegisterOwnedUnit(node);
-            if (PresenceObserver != null)
-            {
-                Planet planet = GetContainingPlanet(node);
-                PresenceObserver.OnNext((node, planet, planet));
-            }
         }
 
         /// <summary>
@@ -622,7 +600,6 @@ namespace Rebellion.Game
 
             DeregsiterOwnedUnit(planet);
             planet.ClearDestroyedControl();
-            PresenceObserver?.OnNext((planet, planet, planet));
         }
 
         /// <summary>
@@ -651,7 +628,6 @@ namespace Rebellion.Game
             // Register the node and its children.
             foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
                 AddSceneNodeByInstanceID(child);
-            PresenceObserver?.OnNext((node, null, GetContainingPlanet(node)));
         }
 
         /// <summary>
@@ -669,7 +645,6 @@ namespace Rebellion.Game
             }
 
             ISceneNode parent = node.GetParent();
-            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
 
             parent.RemoveChild(node);
             node.SetParent(null);
@@ -680,7 +655,6 @@ namespace Rebellion.Game
             // Deregister the node and its children.
             foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
                 RemoveSceneNodeByInstanceID(child);
-            PresenceObserver?.OnNext((node, origin, null));
         }
 
         /// <summary>
@@ -716,7 +690,6 @@ namespace Rebellion.Game
                     $"Cannot move '{node.GetDisplayName()}' to '{newParent.GetDisplayName()}'."
                 );
 
-            Planet origin = PresenceObserver == null ? null : GetContainingPlanet(node);
             oldParent.RemoveChild(node);
             try
             {
@@ -729,42 +702,22 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
-            PresenceObserver?.OnNext((node, origin, GetContainingPlanet(node)));
         }
 
         /// <summary>
-        /// Applies an ordered batch of validated parent changes before publishing presence changes.
+        /// Applies a batch of validated parent changes after releasing every old slot.
         /// </summary>
         /// <param name="moves">Distinct nodes with existing parents and validated destinations.</param>
         internal void ApplyNodeMoves(IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves)
         {
-            List<Planet> origins = PresenceObserver == null ? null : new(moves.Count);
             foreach (var (node, _) in moves)
-            {
-                origins?.Add(GetContainingPlanet(node));
                 node.GetParent().RemoveChild(node);
-            }
 
             foreach ((ISceneNode node, ContainerNode parent) in moves)
                 parent.AddChild(node);
             foreach ((ISceneNode node, ContainerNode parent) in moves)
                 node.SetParent(parent);
-
-            if (origins != null)
-                for (int index = 0; index < moves.Count; index++)
-                {
-                    ISceneNode node = moves[index].Node;
-                    PresenceObserver?.OnNext((node, origins[index], GetContainingPlanet(node)));
-                }
         }
-
-        /// <summary>
-        /// Resolves a node's current planet by its ancestor chain, without enumerating the scene.
-        /// </summary>
-        /// <param name="node">The changed node.</param>
-        /// <returns>The node itself when it is a planet, otherwise its nearest containing planet.</returns>
-        private static Planet GetContainingPlanet(ISceneNode node) =>
-            node as Planet ?? node.GetParentOfType<Planet>();
 
         /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.

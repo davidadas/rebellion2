@@ -392,11 +392,6 @@ namespace Rebellion.Tests.Gameplay
             scene.game.DeleteNode(scene.carrier.GetParent());
             Faction opponent = CreateFaction("alliance", "Alliance");
             scene.game.GetFactions().Add(opponent);
-            scene.game.Summary.StartingFactionIDs = new[]
-            {
-                scene.owner.InstanceID,
-                opponent.InstanceID,
-            };
             Fleet blockadingFleet = EntityFactory.CreateFleet(
                 "fighter-blockade",
                 opponent.InstanceID
