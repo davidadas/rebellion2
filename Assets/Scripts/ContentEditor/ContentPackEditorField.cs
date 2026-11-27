@@ -42,8 +42,14 @@ public sealed class ContentPackEditorField
         !IsIdentity && Document.CanInherit(InheritanceElement, Container, attribute?.Name);
     public bool IsInherited =>
         CanInherit && Document.IsSettingInherited(InheritanceElement, attribute?.Name, Container);
+
+    /// <summary>
+    /// Checks canonical setting ownership before consulting its deprecated representation.
+    /// </summary>
     private XElement InheritanceElement =>
-        element.Parent != null || legacyMemberName == null
+        element.Parent != null
+        || legacyMemberName == null
+        || !Document.IsSettingInherited(element, attribute?.Name, Container)
             ? element
             : record.Element.Element(legacyMemberName) ?? new XElement(legacyMemberName);
     internal bool IsFactionColor =>

@@ -97,6 +97,58 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsTrue(record.GetField("Role").IsInherited);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ResetFieldToInherited_ClearedCanonicalRole_RestoresDefaultAcrossHistory(
+            bool hasLegacyRole
+        )
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID><Role>Bomber</Role>"
+                    + (
+                        hasLegacyRole
+                            ? "<Roles><StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                            : ""
+                    )
+                    + "<FormationPriority>2</FormationPriority></Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            project.SetField(GetStarfighterRecord(project).GetField("Role"), string.Empty);
+            ContentPackEditorStorage.Save(project);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+            ContentPackEditorField field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+
+            reopened.ResetFieldToInherited(field);
+
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual("Bomber", field.Value);
+            Assert.IsTrue(field.IsInherited);
+            Assert.IsFalse(field.CanResetToDefault);
+            Assert.IsTrue(reopened.Undo());
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual(string.Empty, field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+            Assert.IsTrue(reopened.Redo());
+            field = GetStarfighterRecord(reopened).GetField("Role");
+            Assert.AreEqual("Bomber", field.Value);
+            Assert.IsTrue(field.IsInherited);
+            Assert.AreEqual(
+                "2",
+                GetStarfighterRecord(reopened).GetField("FormationPriority").Value
+            );
+        }
+
         [TestCase(true)]
         [TestCase(false)]
         public void GetField_DeprecatedStarfighterRoleOverride_RemainsAnOverride(bool cleared)
@@ -2445,6 +2497,19 @@ namespace Rebellion.Tests.ContentEditor
             ContentPackEditorStorage.Save(project);
             return (project, field);
         }
+
+        /// <summary>
+        /// Resolves the current starfighter record after reopening or history rebuilds.
+        /// </summary>
+        /// <param name="project">The working starfighter fixture.</param>
+        /// <returns>The fixture's current starfighter record.</returns>
+        private static ContentPackEditorRecord GetStarfighterRecord(
+            ContentPackEditorProject project
+        ) =>
+            project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
 
         /// <summary>
         /// Resolves the current field wrappers after undo or discard rebuilds the catalogs.
