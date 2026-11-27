@@ -123,6 +123,8 @@ For officers, **Apply to all** beside an injury, capture, or hyperspace effect o
 before assigning that image to every officer in the pack. Officers share the selected file, so
 replacing it updates every officer that uses it. Individual portrait images are unchanged.
 
+### Manufacturing fields
+
 Manufacturable definitions also share these authored fields:
 
 | Field | Purpose |
