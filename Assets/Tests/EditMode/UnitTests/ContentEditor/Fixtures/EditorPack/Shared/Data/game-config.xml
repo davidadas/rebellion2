@@ -219,9 +219,8 @@
     <DiplomacyNeutralPlanetSupportRange>9</DiplomacyNeutralPlanetSupportRange>
   </SupportShift>
   <Blockade>
-    <CapitalShipProductionPenaltyPercent>5</CapitalShipProductionPenaltyPercent>
-    <FighterProductionPenaltyPercent>2</FighterProductionPenaltyPercent>
-    <EvacuationLossPercent>25</EvacuationLossPercent>
+    <CapitalShipWithdrawalPenaltyPercent>5</CapitalShipWithdrawalPenaltyPercent>
+    <FighterWithdrawalPenaltyPercent>2</FighterWithdrawalPenaltyPercent>
   </Blockade>
   <Jedi>
     <DiscoveringForceUserThreshold>80</DiscoveringForceUserThreshold>

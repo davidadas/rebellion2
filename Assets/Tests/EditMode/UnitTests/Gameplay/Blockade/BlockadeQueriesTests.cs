@@ -59,6 +59,71 @@ namespace Rebellion.Tests.Gameplay
         public void TearDown() => _session.Dispose();
 
         [Test]
+        public void GetWithdrawalChance_MixedOrbitalReadiness_CountsOnlyPresentUnits()
+        {
+            _game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 7;
+            _game.Config.Blockade.FighterWithdrawalPenaltyPercent = 3;
+            _enemyShip.StarfighterCapacity = 2;
+            for (int index = 0; index < 2; index++)
+                _game.AttachNode(
+                    new Starfighter
+                    {
+                        InstanceID = "carried-" + index,
+                        OwnerInstanceID = "beta",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    _enemyShip
+                );
+            CapitalShip moving = AddCapital(_enemyFleet);
+            moving.Movement = TestMovement.Create(transitTicks: 10);
+            AddCapital(_enemyFleet).ManufacturingStatus = ManufacturingStatus.Building;
+            Fleet departing = AddFleet("beta");
+            AddCapital(departing);
+            departing.Movement = TestMovement.Create(transitTicks: 10);
+            CapitalShip disabled = AddCapital(_enemyFleet);
+            disabled.IsEnabled = false;
+            _game.AttachNode(
+                new Starfighter
+                {
+                    InstanceID = "inbound",
+                    OwnerInstanceID = "alpha",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = TestMovement.Create(transitTicks: 10),
+                },
+                _planet
+            );
+
+            Assert.AreEqual(84, BlockadeQueries.GetWithdrawalChance(_game, _planet));
+        }
+
+        [Test]
+        public void GetWithdrawalChance_OperationalIonCannon_ReturnsFullSurvival()
+        {
+            _planet.EnergyCapacity = 1;
+            _game.AttachNode(
+                new Building
+                {
+                    InstanceID = "ion-cannon",
+                    OwnerInstanceID = "alpha",
+                    BuildingType = BuildingType.Weapon,
+                    DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                },
+                _planet
+            );
+
+            Assert.AreEqual(100, BlockadeQueries.GetWithdrawalChance(_game, _planet));
+        }
+
+        [Test]
+        public void GetWithdrawalChance_HeavyBlockade_ClampsSurvivalToZero()
+        {
+            _game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
+
+            Assert.AreEqual(0, BlockadeQueries.GetWithdrawalChance(_game, _planet));
+        }
+
+        [Test]
         public void IsBlockaded_ReadyDirectFriendlyFighter_SuppressesHostileFleet()
         {
             Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));

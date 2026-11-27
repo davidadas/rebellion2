@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game;
@@ -13,6 +14,45 @@ namespace Rebellion.Gameplay
     /// </summary>
     public static class BlockadeQueries
     {
+        private const int _percentScale = 100;
+
+        /// <summary>
+        /// Calculates regiment survival when departing through a blockade, counting stationary
+        /// capital ships, their carried fighters, and fighters stationed directly on the planet.
+        /// </summary>
+        /// <param name="game">The campaign supplying withdrawal penalties.</param>
+        /// <param name="planet">The departure planet, whose blockade is checked by the caller.</param>
+        /// <returns>The withdrawal survival percentage from zero through one hundred.</returns>
+        public static int GetWithdrawalChance(GameRoot game, Planet planet)
+        {
+            if (planet.HasOperationalIonCannon())
+                return _percentScale;
+
+            int ships = 0;
+            int fighters = planet.GetChildren<Starfighter>().Count(IsCompleteAndStationary);
+            foreach (Fleet fleet in planet.GetChildren<Fleet>())
+            {
+                if (fleet.Movement != null)
+                    continue;
+                foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+                {
+                    if (!IsCompleteAndStationary(ship))
+                        continue;
+                    ships++;
+                    fighters += ship.GetChildren<Starfighter>().Count(IsCompleteAndStationary);
+                }
+            }
+
+            GameConfig.BlockadeConfig rules = game.Config.Blockade;
+            return Math.Clamp(
+                _percentScale
+                    - ships * rules.CapitalShipWithdrawalPenaltyPercent
+                    - fighters * rules.FighterWithdrawalPenaltyPercent,
+                0,
+                _percentScale
+            );
+        }
+
         /// <summary>
         /// Finds a campaign planet and evaluates its orbital forces.
         /// </summary>
@@ -114,6 +154,14 @@ namespace Rebellion.Gameplay
                 )
                     yield return fleet;
         }
+
+        /// <summary>
+        /// Checks whether a manufactured orbital unit is complete and stationary.
+        /// </summary>
+        /// <param name="unit">The orbital unit to count.</param>
+        /// <returns>Whether the unit contributes to the withdrawal penalty.</returns>
+        private static bool IsCompleteAndStationary(IManufacturable unit) =>
+            unit.ManufacturingStatus == ManufacturingStatus.Complete && unit.Movement == null;
 
         /// <summary>
         /// Checks whether this exact scene node belongs to the campaign's live registry.

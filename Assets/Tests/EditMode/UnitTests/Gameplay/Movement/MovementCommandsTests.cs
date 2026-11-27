@@ -2915,11 +2915,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
+        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_DestroysRegiment()
         {
-            // FixedRNG returns 0 -> 0 < 50 -> loss
+            // The blockade leaves a 50% survival chance; a roll of 99 fails.
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new MaximumRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2934,11 +2934,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
+        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_RegimentSurvives()
         {
-            // MaximumRNG returns 99 -> 99 >= 50 -> survives
+            // The blockade leaves a 50% survival chance; a roll of 0 succeeds.
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new MaximumRNG());
+                BuildBlockadeScene(new FixedRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2957,7 +2957,7 @@ namespace Rebellion.Tests.Gameplay
         public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new MaximumRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -3097,7 +3097,7 @@ namespace Rebellion.Tests.Gameplay
         {
             // FixedRNG would cause loss, but planet isn't blockaded
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -7312,7 +7312,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeRetargetingScene()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -7504,7 +7504,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeScene(IRandomNumberProvider rng)
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 50;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 50;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });

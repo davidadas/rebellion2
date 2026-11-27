@@ -18,7 +18,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet) = BuildScene();
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
-            game.Config.Blockade.EvacuationLossPercent = 100;
+            game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             game.CurrentTick = 42;
             EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
 
@@ -46,26 +46,83 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreSame(planet, officer.GetParent());
         }
 
-        [Test]
-        public void Resolve_RollBelowThreshold_RemovesRegiment()
+        [TestCase(0, false)]
+        [TestCase(74, false)]
+        [TestCase(75, true)]
+        [TestCase(99, true)]
+        public void Resolve_WithdrawalThreshold_OnlyFailedSurvivalRollRemovesRegiment(
+            int roll,
+            bool destroyed
+        )
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
+            game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 25;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
-            EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
+            EvacuationLossResolver system = new EvacuationLossResolver(
+                game,
+                new QueueRNG(roll / 100.0)
+            );
 
             EvacuationLossesResult result = system.Resolve(regiment, planet);
 
-            Assert.IsNotNull(result);
-            Assert.IsNull(game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
+            Assert.AreEqual(destroyed, result != null);
+            Assert.AreEqual(
+                destroyed,
+                game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID) == null
+            );
+        }
+
+        [TestCase(59, false)]
+        [TestCase(60, true)]
+        public void Resolve_FourShipsAndTenCarriedFighters_UsesCombinedWithdrawalPenalty(
+            int roll,
+            bool destroyed
+        )
+        {
+            (GameRoot game, Planet planet) = BuildScene();
+            game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 5;
+            game.Config.Blockade.FighterWithdrawalPenaltyPercent = 2;
+            Fleet fleet = planet.GetChildren<Fleet>().Single();
+            CapitalShip carrier = fleet.GetChildren<CapitalShip>().Single();
+            carrier.StarfighterCapacity = 10;
+            for (int index = 0; index < 3; index++)
+                game.AttachNode(
+                    new CapitalShip
+                    {
+                        InstanceID = "ship" + index,
+                        OwnerInstanceID = "alliance",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    fleet
+                );
+            for (int index = 0; index < 10; index++)
+                game.AttachNode(
+                    new Starfighter
+                    {
+                        InstanceID = "fighter" + index,
+                        OwnerInstanceID = "alliance",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    },
+                    carrier
+                );
+            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
+            game.AttachNode(regiment, planet);
+            EvacuationLossResolver system = new EvacuationLossResolver(
+                game,
+                new QueueRNG(roll / 100.0)
+            );
+
+            EvacuationLossesResult result = system.Resolve(regiment, planet);
+
+            Assert.AreEqual(destroyed, result != null);
         }
 
         [Test]
-        public void Resolve_RollAboveThreshold_PreservesRegiment()
+        public void Resolve_ZeroPenalty_PreservesRegiment()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 25;
+            game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 0;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
             EvacuationLossResolver system = new EvacuationLossResolver(game, new MaximumRNG());
@@ -77,25 +134,10 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void Resolve_ZeroPercent_PreservesRegiment()
+        public void Resolve_HundredPercentPenalty_RemovesRegiment()
         {
             (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 0;
-            Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
-            game.AttachNode(regiment, planet);
-            EvacuationLossResolver system = new EvacuationLossResolver(game, new FixedRNG());
-
-            EvacuationLossesResult result = system.Resolve(regiment, planet);
-
-            Assert.IsNull(result);
-            Assert.AreSame(regiment, game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID));
-        }
-
-        [Test]
-        public void Resolve_HundredPercent_RemovesRegiment()
-        {
-            (GameRoot game, Planet planet) = BuildScene();
-            game.Config.Blockade.EvacuationLossPercent = 100;
+            game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", "empire");
             game.AttachNode(regiment, planet);
             EvacuationLossResolver system = new EvacuationLossResolver(game, new MaximumRNG());

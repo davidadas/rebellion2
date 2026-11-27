@@ -2231,16 +2231,23 @@ namespace Rebellion.Game
         }
 
         /// <summary>
-        /// Manufacturing and evacuation penalties during blockades.
+        /// Regiment withdrawal penalties during blockades.
         /// </summary>
         [PersistableObject]
         public class BlockadeConfig
         {
-            public int CapitalShipProductionPenaltyPercent { get; set; }
+            [PersistableReadAlias("CapitalShipProductionPenaltyPercent")]
+            public int CapitalShipWithdrawalPenaltyPercent { get; set; }
 
-            public int FighterProductionPenaltyPercent { get; set; }
+            [PersistableReadAlias("FighterProductionPenaltyPercent")]
+            public int FighterWithdrawalPenaltyPercent { get; set; }
 
-            public int EvacuationLossPercent { get; set; }
+            /// <summary>
+            /// Accepts the retired fixed loss setting without applying or writing it.
+            /// </summary>
+            [PersistableMember(Name = nameof(EvacuationLossPercent))]
+            [PersistableIgnore]
+            private int EvacuationLossPercent { get; set; }
 
             /// <summary>
             /// Creates an independent snapshot of these settings.
@@ -2249,9 +2256,8 @@ namespace Rebellion.Game
             public BlockadeConfig CreateCopy() =>
                 new BlockadeConfig
                 {
-                    CapitalShipProductionPenaltyPercent = CapitalShipProductionPenaltyPercent,
-                    FighterProductionPenaltyPercent = FighterProductionPenaltyPercent,
-                    EvacuationLossPercent = EvacuationLossPercent,
+                    CapitalShipWithdrawalPenaltyPercent = CapitalShipWithdrawalPenaltyPercent,
+                    FighterWithdrawalPenaltyPercent = FighterWithdrawalPenaltyPercent,
                 };
         }
 

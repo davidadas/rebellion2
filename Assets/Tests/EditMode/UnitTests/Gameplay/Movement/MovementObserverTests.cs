@@ -1681,7 +1681,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeRetargetingScene()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
