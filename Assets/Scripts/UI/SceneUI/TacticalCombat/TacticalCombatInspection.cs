@@ -21,6 +21,9 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             _session = session ?? throw new ArgumentNullException(nameof(session));
         }
 
+        private int GetPresentationIndex(CombatUnit unit) =>
+            _session.Definition?.FindUnit(unit.TypeID)?.PresentationIndex ?? 0;
+
         /// <summary>
         /// Reads one participant without substituting applied ownership for its requested assignment.
         /// </summary>
@@ -70,16 +73,16 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             }
             int hyperdrive = Level(unit.GetHyperdriveRatio());
             int movement = Level(_session.GetMovementRatio(unit));
-            int tractor = Level(unit.GetTractorRatio());
-            int weapons = Level(unit.GetWeaponRechargeRatio());
-            int shields = Level(unit.GetShieldRechargeRatio());
+            int tractor = Level(_session.GetTractorRatio(unit));
+            int weapons = Level(_session.GetWeaponRechargeRatio(unit));
+            int shields = Level(_session.GetShieldRechargeRatio(unit));
             return new TacticalCombatInspectionData(
                 unit.DisplayName,
                 assignment,
                 orders,
                 tactics,
                 null,
-                unit.PresentationIndex,
+                GetPresentationIndex(unit),
                 shields,
                 weapons,
                 tractor,
@@ -121,8 +124,11 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
             int first = 29 + factionIndex * 4;
             int selected = first + 4;
             foreach (CombatUnit member in group.RequestedMembers)
-                if (member.PresentationIndex >= first && member.PresentationIndex < selected)
-                    selected = member.PresentationIndex;
+            {
+                int presentationIndex = GetPresentationIndex(member);
+                if (presentationIndex >= first && presentationIndex < selected)
+                    selected = presentationIndex;
+            }
             string counts = null;
             if (selected < first + 4)
             {
@@ -130,7 +136,7 @@ namespace Rebellion.UI.SceneUI.TacticalCombat
                 uint current = 0;
                 uint maximum = 0;
                 foreach (CombatUnit member in group.RequestedMembers)
-                    if (member.PresentationIndex == selected)
+                    if (GetPresentationIndex(member) == selected)
                         matching++;
                 foreach (CombatUnit member in group.Members)
                 {

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Numerics;
 using NUnit.Framework;
 using Rebellion.Content;
@@ -129,7 +130,7 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
         {
             CombatUnit unit = Fighter("fighter", 1, 29, 12, 12);
             TacticalCombatSession session = Encounter(unit);
-            unit.GetWeaponRecharge();
+            TacticalCombatFireControl.GetWeaponRecharge(unit);
             unit.ApplyHullLoss(48);
 
             TacticalCombatInspectionData data = new TacticalCombatInspection(session).ReadUnit(
@@ -237,13 +238,14 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
             CapitalShip ship = new()
             {
                 InstanceID = name,
+                TypeID = "capital",
                 MaxHullStrength = 100,
                 CurrentHullStrength = 100,
                 SublightSpeed = 10,
                 Hyperdrive = 1,
             };
             ship.AssignName(name);
-            return new(ship, side, index) { PresentationIndex = 1 };
+            return new(ship, side, index);
         }
 
         /// <summary>
@@ -266,15 +268,13 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 new Starfighter
                 {
                     InstanceID = id,
+                    TypeID = type.ToString(CultureInfo.InvariantCulture),
                     MaxSquadronSize = maximum,
                     CurrentSquadronSize = current,
                 },
                 CombatSide.Attacker,
                 index
-            )
-            {
-                PresentationIndex = type,
-            };
+            );
 
         /// <summary>
         /// Builds one separate applied command group for each capital.
@@ -307,7 +307,16 @@ namespace Rebellion.Tests.UI.SceneUI.TacticalCombat
                 CombatSide.Attacker,
                 100,
                 new SystemRandomProvider(1),
-                TacticalCombatPlanner.Attach
+                TacticalCombatPlanner.Attach,
+                definition: new TacticalCombatDefinition
+                {
+                    Units = new()
+                    {
+                        new() { UnitTypeID = "capital", PresentationIndex = 1 },
+                        new() { UnitTypeID = "29", PresentationIndex = 29 },
+                        new() { UnitTypeID = "31", PresentationIndex = 31 },
+                    },
+                }
             );
     }
 }

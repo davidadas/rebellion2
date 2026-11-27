@@ -347,7 +347,6 @@ namespace Rebellion.Tests.Multiplayer.Tactical
                 index
             )
             {
-                PresentationIndex = 1,
                 Heading = Vector3.UnitZ,
                 DesiredHeading = Vector3.UnitZ,
             };

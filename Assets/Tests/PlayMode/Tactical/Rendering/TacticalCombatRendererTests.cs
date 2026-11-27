@@ -411,7 +411,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 CombatUnit unit = guest.GetUnit(departing.InstanceID);
                 TacticalCombatDeparturePose expected = TacticalCombatDeparturePose.Evaluate(
                     unit.Index,
-                    unit.PresentationIndex,
+                    guest.Definition.FindUnit(unit.TypeID).PresentationIndex,
                     unit.Position,
                     guest.GetSide(unit.Side).Forward,
                     1100
@@ -511,7 +511,7 @@ namespace Rebellion.Tests.Tactical.Rendering
                 TacticalCombatDeparturePose expectedDeparture =
                     TacticalCombatDeparturePose.Evaluate(
                         leaving.Index,
-                        leaving.PresentationIndex,
+                        guest.Definition.FindUnit(leaving.TypeID).PresentationIndex,
                         leaving.Position,
                         guest.GetSide(leaving.Side).Forward,
                         1200
@@ -1328,7 +1328,7 @@ namespace Rebellion.Tests.Tactical.Rendering
             Vector3N position = unit.Position;
             TacticalCombatDeparturePose expected = TacticalCombatDeparturePose.Evaluate(
                 unit.Index,
-                unit.PresentationIndex,
+                encounter.Definition.FindUnit(unit.TypeID).PresentationIndex,
                 position,
                 encounter.GetSide(unit.Side).Forward,
                 unit.HyperspaceMilliseconds
@@ -2282,14 +2282,14 @@ namespace Rebellion.Tests.Tactical.Rendering
                 ship.ManufacturingStatus = ManufacturingStatus.Complete;
                 ship.Hyperdrive = 1;
                 ship.HasGravityWell = false;
-                ship.PrimaryWeapons = ship.PrimaryWeapons.ToDictionary(
-                    pair => pair.Key,
-                    pair => new int[pair.Value.Length]
-                );
+                ship.HardpointGroups.Clear();
                 CombatUnit unit = CombatUnit.Create(ship);
-                catalog
-                    .TacticalCombat.Units.Single(item => item.UnitTypeID == ship.TypeID)
-                    .InitializeCombatant(unit, side, units.Count + 1);
+                TacticalCombatDeployment.InitializeUnit(
+                    unit,
+                    catalog.TacticalCombat.FindUnit(ship.TypeID),
+                    side,
+                    units.Count + 1
+                );
                 unit.Position = CreateSide(side).Forward * -50;
                 unit.Heading = CreateSide(side).Forward;
                 unit.DesiredHeading = CreateSide(side).Forward;
@@ -2349,7 +2349,12 @@ namespace Rebellion.Tests.Tactical.Rendering
                         ? CombatSide.Attacker
                         : CombatSide.Defender;
                 CombatUnit unit = CombatUnit.Create(ship);
-                definitions[type].InitializeCombatant(unit, side, units.Count + 1);
+                TacticalCombatDeployment.InitializeUnit(
+                    unit,
+                    definitions[type],
+                    side,
+                    units.Count + 1
+                );
                 unit.Position = new Vector3N(
                     type == "ALCS008" ? -12 : 12,
                     0,
@@ -2363,8 +2368,12 @@ namespace Rebellion.Tests.Tactical.Rendering
             fighter.InstanceID = "fighter";
             fighter.CurrentSquadronSize = fighter.MaxSquadronSize;
             CombatUnit fighterUnit = CombatUnit.Create(fighter);
-            definitions[fighter.TypeID]
-                .InitializeCombatant(fighterUnit, CombatSide.Attacker, units.Count + 1);
+            TacticalCombatDeployment.InitializeUnit(
+                fighterUnit,
+                definitions[fighter.TypeID],
+                CombatSide.Attacker,
+                units.Count + 1
+            );
             fighterUnit.Position = new Vector3N(0, 0, -15);
             units.Add(fighterUnit);
             List<TacticalCombatGroup> groups = units

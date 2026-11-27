@@ -209,7 +209,7 @@ namespace Rebellion.Tactical.Rendering
             {
                 TacticalCombatDeparturePose departure = TacticalCombatDeparturePose.Evaluate(
                     visual.Unit.Index,
-                    visual.Unit.PresentationIndex,
+                    GetUnitDefinition(visual.Unit)?.PresentationIndex ?? 0,
                     position,
                     _session.GetSide(visual.Unit.Side).Forward,
                     hyperspaceMilliseconds
