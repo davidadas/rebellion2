@@ -290,6 +290,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action OpenRequested;
     public event Action<string> BrowseFolderRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    internal event Action<ContentPackEditorField> OfficerStatusArtworkRequested;
     public event Action<
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
@@ -299,6 +300,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         ContentEditorArtworkEffect,
         bool
     > ArtworkEffectRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ArtworkEffectPreviewFrame
+    > GameplayArtworkRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
@@ -604,8 +609,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         form.CollectionRemoveRequested += ConfirmCollectionRemove;
         form.FieldValidationRequested += ValidateField;
         form.ImportRequested += ImportMedia;
+        form.OfficerStatusArtworkRequested += RequestOfficerStatusArtwork;
         form.ArtworkCutsRequested += RequestArtworkCuts;
         form.ArtworkEffectRequested += RequestArtworkEffect;
+        form.GameplayArtworkRequested += RequestGameplayArtwork;
         form.PreviewRequested += PreviewMedia;
         form.AssetEditRequested += OpenAssetEditor;
         form.SectionRequested += ShowSection;
@@ -690,8 +697,10 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             form.CollectionRemoveRequested -= ConfirmCollectionRemove;
             form.FieldValidationRequested -= ValidateField;
             form.ImportRequested -= ImportMedia;
+            form.OfficerStatusArtworkRequested -= RequestOfficerStatusArtwork;
             form.ArtworkCutsRequested -= RequestArtworkCuts;
             form.ArtworkEffectRequested -= RequestArtworkEffect;
+            form.GameplayArtworkRequested -= RequestGameplayArtwork;
             form.PreviewRequested -= PreviewMedia;
             form.AssetEditRequested -= OpenAssetEditor;
             form.SectionRequested -= ShowSection;
@@ -2723,6 +2732,45 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
             .ToArray();
         imagePreview.ShowCuts(previews, selected, apply, move);
     }
+
+    /// <summary>
+    /// Forwards an explicit request to share one status image across all officers.
+    /// </summary>
+    /// <param name="field">The selected officer status image.</param>
+    private void RequestOfficerStatusArtwork(ContentPackEditorField field) =>
+        OfficerStatusArtworkRequested?.Invoke(field);
+
+    /// <summary>
+    /// Presents the image role and full scope before replacing individual officer assignments.
+    /// </summary>
+    /// <param name="source">The status slot supplying the image and its role.</param>
+    /// <param name="count">The number of officers across the pack's factions.</param>
+    /// <param name="apply">Applies the shared image as one undoable edit.</param>
+    internal void ConfirmOfficerStatusArtwork(
+        ContentPackEditorField source,
+        int count,
+        Action apply
+    )
+    {
+        string artwork =
+            ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(source)
+            ?? throw new ArgumentException("Choose an officer status image.", nameof(source));
+        confirmation.Show(
+            $"Apply this {artwork} image to all {count} officers across every faction? Their existing {artwork} images will be replaced.",
+            "Apply to all",
+            apply
+        );
+    }
+
+    /// <summary>
+    /// Opens the combined linked artwork in the shared layer workspace.
+    /// </summary>
+    /// <param name="record">The unit whose drawing order is edited.</param>
+    /// <param name="frame">The combined preview's textures and bounds.</param>
+    private void RequestGameplayArtwork(
+        ContentPackEditorRecord record,
+        ArtworkEffectPreviewFrame frame
+    ) => GameplayArtworkRequested?.Invoke(record, frame);
 
     /// <summary>
     /// Requests an effect preview for the selected unit artwork.

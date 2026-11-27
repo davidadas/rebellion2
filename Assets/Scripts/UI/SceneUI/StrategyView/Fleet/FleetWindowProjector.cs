@@ -133,7 +133,10 @@ internal sealed class FleetWindowProjector
             detailItems,
             session.RenameFleetRowIndex,
             session.RenameDetailItemIndex,
-            session.RenameTarget?.GetDisplayName()
+            session.RenameTarget?.GetDisplayName(),
+            bannerArtworkLayerOrder: !usesSummaryBanner
+                ? (singleSelectedSource as CapitalShip)?.ArtworkLayerOrder
+                : null
         );
     }
 
@@ -283,7 +286,8 @@ internal sealed class FleetWindowProjector
                         showTreeBranch: true,
                         treeHasHorizontalBranch: true,
                         treeContinuesAbove: true,
-                        treeContinuesBelow: shipIndex < capitalShips.Count - 1
+                        treeContinuesBelow: shipIndex < capitalShips.Count - 1,
+                        artworkLayerOrder: capitalShip.ArtworkLayerOrder
                     )
                 );
             }
@@ -379,6 +383,7 @@ internal sealed class FleetWindowProjector
                     ),
                     damagedOverlayTexture: GetDetailDamagedOverlayTexture(uiContext, item),
                     entityTexture: uiContext.GetEntityTexture(item, true),
+                    artworkLayerOrder: item.ArtworkLayerOrder,
                     capturedOverlayTexture: uiContext.GetEntityCapturedOverlayTexture(item),
                     selectionTexture: selected
                         ? GetDetailSelectionTexture(uiContext, fleet.OwnerInstanceID)

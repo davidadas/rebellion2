@@ -52,6 +52,7 @@ namespace Rebellion.Game.Messages
         public string InTransitSmallImagePath { get; set; }
         public string ResultInTransitImagePath { get; set; }
         public string CapturedOverlayImagePath { get; set; }
+        public List<GameplayArtworkLayer> ArtworkLayerOrder { get; set; }
         public bool WasOperational { get; set; }
         public bool Damaged { get; set; }
         public bool Destroyed { get; set; }
@@ -79,6 +80,7 @@ namespace Rebellion.Game.Messages
                 InTransitSmallImagePath = InTransitSmallImagePath,
                 ResultInTransitImagePath = ResultInTransitImagePath,
                 CapturedOverlayImagePath = CapturedOverlayImagePath,
+                ArtworkLayerOrder = ArtworkLayerOrder == null ? null : new(ArtworkLayerOrder),
                 WasOperational = WasOperational,
                 Damaged = Damaged,
                 Destroyed = Destroyed,
@@ -565,6 +567,8 @@ namespace Rebellion.Game.Messages
                 InTransitSmallImagePath = unit.InTransitSmallImagePath,
                 ResultInTransitImagePath = resultInTransitImagePath,
                 CapturedOverlayImagePath = unit.CapturedOverlayImagePath,
+                ArtworkLayerOrder =
+                    unit.ArtworkLayerOrder == null ? null : new(unit.ArtworkLayerOrder),
                 WasOperational = snapshot.WasOperational,
                 Damaged = snapshot.Damaged,
                 Destroyed = snapshot.Destroyed,

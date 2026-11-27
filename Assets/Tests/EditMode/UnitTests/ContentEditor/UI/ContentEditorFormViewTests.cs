@@ -3841,6 +3841,180 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase("Officer")]
+        [TestCase("CapitalShip")]
+        [TestCase("Starfighter")]
+        [TestCase("Regiment")]
+        [TestCase("SpecialForce")]
+        [TestCase("Building")]
+        public void Render_UnitGameplayStates_PlacesCombinedPreviewLastWithLayerEditing(string kind)
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit(kind);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            Button button = view.GetComponentsInChildren<Button>()
+                .Single(control => control.name == "EditCombinedLayers");
+            Assert.AreEqual("Edit layers", button.GetComponentInChildren<TMP_Text>().text);
+            string[] captions =
+            {
+                "Normal",
+                "Travel",
+                "In transit",
+                "In transit (Fleet)",
+                "In transit (Defense)",
+                "Injured",
+                "Damaged",
+                "Captured",
+                "Combined",
+                "Travel + injured",
+                "Travel + damaged",
+                "In transit + injured + captured",
+            };
+            TMP_Text[] states = view.GetComponentsInChildren<TMP_Text>()
+                .Where(label => captions.Contains(label.text))
+                .OrderBy(label => UILayout.GetSourceRect(label.rectTransform).y)
+                .ThenBy(label => UILayout.GetSourceRect(label.rectTransform).x)
+                .ToArray();
+            TMP_Text combined = states.Single(label =>
+                label.text == "Combined" || label.text.Contains(" + ")
+            );
+            Assert.AreSame(combined, states.Last());
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void Render_OfficerStatusArtwork_BulkActionTargetsSelectedStatus(string member)
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            project.SetField(unit.GetField(member), unit.GetField("SmallDisplayImagePath").Value);
+            ContentPackEditorField requested = null;
+            view.OfficerStatusArtworkRequested += field => requested = field;
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            if (member == "InTransitImagePath")
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "UnitArtworkSize1")
+                    .onClick.Invoke();
+            Button apply = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ApplyOfficerArtwork-" + member);
+
+            apply.onClick.Invoke();
+
+            Assert.IsTrue(apply.interactable);
+            Assert.AreEqual("Apply to all", apply.GetComponentInChildren<TMP_Text>().text);
+            Assert.AreEqual(member, requested.MemberName);
+            Assert.AreSame(unit.Element, requested.Record.Element);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Render_OfficerStatusCardWidth_FitsBulkActionWithoutOverlappingImageChooser(
+            bool large
+        )
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            string member = large ? "InTransitImagePath" : "InjuredImagePath";
+            project.SetField(unit.GetField(member), unit.GetField("SmallDisplayImagePath").Value);
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            if (large)
+                view.GetComponentsInChildren<Button>()
+                    .Single(button => button.name == "UnitArtworkSize1")
+                    .onClick.Invoke();
+            Button apply = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "ApplyOfficerArtwork-" + member);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(control => control.Field.MemberName == member);
+            Button choose = field
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>()?.text == "Change effect..."
+                );
+            RectInt applyBounds = UILayout.GetSourceRect((RectTransform)apply.transform);
+            RectInt chooseBounds = UILayout.GetSourceRect(
+                (RectTransform)choose.transform,
+                apply.transform.parent
+            );
+            RectInt fieldBounds = UILayout.GetSourceRect(
+                (RectTransform)field.transform,
+                apply.transform.parent
+            );
+
+            if (large)
+                Assert.GreaterOrEqual(applyBounds.y, chooseBounds.yMax);
+            else
+            {
+                Assert.AreEqual(chooseBounds.y, applyBounds.y);
+                Assert.GreaterOrEqual(applyBounds.x, chooseBounds.xMax);
+            }
+            Assert.LessOrEqual(applyBounds.xMax, fieldBounds.xMax);
+        }
+
+        [Test]
+        public void Render_SwitchFromOfficerToShip_HidesOfficerBulkActions()
+        {
+            SelectRecord(GetArtworkUnit("Officer"));
+            RenderSection("Artwork");
+            SelectRecord(GetArtworkUnit("CapitalShip"));
+            RenderSection("Artwork");
+
+            Assert.IsFalse(
+                view.GetComponentsInChildren<Button>()
+                    .Any(button =>
+                        button.name.StartsWith("ApplyOfficerArtwork-", StringComparison.Ordinal)
+                    )
+            );
+        }
+
+        [Test]
+        public void Render_OfficerCombinedLayerAction_OpensPortraitInjuryAndCapture()
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            ArtworkEffectPreviewFrame? requested = null;
+            view.GameplayArtworkRequested += (_, frame) => requested = frame;
+            SelectRecord(unit);
+            RenderSection("Artwork");
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "EditCombinedLayers")
+                .onClick.Invoke();
+
+            Assert.IsTrue(requested.HasValue);
+            Assert.That(
+                requested.Value.Layers.All(layer =>
+                    layer.Bounds.xMin >= -0.01f
+                    && layer.Bounds.yMin >= -0.01f
+                    && layer.Bounds.xMax <= 1.01f
+                    && layer.Bounds.yMax <= 1.01f
+                ),
+                Is.True
+            );
+            CollectionAssert.IsSubsetOf(
+                new[] { "Portrait", "Injured", "Captured" },
+                requested.Value.Layers.Select(layer => layer.Name)
+            );
+        }
+
+        [Test]
+        public void Render_OfficerCustomLayerOrder_ShowsInjuryAboveCapture()
+        {
+            ContentPackEditorRecord unit = GetArtworkUnit("Officer");
+            project.SetFieldValues(
+                unit.GetField("ArtworkLayerOrder"),
+                new[] { "Entity", "Travel", "Captured", "Damage" }
+            );
+            SelectRecord(unit);
+            RenderSection("Artwork");
+
+            const string prefix = "ArticleImageTemplate-State-In-transit-+-injured-+-captured-";
+            RawImage[] images = view.GetComponentsInChildren<RawImage>();
+            RawImage injury = images.Single(image => image.name == prefix + "Overlay-0");
+            RawImage capture = images.Single(image => image.name == prefix + "Overlay-1");
+            Assert.Greater(injury.transform.GetSiblingIndex(), capture.transform.GetSiblingIndex());
+        }
+
         [Test]
         public void Render_UnitArtworkWithStates_ShowsCombinedTravelAndDamageLayers()
         {
@@ -3984,8 +4158,8 @@ namespace Rebellion.Tests.ContentEditor.UI
                     transit.transform.GetSiblingIndex()
                 );
                 Assert.Less(
-                    transit.transform.GetSiblingIndex(),
-                    entity.transform.GetSiblingIndex()
+                    entity.transform.GetSiblingIndex(),
+                    transit.transform.GetSiblingIndex()
                 );
             }
             else
@@ -4012,7 +4186,7 @@ namespace Rebellion.Tests.ContentEditor.UI
         [TestCase("In-transit", false)]
         [TestCase("In-transit-+-injured-+-captured", true)]
         [TestCase("In-transit-+-injured-+-captured", false)]
-        public void Render_OfficerCompactTravelFallback_FitsSquareArtworkBehindThePortrait(
+        public void Render_OfficerCompactTravelFallback_FitsSquareArtworkInTheTravelLayer(
             string state,
             bool showBackground
         )
@@ -4045,7 +4219,7 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(frameBounds.height, transitBounds.height);
             Assert.That(transitBounds.center.x, Is.EqualTo(frameBounds.center.x).Within(0.5f));
             Assert.That(transitBounds.center.y, Is.EqualTo(frameBounds.center.y).Within(0.5f));
-            Assert.Less(transit.transform.GetSiblingIndex(), entity.transform.GetSiblingIndex());
+            Assert.Greater(transit.transform.GetSiblingIndex(), entity.transform.GetSiblingIndex());
             if (showBackground)
             {
                 RawImage background = images.Single(image => image.name == prefix + "Background");

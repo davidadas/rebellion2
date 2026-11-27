@@ -208,6 +208,28 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Fleet
         }
 
         [Test]
+        public void Build_SelectedExpandedShip_UsesItsArtworkOrderInHeaderAndRow()
+        {
+            _capitalShip.ArtworkLayerOrder = new List<GameplayArtworkLayer>
+            {
+                GameplayArtworkLayer.Damage,
+                GameplayArtworkLayer.Travel,
+                GameplayArtworkLayer.Entity,
+                GameplayArtworkLayer.Captured,
+            };
+            Assert.IsTrue(_session.ToggleFleetExpanded(0));
+            Assert.IsTrue(_session.SelectFleetListItem(_capitalShip));
+
+            FleetWindowRenderData data = _projector.Build(_session, _window, true);
+
+            CollectionAssert.AreEqual(_capitalShip.ArtworkLayerOrder, data.BannerArtworkLayerOrder);
+            CollectionAssert.AreEqual(
+                _capitalShip.ArtworkLayerOrder,
+                data.FleetRows.Single(row => row.IsCapitalShip).ArtworkLayerOrder
+            );
+        }
+
+        [Test]
         public void Build_SelectedExpandedShip_UsesShipHeaderArtworkAndContents()
         {
             Assert.IsTrue(_session.ToggleFleetExpanded(0));

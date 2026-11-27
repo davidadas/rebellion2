@@ -337,13 +337,18 @@ public sealed class ContentEditorFieldView : MonoBehaviour
         previewButton.gameObject.SetActive(edit != null);
         importButton.gameObject.SetActive(true);
         bool background = field.MemberName == "BackgroundImagePath";
+        string artwork =
+            ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(field) != null ? "effect"
+            : field.Record.Kind == "Officer" && ContentEditorUnitArtworkLayout.IsCutSource(field)
+                ? "portrait"
+            : "image";
         importButton.GetComponentInChildren<TextMeshProUGUI>().text = background
             ? string.IsNullOrWhiteSpace(field.Value)
                 ? "Override background..."
                 : "Change background..."
             : string.IsNullOrWhiteSpace(field.Value)
-                ? "Choose image..."
-                : "Change image...";
+                ? $"Choose {artwork}..."
+                : $"Change {artwork}...";
         RectTransform import = (RectTransform)importButton.transform;
         import.anchorMin = import.anchorMax = import.pivot = new Vector2(0, 1);
         import.anchoredPosition = new Vector2(0, -4);

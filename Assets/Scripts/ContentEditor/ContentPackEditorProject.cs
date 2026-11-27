@@ -238,6 +238,42 @@ public sealed class ContentPackEditorProject : IDisposable
     }
 
     /// <summary>
+    /// Shares one selected status image across every officer as one reversible document edit.
+    /// </summary>
+    /// <param name="source">The officer status image selected by the author.</param>
+    /// <returns>The number of officer definitions receiving this image.</returns>
+    public int ApplyOfficerStatusArtwork(ContentPackEditorField source)
+    {
+        RequireOwnedRecord(source.Record);
+        string artwork = ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(source);
+        if (artwork == null)
+            throw new ArgumentException("Choose an officer status image.", nameof(source));
+        if (string.IsNullOrWhiteSpace(source.Value))
+            throw new ArgumentException("Choose an image first.", nameof(source));
+
+        string address = source.GetMediaAddress(source.Value);
+        ContentPackEditorField[] targets = GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .Where(record => record.Kind == "Officer")
+            .Select(record => record.GetField(source.MemberName))
+            .ToArray();
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        foreach (ContentPackEditorField target in targets)
+            ValidateFieldValues(target, new[] { address }, resolver, null, null);
+        using (BeginEdit($"Apply {artwork} artwork to all officers"))
+            foreach (ContentPackEditorField target in targets)
+            {
+                target.SetValue(address);
+                LinkRulesOverride(target.Document);
+            }
+        return targets.Length;
+    }
+
+    /// <summary>
     /// Applies a scheme field edit while preserving existing link choices.
     /// </summary>
     /// <param name="field">The validated color or link field.</param>

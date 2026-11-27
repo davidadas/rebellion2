@@ -55,8 +55,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.OpenRequested += ChooseOpenPack;
         view.BrowseFolderRequested += BrowsePackFolder;
         view.ImportRequested += ImportMedia;
+        view.OfficerStatusArtworkRequested += ApplyOfficerStatusArtwork;
         view.ArtworkCutsRequested += PreviewArtworkCuts;
         view.ArtworkEffectRequested += PreviewArtworkEffect;
+        view.GameplayArtworkRequested += PreviewGameplayArtwork;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
         packageStore = new ModPackageStore(contentRootPath, new ThunderstoreClient());
@@ -242,8 +244,10 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.OpenRequested -= ChooseOpenPack;
             view.BrowseFolderRequested -= BrowsePackFolder;
             view.ImportRequested -= ImportMedia;
+            view.OfficerStatusArtworkRequested -= ApplyOfficerStatusArtwork;
             view.ArtworkCutsRequested -= PreviewArtworkCuts;
             view.ArtworkEffectRequested -= PreviewArtworkEffect;
+            view.GameplayArtworkRequested -= PreviewGameplayArtwork;
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
             view.ModManagerRequested -= ShowModManager;
@@ -529,6 +533,38 @@ public sealed class ContentPackEditorController : MonoBehaviour
             string folder = ContentEditorFileDialog.OpenFolder(initial);
             if (!string.IsNullOrEmpty(folder))
                 view.SetPackLocation(folder);
+        });
+    }
+
+    /// <summary>
+    /// Confirms an explicit request to share one officer status image across every faction.
+    /// </summary>
+    /// <param name="field">The selected status image whose assignments will be shared.</param>
+    private void ApplyOfficerStatusArtwork(ContentPackEditorField field)
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            project.RequireOwnedRecord(field.Record);
+            int count = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Count(record => record.Kind == "Officer");
+            view.ConfirmOfficerStatusArtwork(
+                field,
+                count,
+                () =>
+                    RunOperation(() =>
+                    {
+                        int changed = project.ApplyOfficerStatusArtwork(field);
+                        OpenProject(project);
+                        view.RenderStatus(
+                            $"Artwork applied to {changed} officers. Undo restores their previous images.",
+                            false
+                        );
+                    })
+            );
         });
     }
 
@@ -961,6 +997,34 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 return new ContentEditorTravelPattern(image, path);
         }
         return default;
+    }
+
+    /// <summary>
+    /// Reuses the existing artwork workspace to edit a unit's combined layer order.
+    /// </summary>
+    /// <param name="record">The unit being edited.</param>
+    /// <param name="frame">The linked gameplay images with their current placement.</param>
+    private void PreviewGameplayArtwork(
+        ContentPackEditorRecord record,
+        ArtworkEffectPreviewFrame frame
+    )
+    {
+        RunOperation(() =>
+        {
+            var editor = new ContentEditorGameplayArtworkEditor(
+                view,
+                project,
+                record,
+                frame,
+                () =>
+                {
+                    ContentPackEditorStorage.Save(project);
+                    workspace.RenderProject(project, assets);
+                },
+                RunOperation
+            );
+            editor.Show();
+        });
     }
 
     /// <summary>

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.Linq;
 using System.Xml.Linq;
 using Rebellion.Game;
+using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 using Rebellion.Util.Serialization;
 using TMPro;
@@ -183,7 +184,9 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     private readonly List<CollectionEditorView> setupCollections = new();
     private readonly List<Button> setupUnitButtons = new();
     private readonly Dictionary<string, Button> illustrationReuseButtons = new();
+    private readonly Dictionary<string, Button> officerStatusApplyButtons = new();
     private Button artworkCutsButton;
+    private Button gameplayLayersButton;
     private UICheckboxView illustrationBackgroundToggle;
     private readonly Dictionary<string, int> setupTasks = new();
     private readonly Dictionary<string, int> setupEntries = new();
@@ -208,6 +211,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     public event Action<ContentPackEditorField> RemoveMessageRequested;
     public event Action<IReadOnlyList<ContentPackEditorField>> ClearFieldsRequested;
     public event Action<ContentPackEditorField> ImportRequested;
+    internal event Action<ContentPackEditorField> OfficerStatusArtworkRequested;
     public event Action<
         ContentPackEditorField,
         IReadOnlyList<ContentPackEditorField>
@@ -217,6 +221,10 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
         ContentEditorArtworkEffect,
         bool
     > ArtworkEffectRequested;
+    internal event Action<
+        ContentPackEditorRecord,
+        ArtworkEffectPreviewFrame
+    > GameplayArtworkRequested;
     public event Action<ContentPackEditorField, string, Vector2Int?> PreviewRequested;
     public event Action<ContentPackEditorField> AssetEditRequested;
     public event Action<string> SectionRequested;
@@ -1217,6 +1225,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// <returns>Whether the field belongs in the active inspector tab.</returns>
     private bool IsInCurrentSection(ContentPackEditorField field)
     {
+        if (field.MemberName == nameof(BaseGameEntity.ArtworkLayerOrder))
+            return false;
         if (field.Record.Kind == "ContentPack" && field.Group == "Preloads")
             return false;
         if (selectedRecord.Kind == "PlanetSector" && field.Group == "Planets")
@@ -2259,6 +2269,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                     false
                 )
             );
+        if (captured != null)
+            states.Add(("Captured", new[] { captured }, captured, false));
         if (damage != null && (transit != null || officer))
             states.Add(
                 (
@@ -2270,8 +2282,8 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                     true
                 )
             );
-        if (captured != null)
-            states.Add(("Captured", new[] { captured }, captured, false));
+        if (damage == null && transit != null)
+            states.Add(("Combined", new[] { transit }, null, true));
 
         Texture2D baseTexture = ResolveArtworkTexture(baseField);
         var gameplayBackground = showStateArtworkBackground
@@ -2342,6 +2354,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 else if (regiment)
                     stateBackground = defenseTravel;
             }
+            int firstStateImage = imageIndex;
             PlaceArtworkComposition(
                 "State-" + caption.Replace(' ', '-'),
                 Mathf.RoundToInt(x),
@@ -2368,7 +2381,50 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                 && overlays.Length == 0
             )
                 PlaceArtworkPlaceholder("Empty image slot", labelIndex++, x, imageY, size.x);
+            var overlayRoles = layers
+                .Where(field =>
+                    (!officerTransit || field != transit) && ResolveArtworkTexture(field) != null
+                )
+                .Select(field =>
+                    field == captured ? GameplayArtworkLayer.Captured
+                    : field == damage ? GameplayArtworkLayer.Damage
+                    : GameplayArtworkLayer.Travel
+                )
+                .Where((_, index) => index < overlays.Length)
+                .ToArray();
+            ArtworkEffectPreviewFrame combined = CreateGameplayArtworkFrame(
+                firstStateImage,
+                imageIndex,
+                size,
+                dimensions,
+                overlayRoles
+            );
             int cardHeight = labelHeight + 4 + size.y;
+            if (action == null && layers.Length > 0)
+            {
+                gameplayLayersButton ??= Instantiate(
+                    setupUnitsTemplate,
+                    fieldScroll.ScrollArea.ContentRoot
+                );
+                gameplayLayersButton.name = "EditCombinedLayers";
+                gameplayLayersButton.GetComponentInChildren<TMP_Text>().text = "Edit layers";
+                gameplayLayersButton.onClick.RemoveAllListeners();
+                ContentPackEditorRecord record = selectedRecord;
+                gameplayLayersButton.onClick.AddListener(() =>
+                {
+                    if (Commit())
+                        GameplayArtworkRequested?.Invoke(record, combined);
+                });
+                SetFormRect(
+                    (RectTransform)gameplayLayersButton.transform,
+                    x,
+                    imageY + size.y + 8,
+                    Mathf.Min(size.x, 150),
+                    32
+                );
+                gameplayLayersButton.gameObject.SetActive(true);
+                cardHeight += 44;
+            }
             if (action != null)
             {
                 bool canEditEffect = ContentEditorArtworkEffectGenerator.TryGetStyle(
@@ -2405,11 +2461,124 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                         editArtwork: edit,
                         hasEffectArtwork: hasStateArtwork
                     );
+                if (ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(action) != null)
+                {
+                    if (!officerStatusApplyButtons.TryGetValue(action.MemberName, out Button apply))
+                    {
+                        apply = Instantiate(setupUnitsTemplate, fieldScroll.ScrollArea.ContentRoot);
+                        officerStatusApplyButtons.Add(action.MemberName, apply);
+                        apply.name = "ApplyOfficerArtwork-" + action.MemberName;
+                        apply.GetComponentInChildren<TMP_Text>().text = "Apply to all";
+                    }
+                    apply.onClick.RemoveAllListeners();
+                    apply.onClick.AddListener(() =>
+                    {
+                        if (Commit())
+                            OfficerStatusArtworkRequested?.Invoke(action);
+                    });
+                    apply.interactable = ResolveArtworkTexture(action) != null;
+                    TMP_Text applyLabel = apply.GetComponentInChildren<TMP_Text>();
+                    int applyWidth = Mathf.CeilToInt(applyLabel.preferredWidth) + 16;
+                    const int importWidth = 120;
+                    const int actionGap = 6;
+                    bool inline = size.x >= importWidth + actionGap + applyWidth;
+                    SetFormRect(
+                        (RectTransform)apply.transform,
+                        inline ? x + importWidth + actionGap : x,
+                        inline ? imageY + size.y + 8 : y + cardHeight + 4,
+                        inline ? applyWidth : size.x,
+                        32
+                    );
+                    apply.gameObject.SetActive(true);
+                    if (!inline)
+                        cardHeight += 40;
+                }
             }
             rowHeight = Mathf.Max(rowHeight, cardHeight);
             x += size.x + gap;
         }
         return y + rowHeight + 8;
+    }
+
+    /// <summary>
+    /// Captures the actual card bounds and source crops for the shared layer workspace.
+    /// </summary>
+    /// <param name="first">The first image belonging to this card.</param>
+    /// <param name="end">The first image after this card.</param>
+    /// <param name="size">The displayed card size.</param>
+    /// <param name="target">The gameplay output size.</param>
+    /// <param name="overlayRoles">The identities of the separately drawn status overlays.</param>
+    /// <returns>The linked composition in the unit's drawing order.</returns>
+    private ArtworkEffectPreviewFrame CreateGameplayArtworkFrame(
+        int first,
+        int end,
+        Vector2Int size,
+        Vector2Int target,
+        IReadOnlyList<GameplayArtworkLayer> overlayRoles
+    )
+    {
+        var parts = new Dictionary<GameplayArtworkLayer, RawImage>();
+        RectInt origin = UILayout.GetSourceRect(articleImages[first].rectTransform);
+        RawImage background = null;
+        for (int index = first; index < end; index++)
+        {
+            RawImage image = articleImages[index];
+            if (image.name.EndsWith("-Background", StringComparison.Ordinal))
+                background = image;
+            else if (image.name.EndsWith("-Entity", StringComparison.Ordinal))
+                parts[GameplayArtworkLayer.Entity] = image;
+            else if (image.name.EndsWith("-Transit", StringComparison.Ordinal))
+                parts[GameplayArtworkLayer.Travel] = image;
+            else
+                for (int overlay = 0; overlay < overlayRoles.Count; overlay++)
+                    if (image.name.EndsWith("-Overlay-" + overlay, StringComparison.Ordinal))
+                        parts[overlayRoles[overlay]] = image;
+        }
+        var layers = new List<ArtworkEffectLayerPreview>();
+        foreach (
+            GameplayArtworkLayer layer in ContentEditorGameplayArtworkEditor.ReadOrder(
+                selectedRecord
+            )
+        )
+        {
+            if (!parts.TryGetValue(layer, out RawImage image))
+                continue;
+            image.transform.SetAsLastSibling();
+            RectInt bounds = UILayout.GetSourceRect(image.rectTransform);
+            string label = layer switch
+            {
+                GameplayArtworkLayer.Entity => selectedRecord.Kind == "Officer"
+                    ? "Portrait"
+                    : "Unit",
+                GameplayArtworkLayer.Travel => "Travel",
+                GameplayArtworkLayer.Damage => selectedRecord.Kind == "Officer"
+                    ? "Injured"
+                    : "Damaged",
+                _ => "Captured",
+            };
+            layers.Add(
+                new ArtworkEffectLayerPreview(
+                    (int)layer,
+                    label,
+                    (Texture2D)image.texture,
+                    new Rect(
+                        (bounds.x - origin.x) / (float)size.x,
+                        1 - (bounds.y - origin.y + bounds.height) / (float)size.y,
+                        bounds.width / (float)size.x,
+                        bounds.height / (float)size.y
+                    ),
+                    linked: true,
+                    uv: image.uvRect
+                )
+            );
+        }
+        return new ArtworkEffectPreviewFrame(
+            "Combined",
+            (Texture2D)background?.texture,
+            layers,
+            size: target,
+            baseUv: background?.uvRect
+        );
     }
 
     /// <summary>
@@ -4830,6 +4999,16 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
     /// </summary>
     private void ClearArtworkViewControls()
     {
+        foreach (Button button in officerStatusApplyButtons.Values)
+        {
+            button.onClick.RemoveAllListeners();
+            button.gameObject.SetActive(false);
+        }
+        if (gameplayLayersButton != null)
+        {
+            gameplayLayersButton.onClick.RemoveAllListeners();
+            gameplayLayersButton.gameObject.SetActive(false);
+        }
         if (illustrationBackgroundToggle != null)
             illustrationBackgroundToggle.gameObject.SetActive(false);
         foreach (Button button in illustrationReuseButtons.Values)

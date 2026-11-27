@@ -404,6 +404,72 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.AreEqual(chosen, $"{requested.Size.Value.x} × {requested.Size.Value.y}");
         }
 
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Declined_KeepsTheImportedImageAndOtherAssignments(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            string imported = source.Value;
+            string[] assignments = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .Select(record => record.GetField(member).Value)
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                assignments.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Cancel")
+                .onClick.Invoke();
+
+            Assert.AreEqual(imported, source.Value);
+            CollectionAssert.AreEqual(
+                assignments,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .Select(record => record.GetField(member).Value)
+            );
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Accepted_AppliesTheImportedImageToAllOfficers(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            ContentPackEditorRecord[] officers = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                officers.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Apply to all")
+                .onClick.Invoke();
+
+            Assert.IsTrue(officers.All(record => record.GetField(member).Value == source.Value));
+        }
+
         [TestCase(EventModifiers.Control)]
         [TestCase(EventModifiers.Command)]
         public void HandleKeyboardShortcut_ValidatePackShortcut_RaisesValidateRequested(
@@ -907,6 +973,22 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(text => text.name == "Error")
                     .text
             );
+        }
+
+        /// <summary>
+        /// Applies a different installed image before presenting the optional all-officer action.
+        /// </summary>
+        /// <param name="member">The status slot being changed.</param>
+        /// <returns>The status field retaining its newly selected image.</returns>
+        private ContentPackEditorField ChangeOfficerStatusImage(string member)
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            ContentPackEditorField field = officer.GetField(member);
+            project.SetField(field, officer.GetField("DisplayImagePath").Value);
+            return field;
         }
 
         /// <summary>

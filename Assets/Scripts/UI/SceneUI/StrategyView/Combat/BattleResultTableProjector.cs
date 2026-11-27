@@ -263,7 +263,8 @@ internal sealed class BattleResultTableProjector
                             )
                         )
                         : null,
-                    unit.Captured ? GetTexture(uiContext, unit.CapturedOverlayImagePath) : null
+                    unit.Captured ? GetTexture(uiContext, unit.CapturedOverlayImagePath) : null,
+                    unit.ArtworkLayerOrder
                 )
             );
         }
@@ -410,7 +411,8 @@ internal sealed class BattleResultTableProjector
                 GetBaseTexture(uiContext, node),
                 GetWithdrawingOverlayTexture(uiContext, node, state),
                 GetDamagedOverlayTexture(uiContext, node, state),
-                unit.Captured ? GetTexture(uiContext, node.CapturedOverlayImagePath) : null
+                unit.Captured ? GetTexture(uiContext, node.CapturedOverlayImagePath) : null,
+                node.ArtworkLayerOrder
             )
         );
     }

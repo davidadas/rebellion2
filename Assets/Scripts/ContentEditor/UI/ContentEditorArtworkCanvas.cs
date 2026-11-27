@@ -84,6 +84,8 @@ public sealed class ContentEditorArtworkCanvas
             pan = Vector2.zero;
         }
         SetTexture(backing, frame.BaseImage);
+        backing.uvRect = frame.BaseUv;
+        backing.color = frame.BaseImage != null ? Color.white : new Color(0.035f, 0.04f, 0.05f);
         for (int i = 0; i < frame.Layers.Count; i++)
         {
             if (i == images.Count)
@@ -100,6 +102,7 @@ public sealed class ContentEditorArtworkCanvas
             RawImage view = images[i];
             view.gameObject.SetActive(layer.Texture != null && !layer.Hidden);
             SetTexture(view, layer.Texture);
+            view.uvRect = layer.Uv;
             SetBounds(view.rectTransform, layer.Bounds);
         }
         for (int i = frame.Layers.Count; i < images.Count; i++)
@@ -149,7 +152,7 @@ public sealed class ContentEditorArtworkCanvas
     [SuppressMessage("Roslynator", "RCS1213", Justification = "Invoked by Unity.")]
     private void OnRectTransformDimensionsChange()
     {
-        if (artwork != null && frame.BaseImage != null)
+        if (artwork != null && frame.Size.x > 0)
             PlaceArtwork();
     }
 
@@ -177,7 +180,7 @@ public sealed class ContentEditorArtworkCanvas
     /// <param name="eventData">The desktop scroll gesture.</param>
     public void OnScroll(PointerEventData eventData)
     {
-        if (frame.BaseImage == null || Mathf.Approximately(eventData.scrollDelta.y, 0f))
+        if (frame.Size.x <= 0 || Mathf.Approximately(eventData.scrollDelta.y, 0f))
             return;
         RectTransformUtility.ScreenPointToLocalPointInRectangle(
             Viewport,
@@ -218,7 +221,7 @@ public sealed class ContentEditorArtworkCanvas
     /// <param name="eventData">The start of a pointer drag.</param>
     public void OnBeginDrag(PointerEventData eventData)
     {
-        if (frame.BaseImage == null)
+        if (frame.Size.x <= 0)
             return;
         panning =
             eventData.button != PointerEventData.InputButton.Left || Input.GetKey(KeyCode.Space);
@@ -310,7 +313,8 @@ public sealed class ContentEditorArtworkCanvas
             var layer = frame.Layers[i];
             if (layer.Hidden || layer.Texture == null || !layer.Bounds.Contains(point))
                 continue;
-            Vector2 uv = (point - layer.Bounds.min) / layer.Bounds.size;
+            Vector2 uv =
+                layer.Uv.min + (point - layer.Bounds.min) / layer.Bounds.size * layer.Uv.size;
             if (layer.Texture.GetPixelBilinear(uv.x, uv.y).a > 1f / 255f)
                 return i;
         }

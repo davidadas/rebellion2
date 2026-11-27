@@ -19,6 +19,243 @@ namespace Rebellion.Tests.ContentEditor
     [TestFixture]
     public sealed class ContentPackEditorProjectTests : ContentPackEditorTestBase
     {
+        private static readonly string[] _officerStatusMembers =
+        {
+            "InjuredImagePath",
+            "CapturedOverlayImagePath",
+            "InTransitImagePath",
+            "InTransitSmallImagePath",
+        };
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_DifferentIndividualImages_SharesSelectedImageAcrossOfficers(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string[] before = Directory.GetFiles(
+                project.PackRootPath,
+                "*",
+                SearchOption.AllDirectories
+            );
+
+            string[] untouched = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .SelectMany(record =>
+                    _officerStatusMembers
+                        .Where(name => name != member)
+                        .Select(name => record.GetField(name).Value)
+                )
+                .ToArray();
+
+            int count = project.ApplyOfficerStatusArtwork(source);
+
+            Assert.AreEqual(3, count);
+            CollectionAssert.AreEqual(
+                untouched,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .SelectMany(record =>
+                        _officerStatusMembers
+                            .Where(name => name != member)
+                            .Select(name => record.GetField(name).Value)
+                    )
+            );
+            Assert.That(
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == source.Value),
+                Is.True
+            );
+            Assert.AreEqual(
+                "Pack/Shared/Icons/old",
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.ID == "SHIP1")
+                    .GetField("DamagedImagePath")
+                    .Value
+            );
+            CollectionAssert.AreEquivalent(
+                before,
+                Directory.GetFiles(project.PackRootPath, "*", SearchOption.AllDirectories)
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_Undo_RestoresAllPreviousAssignmentsInOneStep(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+
+            Assert.IsTrue(project.Undo());
+
+            CollectionAssert.AreEqual(
+                new[]
+                {
+                    "Pack/Shared/Icons/new",
+                    "Pack/Shared/Icons/old",
+                    "Pack/Shared/Icons/other",
+                },
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .OrderBy(record => record.ID)
+                    .Select(record => record.GetField(member).Value)
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_Redo_ReappliesAllAssignmentsInOneStep(string member)
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+            project.Undo();
+
+            Assert.IsTrue(project.Redo());
+
+            Assert.That(
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == "Pack/Shared/Icons/new"),
+                Is.True
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_RepeatedApplication_AddsNoDuplicateUndoStep(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            project.ApplyOfficerStatusArtwork(source);
+            project.ApplyOfficerStatusArtwork(source);
+            Assert.IsTrue(project.Undo());
+
+            Assert.AreEqual(
+                "Pack/Shared/Icons/old",
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Single(record => record.ID == "OFF2")
+                    .GetField(member)
+                    .Value
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_MissingImage_LeavesOtherOfficersUnchanged(
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            File.Delete(Path.Combine(contentRoot, "Packs/BasePack/Shared/Icons/new.png"));
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string before = string.Join("\n", project.Documents.Select(document => document.Text));
+
+            Assert.Throws<ArgumentException>(() => project.ApplyOfficerStatusArtwork(source));
+
+            Assert.AreEqual(
+                before,
+                string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
+        [TestCaseSource(nameof(_officerStatusMembers))]
+        public void ApplyOfficerStatusArtwork_SaveAndReopen_PreservesSharedAssignment(string member)
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == "OFF1")
+                .GetField(member);
+            string address = "Pack/Factions/Fixture/Units/Officers/OFF1/injured";
+            string image = Path.Combine(project.PackRootPath, address[5..] + ".png");
+            Directory.CreateDirectory(Path.GetDirectoryName(image));
+            File.WriteAllBytes(image, new byte[] { 1, 2, 3 });
+            project.SetField(source, address);
+            project.ApplyOfficerStatusArtwork(source);
+            ContentPackEditorStorage.Save(project);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project.PackRootPath
+            );
+
+            Assert.That(
+                reopened
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .All(record => record.GetField(member).Value == address),
+                Is.True
+            );
+            Assert.AreEqual(
+                1,
+                Directory
+                    .GetFiles(project.PackRootPath, "*.png", SearchOption.AllDirectories)
+                    .Length
+            );
+        }
+
+        [TestCase("OFF1", "DisplayImagePath")]
+        [TestCase("SHIP1", "DamagedImagePath")]
+        public void ApplyOfficerStatusArtwork_UnsupportedImage_LeavesAssignmentsUnchanged(
+            string id,
+            string member
+        )
+        {
+            using ContentPackEditorProject project = CreateOfficerStatusProject();
+            ContentPackEditorField source = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Single(record => record.ID == id)
+                .GetField(member);
+            string before = string.Join("\n", project.Documents.Select(document => document.Text));
+
+            Assert.Throws<ArgumentException>(() => project.ApplyOfficerStatusArtwork(source));
+
+            Assert.AreEqual(
+                before,
+                string.Join("\n", project.Documents.Select(document => document.Text))
+            );
+        }
+
         [Test]
         public void DiscardChanges_LaterAssetCannotBeRemoved_RollsBackEarlierRestoreAndAllowsRetry()
         {
@@ -2085,5 +2322,60 @@ namespace Rebellion.Tests.ContentEditor
                 .Single(item => item.Name == "Rules");
             return (project, catalog);
         }
+
+        /// <summary>
+        /// Creates two factions' officers with different status images and an unrelated ship.
+        /// </summary>
+        /// <returns>The isolated editable project.</returns>
+        private ContentPackEditorProject CreateOfficerStatusProject()
+        {
+            WriteFixtureFile(
+                "Factions/Fixture/officers.xml",
+                new XElement(
+                    "Officers",
+                    CreateOfficerStatusDefinition("OFF1", "new"),
+                    CreateOfficerStatusDefinition("OFF2", "old")
+                ).ToString()
+            );
+            WriteFixtureFile(
+                "Factions/Other/officers.xml",
+                new XElement("Officers", CreateOfficerStatusDefinition("OFF3", "other")).ToString()
+            );
+            WriteFixtureFile(
+                "Factions/Fixture/ships.xml",
+                "<CapitalShips><CapitalShip><TypeID>SHIP1</TypeID><DamagedImagePath>Pack/Shared/Icons/old</DamagedImagePath></CapitalShip></CapitalShips>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+            {
+                faction.OfficersPath = "Factions/Fixture/officers.xml";
+                faction.CapitalShipsPath = "Factions/Fixture/ships.xml";
+            });
+            WriteFixtureFile(
+                "Factions/Other/faction.xml",
+                "<Faction><ID>other</ID><OfficersPath>Factions/Other/officers.xml</OfficersPath></Faction>"
+            );
+            UpdateBasePackDefinition(pack => pack.FactionPaths.Add("Factions/Other/faction.xml"));
+            string folder = Path.Combine(contentRoot, "Packs/BasePack/Shared/Icons");
+            Directory.CreateDirectory(folder);
+            foreach (string name in new[] { "new", "old", "other" })
+                File.WriteAllBytes(Path.Combine(folder, name + ".png"), new byte[] { 1, 2, 3 });
+            return CreateWorkingProject();
+        }
+
+        /// <summary>
+        /// Creates one officer with all independently selectable status slots populated.
+        /// </summary>
+        /// <param name="id">The officer type identifier.</param>
+        /// <param name="image">The installed fixture image filename.</param>
+        /// <returns>The officer definition.</returns>
+        private static XElement CreateOfficerStatusDefinition(string id, string image) =>
+            new(
+                "Officer",
+                new XElement("TypeID", id),
+                _officerStatusMembers.Select(member => new XElement(
+                    member,
+                    "Pack/Shared/Icons/" + image
+                ))
+            );
     }
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -193,6 +194,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
     {
         Bind();
         bool opening = frames == null;
+        bool savedChanges = dirty && !changed;
         bool changedOutput = opening || outputIndex != initialOutput;
         outputIndex = initialOutput;
         frames = outputs;
@@ -200,7 +202,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         dirty = changed;
         actions = commands;
         confirmClose = confirm;
-        if (opening)
+        if (opening || savedChanges)
         {
             current = null;
             comparing = false;
@@ -213,6 +215,11 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         save.interactable = dirty;
         add.GetComponentInChildren<TMP_Text>().text = commands.AddLabel;
         rebuild.GetComponentInChildren<TMP_Text>().text = commands.RebuildLabel;
+        add.gameObject.SetActive(commands.Add != null);
+        duplicate.gameObject.SetActive(commands.Duplicate != null);
+        remove.gameObject.SetActive(commands.Remove != null);
+        importLayer.gameObject.SetActive(commands.Import != null);
+        rebuild.gameObject.SetActive(commands.Rebuild != null);
         varyShipWakes.gameObject.SetActive(commands.VaryShipWakes != null);
         gameObject.SetActive(true);
         Layout();
@@ -326,7 +333,7 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             selectedIndex = availableIndex;
         }
         artworkCanvas.Show(shown, selectedIndex, !comparing, resetView);
-        RenderLayers(selected);
+        RenderLayers(shown);
         UpdateInspector();
     }
 
@@ -390,8 +397,16 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
         );
         bool canEdit = !comparing && selectedLayer.HasValue;
         bool canEditPixels = canEdit && !selectedLayer.Value.Linked;
+        bool showPosition = actions.Move != null;
+        positionCaption.gameObject.SetActive(showPosition);
+        scope.gameObject.SetActive(showPosition);
+        xCaption.gameObject.SetActive(showPosition);
+        yCaption.gameObject.SetActive(showPosition);
+        xInput.gameObject.SetActive(showPosition);
+        yInput.gameObject.SetActive(showPosition);
         xInput.interactable = yInput.interactable = canEditPixels;
-        duplicate.interactable = remove.interactable = canEditPixels;
+        duplicate.interactable = canEditPixels && actions.Duplicate != null;
+        remove.interactable = canEditPixels && actions.Remove != null;
         forward.interactable = canEdit && GetReorderTarget(1) >= 0;
         backward.interactable = canEdit && GetReorderTarget(-1) >= 0;
         add.interactable = rebuild.interactable = varyShipWakes.interactable = !comparing;
@@ -583,14 +598,22 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             Mathf.Max(51, layerCount * 51),
             Mathf.Max(51, Mathf.Min(narrow ? 154 : 260, sideHeight - footer - 56))
         );
-        Place(layerCaption.transform, 16, 9, sideWidth - 246, 32);
+        Place(
+            layerCaption.transform,
+            16,
+            9,
+            actions.Add == null && actions.Import == null ? sideWidth - 32 : sideWidth - 246,
+            32
+        );
         Place(add.transform, sideWidth - 224, 9, 108, 32);
         Place(importLayer.transform, sideWidth - 110, 9, 94, 32);
         Place(layerScroll.transform, 16, 50, sideWidth - 32, listHeight);
         float controlsY = 56 + listHeight;
         Place(layerActions, 0, controlsY, sideWidth, 37);
-        float actionWidth = (sideWidth - 48) / 4f;
-        var layerButtons = new[] { duplicate, remove, forward, backward };
+        var layerButtons = new[] { duplicate, remove, forward, backward }
+            .Where(button => button.gameObject.activeSelf)
+            .ToArray();
+        float actionWidth = (sideWidth - 32 - (layerButtons.Length - 1) * 5) / layerButtons.Length;
         for (int i = 0; i < layerButtons.Length; i++)
             Place(layerButtons[i].transform, 16 + i * (actionWidth + 5), 0, actionWidth, 32);
         float positionY = controlsY + 48;

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.SceneGraph;
 using UnityEngine;
 
 /// <summary>
@@ -208,6 +209,8 @@ internal sealed class BattleResultItemRenderData
 
     public Texture2D CapturedOverlayTexture { get; }
 
+    public IReadOnlyList<GameplayArtworkLayer> ArtworkLayerOrder { get; }
+
     /// <summary>
     /// Creates presentation data for one completed battle-result item.
     /// </summary>
@@ -216,12 +219,14 @@ internal sealed class BattleResultItemRenderData
     /// <param name="withdrawingOverlayTexture">The optional withdrawal overlay.</param>
     /// <param name="damagedOverlayTexture">The optional damage overlay.</param>
     /// <param name="capturedOverlayTexture">The optional captured-personnel overlay.</param>
+    /// <param name="artworkLayerOrder">The optional unit artwork drawing order.</param>
     public BattleResultItemRenderData(
         string text,
         Texture2D baseTexture,
         Texture2D withdrawingOverlayTexture = null,
         Texture2D damagedOverlayTexture = null,
-        Texture2D capturedOverlayTexture = null
+        Texture2D capturedOverlayTexture = null,
+        IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder = null
     )
     {
         Text = text ?? string.Empty;
@@ -229,6 +234,7 @@ internal sealed class BattleResultItemRenderData
         WithdrawingOverlayTexture = withdrawingOverlayTexture;
         DamagedOverlayTexture = damagedOverlayTexture;
         CapturedOverlayTexture = capturedOverlayTexture;
+        ArtworkLayerOrder = artworkLayerOrder;
     }
 }
 
