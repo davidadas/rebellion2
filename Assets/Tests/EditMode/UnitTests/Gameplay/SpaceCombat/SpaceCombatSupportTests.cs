@@ -8,7 +8,7 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class SpaceCombatSupportTests
     {
-        private static readonly SpaceCombatSupportSideConfig _firstWeights = Weights(
+        private static readonly GameConfig.SpaceCombatSupportSideConfig _firstWeights = Weights(
             100,
             100,
             100,
@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Gameplay
             1000,
             17
         );
-        private static readonly SpaceCombatSupportSideConfig _secondWeights = Weights(
+        private static readonly GameConfig.SpaceCombatSupportSideConfig _secondWeights = Weights(
             80,
             40,
             60,
@@ -430,8 +430,8 @@ namespace Rebellion.Tests.Gameplay
             int firstLoss,
             int secondLoss,
             int survivingSide,
-            SpaceCombatSupportSideConfig firstWeights,
-            SpaceCombatSupportSideConfig secondWeights,
+            GameConfig.SpaceCombatSupportSideConfig firstWeights,
+            GameConfig.SpaceCombatSupportSideConfig secondWeights,
             int divisor = 1
         )
         {
@@ -460,7 +460,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="magnitudeCap">The maximum support adjustment for the side.</param>
         /// <param name="supportThreshold">The upper planetary support threshold for selecting recipients.</param>
         /// <returns>The requested force-order weights and bounds.</returns>
-        private static SpaceCombatSupportSideConfig Weights(
+        private static GameConfig.SpaceCombatSupportSideConfig Weights(
             int leadingFlat,
             int leadingGapScale,
             int trailingFlat,
@@ -485,7 +485,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="cap">The beneficiary's signed upper magnitude bound.</param>
         /// <param name="threshold">The comparison side's support threshold.</param>
         /// <returns>The side's fixed support weights.</returns>
-        private static SpaceCombatSupportSideConfig FlatWeights(
+        private static GameConfig.SpaceCombatSupportSideConfig FlatWeights(
             int weight,
             int cap = int.MaxValue,
             uint threshold = 0

@@ -49,8 +49,30 @@ namespace Rebellion.Tests.Game.Combat
             CombatUnit combatant = CombatUnit.Create(fighter);
 
             Assert.AreEqual("fighter", combatant.SourceUnitInstanceID);
-            Assert.AreEqual("carrier", combatant.CarrierSourceUnitInstanceID);
+            Assert.AreEqual("carrier", combatant.CarrierID);
             Assert.IsNull(combatant.Unit.ParentNode);
+        }
+
+        [TestCase(null)]
+        [TestCase("alternate-carrier")]
+        public void Deserialize_LegacyCampaignCarrier_PreservesCurrentAssignment(string carrierID)
+        {
+            CombatUnit combatant = CombatUnit.Create(new Starfighter { InstanceID = "fighter" });
+            combatant.CarrierID = carrierID;
+            string xml = SerializationHelper
+                .Serialize(combatant)
+                .Replace(
+                    "</CombatUnit>",
+                    "<CarrierSourceUnitInstanceID>campaign-carrier</CarrierSourceUnitInstanceID></CombatUnit>"
+                );
+
+            CombatUnit loaded = SerializationHelper.Deserialize<CombatUnit>(xml);
+
+            Assert.AreEqual(carrierID, loaded.CarrierID);
+            StringAssert.DoesNotContain(
+                "CarrierSourceUnitInstanceID",
+                SerializationHelper.Serialize(loaded)
+            );
         }
 
         [Test]

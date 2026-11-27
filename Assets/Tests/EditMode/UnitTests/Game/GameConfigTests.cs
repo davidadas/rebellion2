@@ -9,33 +9,37 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameConfigTests
     {
-        [TestCase(SpaceCombatSupportContext.FirstFactionEasy, 400, 200)]
-        [TestCase(SpaceCombatSupportContext.FirstFactionMedium, 400, 150)]
-        [TestCase(SpaceCombatSupportContext.FirstFactionHard, 400, 100)]
-        [TestCase(SpaceCombatSupportContext.SecondFactionEasy, 200, 400)]
-        [TestCase(SpaceCombatSupportContext.SecondFactionMedium, 150, 400)]
-        [TestCase(SpaceCombatSupportContext.SecondFactionHard, 100, 400)]
-        [TestCase(SpaceCombatSupportContext.Multiplayer, 400, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionEasy, 400, 200)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionMedium, 400, 150)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionHard, 400, 100)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionEasy, 200, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionMedium, 150, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionHard, 100, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.Multiplayer, 400, 400)]
         [Category("RequiresMedia")]
         public void BattleSupport_AuthoredContext_RetainsCompleteSideParameters(
-            SpaceCombatSupportContext context,
+            GameConfig.SpaceCombatSupportContext context,
             int firstGapScale,
             int secondGapScale
         )
         {
-            SpaceCombatSupportConfig config = TestContent
+            GameConfig.SpaceCombatSupportConfig config = TestContent
                 .Data
                 .GameConfig
                 .SupportShift
                 .BattleSupport;
-            SpaceCombatSupportProfile profile = config.Profiles[context];
+            GameConfig.SpaceCombatSupportProfile profile = config.Profiles[context];
 
             Assert.AreEqual(7, config.Profiles.Count);
             Assert.AreEqual(10, profile.Divisor);
             Assert.AreEqual(firstGapScale, profile.FirstSide.LeadingGapScale);
             Assert.AreEqual(secondGapScale, profile.SecondSide.LeadingGapScale);
             foreach (
-                SpaceCombatSupportSideConfig side in new[] { profile.FirstSide, profile.SecondSide }
+                GameConfig.SpaceCombatSupportSideConfig side in new[]
+                {
+                    profile.FirstSide,
+                    profile.SecondSide,
+                }
             )
             {
                 Assert.AreEqual(100, side.LeadingFlat);
@@ -50,14 +54,18 @@ namespace Rebellion.Tests.Game
         public void CreateCopy_EditingBattleSupportProfile_DoesNotChangeSource()
         {
             GameConfig source = TestConfig.Create();
-            source.SupportShift.BattleSupport = new SpaceCombatSupportConfig
+            source.SupportShift.BattleSupport = new GameConfig.SpaceCombatSupportConfig
             {
                 Profiles =
                 {
-                    [SpaceCombatSupportContext.FirstFactionEasy] = new SpaceCombatSupportProfile
-                    {
-                        FirstSide = new SpaceCombatSupportSideConfig { LeadingGapScale = 100 },
-                    },
+                    [GameConfig.SpaceCombatSupportContext.FirstFactionEasy] =
+                        new GameConfig.SpaceCombatSupportProfile
+                        {
+                            FirstSide = new GameConfig.SpaceCombatSupportSideConfig
+                            {
+                                LeadingGapScale = 100,
+                            },
+                        },
                 },
             };
             string before = SerializationHelper.Serialize(source);
@@ -65,7 +73,7 @@ namespace Rebellion.Tests.Game
             GameConfig copy = source.CreateCopy();
             copy.SupportShift
                 .BattleSupport
-                .Profiles[SpaceCombatSupportContext.FirstFactionEasy]
+                .Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
                 .FirstSide
                 .LeadingGapScale = 999;
 

@@ -21,10 +21,10 @@ namespace Rebellion.Gameplay
         /// <param name="factions">The campaign factions in authored tactical order.</param>
         /// <returns>True when the exact saved context has a complete profile.</returns>
         internal static bool TryResolveProfile(
-            this SpaceCombatSupportConfig config,
+            this GameConfig.SpaceCombatSupportConfig config,
             GameRoot game,
             TacticalCombatDefinition tacticalCombat,
-            out SpaceCombatSupportProfile profile,
+            out GameConfig.SpaceCombatSupportProfile profile,
             out (Faction First, Faction Second) factions
         )
         {
@@ -48,15 +48,15 @@ namespace Rebellion.Gameplay
             if (first == null || second == null)
                 return false;
 
-            SpaceCombatSupportContext? context = game.Metadata.IsMultiplayer
-                ? SpaceCombatSupportContext.Multiplayer
+            GameConfig.SpaceCombatSupportContext? context = game.Metadata.IsMultiplayer
+                ? GameConfig.SpaceCombatSupportContext.Multiplayer
                 : ResolveSinglePlayerContext(game.Summary, firstFactionID, secondFactionID);
             if (
                 !context.HasValue
                 || config?.Profiles == null
                 || !config.Profiles.TryGetValue(
                     context.Value,
-                    out SpaceCombatSupportProfile selected
+                    out GameConfig.SpaceCombatSupportProfile selected
                 )
                 || selected?.HasAllValues() != true
             )
@@ -109,7 +109,7 @@ namespace Rebellion.Gameplay
         /// <param name="firstFactionID">The faction bound to tactical index zero.</param>
         /// <param name="secondFactionID">The faction bound to tactical index one.</param>
         /// <returns>The exact setup context, or null for an unsupported faction or difficulty.</returns>
-        private static SpaceCombatSupportContext? ResolveSinglePlayerContext(
+        private static GameConfig.SpaceCombatSupportContext? ResolveSinglePlayerContext(
             GameSummary summary,
             string firstFactionID,
             string secondFactionID
@@ -118,17 +118,21 @@ namespace Rebellion.Gameplay
             if (summary.PlayerFactionID == firstFactionID)
                 return summary.Difficulty switch
                 {
-                    GameDifficulty.Easy => SpaceCombatSupportContext.FirstFactionEasy,
-                    GameDifficulty.Medium => SpaceCombatSupportContext.FirstFactionMedium,
-                    GameDifficulty.Hard => SpaceCombatSupportContext.FirstFactionHard,
+                    GameDifficulty.Easy => GameConfig.SpaceCombatSupportContext.FirstFactionEasy,
+                    GameDifficulty.Medium => GameConfig
+                        .SpaceCombatSupportContext
+                        .FirstFactionMedium,
+                    GameDifficulty.Hard => GameConfig.SpaceCombatSupportContext.FirstFactionHard,
                     _ => null,
                 };
             if (summary.PlayerFactionID == secondFactionID)
                 return summary.Difficulty switch
                 {
-                    GameDifficulty.Easy => SpaceCombatSupportContext.SecondFactionEasy,
-                    GameDifficulty.Medium => SpaceCombatSupportContext.SecondFactionMedium,
-                    GameDifficulty.Hard => SpaceCombatSupportContext.SecondFactionHard,
+                    GameDifficulty.Easy => GameConfig.SpaceCombatSupportContext.SecondFactionEasy,
+                    GameDifficulty.Medium => GameConfig
+                        .SpaceCombatSupportContext
+                        .SecondFactionMedium,
+                    GameDifficulty.Hard => GameConfig.SpaceCombatSupportContext.SecondFactionHard,
                     _ => null,
                 };
             return null;
@@ -153,8 +157,8 @@ namespace Rebellion.Gameplay
             int firstSideLoss,
             int secondSideLoss,
             int survivingSide,
-            SpaceCombatSupportSideConfig firstSideWeights,
-            SpaceCombatSupportSideConfig secondSideWeights,
+            GameConfig.SpaceCombatSupportSideConfig firstSideWeights,
+            GameConfig.SpaceCombatSupportSideConfig secondSideWeights,
             int divisor,
             out Adjustment adjustment
         )
@@ -169,10 +173,10 @@ namespace Rebellion.Gameplay
             int trailingTotal = firstSideLeads ? secondSideTotal : firstSideTotal;
             int leadingLoss = firstSideLeads ? firstSideLoss : secondSideLoss;
             int trailingLoss = firstSideLeads ? secondSideLoss : firstSideLoss;
-            SpaceCombatSupportSideConfig leadingWeights = firstSideLeads
+            GameConfig.SpaceCombatSupportSideConfig leadingWeights = firstSideLeads
                 ? firstSideWeights
                 : secondSideWeights;
-            SpaceCombatSupportSideConfig trailingWeights = firstSideLeads
+            GameConfig.SpaceCombatSupportSideConfig trailingWeights = firstSideLeads
                 ? secondSideWeights
                 : firstSideWeights;
 
@@ -206,10 +210,10 @@ namespace Rebellion.Gameplay
                 beneficiarySide = 3 - beneficiarySide;
             }
 
-            SpaceCombatSupportSideConfig beneficiaryWeights =
+            GameConfig.SpaceCombatSupportSideConfig beneficiaryWeights =
                 beneficiarySide == 1 ? firstSideWeights : secondSideWeights;
             int comparisonSide = 3 - beneficiarySide;
-            SpaceCombatSupportSideConfig comparisonWeights =
+            GameConfig.SpaceCombatSupportSideConfig comparisonWeights =
                 comparisonSide == 1 ? firstSideWeights : secondSideWeights;
             adjustment = new Adjustment(
                 beneficiarySide,

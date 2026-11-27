@@ -11,20 +11,44 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public sealed class SpaceCombatSupportConfigTests
     {
-        [TestCase("first", GameDifficulty.Easy, SpaceCombatSupportContext.FirstFactionEasy)]
-        [TestCase("first", GameDifficulty.Medium, SpaceCombatSupportContext.FirstFactionMedium)]
-        [TestCase("first", GameDifficulty.Hard, SpaceCombatSupportContext.FirstFactionHard)]
-        [TestCase("second", GameDifficulty.Easy, SpaceCombatSupportContext.SecondFactionEasy)]
-        [TestCase("second", GameDifficulty.Medium, SpaceCombatSupportContext.SecondFactionMedium)]
-        [TestCase("second", GameDifficulty.Hard, SpaceCombatSupportContext.SecondFactionHard)]
+        [TestCase(
+            "first",
+            GameDifficulty.Easy,
+            GameConfig.SpaceCombatSupportContext.FirstFactionEasy
+        )]
+        [TestCase(
+            "first",
+            GameDifficulty.Medium,
+            GameConfig.SpaceCombatSupportContext.FirstFactionMedium
+        )]
+        [TestCase(
+            "first",
+            GameDifficulty.Hard,
+            GameConfig.SpaceCombatSupportContext.FirstFactionHard
+        )]
+        [TestCase(
+            "second",
+            GameDifficulty.Easy,
+            GameConfig.SpaceCombatSupportContext.SecondFactionEasy
+        )]
+        [TestCase(
+            "second",
+            GameDifficulty.Medium,
+            GameConfig.SpaceCombatSupportContext.SecondFactionMedium
+        )]
+        [TestCase(
+            "second",
+            GameDifficulty.Hard,
+            GameConfig.SpaceCombatSupportContext.SecondFactionHard
+        )]
         public void TryResolveProfile_SavedLaunchSetup_SelectsExactContext(
             string launchFaction,
             GameDifficulty difficulty,
-            SpaceCombatSupportContext expected
+            GameConfig.SpaceCombatSupportContext expected
         )
         {
             GameRoot game = CreateGame(launchFaction, difficulty);
-            SpaceCombatSupportConfig config = CreateConfig();
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
                 config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
@@ -39,12 +63,15 @@ namespace Rebellion.Tests.Gameplay
             game.LocalPlayerFactionID = "second";
             game.SetFactionController("first", "computer", PlayerControllerType.AI);
             game.SetFactionController("second", "viewer", PlayerControllerType.Human);
-            SpaceCombatSupportConfig config = CreateConfig();
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
                 config.TryResolveProfile(game, CreateTacticalDefinition(), out var profile, out _)
             );
-            Assert.AreSame(config.Profiles[SpaceCombatSupportContext.FirstFactionHard], profile);
+            Assert.AreSame(
+                config.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionHard],
+                profile
+            );
         }
 
         [TestCase("first")]
@@ -65,7 +92,7 @@ namespace Rebellion.Tests.Gameplay
                 SerializationHelper.Serialize(game)
             );
             restored.LocalPlayerFactionID = localFaction;
-            SpaceCombatSupportConfig config = CreateConfig();
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
 
             Assert.IsTrue(
                 config.TryResolveProfile(
@@ -75,7 +102,10 @@ namespace Rebellion.Tests.Gameplay
                     out _
                 )
             );
-            Assert.AreSame(config.Profiles[SpaceCombatSupportContext.Multiplayer], profile);
+            Assert.AreSame(
+                config.Profiles[GameConfig.SpaceCombatSupportContext.Multiplayer],
+                profile
+            );
         }
 
         [TestCase(null)]
@@ -152,11 +182,11 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryResolveProfile_MissingSelectedProfile_DoesNotUseOtherContexts()
         {
-            SpaceCombatSupportConfig config = CreateConfig();
-            config.Profiles[(SpaceCombatSupportContext)0] = config.Profiles[
-                SpaceCombatSupportContext.FirstFactionEasy
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
+            config.Profiles[(GameConfig.SpaceCombatSupportContext)0] = config.Profiles[
+                GameConfig.SpaceCombatSupportContext.FirstFactionEasy
             ];
-            config.Profiles.Remove(SpaceCombatSupportContext.FirstFactionEasy);
+            config.Profiles.Remove(GameConfig.SpaceCombatSupportContext.FirstFactionEasy);
 
             Assert.IsFalse(
                 config.TryResolveProfile(
@@ -186,9 +216,9 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("second-threshold")]
         public void TryResolveProfile_MissingRequiredInput_DoesNotSupplyDefault(string missing)
         {
-            SpaceCombatSupportConfig config = CreateConfig();
-            SpaceCombatSupportProfile profile = config.Profiles[
-                SpaceCombatSupportContext.FirstFactionEasy
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
+            GameConfig.SpaceCombatSupportProfile profile = config.Profiles[
+                GameConfig.SpaceCombatSupportContext.FirstFactionEasy
             ];
             switch (missing)
             {
@@ -253,8 +283,8 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryResolveProfile_ZeroDivisor_DoesNotSupplyDefault()
         {
-            SpaceCombatSupportConfig config = CreateConfig();
-            config.Profiles[SpaceCombatSupportContext.FirstFactionEasy].Divisor = 0;
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
+            config.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy].Divisor = 0;
 
             Assert.IsFalse(
                 config.TryResolveProfile(
@@ -269,11 +299,11 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void TryResolveProfile_ExplicitZeroWeights_PreservesAuthoredZeros()
         {
-            SpaceCombatSupportConfig config = CreateConfig();
-            SpaceCombatSupportProfile profile = config.Profiles[
-                SpaceCombatSupportContext.FirstFactionEasy
+            GameConfig.SpaceCombatSupportConfig config = CreateConfig();
+            GameConfig.SpaceCombatSupportProfile profile = config.Profiles[
+                GameConfig.SpaceCombatSupportContext.FirstFactionEasy
             ];
-            profile.FirstSide = new SpaceCombatSupportSideConfig
+            profile.FirstSide = new GameConfig.SpaceCombatSupportSideConfig
             {
                 LeadingFlat = 0,
                 LeadingGapScale = 0,
@@ -297,15 +327,17 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void CreateCopy_NestedProfiles_OwnsIndependentValues()
         {
-            SpaceCombatSupportConfig source = CreateConfig();
+            GameConfig.SpaceCombatSupportConfig source = CreateConfig();
             string before = SerializationHelper.Serialize(source);
 
-            SpaceCombatSupportConfig copy = source.CreateCopy();
-            copy.Profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide.LeadingGapScale =
-                999;
-            copy.Profiles[SpaceCombatSupportContext.SecondFactionHard].SecondSide.SupportThreshold =
-                7;
-            copy.Profiles.Remove(SpaceCombatSupportContext.Multiplayer);
+            GameConfig.SpaceCombatSupportConfig copy = source.CreateCopy();
+            copy.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
+                .FirstSide
+                .LeadingGapScale = 999;
+            copy.Profiles[GameConfig.SpaceCombatSupportContext.SecondFactionHard]
+                .SecondSide
+                .SupportThreshold = 7;
+            copy.Profiles.Remove(GameConfig.SpaceCombatSupportContext.Multiplayer);
 
             Assert.AreEqual(before, SerializationHelper.Serialize(source));
         }
@@ -313,29 +345,38 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void CreateCopy_MissingInputs_PreservesMissingValues()
         {
-            SpaceCombatSupportConfig source = new()
+            GameConfig.SpaceCombatSupportConfig source = new()
             {
-                Profiles = new() { [SpaceCombatSupportContext.FirstFactionEasy] = new() },
+                Profiles = new()
+                {
+                    [GameConfig.SpaceCombatSupportContext.FirstFactionEasy] = new(),
+                },
             };
 
-            SpaceCombatSupportConfig restored =
-                SerializationHelper.Deserialize<SpaceCombatSupportConfig>(
+            GameConfig.SpaceCombatSupportConfig restored =
+                SerializationHelper.Deserialize<GameConfig.SpaceCombatSupportConfig>(
                     SerializationHelper.Serialize(source.CreateCopy())
                 );
 
-            Assert.IsNull(restored.Profiles[SpaceCombatSupportContext.FirstFactionEasy].Divisor);
-            Assert.IsNull(restored.Profiles[SpaceCombatSupportContext.FirstFactionEasy].FirstSide);
-            Assert.IsNull(restored.Profiles[SpaceCombatSupportContext.FirstFactionEasy].SecondSide);
+            Assert.IsNull(
+                restored.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy].Divisor
+            );
+            Assert.IsNull(
+                restored.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy].FirstSide
+            );
+            Assert.IsNull(
+                restored.Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy].SecondSide
+            );
         }
 
         [Test]
         public void Serialize_AllProfileInputs_RoundTripsExactly()
         {
-            SpaceCombatSupportConfig source = CreateConfig();
+            GameConfig.SpaceCombatSupportConfig source = CreateConfig();
             string xml = SerializationHelper.Serialize(source);
 
-            SpaceCombatSupportConfig restored =
-                SerializationHelper.Deserialize<SpaceCombatSupportConfig>(xml);
+            GameConfig.SpaceCombatSupportConfig restored =
+                SerializationHelper.Deserialize<GameConfig.SpaceCombatSupportConfig>(xml);
 
             Assert.AreEqual(xml, SerializationHelper.Serialize(restored));
         }
@@ -375,17 +416,17 @@ namespace Rebellion.Tests.Gameplay
         /// Creates seven distinguishable, fully supplied profile records.
         /// </summary>
         /// <returns>The authored profile collection.</returns>
-        private static SpaceCombatSupportConfig CreateConfig()
+        private static GameConfig.SpaceCombatSupportConfig CreateConfig()
         {
-            SpaceCombatSupportConfig config = new();
+            GameConfig.SpaceCombatSupportConfig config = new();
             foreach (
-                SpaceCombatSupportContext context in Enum.GetValues(
-                    typeof(SpaceCombatSupportContext)
+                GameConfig.SpaceCombatSupportContext context in Enum.GetValues(
+                    typeof(GameConfig.SpaceCombatSupportContext)
                 )
             )
                 config.Profiles.Add(
                     context,
-                    new SpaceCombatSupportProfile
+                    new GameConfig.SpaceCombatSupportProfile
                     {
                         Divisor = (int)context,
                         FirstSide = CreateSide((int)context * 10),
@@ -400,7 +441,7 @@ namespace Rebellion.Tests.Gameplay
         /// </summary>
         /// <param name="value">The basis for the six authored values.</param>
         /// <returns>The fully supplied side settings.</returns>
-        private static SpaceCombatSupportSideConfig CreateSide(int value) =>
+        private static GameConfig.SpaceCombatSupportSideConfig CreateSide(int value) =>
             new()
             {
                 LeadingFlat = value,

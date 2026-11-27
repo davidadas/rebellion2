@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using Rebellion.Game.Units;
 using Rebellion.Util.Serialization;
 
@@ -22,8 +23,25 @@ namespace Rebellion.Content
         public string BackgroundImagePath { get; set; }
         public string AttackRunSuccessMoviePath { get; set; }
         public string AttackRunFailureMoviePath { get; set; }
-        public int FastSystemRepairTicks { get; set; }
-        public int NormalSystemRepairTicks { get; set; }
+
+        // Earlier content packs supplied campaign repair intervals in the tactical catalog.
+        [PersistableMember(Name = "FastSystemRepairTicks")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private int LegacyFastSystemRepairTicks
+        {
+            get => 0;
+            set { }
+        }
+
+        [PersistableMember(Name = "NormalSystemRepairTicks")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private int LegacyNormalSystemRepairTicks
+        {
+            get => 0;
+            set { }
+        }
 
         /// <summary>
         /// Finds the authored entry for a unit type.

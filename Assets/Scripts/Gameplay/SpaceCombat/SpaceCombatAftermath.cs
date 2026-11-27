@@ -84,7 +84,7 @@ namespace Rebellion.Gameplay
                     _game.Config.SupportShift.BattleSupport?.TryResolveProfile(
                         _game,
                         _definition,
-                        out SpaceCombatSupportProfile profile,
+                        out GameConfig.SpaceCombatSupportProfile profile,
                         out var factions
                     ) != true
                 )
