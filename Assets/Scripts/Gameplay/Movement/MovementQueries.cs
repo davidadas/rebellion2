@@ -1322,6 +1322,19 @@ namespace Rebellion.Gameplay
             if (CanTravelBetweenPlanets(unit))
                 return true;
 
+            // Moving an inbound fleet's destination extends the delivery leg already in progress.
+            if (
+                unit is Fleet fleet
+                && !fleet.HasOperationalCapitalShips()
+                && fleet
+                    .GetChildren<CapitalShip>()
+                    .Any(ship =>
+                        ship.ManufacturingStatus == ManufacturingStatus.Delivering
+                        && ship.Movement != null
+                    )
+            )
+                return true;
+
             rejectionReason =
                 $"{unit.GetDisplayName()} requires working hyperdrives to travel between planets.";
             return false;

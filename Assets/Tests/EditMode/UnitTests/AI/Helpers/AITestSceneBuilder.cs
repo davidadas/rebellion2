@@ -574,6 +574,7 @@ namespace Rebellion.Tests.AI.Helpers
                 ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
                 MaxHullStrength = durabilityStrength,
                 CurrentHullStrength = durabilityStrength,
                 RegimentCapacity = regimentCapacity,
