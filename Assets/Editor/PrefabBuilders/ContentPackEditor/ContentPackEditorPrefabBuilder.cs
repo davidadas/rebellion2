@@ -78,7 +78,7 @@ public static class ContentPackEditorPrefabBuilder
         canvas.pixelPerfect = true;
         CanvasScaler scaler = canvasRoot.gameObject.AddComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(1600, 900);
+        scaler.referenceResolution = UILayout.ContentEditorReferenceSize;
         scaler.matchWidthOrHeight = 0.5f;
         canvasRoot.gameObject.AddComponent<GraphicRaycaster>();
         Image background = canvasRoot.gameObject.AddComponent<Image>();
@@ -1568,6 +1568,12 @@ public static class ContentPackEditorPrefabBuilder
         Rect(message.rectTransform, 20, 18, 400, 64);
         message.alignment = TextAlignmentOptions.TopLeft;
         message.textWrappingMode = TextWrappingModes.Normal;
+        TextMeshProUGUI note = Label("Note", panel.transform, string.Empty, 15);
+        Rect(note.rectTransform, 20, 18, 400, 24);
+        note.alignment = TextAlignmentOptions.TopLeft;
+        note.fontStyle = FontStyles.Bold;
+        note.textWrappingMode = TextWrappingModes.Normal;
+        note.gameObject.SetActive(false);
         Button save = Button("Primary", panel.transform, "Save");
         Rect((RectTransform)save.transform, 316, 102, 104, 34);
         Button discard = Button("Secondary", panel.transform, "Discard");
@@ -1575,6 +1581,7 @@ public static class ContentPackEditorPrefabBuilder
         Button cancel = PlainButton("Cancel", panel.transform, "Cancel");
         Rect((RectTransform)cancel.transform, 92, 102, 104, 34);
         Assign(prompt, "message", message);
+        Assign(prompt, "note", note);
         Assign(prompt, "primaryButton", save);
         Assign(prompt, "secondaryButton", discard);
         Assign(prompt, "cancelButton", cancel);
@@ -1940,6 +1947,7 @@ public static class ContentPackEditorPrefabBuilder
             label.rectTransform.offsetMax = new Vector2(0, label.rectTransform.offsetMax.y);
         }
         Selector(view, defaults, "activePack", 440, new[] { "No eras installed" });
+        ActionButton(view, defaults, "loadOrderButton", "Load order", 0, 0, 128);
         Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(
             "SearchPackages",
@@ -2036,8 +2044,93 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "status", status);
         BuildFilters(rect, view);
         BuildDetails(background.transform, view);
+        BuildModLoadOrder(background.transform, view);
         background.gameObject.SetActive(false);
         return view;
+    }
+
+    /// <summary>
+    /// Builds the focused load-order dialog using the toolkit's existing controls and palette.
+    /// </summary>
+    /// <param name="parent">The library workspace.</param>
+    /// <param name="manager">The view that opens the dialog.</param>
+    private static void BuildModLoadOrder(Transform parent, ContentEditorModManagerView manager)
+    {
+        Image overlay = Surface("ModLoadOrder", parent, new Color(0, 0, 0, 0.68f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        var view = overlay.gameObject.AddComponent<ContentEditorModOrderView>();
+        Image surface = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
+        RectTransform panel = surface.rectTransform;
+        panel.anchorMin = panel.anchorMax = panel.pivot = new Vector2(0.5f, 0.5f);
+        panel.sizeDelta = new Vector2(680, 440);
+        Assign(view, "panel", panel);
+
+        TMP_Text title = Caption(panel, "Title", "Load order", 24, 19, 632, 34, 26);
+        title.fontStyle = FontStyles.Bold;
+        Assign(view, "era", Caption(panel, "Era", string.Empty, 24, 56, 632, 24, 16));
+        Caption(
+            panel,
+            "Help",
+            "Drag to reorder or click for move commands.",
+            24,
+            94,
+            632,
+            26,
+            15,
+            ContentEditorColorRole.Muted
+        );
+        RectTransform listBounds = Layer("EnabledModsBounds", panel);
+        Stretch(listBounds, 24, 132, 24, 119);
+        ScrollAreaLayout scroll = Scroll("EnabledMods", listBounds, 8, 8);
+        Assign(view, "scroll", scroll);
+        TMP_Text empty = Caption(
+            panel,
+            "Empty",
+            "No mods are enabled for this era.",
+            24,
+            145,
+            632,
+            30,
+            16,
+            ContentEditorColorRole.Muted
+        );
+        Assign(view, "empty", empty);
+
+        SortableRowView row = SortableRowPrefabBuilder.Create(scroll.ScrollArea.ContentRoot);
+        BindColor(row.image, ContentEditorColorRole.Input, row);
+        BindColor(row.Grip, ContentEditorColorRole.Muted);
+        BindColor(row.Title, ContentEditorColorRole.Text);
+        BindColor(row.Version, ContentEditorColorRole.Muted);
+        Assign(view, "rowTemplate", row);
+        row.gameObject.SetActive(false);
+
+        RectTransform footer = Layer("Footer", panel);
+        footer.anchorMin = footer.anchorMax = new Vector2(0f, 0f);
+        footer.pivot = Vector2.zero;
+        footer.anchoredPosition = new Vector2(24, 18);
+        footer.sizeDelta = new Vector2(632, 88);
+        TMP_Text status = Caption(
+            footer,
+            "Status",
+            string.Empty,
+            0,
+            0,
+            632,
+            42,
+            14,
+            ContentEditorColorRole.Muted
+        );
+        status.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "status", status);
+        Button close = PlainButton("Cancel", footer, "Cancel");
+        Rect((RectTransform)close.transform, 392, 47, 110, 36);
+        Button apply = Button("Apply", footer, "Apply");
+        Rect((RectTransform)apply.transform, 520, 47, 112, 36);
+        Assign(view, "close", close);
+        Assign(view, "apply", apply);
+        Assign(manager, "modOrder", view);
+        overlay.gameObject.SetActive(false);
     }
 
     /// <summary>

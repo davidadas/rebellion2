@@ -203,6 +203,114 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
+    /// Gets the enabled mod releases in the order used by the selected era.
+    /// </summary>
+    /// <param name="contentRoot">The installation containing the era and mods.</param>
+    /// <param name="packID">The era whose order will be shown.</param>
+    /// <returns>The saved stack or the resolved legacy selection.</returns>
+    public static IReadOnlyList<ContentModDefinition> ReadModLoadOrder(
+        string contentRoot,
+        string packID
+    ) => ResolveSavedModOrder(contentRoot, packID, ReadContentSelection());
+
+    /// <summary>
+    /// Applies a new order to the same enabled mod releases and validates their combined campaign.
+    /// </summary>
+    /// <param name="contentRoot">The installation containing the era and mods.</param>
+    /// <param name="packID">The era whose order will be changed.</param>
+    /// <param name="original">The applied releases when editing began.</param>
+    /// <param name="requested">The same mod IDs in the player's proposed order.</param>
+    public static void UpdateModLoadOrder(
+        string contentRoot,
+        string packID,
+        IReadOnlyList<ContentModDefinition> original,
+        IReadOnlyList<string> requested
+    )
+    {
+        string path = Path.Combine(UserDataPaths.GameRoot, _settingsFileName);
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
+            {
+                UserSettings settings = ReadSettingsForUpdate(path);
+                IReadOnlyList<ContentModDefinition> current = ResolveSavedModOrder(
+                    contentRoot,
+                    packID,
+                    settings.Content
+                );
+                if (
+                    !current
+                        .Select(mod => (mod.ID, mod.Version))
+                        .SequenceEqual(original.Select(mod => (mod.ID, mod.Version)))
+                )
+                    throw new InvalidOperationException(
+                        "The enabled mods changed. Reopen Load order to see the current list."
+                    );
+                if (
+                    requested.Count != current.Count
+                    || !requested
+                        .ToHashSet(StringComparer.Ordinal)
+                        .SetEquals(current.Select(mod => mod.ID))
+                )
+                    throw new ArgumentException(
+                        "The new order must contain the same enabled mods.",
+                        nameof(requested)
+                    );
+
+                var issues = new List<ContentModIssue>();
+                IReadOnlyList<ContentModDefinition> ordered = ContentModLoadOrder.Resolve(
+                    current,
+                    issues,
+                    requested
+                );
+                if (!ordered.Select(mod => mod.ID).SequenceEqual(requested))
+                    throw new InvalidOperationException(
+                        issues.FirstOrDefault()?.Message
+                            ?? "The requested order conflicts with a mod's load rules."
+                    );
+
+                string[] versions = ordered.Select(mod => mod.Version).ToArray();
+                ContentPack candidate = ContentPackLoader.OpenDefaultScenario(
+                    contentRoot,
+                    packID,
+                    settings.Content.DisabledModIDs,
+                    requested,
+                    appliedModVersions: versions
+                );
+                CampaignContentValidator.ValidateCampaigns(candidate);
+                settings.Content.SetModLoadOrder(packID, requested, versions);
+                return JsonUtility.ToJson(settings, true);
+            }
+        );
+    }
+
+    /// <summary>
+    /// Resolves the applied membership and release versions using the active game's discovery rules.
+    /// </summary>
+    /// <param name="contentRoot">The installation containing the era and mods.</param>
+    /// <param name="packID">The era whose stack is requested.</param>
+    /// <param name="preferences">The player settings currently being read or modified.</param>
+    /// <returns>The resolved mods in application order.</returns>
+    private static IReadOnlyList<ContentModDefinition> ResolveSavedModOrder(
+        string contentRoot,
+        string packID,
+        UserContentSettings preferences
+    )
+    {
+        IReadOnlyList<string> order = preferences.GetModLoadOrder(packID);
+        return ContentPackLoader
+            .DiscoverModResolver(
+                contentRoot,
+                packID,
+                preferences.DisabledModIDs,
+                order,
+                order,
+                preferences.GetModVersions(packID)
+            )
+            .Mods;
+    }
+
+    /// <summary>
     /// Applies a package selection to the matching era using the same native load rules as the game.
     /// </summary>
     /// <param name="contentRoot">The installation containing the era and add-ons.</param>

@@ -842,17 +842,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             _view.Render(data);
 
-            Assert.AreEqual(
-                "2 MODS LOADED",
-                GetField<TextMeshProUGUI>("_modsStatusTextField").text
-            );
-            RectInt statusRect = UILayout.GetSourceRect(
-                GetField<TextMeshProUGUI>("_modsStatusTextField").rectTransform
-            );
-            RectInt scrollRect = UILayout.GetSourceRect(
-                GetField<ScrollAreaView>("_modsScrollArea").transform as RectTransform
-            );
-            Assert.GreaterOrEqual(scrollRect.y, statusRect.yMax);
+            Assert.IsFalse(GetField<TextMeshProUGUI>("_modsStatusTextField").gameObject.activeSelf);
             Assert.AreEqual(
                 "Classic Galactic Civil War",
                 GetField<TextMeshProUGUI>("_contentPackValueField").text
@@ -913,8 +903,10 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 )
             );
 
-            TextMeshProUGUI status = GetField<List<TextMeshProUGUI>>("_modDetails")
-                .Single(detail => detail.gameObject.activeSelf);
+            TextMeshProUGUI status = _view
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(card => card.ItemID == "pending")
+                .Details;
             Assert.That(status.text, Is.EqualTo("Pending Apply"));
             Assert.That(
                 status
@@ -942,9 +934,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
             );
 
             _view
-                .GetComponentsInChildren<OptionsModDragHandle>()
-                .Single(handle => handle.ModID == "first")
-                .GetComponent<Button>()
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(card => card.ItemID == "first")
                 .onClick.Invoke();
             _view
                 .GetComponentsInChildren<Button>()
@@ -956,7 +947,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
         }
 
         [Test]
-        public void ModsPage_ReorderGrip_SitsOutsideTheLeftEdgeOfTheRow()
+        public void ModsPage_ReorderGrip_IsInsideTheBar()
         {
             _view.Render(
                 CreateRenderDataForTab(
@@ -974,13 +965,34 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 )
             );
 
-            OptionsModDragHandle handle = _view
-                .GetComponentsInChildren<OptionsModDragHandle>()
-                .Single(grip => grip.ModID == "first");
-            RectInt gripBounds = UILayout.GetSourceRect(handle.rectTransform);
-            RectInt rowBounds = UILayout.GetSourceRect((RectTransform)handle.transform.parent);
-            Assert.That(gripBounds.xMax, Is.LessThanOrEqualTo(0));
-            Assert.That(gripBounds.xMin + rowBounds.xMin, Is.GreaterThanOrEqualTo(0));
+            SortableRowView card = _view
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(item => item.ItemID == "first");
+            RectInt gripBounds = UILayout.GetSourceRect((RectTransform)card.Grip.transform);
+            RectInt cardBounds = UILayout.GetSourceRect(card.Rect);
+            Assert.That(gripBounds.xMin, Is.GreaterThan(0));
+            Assert.That(gripBounds.xMax, Is.LessThan(cardBounds.width));
+        }
+
+        [Test]
+        public void ModsPage_ModName_IsLeftAlignedBesideTheGrip()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: new[] { new OptionsModRow("first", "1.0", "First Mod", loadOrder: 1) }
+                )
+            );
+
+            SortableRowView card = _view.GetComponentsInChildren<SortableRowView>().Single();
+            RectInt text = UILayout.GetSourceRect(card.Title.rectTransform);
+            RectInt grip = UILayout.GetSourceRect(card.Grip.rectTransform);
+
+            Assert.That(text.x, Is.GreaterThan(grip.xMax));
+            Assert.That(
+                card.Title.horizontalAlignment,
+                Is.EqualTo(HorizontalAlignmentOptions.Left)
+            );
         }
 
         [Test]
@@ -1003,25 +1015,26 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                         .ToArray()
                 )
             );
-            OptionsModDragHandle handle = _view
-                .GetComponentsInChildren<OptionsModDragHandle>()
-                .Single(grip => grip.ModID == "mod-1");
+            SortableRowView card = _view
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(item => item.ItemID == "mod-1");
+            var grip = (RectTransform)card.Grip.transform;
             RectTransform viewport = GetField<ScrollAreaView>("_modsScrollArea").ViewportRoot;
             var pointer = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,
                 position = RectTransformUtility.WorldToScreenPoint(
                     null,
-                    handle.transform.TransformPoint(handle.rectTransform.rect.center)
+                    grip.TransformPoint(grip.rect.center)
                 ),
             };
-            handle.Card.OnBeginDrag(pointer);
+            card.OnBeginDrag(pointer);
             pointer.position = RectTransformUtility.WorldToScreenPoint(
                 null,
                 viewport.TransformPoint(new Vector2(viewport.rect.center.x, viewport.rect.yMin + 4))
             );
-            handle.Card.OnDrag(pointer);
-            handle.Card.OnEndDrag(pointer);
+            card.OnDrag(pointer);
+            card.OnEndDrag(pointer);
 
             Assert.That((movedID, destination), Is.EqualTo(("mod-1", 4)));
         }
@@ -1036,11 +1049,8 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 )
             );
 
-            OptionsModCardView card = _view.GetComponentsInChildren<OptionsModCardView>().Single();
-            Assert.That(
-                card.Row.transform.Find("LabelTextField").GetComponent<TMP_Text>().text,
-                Is.EqualTo("First Mod")
-            );
+            SortableRowView card = _view.GetComponentsInChildren<SortableRowView>().Single();
+            Assert.That(card.Title.text, Is.EqualTo("First Mod"));
         }
 
         [Test]
@@ -1056,9 +1066,9 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     }
                 )
             );
-            OptionsModCardView card = _view
-                .GetComponentsInChildren<OptionsModCardView>()
-                .Single(item => item.Grip.ModID == "first");
+            SortableRowView card = _view
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(item => item.ItemID == "first");
             Transform originalParent = card.transform.parent;
             var pointer = new PointerEventData(null)
             {
@@ -1099,16 +1109,19 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                     }
                 )
             );
-            OptionsModCardView card = _view
-                .GetComponentsInChildren<OptionsModCardView>()
-                .Single(item => item.Grip.ModID == "first");
+            SortableRowView card = _view
+                .GetComponentsInChildren<SortableRowView>()
+                .Single(item => item.ItemID == "first");
             Transform originalParent = card.transform.parent;
             var pointer = new PointerEventData(null)
             {
                 button = PointerEventData.InputButton.Left,
                 pointerPressRaycast = new RaycastResult
                 {
-                    gameObject = card.Row.transform.Find("ToggleImage").gameObject,
+                    gameObject = card
+                        .Trailing.GetComponentInChildren<OptionsToggleRowView>()
+                        .transform.Find("ToggleImage")
+                        .gameObject,
                 },
             };
 
@@ -1137,10 +1150,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
                 )
             );
 
-            Assert.AreEqual(
-                "0 MODS LOADED - 1 ERROR",
-                GetField<TextMeshProUGUI>("_modsStatusTextField").text
-            );
+            Assert.AreEqual("1 ERROR", GetField<TextMeshProUGUI>("_modsStatusTextField").text);
             OptionsToggleRowView row = GetField<List<OptionsToggleRowView>>("_modRows").Single();
             Assert.AreEqual(
                 "Broken Mod",
@@ -1242,6 +1252,28 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.AreEqual(TextAlignmentOptions.Capline, value.alignment);
             Assert.AreEqual(classicBaseline, value.textInfo.characterInfo[0].baseLine, 0.001f);
+        }
+
+        [Test]
+        public void ModsPage_FiveEnabledMods_FitsWithoutScrolling()
+        {
+            _view.Render(
+                CreateRenderDataForTab(
+                    OptionsMenuTab.Mods,
+                    mods: Enumerable
+                        .Range(1, 5)
+                        .Select(index => new OptionsModRow(
+                            $"mod-{index}",
+                            "1.0",
+                            $"Mod {index}",
+                            loadOrder: index
+                        ))
+                        .ToArray()
+                )
+            );
+
+            ScrollAreaView list = GetField<ScrollAreaView>("_modsScrollArea");
+            Assert.That(list.ContentRoot.rect.height, Is.EqualTo(list.ViewportHeight));
         }
 
         [Test]

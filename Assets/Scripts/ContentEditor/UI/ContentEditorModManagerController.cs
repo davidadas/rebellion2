@@ -65,6 +65,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         this.contentChanged = contentChanged;
         store = packageStore ?? new ModPackageStore(contentRoot, client);
         view.ActivePackRequested += SetActivePack;
+        view.LoadOrderRequested += ShowLoadOrder;
         view.RefreshRequested += Refresh;
         view.ImportRequested += Import;
         view.CloseRequested += Close;
@@ -604,6 +605,38 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
+    /// Opens the player order for the selected era and saves it through the shared game settings.
+    /// </summary>
+    private void ShowLoadOrder()
+    {
+        try
+        {
+            string id = GetActivePack(UserSettingsManager.ReadContentSelection());
+            ContentPackDefinition pack =
+                packs.SingleOrDefault(item => item.ID == id) ?? packs.FirstOrDefault();
+            if (pack == null)
+                return;
+            IReadOnlyList<ContentModDefinition> mods = UserSettingsManager.ReadModLoadOrder(
+                contentRoot,
+                pack.ID
+            );
+            view.ShowLoadOrder(
+                pack.DisplayName,
+                mods,
+                order =>
+                {
+                    UserSettingsManager.UpdateModLoadOrder(contentRoot, pack.ID, mods, order);
+                    view.SetStatus("Load order saved.");
+                }
+            );
+        }
+        catch (Exception exception)
+        {
+            view.SetStatus(exception.Message);
+        }
+    }
+
+    /// <summary>
     /// Enables a package's complete dependency chain in one settings update.
     /// </summary>
     /// <param name="package">The package whose add-ons are being enabled.</param>
@@ -845,6 +878,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         iconRequest?.Cancel();
         iconRequest?.Dispose();
         view.ActivePackRequested -= SetActivePack;
+        view.LoadOrderRequested -= ShowLoadOrder;
         view.RefreshRequested -= Refresh;
         view.ImportRequested -= Import;
         view.CloseRequested -= Close;

@@ -596,6 +596,18 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void ConfirmModRemoval_InstalledContent_ShowsBoldSavesNote()
+        {
+            view.ConfirmModRemoval("Delete this copy?", "Delete", () => { });
+
+            TMP_Text note = view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<TMP_Text>()
+                .Single(text => text.text == "Saves will not be deleted.");
+
+            Assert.That(note.fontStyle.HasFlag(FontStyles.Bold), Is.True);
+        }
+
+        [Test]
         public void ShowAlphaNotice_ConfirmationRequired_ConsumesEscapeAndAcknowledgesOnlyOnConfirm()
         {
             bool acknowledged = false;

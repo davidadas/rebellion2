@@ -216,9 +216,12 @@ public static class OptionsMenuPrefabBuilder
     )
     {
         int bodyWidth = UILayout.GetSourceRect(modsPage).width - 2 * _optionsContentInset;
-        int viewportWidth = _optionsContentInset + bodyWidth + 1;
-        int scrollBarX = viewportWidth + 4;
+        const int panelPadding = 6;
+        const int scrollbarGap = 4;
         const int scrollBarWidth = 10;
+        const int viewportHeight = 222;
+        int viewportWidth = bodyWidth - 2 * panelPadding - scrollbarGap - scrollBarWidth;
+        int scrollBarX = viewportWidth + scrollbarGap;
         CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "ERA", 16, accent);
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
@@ -240,37 +243,60 @@ public static class OptionsMenuPrefabBuilder
             accent
         );
 
-        TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsPage);
-        status.text = "NO MODS LOADED";
-        status.color = textDim;
-        status.fontSize = 11;
-        status.alignment = TextAlignmentOptions.TopLeft;
-        SetSourceRect(status.rectTransform, _optionsContentInset, 101, bodyWidth, 18);
-
+        RectTransform listPanel = CreateChildLayer("ModsListPanel", modsPage);
+        SetSourceRect(
+            listPanel,
+            _optionsContentInset,
+            96,
+            bodyWidth,
+            viewportHeight + 2 * panelPadding
+        );
         ScrollAreaView modsScrollArea = CreateScrollAreaView(
-            modsPage,
+            listPanel,
             "ModsScrollArea",
-            0,
-            126,
+            panelPadding,
+            panelPadding,
             scrollBarX + scrollBarWidth,
-            176,
+            viewportHeight,
             0,
             0,
             viewportWidth,
-            176,
+            viewportHeight,
             scrollBarX,
             0,
             scrollBarWidth,
-            176,
+            viewportHeight,
             out RectTransform modsContent
         );
-        OptionsToggleRowView rowTemplate = CreateOptionsToggleRow(
-            modsContent,
-            "ModRowTemplate",
+        Scrollbar scrollbar = modsScrollArea.GetComponentInChildren<Scrollbar>(true);
+        scrollbar.targetGraphic.color = Color.Lerp(_buttonSurfaceColor, textDim, 0.5f);
+
+        TextMeshProUGUI status = CreateTextLabel("ModsStatusTextField", modsContent);
+        status.text = string.Empty;
+        status.color = textDim;
+        status.fontSize = 11;
+        status.alignment = TextAlignmentOptions.MidlineLeft;
+        SetSourceRect(status.rectTransform, 4, 0, viewportWidth - 8, 18);
+        status.gameObject.SetActive(false);
+
+        SortableRowView rowTemplate = SortableRowPrefabBuilder.Create(modsContent);
+        rowTemplate.name = "ModRowTemplate";
+        rowTemplate.Grip.color = textDim;
+        rowTemplate.Version.color = textDim;
+        rowTemplate.Details.color = textDim;
+        Outline rowOutline = rowTemplate.image.gameObject.AddComponent<Outline>();
+        rowOutline.effectColor = new Color(textDim.r, textDim.g, textDim.b, 0.32f);
+        rowOutline.effectDistance = new Vector2(0.75f, -0.75f);
+        rowOutline.useGraphicAlpha = false;
+        rowTemplate.Place(1, 0, viewportWidth - 2, OptionsMenuView.ModEnableWidth);
+        CreateOptionsToggleRow(
+            rowTemplate.Trailing,
+            "ModEnable",
             0,
-            "Mod",
-            _optionsContentInset,
-            0
+            string.Empty,
+            0,
+            0,
+            rowTemplate.Title
         );
         rowTemplate.gameObject.SetActive(false);
 
@@ -1372,6 +1398,7 @@ public static class OptionsMenuPrefabBuilder
     /// <param name="label">The row caption.</param>
     /// <param name="x">The source-space row left.</param>
     /// <param name="y">The source-space row top.</param>
+    /// <param name="sharedLabel">The sortable bar's label when creating only its enable control.</param>
     /// <returns>The configured toggle-row view.</returns>
     private static OptionsToggleRowView CreateOptionsToggleRow(
         Transform parent,
@@ -1379,21 +1406,28 @@ public static class OptionsMenuPrefabBuilder
         int optionIndex,
         string label,
         int x,
-        int y
+        int y,
+        TextMeshProUGUI sharedLabel = null
     )
     {
         RectTransform root = CreateChildLayer(name, parent);
-        SetSourceRect(root, x, y, 330, 14);
+        int width = sharedLabel == null ? 330 : OptionsMenuView.ModEnableWidth;
+        int height = sharedLabel == null ? 14 : SortableRowView.RowHeight;
+        SetSourceRect(root, x, y, width, height);
         OptionsToggleRowView view = EnableRuntimeComponent(
             root.gameObject.AddComponent<OptionsToggleRowView>()
         );
 
-        TextMeshProUGUI labelField = CreateTextLabel("LabelTextField", root);
-        labelField.text = label;
-        labelField.color = new Color(0.875f, 0.910f, 0.941f);
-        labelField.fontSize = 11;
-        labelField.alignment = TextAlignmentOptions.MidlineLeft;
-        SetSourceRect(labelField.rectTransform, 0, 0, 220, 14);
+        TextMeshProUGUI labelField = sharedLabel;
+        if (labelField == null)
+        {
+            labelField = CreateTextLabel("LabelTextField", root);
+            labelField.text = label;
+            labelField.color = new Color(0.875f, 0.910f, 0.941f);
+            labelField.fontSize = 11;
+            labelField.alignment = TextAlignmentOptions.MidlineLeft;
+            SetSourceRect(labelField.rectTransform, 0, 0, 220, 14);
+        }
 
         GameObject toggle = new GameObject(
             "ToggleImage",
@@ -1408,7 +1442,7 @@ public static class OptionsMenuPrefabBuilder
         toggleImage.raycastTarget = true;
         ContentSpriteBinding toggleBinding = toggle.AddComponent<ContentSpriteBinding>();
         toggleBinding.SetAddress(_optionsToggleOffAddress);
-        SetSourceRect(toggle.GetComponent<RectTransform>(), 299, 0, 30, 14);
+        SetSourceRect(toggle.GetComponent<RectTransform>(), width - 31, (height - 14) / 2, 30, 14);
         Button button = toggle.AddComponent<Button>();
         button.targetGraphic = toggleImage;
         button.transition = Selectable.Transition.None;
@@ -1418,7 +1452,8 @@ public static class OptionsMenuPrefabBuilder
         stateField.color = new Color(0.875f, 0.910f, 0.941f);
         stateField.fontSize = 9;
         stateField.alignment = TextAlignmentOptions.MidlineRight;
-        SetSourceRect(stateField.rectTransform, 239, 0, 50, 14);
+        int stateWidth = Mathf.Min(50, width - 41);
+        SetSourceRect(stateField.rectTransform, width - 41 - stateWidth, 0, stateWidth, height);
 
         AssignInt(view, "_optionIndex", optionIndex);
         AssignReference(view, "_toggleImage", toggleImage);

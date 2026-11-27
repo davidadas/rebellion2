@@ -152,6 +152,7 @@ public sealed class ContentFileResolver
     /// <param name="preferredModOrder">The ordered mod IDs, or null to use legacy folder order.</param>
     /// <param name="appliedModIDs">The active IDs when opening an already applied selection.</param>
     /// <param name="appliedModVersions">The recorded versions in applied order, if available.</param>
+    /// <param name="workingModOverride">A proposed manifest to validate in the working folder.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
@@ -164,7 +165,8 @@ public sealed class ContentFileResolver
         string workingModRoot = null,
         IReadOnlyList<string> preferredModOrder = null,
         IReadOnlyList<string> appliedModIDs = null,
-        IReadOnlyList<string> appliedModVersions = null
+        IReadOnlyList<string> appliedModVersions = null,
+        ContentModDefinition workingModOverride = null
     )
     {
         string modsRoot = ResolveModsRootPath(contentRootPath);
@@ -183,7 +185,7 @@ public sealed class ContentFileResolver
         if (workingModRoot != null)
         {
             workingModRoot = Path.GetFullPath(workingModRoot);
-            workingMod = ReadValidatedMod(workingModRoot);
+            workingMod = workingModOverride ?? ReadValidatedMod(workingModRoot);
             folders = new[] { workingModRoot }.Concat(
                 folders.Where(path =>
                     !string.Equals(Path.GetFullPath(path), workingModRoot, StringComparison.Ordinal)
@@ -211,7 +213,8 @@ public sealed class ContentFileResolver
                 definitionPath = ContentPackageManifest.Find(modRoot, ContentPackageType.Mod);
                 if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.Era)
                     continue;
-                definition = ReadModDefinition(definitionPath);
+                definition =
+                    modRoot == workingModRoot ? workingMod : ReadModDefinition(definitionPath);
                 if (string.IsNullOrWhiteSpace(definition.BasePackID))
                     ValidateDefinition(definition);
                 if (!string.Equals(definition.BasePackID, basePackID, StringComparison.Ordinal))
@@ -788,6 +791,16 @@ public sealed class ContentFileResolver
         using XmlReader reader = XmlReader.Create(definitionPath);
         var document = new XmlDocument();
         document.Load(reader);
+        return ReadModDefinition(document);
+    }
+
+    /// <summary>
+    /// Reads and validates an authored or proposed mod manifest.
+    /// </summary>
+    /// <param name="document">The manifest XML, with either supported root.</param>
+    /// <returns>The parsed mod definition.</returns>
+    public static ContentModDefinition ReadModDefinition(XmlDocument document)
+    {
         XmlElement root = document.DocumentElement;
         if (
             ContentPackageManifest.ReadType(root.Name, root.GetAttribute("Type"))
@@ -799,9 +812,7 @@ public sealed class ContentFileResolver
             new GameSerializerSettings { RootName = root.Name }
         );
         return serializer.Deserialize(document) as ContentModDefinition
-            ?? throw new InvalidDataException(
-                "Failed to deserialize content mod: " + definitionPath
-            );
+            ?? throw new InvalidDataException("Failed to deserialize content mod.");
     }
 
     /// <summary>

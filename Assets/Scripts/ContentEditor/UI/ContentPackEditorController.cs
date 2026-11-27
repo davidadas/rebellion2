@@ -88,6 +88,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.Connection.CancelRequested += CancelPublishingOperation;
         view.Publishing.CancelRequested += CancelPublishingOperation;
         view.ValidateRequested += ValidatePack;
+        view.ModRuleRequested += ShowModRule;
         view.MapLayoutRequested += ArrangeMap;
         view.UndoRequested += Undo;
         view.RedoRequested += Redo;
@@ -271,6 +272,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.Connection.CancelRequested -= CancelPublishingOperation;
             view.Publishing.CancelRequested -= CancelPublishingOperation;
             view.ValidateRequested -= ValidatePack;
+            view.ModRuleRequested -= ShowModRule;
             view.MapLayoutRequested -= ArrangeMap;
             view.UndoRequested -= Undo;
             view.RedoRequested -= Redo;
@@ -2152,6 +2154,52 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 cancellationToken
             );
             view.RenderValidationResult("Project validated successfully.", warnings);
+        });
+    }
+
+    /// <summary>
+    /// Shows a mod's requirement or relative placement rule using compatible installed targets.
+    /// </summary>
+    /// <param name="rule">The author rule selected from Mod settings.</param>
+    private void ShowModRule(ContentEditorModRule rule)
+    {
+        RunOperation(() =>
+        {
+            if (project?.Mod == null)
+                return;
+            string title = rule switch
+            {
+                ContentEditorModRule.Requires => "Required mods",
+                ContentEditorModRule.LoadBefore => "Load this mod before",
+                ContentEditorModRule.LoadAfter => "Load this mod after",
+                _ => throw new ArgumentOutOfRangeException(nameof(rule)),
+            };
+            var choices = ContentPackLoader
+                .DiscoverCompatibleMods(contentRootPath, project.Mod.BasePackID)
+                .Where(mod => mod.ID != project.ID)
+                .ToDictionary(mod => mod.ID, mod => mod.DisplayName, StringComparer.Ordinal);
+            IReadOnlyList<string> current = ContentPackEditorStorage.GetModRuleIDs(
+                project.Mod,
+                rule
+            );
+            view.ShowModRuleChoices(
+                title,
+                choices,
+                current,
+                selection =>
+                {
+                    string[] selected = selection
+                        .OrderBy(id => id, StringComparer.Ordinal)
+                        .ToArray();
+                    if (current.ToHashSet(StringComparer.Ordinal).SetEquals(selected))
+                        return;
+                    ContinueAfterChanges(() =>
+                    {
+                        OpenProject(ContentPackEditorStorage.SaveModRule(project, rule, selected));
+                        view.RenderStatus("Mod settings saved.", false);
+                    });
+                }
+            );
         });
     }
 

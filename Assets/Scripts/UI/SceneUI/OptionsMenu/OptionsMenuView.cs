@@ -29,8 +29,7 @@ public sealed partial class OptionsMenuView : MonoBehaviour, IContentInitializab
     private readonly List<Image> _bindingSecondaryBadgeImages = new List<Image>();
     private readonly List<Image> _bindingRestoreImages = new List<Image>();
     private readonly List<OptionsToggleRowView> _modRows = new List<OptionsToggleRowView>();
-    private readonly List<OptionsModCardView> _modCards = new List<OptionsModCardView>();
-    private readonly List<TextMeshProUGUI> _modDetails = new List<TextMeshProUGUI>();
+    private readonly List<SortableRowView> _modCards = new List<SortableRowView>();
     private readonly HashSet<Button> _wiredBadges = new HashSet<Button>();
 
     [Header("Frame")]
@@ -225,7 +224,7 @@ public sealed partial class OptionsMenuView : MonoBehaviour, IContentInitializab
     private ScrollAreaView _modsScrollArea;
 
     [SerializeField]
-    private OptionsToggleRowView _modRowTemplate;
+    private SortableRowView _modRowTemplate;
 
     [SerializeField]
     private TextMeshProUGUI _modsStatusTextField;
@@ -606,58 +605,34 @@ public sealed partial class OptionsMenuView : MonoBehaviour, IContentInitializab
     private void RenderModsPage(OptionsMenuRenderData data, bool resetScroll)
     {
         _contentPackChoice.Render(data.ContentPackLabel);
-        int loadedCount = data.Mods.Count(mod => mod.Loaded);
         int errorCount = data.Mods.Count(mod => mod.HasError);
+        int orderedCount = data.Mods.Count(mod => mod.LoadOrder > 0);
         string status =
             data.Mods.Count == 0 ? "NO COMPATIBLE MODS FOUND"
-            : errorCount > 0
-                ? $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED - {errorCount} {(errorCount == 1 ? "ERROR" : "ERRORS")}"
-            : $"{loadedCount} {(loadedCount == 1 ? "MOD" : "MODS")} LOADED";
-        int orderedCount = data.Mods.Count(mod => mod.LoadOrder > 0);
-        if (orderedCount > 1 && errorCount == 0)
-            status += "  •  LATER MODS TAKE PRIORITY";
+            : errorCount == 1 ? "1 ERROR"
+            : errorCount > 1 ? $"{errorCount} ERRORS"
+            : string.Empty;
         UILayout.SetTextContent(_modsStatusTextField, status);
+        _modsStatusTextField.gameObject.SetActive(status.Length != 0);
 
-        const int rowHeight = 22;
-        const int cardInset = 8;
-        const int cardPadding = 5;
-        const int verticalPadding = 4;
         CancelModOrdering();
-        _modDropBoundaries.Clear();
-        int gutter = UILayout.GetSourceRect((RectTransform)_modRowTemplate.transform).x;
-        int width = Mathf.FloorToInt(_modsScrollArea.ViewportWidth) - gutter;
-        int y = verticalPadding;
+        _sortableModCount = orderedCount > 1 ? orderedCount : 0;
+        RectInt template = UILayout.GetSourceRect(_modRowTemplate.Rect);
+        int y =
+            status.Length == 0
+                ? 0
+                : UILayout.GetSourceRect(_modsStatusTextField.rectTransform).height
+                    + SortableRowView.Gap;
         int rowIndex = 0;
-        int detailsIndex = 0;
         foreach (
             var entry in data
                 .Mods.Select((mod, index) => (Mod: mod, Index: index))
                 .OrderBy(entry => entry.Mod.LoadOrder == 0 ? int.MaxValue : entry.Mod.LoadOrder)
         )
         {
-            OptionsToggleRowView row = GetModRow(rowIndex++);
-            OptionsModCardView card = _modCards[rowIndex - 1];
-            row.SetOptionIndex(entry.Index);
+            SortableRowView bar = GetModCard(rowIndex);
+            OptionsToggleRowView toggle = _modRows[rowIndex++];
             OptionsModRow mod = entry.Mod;
-            bool showGrip = mod.LoadOrder > 0 && orderedCount > 1;
-            int rowTop = y;
-            int bodyWidth = width - 2 * cardInset;
-            UILayout.SetSourceRect(
-                (RectTransform)row.transform,
-                cardInset,
-                cardPadding,
-                bodyWidth,
-                rowHeight
-            );
-            if (!mod.CanToggle && mod.HasError)
-                row.RenderError(mod.DisplayName);
-            else
-                row.Render(mod.Enabled, mod.DisplayName);
-            row.LayoutModRow(bodyWidth, rowHeight);
-            card.gameObject.SetActive(true);
-            row.gameObject.SetActive(true);
-            int cardHeight = rowHeight + 2 * cardPadding;
-
             string details = string.Join(
                 "\n",
                 new[]
@@ -667,104 +642,61 @@ public sealed partial class OptionsMenuView : MonoBehaviour, IContentInitializab
                     mod.Details,
                 }.Where(text => !string.IsNullOrEmpty(text))
             );
-            if (details.Length > 0)
-            {
-                TextMeshProUGUI description = GetModDetails(detailsIndex++);
-                description.transform.SetParent(card.transform, false);
-                description.text = details;
-                int height = Mathf.CeilToInt(
-                    description.GetPreferredValues(details, bodyWidth, float.PositiveInfinity).y
-                );
-                UILayout.SetSourceRect(
-                    description.rectTransform,
-                    cardInset,
-                    cardPadding + rowHeight + 2,
-                    bodyWidth,
-                    height
-                );
-                description.gameObject.SetActive(true);
-                cardHeight += height + 2;
-            }
-            UILayout.SetSourceRect(card.Rect, gutter, rowTop, width, cardHeight);
-            y += cardHeight + _modCardGap;
-            if (showGrip)
-                RenderModGrip(card, mod, orderedCount, rowTop, y, gutter);
+            bar.Render(
+                mod.ID,
+                mod.DisplayName,
+                mod.Version,
+                details,
+                mod.LoadOrder > 0 && orderedCount > 1
+            );
+            toggle.SetOptionIndex(entry.Index);
+            if (!mod.CanToggle && mod.HasError)
+                toggle.RenderError(mod.DisplayName);
+            else
+                toggle.Render(mod.Enabled);
+
+            y += bar.Place(template.x, y, template.width, ModEnableWidth) + SortableRowView.Gap;
+            bar.gameObject.SetActive(true);
         }
-        for (int index = data.Mods.Count; index < _modRows.Count; index++)
-        {
-            _modRows[index].gameObject.SetActive(false);
+
+        for (int index = rowIndex; index < _modCards.Count; index++)
             _modCards[index].gameObject.SetActive(false);
-        }
-
-        for (int index = detailsIndex; index < _modDetails.Count; index++)
-            _modDetails[index].gameObject.SetActive(false);
-
-        for (int index = orderedCount > 1 ? orderedCount : 0; index < _modGrips.Count; index++)
-            _modGrips[index].gameObject.SetActive(false);
 
         _modsScrollArea.SetContentHeight(
-            rowIndex == 0 ? 0 : y - _modCardGap + verticalPadding,
-            rowHeight + 2 * cardPadding + _modCardGap,
+            Mathf.Max(0, y - SortableRowView.Gap),
+            SortableRowView.RowHeight + SortableRowView.Gap,
             resetScroll,
             preserveScrollOffset: true
         );
-        RestoreModGripFocus();
+        RestoreModRowFocus();
     }
 
     /// <summary>
-    /// Gets or creates the wrapped explanation below a mod row.
+    /// Gets or creates the shared bar and its Options enable control for a displayed index.
     /// </summary>
-    /// <param name="index">The next visible explanation.</param>
-    /// <returns>The reusable description label.</returns>
-    private TextMeshProUGUI GetModDetails(int index)
+    /// <param name="index">The displayed mod index.</param>
+    /// <returns>The reusable sortable bar.</returns>
+    private SortableRowView GetModCard(int index)
     {
-        if (index == _modDetails.Count)
+        if (index == _modCards.Count)
         {
-            TextMeshProUGUI details = Instantiate(
-                _modsStatusTextField,
-                _modsScrollArea.ContentRoot
-            );
-            details.name = "Mod details";
-            details.alignment = TextAlignmentOptions.TopLeft;
-            details.textWrappingMode = TextWrappingModes.Normal;
-            details.richText = false;
-            details.raycastTarget = false;
-            _modDetails.Add(details);
-        }
-        return _modDetails[index];
-    }
-
-    /// <summary>
-    /// Gets or creates a reusable mod-toggle row for one displayed index.
-    /// </summary>
-    /// <param name="index">The required displayed mod index.</param>
-    /// <returns>The reusable mod-toggle row.</returns>
-    private OptionsToggleRowView GetModRow(int index)
-    {
-        while (_modRows.Count <= index)
-        {
-            var root = new GameObject(
-                "Mod card",
-                typeof(RectTransform),
-                typeof(Image),
-                typeof(CanvasGroup),
-                typeof(OptionsModCardView)
-            );
-            root.transform.SetParent(_modsScrollArea.ContentRoot, false);
-            var card = root.GetComponent<OptionsModCardView>();
-            OptionsToggleRowView row = Instantiate(_modRowTemplate, card.transform);
-            row.name = $"ModRow{_modRows.Count + 1}";
-            row.SetOptionIndex(_modRows.Count);
+            SortableRowView bar = Instantiate(_modRowTemplate, _modsScrollArea.ContentRoot);
+            bar.name = $"ModRow{index + 1}";
+            var toggle = bar.Trailing.GetComponentInChildren<OptionsToggleRowView>(true);
             if (_contentAssets != null)
-                row.InitializeContent(_contentAssets);
+                toggle.InitializeContent(_contentAssets);
             if (_bound)
-                row.ToggleRequested += HandleModToggle;
-            card.Initialize(row, _rowIdleSprite, _rowActiveSprite);
-            _modCards.Add(card);
-            _modRows.Add(row);
+                toggle.ToggleRequested += HandleModToggle;
+            bar.SetArtwork(_rowIdleSprite, _rowActiveSprite);
+            bar.DragStarted += input => BeginModDrag(bar, input);
+            bar.Dragged += input => _modDrag?.PointAt(bar.Rect, input.position);
+            bar.DragEnded += input => EndModDrag(bar, input);
+            bar.onClick.AddListener(() => ShowModMoveMenu(bar));
+            _modCards.Add(bar);
+            _modRows.Add(toggle);
         }
 
-        return _modRows[index];
+        return _modCards[index];
     }
 
     /// <summary>

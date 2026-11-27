@@ -154,12 +154,16 @@ public static class ContentPackLoader
     /// <param name="packID">The selected content-pack identifier.</param>
     /// <param name="disabledModIDs">The mod identifiers disabled by the player.</param>
     /// <param name="preferredModOrder">The order for the pack, or null to preserve legacy ordering.</param>
+    /// <param name="appliedModIDs">The exact enabled set, when reading a saved selection.</param>
+    /// <param name="appliedModVersions">The versions recorded for that set.</param>
     /// <returns>A resolver containing the selected pack's compatible mods.</returns>
     internal static ContentFileResolver DiscoverModResolver(
         string contentRootPath,
         string packID,
         IEnumerable<string> disabledModIDs,
-        IReadOnlyList<string> preferredModOrder = null
+        IReadOnlyList<string> preferredModOrder = null,
+        IReadOnlyList<string> appliedModIDs = null,
+        IReadOnlyList<string> appliedModVersions = null
     )
     {
         IReadOnlyList<string> packRoots = ResolvePackRoots(contentRootPath, packID);
@@ -173,9 +177,22 @@ public static class ContentPackLoader
             pack.Version,
             disabledModIDs,
             packRoots.Skip(1),
-            preferredModOrder: preferredModOrder
+            preferredModOrder: preferredModOrder,
+            appliedModIDs: appliedModIDs,
+            appliedModVersions: appliedModVersions
         );
     }
+
+    /// <summary>
+    /// Lists the installed mod releases compatible with an era for authors selecting load rules.
+    /// </summary>
+    /// <param name="contentRootPath">The installed content directory.</param>
+    /// <param name="packID">The era the working mod targets.</param>
+    /// <returns>The compatible, unambiguous releases.</returns>
+    public static IReadOnlyList<ContentModDefinition> DiscoverCompatibleMods(
+        string contentRootPath,
+        string packID
+    ) => DiscoverModResolver(contentRootPath, packID, Array.Empty<string>()).AvailableMods;
 
     /// <summary>
     /// Creates an unmodified resolver for one installed pack and its inherited pack chain.
@@ -264,7 +281,8 @@ public static class ContentPackLoader
                 pack.ID,
                 pack.Version,
                 fallbackPackRootPaths: baseline.PackRootPaths.Skip(1),
-                workingModRoot: modRootPath
+                workingModRoot: modRootPath,
+                workingModOverride: mod
             );
         return new ContentFileResolver(
             contentRootPath,

@@ -47,6 +47,7 @@ public static class CommonUIPrefabBuilder
         BuildScrollAreaPrefab();
         BuildTextInputPrefab();
         BuildConfirmationDialogPrefab();
+        SortableRowPrefabBuilder.Rebuild();
         MenuPrefabBuilder.RebuildSharedPrefabs();
         AssetDatabase.SaveAssets();
         AssetDatabase.ImportAsset(

@@ -301,6 +301,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     > ArtworkEffectRequested;
     public event Action SaveRequested;
     public event Action ValidateRequested;
+    internal event Action<ContentEditorModRule> ModRuleRequested;
     public event Action<ContentEditorMapLayout> MapLayoutRequested;
     public event Action UndoRequested;
     public event Action RedoRequested;
@@ -1179,8 +1180,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// </summary>
     private void ShowFileMenu()
     {
-        ShowMenu(
-            fileButton,
+        var commands = new List<ContentEditorMenuCommand>
+        {
             new ContentEditorMenuCommand("New", children: NewProjectCommands()),
             new ContentEditorMenuCommand(
                 "Open project...",
@@ -1219,9 +1220,55 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 "Exit",
                 () => ExitRequested?.Invoke(),
                 isApplicationCommand: true
-            )
-        );
+            ),
+        };
+        if (project?.Mod != null)
+            commands.Insert(
+                4,
+                new ContentEditorMenuCommand(
+                    "Mod settings",
+                    children: new[]
+                    {
+                        new ContentEditorMenuCommand(
+                            "Required mods...",
+                            () => ModRuleRequested?.Invoke(ContentEditorModRule.Requires)
+                        ),
+                        new ContentEditorMenuCommand(
+                            "Load before...",
+                            () => ModRuleRequested?.Invoke(ContentEditorModRule.LoadBefore)
+                        ),
+                        new ContentEditorMenuCommand(
+                            "Load after...",
+                            () => ModRuleRequested?.Invoke(ContentEditorModRule.LoadAfter)
+                        ),
+                    }
+                )
+            );
+        ShowMenu(fileButton, commands.ToArray());
     }
+
+    /// <summary>
+    /// Opens a searchable selection for the mod's author rules.
+    /// </summary>
+    /// <param name="title">The rule described by the picker.</param>
+    /// <param name="choices">The installed, compatible mods.</param>
+    /// <param name="selected">The existing rule targets.</param>
+    /// <param name="apply">The confirmed targets.</param>
+    internal void ShowModRuleChoices(
+        string title,
+        IReadOnlyDictionary<string, string> choices,
+        IEnumerable<string> selected,
+        Action<IEnumerable<string>> apply
+    ) =>
+        selectionDialog.Show(
+            title,
+            choices,
+            selected
+                .Distinct(StringComparer.Ordinal)
+                .ToDictionary(id => id, _ => 1, StringComparer.Ordinal),
+            selection => apply(selection.Keys),
+            compact: true
+        );
 
     /// <summary>
     /// Opens the project type menu from the Projects button or keyboard shortcut.
@@ -1772,7 +1819,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     /// <param name="label">The action named on the confirmation button.</param>
     /// <param name="remove">The confirmed operation.</param>
     internal void ConfirmModRemoval(string message, string label, Action remove) =>
-        confirmation.Show(message, label, remove);
+        confirmation.Show(message, label, remove, noteText: "Saves will not be deleted.");
 
     /// <summary>
     /// Presents the one-time alpha compatibility notice with an explicit acknowledgement.

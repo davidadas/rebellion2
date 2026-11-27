@@ -4,9 +4,20 @@ using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
+using System.Xml;
 using System.Xml.Linq;
 using Rebellion.Util.IO;
 using Rebellion.Util.Serialization;
+
+/// <summary>
+/// Identifies a mod's authored dependency or relative placement rule.
+/// </summary>
+internal enum ContentEditorModRule
+{
+    Requires,
+    LoadBefore,
+    LoadAfter,
+}
 
 /// <summary>
 /// Persists authored pack documents and imported files without owning editing or presentation state.
@@ -15,6 +26,119 @@ public static class ContentPackEditorStorage
 {
     private const string _defaultGameConfigAddress = "Pack/Shared/Data/game-config.xml";
     private const string _packDefinitionAddress = "Pack/pack.xml";
+
+    /// <summary>
+    /// Lists the IDs already selected for one rule on the working mod.
+    /// </summary>
+    /// <param name="mod">The authored mod manifest.</param>
+    /// <param name="rule">The rule being edited.</param>
+    /// <returns>The mod IDs recorded under the rule.</returns>
+    internal static IReadOnlyList<string> GetModRuleIDs(
+        ContentModDefinition mod,
+        ContentEditorModRule rule
+    ) =>
+        rule switch
+        {
+            ContentEditorModRule.Requires => mod.Requires.Select(item => item.ID).ToArray(),
+            ContentEditorModRule.LoadBefore => mod.LoadBefore,
+            ContentEditorModRule.LoadAfter => mod.LoadAfter,
+            _ => throw new ArgumentOutOfRangeException(nameof(rule)),
+        };
+
+    /// <summary>
+    /// Updates one mod rule and prepares the reloaded project against its proposed dependencies.
+    /// </summary>
+    /// <param name="project">The current working mod.</param>
+    /// <param name="rule">The rule being changed.</param>
+    /// <param name="ids">The selected mod IDs.</param>
+    /// <returns>A replacement project loaded with the verified dependency configuration.</returns>
+    internal static ContentPackEditorProject SaveModRule(
+        ContentPackEditorProject project,
+        ContentEditorModRule rule,
+        IEnumerable<string> ids
+    )
+    {
+        string path = ContentPackageManifest.Find(project.ProjectRootPath, ContentPackageType.Mod);
+        ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, path);
+        if (!ContentEditorPaths.Contains(project.ProjectRootPath, path))
+            throw new IOException("The package manifest resolves outside its project folder.");
+
+        var baseline = GetModRuleIDs(project.Mod, rule).ToHashSet(StringComparer.Ordinal);
+        ContentPackEditorProject replacement = null;
+        try
+        {
+            AtomicTextFile.UpdateAllText(
+                path,
+                () =>
+                {
+                    string original = AtomicTextFile.ReadAllText(path);
+                    var source = new XmlDocument();
+                    source.LoadXml(original);
+                    ContentModDefinition current = ContentFileResolver.ReadModDefinition(source);
+                    if (
+                        current.ID != project.ID
+                        || current.Version != project.Version
+                        || current.BasePackID != project.Mod.BasePackID
+                        || current.BasePackVersion != project.Mod.BasePackVersion
+                        || !baseline.SetEquals(GetModRuleIDs(current, rule))
+                    )
+                        throw new IOException(
+                            "The mod manifest changed on disk. Reopen the project before editing its load rules."
+                        );
+
+                    XElement root = XElement.Parse(original);
+                    XElement existing = root.Element(rule.ToString());
+                    XElement updated = new(
+                        rule.ToString(),
+                        ids.Select(id =>
+                            rule == ContentEditorModRule.Requires
+                                ? existing
+                                    ?.Elements("Mod")
+                                    .FirstOrDefault(item => (string)item.Element("ID") == id)
+                                    ?? new XElement("Mod", new XElement("ID", id))
+                                : new XElement("ModID", id)
+                        )
+                    );
+                    existing?.Remove();
+                    if (updated.HasElements)
+                        root.Add(updated);
+                    string proposed = root.ToString();
+                    source.LoadXml(proposed);
+                    ContentModDefinition mod = ContentFileResolver.ReadModDefinition(source);
+                    string contradictory = mod.LoadBefore.FirstOrDefault(id =>
+                        mod.LoadAfter.Contains(id)
+                        || mod.Requires.Any(requirement => requirement.ID == id)
+                    );
+                    if (contradictory != null)
+                        throw new InvalidDataException(
+                            $"This mod cannot load both before and after {contradictory}."
+                        );
+                    ContentFileResolver resolver = ContentPackLoader.CreateModFolderResolver(
+                        project.ContentRootPath,
+                        project.ProjectRootPath,
+                        mod
+                    );
+                    ContentPackDefinition definition = ContentPackLoader.ReadModPackDefinition(
+                        resolver
+                    );
+                    replacement = new ContentPackEditorProject(
+                        resolver,
+                        definition,
+                        CreateDocuments(resolver, definition, project.PackRootPath),
+                        project.ProjectRootPath,
+                        mod
+                    );
+                    return proposed;
+                }
+            );
+            return replacement;
+        }
+        catch
+        {
+            replacement?.Dispose();
+            throw;
+        }
+    }
 
     /// <summary>
     /// Opens one installed pack through its inheritance chain.

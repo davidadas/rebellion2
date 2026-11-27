@@ -150,6 +150,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     [SerializeField]
     private RectTransform defaultPackDescription;
 
+    [SerializeField]
+    private Button loadOrderButton;
+
+    [SerializeField]
+    private ContentEditorModOrderView modOrder;
+
     private float contentZoom = 1;
     private int inlineFilterHeight;
     private string[] activePackIDs = Array.Empty<string>();
@@ -170,6 +176,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private bool busy;
 
     internal event Action<string> ActivePackRequested;
+    internal event Action LoadOrderRequested;
     internal event Action RefreshRequested;
     internal event Action ImportRequested;
     internal event Action CloseRequested;
@@ -250,9 +257,12 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || categories == null
             || packageState == null
             || iconInitials == null
+            || loadOrderButton == null
+            || modOrder == null
         )
             throw new MissingReferenceException(name + " has incomplete mod-manager controls.");
         activePack.onValueChanged.AddListener(SelectActivePack);
+        loadOrderButton.onClick.AddListener(RequestLoadOrder);
         refreshButton.onClick.AddListener(Refresh);
         importButton.onClick.AddListener(Import);
         closeButton.onClick.AddListener(Close);
@@ -377,13 +387,27 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         filters.SetWidth(width);
         UILayout.SetSourceRect((RectTransform)filterPanel.transform, 0, 176, width, filters.Height);
         int packWidth = Mathf.Min(440, Mathf.FloorToInt(width * 0.45f));
+        const int orderWidth = 128;
         UILayout.SetSourceRect((RectTransform)defaultPackControls.transform, 0, 112, width, 72);
-        UILayout.SetSourceRect(defaultPackDescription, 0, 0, width - packWidth - 24, 72);
+        UILayout.SetSourceRect(
+            defaultPackDescription,
+            0,
+            0,
+            Mathf.Max(1, width - packWidth - orderWidth - 36),
+            72
+        );
         UILayout.SetSourceRect(
             (RectTransform)activePack.transform,
-            width - packWidth,
+            width - packWidth - orderWidth - 12,
             0,
             packWidth,
+            44
+        );
+        UILayout.SetSourceRect(
+            (RectTransform)loadOrderButton.transform,
+            width - orderWidth,
+            0,
+            orderWidth,
             44
         );
         resultCount.rectTransform.SetSizeWithCurrentAnchors(RectTransform.Axis.Horizontal, width);
@@ -401,7 +425,11 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     /// <summary>
     /// Hides the manager after its controller has canceled pending network work.
     /// </summary>
-    internal void Hide() => gameObject.SetActive(false);
+    internal void Hide()
+    {
+        modOrder.Close();
+        gameObject.SetActive(false);
+    }
 
     /// <summary>
     /// Returns to the editor unless an installation must first finish or be canceled.
@@ -611,7 +639,25 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
         activePack.RefreshShownValue();
         activePack.interactable = !busy && packs.Count > 0;
+        loadOrderButton.interactable = activePack.interactable;
     }
+
+    /// <summary>
+    /// Opens the focused editor for the enabled order of the current era.
+    /// </summary>
+    /// <param name="era">The default era name shown in the library.</param>
+    /// <param name="mods">The currently applied stack.</param>
+    /// <param name="apply">The action that saves the proposed order.</param>
+    internal void ShowLoadOrder(
+        string era,
+        IReadOnlyList<ContentModDefinition> mods,
+        Action<IReadOnlyList<string>> apply
+    ) => modOrder.Show(era, mods, apply);
+
+    /// <summary>
+    /// Requests the load order for the library's current era.
+    /// </summary>
+    private void RequestLoadOrder() => LoadOrderRequested?.Invoke();
 
     /// <summary>
     /// Requests the default pack explicitly chosen by the player.
@@ -891,6 +937,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         sorting.interactable = !browseLocked;
         versions.interactable = !browseLocked;
         activePack.interactable = !value && activePackIDs.Length > 0;
+        loadOrderButton.interactable = activePack.interactable;
         closeButton.gameObject.SetActive(browseLocked);
         importButton.gameObject.SetActive(library && !browseLocked);
         refreshButton.GetComponentInChildren<TMP_Text>(true).text =
@@ -1136,6 +1183,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     {
         if (!IsOpen)
             return false;
+        if (modOrder.TryCancel())
+            return true;
         if (filters.TryCancel())
             return true;
         foreach (TMP_Dropdown dropdown in new[] { sorting, versions })
@@ -1183,6 +1232,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         if (bound)
         {
             activePack.onValueChanged.RemoveListener(SelectActivePack);
+            loadOrderButton.onClick.RemoveListener(RequestLoadOrder);
             refreshButton.onClick.RemoveListener(Refresh);
             importButton.onClick.RemoveListener(Import);
             closeButton.onClick.RemoveListener(Close);

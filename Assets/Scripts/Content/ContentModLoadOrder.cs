@@ -5,7 +5,7 @@ using System.Linq;
 /// <summary>
 /// Orders enabled mods and reports requirements that prevent a mod from loading.
 /// </summary>
-internal static class ContentModLoadOrder
+public static class ContentModLoadOrder
 {
     /// <summary>
     /// Resolves the enabled set using author rules, then the applied order and stable mod IDs.
@@ -126,7 +126,7 @@ internal static class ContentModLoadOrder
     /// <param name="from">The current zero-based position.</param>
     /// <param name="to">The proposed zero-based position after moving the mod.</param>
     /// <returns>The first crossed rule that blocks the move, or an empty string.</returns>
-    internal static string GetMoveRestriction(
+    public static string GetMoveRestriction(
         IReadOnlyList<ContentModDefinition> mods,
         int from,
         int to

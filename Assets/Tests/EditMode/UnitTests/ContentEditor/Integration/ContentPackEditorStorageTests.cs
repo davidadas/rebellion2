@@ -229,6 +229,59 @@ namespace Rebellion.Tests.ContentEditor.Integration
             Assert.Throws<InvalidDataException>(() => ContentPackEditorStorage.Save(project));
         }
 
+        [Test]
+        public void SaveModRule_KeepingARequiredMod_PreservesItsVersionPin()
+        {
+            string mods = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            using ContentPackEditorProject dependency = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "colors"),
+                "colors",
+                "Colors",
+                "1.0.0",
+                asMod: true
+            );
+            using ContentPackEditorProject another = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "art"),
+                "art",
+                "Art",
+                "1.0.0",
+                asMod: true
+            );
+            using ContentPackEditorProject created = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "sample"),
+                "sample",
+                "Sample",
+                "1.0.0",
+                asMod: true
+            );
+            string manifest = Path.Combine(created.ProjectRootPath, "pack.xml");
+            XElement xml = XElement.Load(manifest);
+            xml.Add(
+                XElement.Parse(
+                    "<Requires><Mod><ID>colors</ID><Version>1.0.0</Version></Mod></Requires>"
+                )
+            );
+            xml.Save(manifest);
+            using ContentPackEditorProject project = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                created.ProjectRootPath
+            );
+
+            using ContentPackEditorProject saved = ContentPackEditorStorage.SaveModRule(
+                project,
+                ContentEditorModRule.Requires,
+                new[] { "art", "colors" }
+            );
+
+            Assert.AreEqual("1.0.0", saved.Mod.Requires.Single(mod => mod.ID == "colors").Version);
+        }
+
         [TestCase(ContentPackageType.Era)]
         [TestCase(ContentPackageType.Mod)]
         public void SetPackageType_UntypedManifest_OpensAsChosenType(ContentPackageType type)

@@ -1008,7 +1008,7 @@ public static class MainMenuPrefabBuilder
 
         CanvasScaler scaler = overlay.GetComponent<CanvasScaler>();
         scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        scaler.referenceResolution = new Vector2(853.33f, 480f);
+        scaler.referenceResolution = UILayout.MenuOverlayReferenceSize;
         scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
 
         GameObject dimmer = NewChild(
