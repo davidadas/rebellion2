@@ -406,6 +406,57 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsFalse(resetSection.gameObject.activeSelf);
         }
 
+        [Test]
+        public void HandleKeyboardShortcut_FocusedPlanet_NudgesOnlyThatPlanetAndCanUndo()
+        {
+            ContentPackEditorRecord sector = project
+                .GetCatalogs()
+                .First(catalog => catalog.IsMap)
+                .Records.First(record => record.Planets.Count >= 2);
+            ContentPackEditorRecord first = sector.Planets[0];
+            ContentPackEditorRecord second = sector.Planets[1];
+            Vector2Int firstPosition = new(first.X, first.Y);
+            Vector2Int secondPosition = new(second.X, second.Y);
+            string before = sector.Catalog.Document.Text;
+            SelectRecord(sector);
+            ContentEditorPlanetDrag clicked =
+                view.GetComponentsInChildren<ContentEditorPlanetDrag>()[0];
+            EventSystem previous = EventSystem.current;
+            GameObject eventRoot = new("Map selection events", typeof(EditModeEventSystem));
+            EventSystem.current = eventRoot.GetComponent<EventSystem>();
+            try
+            {
+                PointerEventData pointer = new(EventSystem.current)
+                {
+                    button = PointerEventData.InputButton.Left,
+                };
+                ExecuteEvents.Execute(
+                    clicked.gameObject,
+                    pointer,
+                    ExecuteEvents.pointerDownHandler
+                );
+                Assert.AreEqual(
+                    "PlanetSelection",
+                    EventSystem.current.currentSelectedGameObject?.name
+                );
+                Assert.IsTrue(
+                    view.HandleKeyboardShortcut(
+                        new Event { type = EventType.KeyDown, keyCode = KeyCode.D }
+                    )
+                );
+                Assert.AreEqual(firstPosition + Vector2Int.right, new Vector2Int(first.X, first.Y));
+                Assert.AreEqual(secondPosition, new Vector2Int(second.X, second.Y));
+                Assert.IsTrue(project.Undo());
+                Assert.AreEqual(before, sector.Catalog.Document.Text);
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(eventRoot);
+                if (previous != null)
+                    EventSystem.current = previous;
+            }
+        }
+
         [UnityTest]
         public IEnumerator ArrangeMapAsync_OverlappingPlanets_ClearsRenderedGeometryAndUndoesAsOneEdit()
         {

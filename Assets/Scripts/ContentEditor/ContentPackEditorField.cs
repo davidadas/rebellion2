@@ -115,6 +115,46 @@ public sealed class ContentPackEditorField
     }
 
     /// <summary>
+    /// Creates a typed field whose XML is materialized only when a value is committed.
+    /// </summary>
+    /// <param name="record">The document record owning the field.</param>
+    /// <param name="owner">The element that contains the field.</param>
+    /// <param name="member">The serialized member name.</param>
+    /// <param name="type">The declared scalar value type.</param>
+    /// <param name="caption">The optional label shown in the inspector.</param>
+    /// <param name="attachOwner">The optional action that attaches the detached owner.</param>
+    /// <returns>The existing or optional field for this member.</returns>
+    internal static ContentPackEditorField CreateOptional(
+        ContentPackEditorRecord record,
+        XElement owner,
+        string member,
+        Type type,
+        string caption = null,
+        Action attachOwner = null
+    )
+    {
+        XElement element =
+            owner.Element(member) ?? new XElement(member, type == typeof(int) ? "0" : string.Empty);
+        return new ContentPackEditorField(
+            record,
+            element,
+            member,
+            attach: () =>
+            {
+                if (attachOwner != null)
+                    attachOwner();
+                else if (owner != record.Element && owner.Parent == null)
+                    record.Element.Add(owner);
+                if (element.Parent == null)
+                    owner.Add(element);
+            },
+            valueTypeOverride: type,
+            caption: caption,
+            parentOverride: owner
+        );
+    }
+
+    /// <summary>
     /// Creates a form field over an existing XML member.
     /// </summary>
     /// <param name="record">The owning record.</param>

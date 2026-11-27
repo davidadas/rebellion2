@@ -180,7 +180,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
         mapHint.text =
             sector == null
                 ? "Click to select; double-click to open a sector. Drag to move. Wheel to zoom; right-drag to pan."
-                : "Select a planet to edit it. Drag planets to move them. Wheel to zoom; right-drag to pan.";
+                : "Click a planet to select it. Drag or use arrow keys or WASD to move it. Wheel to zoom; right-drag to pan.";
         string frame = sector?.Key ?? "galaxy";
         if (visibleFrame != frame)
             mapViewport.ResetView();
@@ -193,7 +193,7 @@ public sealed class ContentEditorMapView : MonoBehaviour
             mapAspect.aspectRatio = sectorPreview.AspectRatio;
             FactionTheme theme =
                 mapFactionDropdown.value > 0 ? themes[mapFactionDropdown.value - 1].Theme : null;
-            sectorPreview.Render(project, sector, assets, theme);
+            sectorPreview.Render(project, sector, assets, theme, enablePlanetPlacement: true);
             return;
         }
         sectorPreview.Hide();

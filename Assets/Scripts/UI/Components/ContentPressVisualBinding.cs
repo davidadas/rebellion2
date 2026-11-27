@@ -50,17 +50,29 @@ public sealed class ContentPressVisualBinding : MonoBehaviour
     /// <param name="contentAssets">The active content asset source.</param>
     public void Bind(IContentAssetSource contentAssets)
     {
+        var (released, pressed) = ResolveTextures(contentAssets);
+        ResolvePressVisual().SetInteractiveTextures(released, pressed);
+    }
+
+    /// <summary>
+    /// Resolves the authored textures from the supplied asset store.
+    /// </summary>
+    /// <param name="contentAssets">The active content asset source.</param>
+    /// <returns>The released and pressed textures.</returns>
+    internal (Texture2D Released, Texture2D Pressed) ResolveTextures(
+        IContentAssetSource contentAssets
+    )
+    {
         if (contentAssets == null)
             throw new ArgumentNullException(nameof(contentAssets));
         if (string.IsNullOrWhiteSpace(upAddress))
             throw new MissingReferenceException($"{name} press-visual address is missing.");
 
-        RawImagePressVisual pressVisual = ResolvePressVisual();
-        Texture upTexture = ContentBindings.RequireTexture(contentAssets, upAddress);
-        Texture downTexture = string.IsNullOrWhiteSpace(downAddress)
+        Texture2D upTexture = ContentBindings.RequireTexture(contentAssets, upAddress);
+        Texture2D downTexture = string.IsNullOrWhiteSpace(downAddress)
             ? upTexture
             : ContentBindings.RequireTexture(contentAssets, downAddress);
-        pressVisual.SetInteractiveTextures(upTexture, downTexture);
+        return (upTexture, downTexture);
     }
 
     /// <summary>

@@ -44,6 +44,28 @@ internal static class ContentEditorControlBuilder
     }
 
     /// <summary>
+    /// Keeps visible page actions grouped against their content's right edge.
+    /// </summary>
+    /// <param name="parent">The owning content area.</param>
+    /// <param name="top">The row's top offset.</param>
+    /// <param name="height">The row's height.</param>
+    /// <returns>The action container, which excludes hidden controls from its layout.</returns>
+    internal static RectTransform ActionRow(Transform parent, int top, int height)
+    {
+        RectTransform row = Layer("PageActions", parent);
+        row.anchorMin = row.pivot = Vector2.up;
+        row.anchorMax = Vector2.one;
+        row.anchoredPosition = new Vector2(0, -top);
+        row.sizeDelta = new Vector2(0, height);
+        HorizontalLayoutGroup layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+        layout.spacing = 16;
+        layout.childAlignment = TextAnchor.MiddleRight;
+        layout.childControlWidth = layout.childControlHeight = false;
+        layout.childForceExpandWidth = layout.childForceExpandHeight = false;
+        return row;
+    }
+
+    /// <summary>
     /// Creates a plain authoring surface.
     /// </summary>
     /// <param name="name">The object name.</param>
@@ -262,13 +284,14 @@ internal static class ContentEditorControlBuilder
             MenuControlStyle.Flat
         );
         Toggle item = dropdown.template.GetComponentInChildren<Toggle>(true);
+        Transform arrow = dropdown.transform.Find("Arrow");
         foreach (Image image in dropdown.GetComponentsInChildren<Image>(true))
         {
             if (image.GetComponent<Mask>() == null)
                 BindColor(
                     image,
-                    image == item.graphic
-                        ? ContentEditorColorRole.Checkmark
+                    image.transform.IsChildOf(arrow) ? ContentEditorColorRole.Text
+                        : image == item.graphic ? ContentEditorColorRole.Checkmark
                         : ContentEditorColorRole.Panel
                 );
         }
@@ -282,8 +305,23 @@ internal static class ContentEditorControlBuilder
         }
         BindColor(item.targetGraphic, ContentEditorColorRole.Panel, item);
         dropdown.transition = Selectable.Transition.ColorTint;
-        BindColor(dropdown.targetGraphic, ContentEditorColorRole.Panel, dropdown);
+        Outline outline = dropdown.targetGraphic.gameObject.AddComponent<Outline>();
+        outline.effectDistance = new Vector2(1, -1);
+        outline.useGraphicAlpha = false;
+        BindColor(dropdown.targetGraphic, ContentEditorColorRole.Input, dropdown);
+        Stretch(dropdown.captionText.rectTransform, 12, 0, 40, 0);
         return dropdown;
+    }
+
+    /// <summary>
+    /// Adds the shared dropdown chevron to a single-choice or checkbox selection field.
+    /// </summary>
+    /// <param name="parent">The field receiving the chevron.</param>
+    internal static void AddDropdownArrow(Transform parent)
+    {
+        RectTransform arrow = MenuControlPrefabBuilder.CreateDropdownArrow(parent);
+        foreach (Image stroke in arrow.GetComponentsInChildren<Image>())
+            BindColor(stroke, ContentEditorColorRole.Text);
     }
 
     /// <summary>
@@ -291,8 +329,15 @@ internal static class ContentEditorControlBuilder
     /// </summary>
     /// <param name="name">The object name.</param>
     /// <param name="parent">The owning transform.</param>
+    /// <param name="scrollbarWidth">The scrollbar track width.</param>
+    /// <param name="scrollbarGap">The gap between content and its scrollbar.</param>
     /// <returns>The responsive scroll wrapper.</returns>
-    internal static ScrollAreaLayout Scroll(string name, Transform parent)
+    internal static ScrollAreaLayout Scroll(
+        string name,
+        Transform parent,
+        int scrollbarWidth = 18,
+        int scrollbarGap = 6
+    )
     {
         ScrollAreaView scroll = CommonUIPrefabBuilder.CreateScrollAreaView(
             MenuPrefabBuilder.FlatScrollAreaPath,
@@ -316,6 +361,10 @@ internal static class ContentEditorControlBuilder
         foreach (Scrollbar bar in scroll.GetComponentsInChildren<Scrollbar>(true))
             StyleScrollbar(bar);
         ScrollAreaLayout layout = scroll.gameObject.AddComponent<ScrollAreaLayout>();
+        SerializedObject settings = new(layout);
+        settings.FindProperty("scrollbarWidth").floatValue = scrollbarWidth;
+        settings.FindProperty("scrollbarGap").floatValue = scrollbarGap;
+        settings.ApplyModifiedPropertiesWithoutUndo();
         layout.Configure(scroll);
         return layout;
     }
@@ -578,5 +627,63 @@ internal static class ContentEditorControlBuilder
         for (int index = 0; index < values.Count; index++)
             property.GetArrayElementAtIndex(index).objectReferenceValue = values[index];
         serialized.ApplyModifiedPropertiesWithoutUndo();
+    }
+
+    /// <summary>
+    /// Authors an attached multi-select dropdown using compact checkbox rows.
+    /// </summary>
+    /// <param name="parent">The filter strip.</param>
+    /// <param name="name">The control identity.</param>
+    /// <param name="caption">The empty-selection label.</param>
+    /// <returns>The checkbox dropdown.</returns>
+    internal static MultiSelectDropdown MultiSelect(Transform parent, string name, string caption)
+    {
+        Button picker = Button(name, parent, caption);
+        Rect((RectTransform)picker.transform, 0, 0, 280, 44);
+        Outline outline = picker.gameObject.AddComponent<Outline>();
+        outline.effectDistance = new Vector2(1, -1);
+        outline.useGraphicAlpha = false;
+        BindColor(picker.targetGraphic, ContentEditorColorRole.Input, picker);
+        TMP_Text label = picker.GetComponentInChildren<TMP_Text>();
+        BindColor(label, ContentEditorColorRole.Text);
+        label.alignment = TextAlignmentOptions.MidlineLeft;
+        label.textWrappingMode = TextWrappingModes.NoWrap;
+        label.overflowMode = TextOverflowModes.Ellipsis;
+        Stretch(label.rectTransform, 12, 0, 40, 0);
+        AddDropdownArrow(picker.transform);
+        MultiSelectDropdown dropdown = picker.gameObject.AddComponent<MultiSelectDropdown>();
+        Image popup = Surface("CategoryOptions", picker.transform, ContentEditorColorRole.Border);
+        Rect(popup.rectTransform, 0, 48, 280, 304);
+        popup.raycastTarget = true;
+        Canvas canvas = popup.gameObject.AddComponent<Canvas>();
+        canvas.overrideSorting = true;
+        canvas.sortingOrder = 30000;
+        popup.gameObject.AddComponent<GraphicRaycaster>();
+        Image interior = Surface("Interior", popup.transform, ContentEditorColorRole.Panel);
+        Stretch(interior.rectTransform, 1, 1, 1, 1);
+        ScrollAreaLayout scroll = Scroll("Choices", popup.transform, 8, 8);
+        Rect((RectTransform)scroll.transform, 8, 8, 264, 256);
+        UICheckboxView row = Checkbox(scroll.ScrollArea.ContentRoot);
+        row.name = "CategoryTemplate";
+        Rect((RectTransform)row.transform, 0, 0, 248, 32);
+        Rect((RectTransform)row.transform.Find("Frame"), 0, 5, 22, 22);
+        TMP_Text rowLabel = row.GetComponentInChildren<TMP_Text>(true);
+        rowLabel.fontSize = 14;
+        rowLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        rowLabel.overflowMode = TextOverflowModes.Ellipsis;
+        row.gameObject.SetActive(false);
+        Button clear = PlainButton("ClearSelection", popup.transform, "Clear selection");
+        Rect((RectTransform)clear.transform, 8, 268, 264, 28);
+        TMP_Text clearLabel = clear.GetComponentInChildren<TMP_Text>();
+        clearLabel.fontSize = 13;
+        clearLabel.alignment = TextAlignmentOptions.MidlineLeft;
+        Assign(dropdown, "control", picker);
+        Assign(dropdown, "caption", label);
+        Assign(dropdown, "popup", popup.rectTransform);
+        Assign(dropdown, "scroll", scroll);
+        Assign(dropdown, "rowTemplate", row);
+        Assign(dropdown, "clear", clear);
+        popup.gameObject.SetActive(false);
+        return dropdown;
     }
 }

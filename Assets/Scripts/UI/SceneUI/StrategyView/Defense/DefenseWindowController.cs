@@ -167,17 +167,11 @@ public sealed class DefenseWindowController
         }
 
         Vector2Int position = getWindowPosition(sourceX, sourceY);
-        UIWindow window = windowManager.CreateWindow(
+        UIWindow window = windowLayer.CreatePlanetWindow(
+            windowManager,
             windowLayer.DefenseWindowPrefab,
-            windowLayer.GetWindowParent(false),
             $"DefenseWindow-{planet.Planet.GetDisplayName()}",
-            position.x,
-            position.y,
-            windowLayer.GetWindowSize(windowLayer.DefenseWindowPrefab),
-            false,
-            true,
-            true,
-            false,
+            position,
             out DefenseWindowView view
         );
         if (!TryInitializeWindow(view, planet))

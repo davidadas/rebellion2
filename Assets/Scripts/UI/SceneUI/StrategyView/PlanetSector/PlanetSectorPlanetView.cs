@@ -148,6 +148,11 @@ public sealed class PlanetSectorPlanetView
     > Released;
 
     /// <summary>
+    /// Gets the rendered planet artwork used to anchor editor selection outlines.
+    /// </summary>
+    public RectTransform PlanetArtworkTransform => planetImage.rectTransform;
+
+    /// <summary>
     /// Renders one complete planet presentation at its projected source-space position.
     /// </summary>
     /// <param name="data">The immutable planet presentation.</param>

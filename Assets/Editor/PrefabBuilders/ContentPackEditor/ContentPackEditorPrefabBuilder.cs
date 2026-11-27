@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using TMPro;
@@ -72,6 +73,9 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "appearance", appearance);
         ContentPackEditorController controller = root.AddComponent<ContentPackEditorController>();
         Assign(controller, "view", view);
+        SerializedObject controllerSettings = new(controller);
+        controllerSettings.FindProperty("gameProductName").stringValue = PlayerSettings.productName;
+        controllerSettings.ApplyModifiedPropertiesWithoutUndo();
 
         AudioSource previewAudio = canvasRoot.gameObject.AddComponent<AudioSource>();
         previewAudio.playOnAwake = false;
@@ -84,31 +88,91 @@ public static class ContentPackEditorPrefabBuilder
         Image menuStrip = Surface("MenuBar", canvasRoot, ContentEditorColorRole.Background);
         Stretch(menuStrip.rectTransform);
         menuStrip.rectTransform.anchorMin = Vector2.up;
-        menuStrip.rectTransform.offsetMin = new Vector2(0, -36);
+        menuStrip.rectTransform.offsetMin = new Vector2(0, -28);
         string[] headings = { "File", "Edit", "View", "Test" };
         string[] members = { "fileButton", "editButton", "viewButton", "testButton" };
         MenuBarHeadingView[] menuHeadings = new MenuBarHeadingView[headings.Length];
         for (int i = 0; i < headings.Length; i++)
         {
             Button button = PlainButton(headings[i], menuStrip.transform, headings[i]);
-            Rect((RectTransform)button.transform, 12 + i * 62, 0, 60, 34);
+            Rect((RectTransform)button.transform, 12 + i * 52, 0, 50, 28);
+            button.GetComponentInChildren<TMP_Text>().fontSize = 13;
             Assign(view, members[i], button);
             MenuBarHeadingView menuHeading = button.gameObject.AddComponent<MenuBarHeadingView>();
             menuHeadings[i] = menuHeading;
         }
         Assign(view, "menuHeadings", menuHeadings);
+        Button connection = PlainButton(
+            "ThunderstoreStatus",
+            menuStrip.transform,
+            "Thunderstore (click to connect)"
+        );
+        RectTransform connectionRect = (RectTransform)connection.transform;
+        connectionRect.anchorMin = connectionRect.anchorMax = connectionRect.pivot = Vector2.one;
+        connectionRect.anchoredPosition = new Vector2(-12, 0);
+        connectionRect.sizeDelta = new Vector2(440, 28);
+        TMP_Text connectionLabel = connection.GetComponentInChildren<TMP_Text>();
+        connectionLabel.fontSize = 13;
+        connectionLabel.alignment = TextAlignmentOptions.MidlineRight;
+        connectionLabel.overflowMode = TextOverflowModes.Ellipsis;
+        connectionLabel.textWrappingMode = TextWrappingModes.NoWrap;
+        connectionLabel.richText = false;
+        Assign(view, "thunderstoreStatus", connectionLabel);
+        Assign(view, "thunderstoreConnectionButton", connection);
+        Image navigation = Surface("Navigation", canvasRoot, ContentEditorColorRole.Panel);
+        Stretch(navigation.rectTransform);
+        navigation.rectTransform.anchorMin = Vector2.up;
+        navigation.rectTransform.offsetMin = new Vector2(0, -76);
+        navigation.rectTransform.offsetMax = new Vector2(0, -28);
+        Image navigationRule = Surface(
+            "Divider",
+            navigation.transform,
+            ContentEditorColorRole.Divider
+        );
+        Stretch(navigationRule.rectTransform);
+        navigationRule.rectTransform.anchorMax = Vector2.right;
+        navigationRule.rectTransform.offsetMax = new Vector2(0, 1);
+        Button library = PlainButton("Library", navigation.transform, "Library");
+        Rect((RectTransform)library.transform, 16, 0, 104, 48);
+        Assign(view, "libraryButton", library);
+        Button browse = PlainButton("Browse", navigation.transform, "Browse");
+        Rect((RectTransform)browse.transform, 120, 0, 104, 48);
+        Assign(view, "browseButton", browse);
+        Button projects = PlainButton("Projects", navigation.transform, "Projects");
+        Rect((RectTransform)projects.transform, 224, 0, 112, 48);
+        Assign(view, "projectsButton", projects);
+        Image navigationSelection = Surface(
+            "Selection",
+            projects.transform,
+            ContentEditorColorRole.Accent
+        );
+        navigationSelection.raycastTarget = false;
+        navigationSelection.rectTransform.anchorMin = Vector2.zero;
+        navigationSelection.rectTransform.anchorMax = Vector2.right;
+        navigationSelection.rectTransform.offsetMin = new Vector2(16, 0);
+        navigationSelection.rectTransform.offsetMax = new Vector2(-16, 2);
+        Assign(view, "navigationIndicator", navigationSelection.rectTransform);
+        Button publish = Button("Publish", navigation.transform, "Publish…");
+        RectTransform publishRect = (RectTransform)publish.transform;
+        publishRect.anchorMin = publishRect.anchorMax = publishRect.pivot = Vector2.one;
+        publishRect.anchoredPosition = new Vector2(-20, -8);
+        publishRect.sizeDelta = new Vector2(112, 32);
+        Assign(view, "publishButton", publish);
         RectTransform projectWorkspace = Layer("ProjectWorkspace", canvasRoot);
-        Stretch(projectWorkspace);
+        Stretch(projectWorkspace, 0, 40, 0, 0);
         Assign(view, "projectWorkspace", projectWorkspace.gameObject);
+        Assign(view, "projectInteraction", projectWorkspace.gameObject.AddComponent<CanvasGroup>());
         TextMeshProUGUI project = Label(
             "PackName",
-            menuStrip.transform,
+            navigation.transform,
             "No content pack open",
             14,
             true
         );
-        Stretch(project.rectTransform, 284, 0, 24, 0);
+        Stretch(project.rectTransform, 368, 0, 152, 0);
         project.alignment = TextAlignmentOptions.MidlineRight;
+        project.overflowMode = TextOverflowModes.Ellipsis;
+        project.textWrappingMode = TextWrappingModes.NoWrap;
         Assign(view, "projectLabel", project);
         Image rule = Surface("MenuDivider", projectWorkspace, ContentEditorColorRole.Divider);
         Stretch(rule.rectTransform, 12, 36, 12);
@@ -122,7 +186,7 @@ public static class ContentPackEditorPrefabBuilder
             ContentEditorColorRole.Panel
         );
         navigationBackground.transform.SetAsFirstSibling();
-        Stretch(explorer, 20, 54, 0, 20);
+        Stretch(explorer, 20, 54, 0, 60);
         explorer.anchorMax = Vector2.up;
         explorer.offsetMax = new Vector2(316, -54);
         TextMeshProUGUI heading = Label("ContentHeading", explorer, "Content", 18);
@@ -264,6 +328,7 @@ public static class ContentPackEditorPrefabBuilder
             "Default backgrounds",
             "Colors",
             "Mission presentation",
+            "Cutscenes",
         };
         Button[] tabButtons = new Button[sections.Length];
         for (int i = 0; i < sections.Length; i++)
@@ -293,6 +358,8 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "defaultBackgroundsTab", tabButtons[9]);
         Assign(view, "colorsTab", tabButtons[10]);
         Assign(view, "missionPresentationTab", tabButtons[11]);
+        tabButtons[12].name = "CutscenesTab";
+        Assign(view, "cutscenesTab", tabButtons[12]);
         Button[] generationTabs = ContentPackEditorView
             .GenerationSections.Select(
                 (caption, index) =>
@@ -392,7 +459,8 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorSectorPreview artworkSectorPreview =
             artworkSectorSurface.gameObject.AddComponent<ContentEditorSectorPreview>();
         PlanetSectorWindowView artworkSectorWindow = StrategyViewPrefabBuilder.CreateSectorPreview(
-            artworkSectorSurface.transform
+            artworkSectorSurface.transform,
+            includeWindowControls: true
         );
         Assign(artworkSectorPreview, "window", artworkSectorWindow);
         artworkSectorSurface.gameObject.SetActive(false);
@@ -405,6 +473,8 @@ public static class ContentPackEditorPrefabBuilder
         ContentEditorArtworkWindowPreview artworkWindowPreview =
             artworkWindowSurface.gameObject.AddComponent<ContentEditorArtworkWindowPreview>();
         StrategyViewPrefabBuilder.CreateArtworkWindowPreviews(artworkWindowSurface.transform);
+        StrategyViewPrefabBuilder.CreatePlanetWindowHeaderPreview(artworkWindowSurface.transform);
+        CommonUIPrefabBuilder.CreateConfirmationArtworkPreview(artworkWindowSurface.transform);
         BuildStrategyPreviewZoom(fields.ScrollArea.ContentRoot, artworkWindowPreview);
         artworkWindowSurface.gameObject.SetActive(false);
         Assign(form, "artworkWindowPreview", artworkWindowPreview);
@@ -423,6 +493,26 @@ public static class ContentPackEditorPrefabBuilder
         );
         artworkDisabledWindowSurface.gameObject.SetActive(false);
         Assign(form, "artworkDisabledWindowPreview", artworkDisabledWindowPreview);
+        ContentEditorMainMenuPreview mainMenuPreview =
+            MainMenuPrefabBuilder.CreateMainMenuPreview();
+        try
+        {
+            const string path = "Assets/Prefabs/UI/ContentPackEditor/MainMenuPreview.prefab";
+            Directory.CreateDirectory(Path.GetDirectoryName(path));
+            GameObject previewPrefab = PrefabUtility.SaveAsPrefabAsset(
+                mainMenuPreview.gameObject,
+                path
+            );
+            Assign(
+                form,
+                "mainMenuPreviewTemplate",
+                previewPrefab.GetComponent<ContentEditorMainMenuPreview>()
+            );
+        }
+        finally
+        {
+            Object.DestroyImmediate(mainMenuPreview.gameObject);
+        }
         Button addMessage = Button(
             "AddFactionMessage",
             fields.ScrollArea.ContentRoot,
@@ -561,16 +651,49 @@ public static class ContentPackEditorPrefabBuilder
         xmlRoot.gameObject.SetActive(false);
         BuildMap(editor, view);
 
-        TextMeshProUGUI copyright = Label("Copyright", canvasRoot, "© 2026 David Adams", 12, true);
-        copyright.alignment = TextAlignmentOptions.MidlineRight;
-        copyright.rectTransform.anchorMin = Vector2.zero;
-        copyright.rectTransform.anchorMax = Vector2.right;
-        copyright.rectTransform.pivot = Vector2.zero;
-        copyright.rectTransform.offsetMin = new Vector2(20, 2);
-        copyright.rectTransform.offsetMax = new Vector2(-24, 26);
+        Image transfers = Surface("Downloads", canvasRoot, ContentEditorColorRole.Background);
+        RectTransform transferRect = transfers.rectTransform;
+        transferRect.anchorMin = Vector2.zero;
+        transferRect.anchorMax = Vector2.right;
+        transferRect.pivot = Vector2.zero;
+        transferRect.offsetMin = Vector2.zero;
+        transferRect.offsetMax = new Vector2(0, 40);
+        Image transferDivider = Surface("Divider", transferRect, ContentEditorColorRole.Divider);
+        Stretch(transferDivider.rectTransform);
+        transferDivider.rectTransform.anchorMin = Vector2.up;
+        transferDivider.rectTransform.offsetMin = new Vector2(0, -1);
+        TextMeshProUGUI transferStatus = Label(
+            "Status",
+            transferRect,
+            "No active downloads",
+            13,
+            true
+        );
+        Rect(transferStatus.rectTransform, 20, 3, 430, 34);
+        Assign(view, "packageStatus", transferStatus);
+        Image track = Surface("ProgressTrack", transferRect, ContentEditorColorRole.Divider);
+        Stretch(track.rectTransform, 470, 18, 144, 18);
+        Assign(view, "packageProgressTrack", track.gameObject);
+        Image fill = Surface("Progress", track.transform, ContentEditorColorRole.Accent);
+        Stretch(fill.rectTransform);
+        fill.type = Image.Type.Filled;
+        fill.fillMethod = Image.FillMethod.Horizontal;
+        fill.fillOrigin = 0;
+        Assign(view, "packageProgress", fill);
+        track.gameObject.SetActive(false);
+        Button cancelPackage = PlainButton("CancelDownload", transferRect, "Cancel");
+        RectTransform cancelRect = (RectTransform)cancelPackage.transform;
+        cancelRect.anchorMin = cancelRect.anchorMax = cancelRect.pivot = Vector2.one;
+        cancelRect.anchoredPosition = new Vector2(-20, -3);
+        cancelRect.sizeDelta = new Vector2(104, 34);
+        Assign(view, "cancelPackageButton", cancelPackage);
+        cancelPackage.gameObject.SetActive(false);
 
         BuildWelcome(canvasRoot, view);
         BuildPackDialog(canvasRoot, view);
+        Assign(view, "publishing", BuildPublishing(canvasRoot));
+        Assign(view, "connection", BuildThunderstoreConnection(canvasRoot));
+        Assign(view, "modManager", BuildModManager(canvasRoot));
         BuildSelectionDialog(canvasRoot, view);
         Assign(view, "artworkWorkspace", ContentEditorArtworkWorkspaceBuilder.Build(canvasRoot));
         BuildConfirmation(canvasRoot, view);
@@ -1162,27 +1285,35 @@ public static class ContentPackEditorPrefabBuilder
     private static void BuildWelcome(Transform parent, ContentPackEditorView view)
     {
         RectTransform welcome = Layer("Welcome", parent);
-        Stretch(welcome, 0, 36);
-        RectTransform actions = Layer("Actions", welcome);
-        actions.anchorMin = actions.anchorMax = actions.pivot = new Vector2(0.5f, 0.5f);
-        actions.sizeDelta = new Vector2(600, 260);
-        TextMeshProUGUI title = Label("Title", actions, "Content pack editor", 30);
-        Rect(title.rectTransform, 0, 0, 600, 48);
-        title.alignment = TextAlignmentOptions.Midline;
+        Stretch(welcome, 0, 76, 0, 40);
+        ScrollAreaLayout pageScroll = Scroll("ProjectsPage", welcome, 8, 8);
+        RectTransform page = (RectTransform)pageScroll.transform;
+        page.anchorMin = page.anchorMax = page.pivot = new Vector2(0.5f, 0.5f);
+        page.sizeDelta = new Vector2(1136, 720);
+        page.anchoredPosition = new Vector2(8, 0);
+        Assign(view, "projectsPage", pageScroll);
+        RectTransform actions = Layer("Projects", pageScroll.ScrollArea.ContentRoot);
+        Rect(actions, 0, 0, 1120, 720);
+        Assign(view, "projectHub", actions);
+        TextMeshProUGUI title = Label("Title", actions, "Projects", 36);
+        Rect(title.rectTransform, 0, 32, 640, 48);
+        title.fontStyle = FontStyles.Bold;
         TextMeshProUGUI explanation = Label(
             "Description",
             actions,
-            "Create your own content pack using an installed pack as a base.\nInstalled content stays unchanged.",
+            "Create, edit, test and publish your own content.",
             16,
             true
         );
-        Rect(explanation.rectTransform, 0, 66, 600, 62);
-        explanation.alignment = TextAlignmentOptions.Center;
-        explanation.textWrappingMode = TextWrappingModes.Normal;
-        Button create = Button("NewPack", actions, "New content pack");
-        Rect((RectTransform)create.transform, 54, 158, 236, 40);
-        Button open = Button("OpenPack", actions, "Open content pack");
-        Rect((RectTransform)open.transform, 310, 158, 236, 40);
+        Rect(explanation.rectTransform, 0, 96, 1120, 24);
+        explanation.rectTransform.anchorMax = Vector2.one;
+        explanation.rectTransform.offsetMax = new Vector2(0, -96);
+        RectTransform pageActions = ActionRow(actions, 32, 48);
+        Button create = Button("NewPack", pageActions, "New project");
+        Rect((RectTransform)create.transform, 0, 0, 160, 44);
+        Button open = Button("OpenPack", pageActions, "Open project…");
+        Rect((RectTransform)open.transform, 0, 0, 176, 44);
+        Assign(view, "projects", BuildProjects(actions));
         Assign(view, "welcomePane", welcome.gameObject);
         Assign(view, "newPackButton", create);
         Assign(view, "openPackButton", open);
@@ -1514,5 +1645,1363 @@ public static class ContentPackEditorPrefabBuilder
         rect.anchoredPosition = new Vector2(x, 60);
         button.gameObject.SetActive(false);
         return button;
+    }
+
+    /// <summary>
+    /// Creates the release page's dependency list without a raw manifest editor.
+    /// </summary>
+    /// <param name="parent">The release stage.</param>
+    /// <returns>The authored dependency presentation.</returns>
+    private static ContentEditorDependenciesView BuildDependencies(Transform parent)
+    {
+        RectTransform root = Layer("Dependencies", parent);
+        Rect(root, 0, 100, 650, 164);
+        ContentEditorDependenciesView view =
+            root.gameObject.AddComponent<ContentEditorDependenciesView>();
+        Rect(Label("Heading", root, "Dependencies (optional)", 15).rectTransform, 0, 6, 440, 28);
+        Button choose = Button("ChooseDependencies", root, "Choose packages…");
+        Rect((RectTransform)choose.transform, 470, 0, 180, 34);
+        Assign(view, "choose", choose);
+        ScrollAreaLayout scroll = Scroll("SelectedDependencies", root);
+        Rect((RectTransform)scroll.transform, 0, 42, 650, 116);
+        Assign(view, "scroll", scroll);
+        TMP_Text empty = Label(
+            "Empty",
+            root,
+            "No dependencies. Add packages if your pack needs them.",
+            14,
+            true
+        );
+        Rect(empty.rectTransform, 12, 52, 600, 28);
+        Assign(view, "empty", empty);
+        Image row = Surface(
+            "DependencyTemplate",
+            scroll.ScrollArea.ContentRoot,
+            ContentEditorColorRole.Input
+        );
+        Rect(row.rectTransform, 0, 0, 626, 52);
+        ContentEditorDependencyRowView item =
+            row.gameObject.AddComponent<ContentEditorDependencyRowView>();
+        TMP_Text name = Label("PackageName", row.transform, string.Empty, 15);
+        name.overflowMode = TextOverflowModes.Ellipsis;
+        Assign(item, "packageName", name);
+        TMP_Text author = Label("Author", row.transform, string.Empty, 13, true);
+        author.overflowMode = TextOverflowModes.Ellipsis;
+        Assign(item, "author", author);
+        TMP_Dropdown version = Dropdown("DependencyVersion", row.transform);
+        version.template.anchoredPosition = Vector2.zero;
+        Assign(item, "version", version);
+        Button remove = PlainButton("RemoveDependency", row.transform, "Remove");
+        Assign(item, "remove", remove);
+        Assign(view, "rowTemplate", item);
+        row.gameObject.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Creates a reusable crop dialog above its owning workflow.
+    /// </summary>
+    /// <param name="parent">The owning overlay.</param>
+    /// <returns>The authored crop presentation.</returns>
+    private static ContentEditorImageCropView BuildImageCrop(Transform parent)
+    {
+        Image overlay = Surface("ImageCrop", parent, new Color(0, 0, 0, 0.75f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        ContentEditorImageCropView view =
+            overlay.gameObject.AddComponent<ContentEditorImageCropView>();
+        Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
+        RectTransform rect = panel.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(920, 712);
+        Assign(view, "panel", rect);
+        Rect(Label("Heading", rect, "Crop image", 24).rectTransform, 28, 20, 864, 36);
+        TextMeshProUGUI description = Label("Description", rect, string.Empty, 14, true);
+        Rect(description.rectTransform, 28, 64, 864, 28);
+        description.overflowMode = TextOverflowModes.Ellipsis;
+        Assign(view, "description", description);
+        RawImage artwork = Artwork(rect, "CropFrame", 28, 112, 512);
+        artwork.raycastTarget = true;
+        Assign(view, "artwork", artwork);
+        RectTransform[] shades = new RectTransform[4];
+        for (int i = 0; i < shades.Length; i++)
+            shades[i] = Surface(
+                "OutsideSelection" + i,
+                artwork.transform,
+                new Color(0, 0, 0, 0.55f)
+            ).rectTransform;
+        Assign(view, "shades", shades);
+        Image selection = Surface("Selection", artwork.transform, Color.clear);
+        selection.raycastTarget = true;
+        selection.canvasRenderer.cullTransparentMesh = false;
+        Assign(view, "selection", selection.rectTransform);
+        BuildSelectionBorder(selection.rectTransform);
+        TextMeshProUGUI dimensions = Label("OutputDimensions", rect, string.Empty, 16);
+        Rect(dimensions.rectTransform, 572, 112, 320, 28);
+        Assign(view, "dimensions", dimensions);
+        Assign(view, "preview", Artwork(rect, "OutputPreview", 584, 156, 256));
+        TextMeshProUGUI quality = Label("Quality", rect, string.Empty, 14, true);
+        Rect(quality.rectTransform, 572, 428, 320, 48);
+        quality.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "quality", quality);
+        Rect(Label("CropSizeLabel", rect, "Crop size", 15).rectTransform, 572, 488, 160, 28);
+        TextMeshProUGUI value = Label("CropSizeValue", rect, "100%", 15, true);
+        Rect(value.rectTransform, 812, 488, 80, 28);
+        value.alignment = TextAlignmentOptions.MidlineRight;
+        Assign(view, "cropSizeValue", value);
+        Assign(view, "cropSize", SizeSlider(rect));
+        Button reset = PlainButton("ResetCrop", rect, "Reset crop");
+        Rect((RectTransform)reset.transform, 572, 570, 140, 34);
+        Assign(view, "reset", reset);
+        Rect(
+            Label(
+                "Instructions",
+                rect,
+                "Move the box or use arrow keys. Drag a corner to resize.",
+                14,
+                true
+            ).rectTransform,
+            28,
+            632,
+            560,
+            24
+        );
+        TextMeshProUGUI error = Label("CropError", rect, string.Empty, 14);
+        Rect(error.rectTransform, 28, 666, 560, 32);
+        error.textWrappingMode = TextWrappingModes.Normal;
+        error.richText = false;
+        error.GetComponent<ContentEditorColorBinding>().SetRole(ContentEditorColorRole.Error);
+        Assign(view, "error", error);
+        Button cancel = Button("CancelCrop", rect, "Cancel");
+        Rect((RectTransform)cancel.transform, 620, 652, 120, 36);
+        Assign(view, "cancel", cancel);
+        Button apply = Button("ApplyCrop", rect, "Use image");
+        Rect((RectTransform)apply.transform, 756, 652, 136, 36);
+        Assign(view, "apply", apply);
+        overlay.gameObject.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Marks the selection edges and its draggable corners without hiding the chosen image.
+    /// </summary>
+    /// <param name="parent">The normalized selection rectangle.</param>
+    private static void BuildSelectionBorder(RectTransform parent)
+    {
+        for (int i = 0; i < 4; i++)
+        {
+            bool vertical = i < 2;
+            float edge = i % 2;
+            Image border = Surface("SelectionEdge" + i, parent, Color.white);
+            border.rectTransform.anchorMin = vertical ? new Vector2(edge, 0) : new Vector2(0, edge);
+            border.rectTransform.anchorMax = vertical ? new Vector2(edge, 1) : new Vector2(1, edge);
+            border.rectTransform.offsetMin = vertical ? new Vector2(-1, 0) : new Vector2(0, -1);
+            border.rectTransform.offsetMax = vertical ? new Vector2(1, 0) : new Vector2(0, 1);
+            Image corner = Surface("ResizeCorner" + i, parent, Color.white);
+            corner.rectTransform.anchorMin = corner.rectTransform.anchorMax = new Vector2(
+                i % 2,
+                i / 2
+            );
+            corner.rectTransform.anchoredPosition = Vector2.zero;
+            corner.rectTransform.sizeDelta = new Vector2(8, 8);
+        }
+    }
+
+    /// <summary>
+    /// Fits artwork into a neutral square without changing the required output aspect ratio.
+    /// </summary>
+    /// <param name="parent">The dialog panel.</param>
+    /// <param name="name">The frame name.</param>
+    /// <param name="left">The left coordinate.</param>
+    /// <param name="top">The top coordinate.</param>
+    /// <param name="size">The frame dimensions.</param>
+    /// <returns>The aspect-constrained image.</returns>
+    private static RawImage Artwork(Transform parent, string name, int left, int top, int size)
+    {
+        Image frame = Surface(name, parent, new Color(0.16f, 0.17f, 0.19f, 1));
+        Rect(frame.rectTransform, left, top, size, size);
+        RawImage image = Layer("Artwork", frame.transform).gameObject.AddComponent<RawImage>();
+        Stretch(image.rectTransform);
+        image.raycastTarget = false;
+        image.gameObject.AddComponent<AspectRatioFitter>().aspectMode = AspectRatioFitter
+            .AspectMode
+            .FitInParent;
+        return image;
+    }
+
+    /// <summary>
+    /// Creates a keyboard-accessible selection-size control using the shared palette.
+    /// </summary>
+    /// <param name="parent">The dialog panel.</param>
+    /// <returns>The bounded continuous size slider.</returns>
+    private static Slider SizeSlider(Transform parent)
+    {
+        RectTransform root = Layer("CropSize", parent);
+        Rect(root, 572, 526, 320, 28);
+        Image hit = root.gameObject.AddComponent<Image>();
+        hit.color = Color.clear;
+        hit.canvasRenderer.cullTransparentMesh = false;
+        Slider slider = root.gameObject.AddComponent<Slider>();
+        slider.minValue = 0.1f;
+        slider.maxValue = 1;
+        slider.value = 1;
+        Image track = Surface("Track", root, ContentEditorColorRole.Input);
+        Stretch(track.rectTransform, 7, 10, 7, 10);
+        RectTransform area = Layer("HandleArea", root);
+        Stretch(area, 7, 2, 7, 2);
+        Image handle = Surface("Handle", area, ContentEditorColorRole.Accent);
+        handle.rectTransform.anchorMin = handle.rectTransform.anchorMax = new Vector2(0, 0.5f);
+        handle.rectTransform.sizeDelta = new Vector2(14, 0);
+        slider.handleRect = handle.rectTransform;
+        slider.targetGraphic = handle;
+        slider.direction = Slider.Direction.LeftToRight;
+        return slider;
+    }
+
+    /// <summary>
+    /// Creates navigation, discovery controls, package cards, and the selected-package panel.
+    /// </summary>
+    /// <param name="parent">The toolkit canvas.</param>
+    /// <returns>The authored manager screen.</returns>
+    private static ContentEditorModManagerView BuildModManager(Transform parent)
+    {
+        Image background = Surface("ModManager", parent, ContentEditorColorRole.Background);
+        Stretch(background.rectTransform, 0, 76, 0, 40);
+        background.raycastTarget = true;
+        ContentEditorModManagerView view =
+            background.gameObject.AddComponent<ContentEditorModManagerView>();
+        RectTransform rect = Layer("Workspace", background.transform);
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(1120, 816);
+        Assign(view, "panel", rect);
+        TextMeshProUGUI title = Caption(rect, "Title", "Library", 0, 32, 640, 48, 36);
+        title.fontStyle = FontStyles.Bold;
+        Assign(view, "pageTitle", title);
+        RectTransform actions = ActionRow(rect, 32, 48);
+        ActionButton(view, actions, "refreshButton", "Refresh", 0, 0, 128, true);
+
+        ActionButton(view, actions, "importButton", "Install from file…", 0, 0, 208);
+        Button cancel = ActionButton(
+            view,
+            actions,
+            "closeButton",
+            "Cancel operation",
+            0,
+            0,
+            208,
+            true
+        );
+        cancel.gameObject.SetActive(false);
+        RectTransform defaults = Layer("DefaultPack", rect);
+        Rect(defaults, 0, 112, 1120, 72);
+        RectTransform description = Layer("Description", defaults);
+        Rect(description, 0, 0, 600, 72);
+        Assign(view, "defaultPackDescription", description);
+        Caption(description, "DefaultLabel", "Default content pack", 0, 0, 600, 28, 18);
+        Caption(
+            description,
+            "DefaultHelp",
+            "Used when starting the game.",
+            0,
+            32,
+            600,
+            24,
+            14,
+            ContentEditorColorRole.Muted
+        );
+        foreach (TMP_Text label in description.GetComponentsInChildren<TMP_Text>())
+        {
+            label.rectTransform.anchorMax = Vector2.one;
+            label.rectTransform.offsetMax = new Vector2(0, label.rectTransform.offsetMax.y);
+        }
+        Selector(view, defaults, "activePack", 440, new[] { "No content packs installed" });
+        Assign(view, "defaultPackControls", defaults.gameObject);
+        TMP_InputField search = Input(
+            "SearchPackages",
+            rect,
+            "Search mods by name, creator, or description"
+        );
+        Vector2 inset = search.textViewport.offsetMax;
+        inset.x = -44;
+        search.textViewport.offsetMax = inset;
+        search.textComponent.fontSize = 16;
+        ((TMP_Text)search.placeholder).fontSize = 16;
+        Assign(view, "search", search);
+        ActionButton(view, rect, "clearSearchButton", "×", 0, 0, 44, true);
+        ActionButton(view, rect, "filterButton", "Filters", 0, 0, 112);
+        Assign(view, "sorting", Dropdown("sorting", rect));
+        Assign(
+            view,
+            "resultCount",
+            Caption(
+                rect,
+                "ResultCount",
+                string.Empty,
+                0,
+                280,
+                1120,
+                24,
+                13,
+                ContentEditorColorRole.Muted
+            )
+        );
+        ScrollAreaLayout packages = Scroll("Packages", rect, 8, 8);
+        Stretch((RectTransform)packages.transform, 0, 248, -16, 0);
+        Assign(view, "packages", packages);
+        Assign(view, "rowTemplate", BuildCard(packages.ScrollArea.ContentRoot));
+        TextMeshProUGUI empty = Caption(
+            rect,
+            "EmptyResults",
+            string.Empty,
+            0,
+            384,
+            1120,
+            160,
+            20,
+            ContentEditorColorRole.Muted
+        );
+        empty.alignment = TextAlignmentOptions.Center;
+        empty.textWrappingMode = TextWrappingModes.Normal;
+        empty.gameObject.SetActive(false);
+        Assign(view, "emptyResults", empty);
+        TextMeshProUGUI status = Caption(
+            rect,
+            "ManagerStatus",
+            string.Empty,
+            0,
+            752,
+            1120,
+            48,
+            14,
+            ContentEditorColorRole.Muted
+        );
+        status.textWrappingMode = TextWrappingModes.Normal;
+        status.rectTransform.anchorMin = Vector2.zero;
+        status.rectTransform.anchorMax = Vector2.right;
+        status.rectTransform.pivot = Vector2.zero;
+        status.rectTransform.offsetMin = Vector2.zero;
+        status.rectTransform.offsetMax = new Vector2(0, 48);
+        status.gameObject.SetActive(false);
+        Assign(view, "status", status);
+        BuildFilters(rect, view);
+        BuildDetails(background.transform, view);
+        background.gameObject.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Expands filter choices in the page without covering the result list.
+    /// </summary>
+    /// <param name="parent">The browse workspace.</param>
+    /// <param name="view">The owning manager.</param>
+    private static void BuildFilters(Transform parent, ContentEditorModManagerView view)
+    {
+        Image strip = Surface("FilterPanel", parent, ContentEditorColorRole.Panel);
+        Assign(view, "filterPanel", strip.gameObject);
+        ContentEditorModFiltersView filters =
+            strip.gameObject.AddComponent<ContentEditorModFiltersView>();
+        Assign(view, "filters", filters);
+        foreach (
+            (string Field, string Label) heading in new[]
+            {
+                (Field: "sectionHeading", Label: "Section"),
+                (Field: "installationHeading", Label: "Installation"),
+                (Field: "includedHeading", Label: "Include categories"),
+                (Field: "excludedHeading", Label: "Exclude categories"),
+            }
+        )
+            Assign(
+                filters,
+                heading.Field,
+                Label(heading.Field, strip.transform, heading.Label, 13, true)
+            );
+        Selector(filters, strip.transform, "section", 240, new[] { "All sections" });
+        Assign(filters, "installation", Dropdown("installation", strip.transform));
+        Assign(
+            filters,
+            "includeCategories",
+            MultiSelect(strip.transform, "IncludeCategories", "Any category")
+        );
+        Assign(
+            filters,
+            "excludeCategories",
+            MultiSelect(strip.transform, "ExcludeCategories", "No exclusions")
+        );
+        TMP_Text help = Label(
+            "CategoryHelp",
+            strip.transform,
+            "Match any included category.",
+            12,
+            true
+        );
+        help.textWrappingMode = TextWrappingModes.NoWrap;
+        Assign(filters, "categoryHelp", help);
+        foreach (
+            (string field, string text) in new[]
+            {
+                ("showDeprecated", "Show deprecated"),
+                ("showNsfw", "Show NSFW"),
+            }
+        )
+        {
+            UICheckboxView checkbox = Checkbox(strip.transform);
+            checkbox.name = field;
+            TMP_Text label = checkbox.GetComponentInChildren<TMP_Text>(true);
+            label.text = text;
+            label.fontSize = 14;
+            Rect(label.rectTransform, 32, 0, 192, 24);
+            checkbox.SetIsCheckedWithoutNotify(false);
+            Assign(filters, field, checkbox);
+        }
+        Button clear = ActionButton(
+            view,
+            strip.transform,
+            "resetButton",
+            "Clear filters",
+            0,
+            0,
+            176,
+            true
+        );
+        clear.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.MidlineRight;
+        Assign(filters, "clearButton", clear);
+        filters.SetWidth(1120);
+        strip.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Authors an artwork-led card whose selection and content can be rebound without reconstruction.
+    /// </summary>
+    /// <param name="parent">The shared scroll content root.</param>
+    /// <returns>The inactive card template.</returns>
+    private static ContentEditorModCardView BuildCard(Transform parent)
+    {
+        Image surface = Surface("PackageCard", parent, ContentEditorColorRole.Panel);
+        ContentEditorModCardView card = surface.gameObject.AddComponent<ContentEditorModCardView>();
+        RawImage hit = Layer("HitArea", surface.transform).gameObject.AddComponent<RawImage>();
+        hit.color = Color.clear;
+        Stretch(hit.rectTransform);
+        hit.transform.SetAsFirstSibling();
+        Assign(card, "hitArea", hit);
+        Image cover = Surface("Cover", surface.transform, ContentEditorColorRole.Background);
+        Rect(cover.rectTransform, 24, 24, 96, 96);
+        TextMeshProUGUI initials = Caption(
+            cover.transform,
+            "Initials",
+            string.Empty,
+            0,
+            0,
+            96,
+            96,
+            28,
+            ContentEditorColorRole.Accent
+        );
+        initials.alignment = TextAlignmentOptions.Center;
+        Assign(card, "initials", initials);
+        RawImage artwork = Layer("Artwork", cover.transform).gameObject.AddComponent<RawImage>();
+        Stretch(artwork.rectTransform);
+        artwork.raycastTarget = false;
+        artwork.enabled = false;
+        Assign(card, "artwork", artwork);
+        TextMeshProUGUI name = Caption(
+            surface.transform,
+            "Name",
+            string.Empty,
+            144,
+            24,
+            680,
+            28,
+            22
+        );
+        name.fontStyle = FontStyles.Bold;
+        Assign(card, "caption", name);
+        TextMeshProUGUI author = Caption(
+            surface.transform,
+            "Author",
+            string.Empty,
+            144,
+            56,
+            680,
+            20,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        Assign(card, "author", author);
+        TextMeshProUGUI description = Caption(
+            surface.transform,
+            "Summary",
+            string.Empty,
+            144,
+            80,
+            680,
+            40,
+            15
+        );
+        description.textWrappingMode = TextWrappingModes.Normal;
+        description.alignment = TextAlignmentOptions.TopLeft;
+        description.maxVisibleLines = 2;
+        Assign(card, "description", description);
+        TextMeshProUGUI popularity = Caption(
+            surface.transform,
+            "Popularity",
+            string.Empty,
+            0,
+            80,
+            152,
+            40,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        popularity.rectTransform.anchorMin =
+            popularity.rectTransform.anchorMax =
+            popularity.rectTransform.pivot =
+                Vector2.one;
+        popularity.rectTransform.anchoredPosition = new Vector2(-24, -80);
+        popularity.alignment = TextAlignmentOptions.TopRight;
+        Assign(card, "popularity", popularity);
+        foreach (TMP_Text label in new TMP_Text[] { name, author, description })
+        {
+            RectTransform textRect = label.rectTransform;
+            Vector2 minimum = textRect.offsetMin;
+            Vector2 maximum = textRect.offsetMax;
+            textRect.anchorMax = Vector2.one;
+            textRect.offsetMin = minimum;
+            textRect.offsetMax = new Vector2(-216, maximum.y);
+        }
+        Button action = Button("PrimaryAction", surface.transform, "Install");
+        RectTransform actionRect = (RectTransform)action.transform;
+        actionRect.anchorMin = actionRect.anchorMax = actionRect.pivot = Vector2.one;
+        actionRect.anchoredPosition = new Vector2(-24, -24);
+        actionRect.sizeDelta = new Vector2(152, 44);
+        BindColor(action.GetComponent<Image>(), ContentEditorColorRole.Accent, action);
+        BindColor(action.GetComponentInChildren<TMP_Text>(), ContentEditorColorRole.Background);
+        Assign(card, "primaryAction", action);
+        surface.gameObject.SetActive(false);
+        return card;
+    }
+
+    /// <summary>
+    /// Creates a palette-aware label at an explicit source position.
+    /// </summary>
+    /// <param name="parent">The owning panel.</param>
+    /// <param name="name">The authored control name.</param>
+    /// <param name="text">The visible caption.</param>
+    /// <param name="left">The horizontal position.</param>
+    /// <param name="top">The vertical position.</param>
+    /// <param name="width">The available width.</param>
+    /// <param name="height">The available height.</param>
+    /// <param name="size">The font size.</param>
+    /// <param name="role">The caption's palette role.</param>
+    /// <returns>The authored caption.</returns>
+    private static TextMeshProUGUI Caption(
+        Transform parent,
+        string name,
+        string text,
+        int left,
+        int top,
+        int width,
+        int height,
+        int size,
+        ContentEditorColorRole role = ContentEditorColorRole.Text
+    )
+    {
+        TextMeshProUGUI label = Label(name, parent, text, size);
+        label.GetComponent<ContentEditorColorBinding>().SetRole(role);
+        Rect(label.rectTransform, left, top, width, height);
+        return label;
+    }
+
+    /// <summary>
+    /// Authors a shared dropdown with explicit options and a visible current value.
+    /// </summary>
+    /// <param name="view">The owning manager.</param>
+    /// <param name="parent">The owning panel.</param>
+    /// <param name="field">The serialized control field.</param>
+    /// <param name="width">The control width.</param>
+    /// <param name="options">The visible choices in enum order.</param>
+    /// <returns>The authored selector.</returns>
+    private static TMP_Dropdown Selector(
+        Object view,
+        Transform parent,
+        string field,
+        int width,
+        string[] options
+    )
+    {
+        TMP_Dropdown dropdown = Dropdown(field, parent);
+        dropdown.ClearOptions();
+        dropdown.AddOptions(new List<string>(options));
+        Rect((RectTransform)dropdown.transform, 0, 0, width, 44);
+        dropdown.captionText.alignment = TextAlignmentOptions.MidlineLeft;
+        dropdown.template.anchoredPosition = Vector2.zero;
+        BindColor(dropdown.template.GetComponent<Image>(), ContentEditorColorRole.Border);
+        Assign(view, field, dropdown);
+        return dropdown;
+    }
+
+    /// <summary>
+    /// Authors and binds one manager action using the shared button style.
+    /// </summary>
+    /// <param name="view">The owning screen.</param>
+    /// <param name="parent">The panel transform.</param>
+    /// <param name="field">The serialized control field.</param>
+    /// <param name="label">The visible action.</param>
+    /// <param name="left">The horizontal position.</param>
+    /// <param name="top">The vertical position.</param>
+    /// <param name="width">The control width.</param>
+    /// <param name="plain">Whether this is a text action.</param>
+    /// <returns>The authored action button.</returns>
+    private static Button ActionButton(
+        ContentEditorModManagerView view,
+        Transform parent,
+        string field,
+        string label,
+        int left,
+        int top,
+        int width,
+        bool plain = false
+    )
+    {
+        Button button = plain ? PlainButton(field, parent, label) : Button(field, parent, label);
+        Rect((RectTransform)button.transform, left, top, width, 44);
+        Assign(view, field, button);
+        return button;
+    }
+
+    /// <summary>
+    /// Creates paired project lists using the existing scroll and button controls.
+    /// </summary>
+    /// <param name="parent">The projects overview's scaled workspace.</param>
+    /// <returns>The projects list presentation.</returns>
+    private static ContentEditorProjectsView BuildProjects(Transform parent)
+    {
+        RectTransform root = Layer("ProjectLists", parent);
+        ContentEditorProjectsView view = root.gameObject.AddComponent<ContentEditorProjectsView>();
+        BuildList(view, root, "Local", "Local projects");
+        BuildList(view, root, "Published", "Published packages");
+        RectTransform publishedHeader = Layer("PublishedHeader", root);
+        Assign(view, "publishedHeader", publishedHeader);
+        RectTransform actions = ActionRow(publishedHeader, 0, 36);
+        UICheckboxView showDeprecated = Checkbox(actions);
+        showDeprecated.name = "ShowDeprecated";
+        Rect((RectTransform)showDeprecated.transform, 0, 0, 192, 24);
+        TMP_Text caption = showDeprecated.GetComponentInChildren<TMP_Text>(true);
+        caption.text = "Show deprecated";
+        caption.fontSize = 14;
+        Stretch(caption.rectTransform, 32, 0, 0, 0);
+        showDeprecated.SetIsCheckedWithoutNotify(false);
+        showDeprecated.gameObject.SetActive(false);
+        Assign(view, "showDeprecated", showDeprecated);
+        Button refresh = PlainButton("RefreshProjects", actions, "Refresh");
+        Rect((RectTransform)refresh.transform, 0, 0, 104, 36);
+        Assign(view, "refresh", refresh);
+        refresh.gameObject.SetActive(false);
+        Button connect = PlainButton("ConnectProjects", actions, "Connect Thunderstore…");
+        Rect((RectTransform)connect.transform, 0, 0, 192, 36);
+        Assign(view, "connect", connect);
+        view.SetViewport(new Vector2(1120, 720));
+        return view;
+    }
+
+    /// <summary>
+    /// Authors one column and its reusable metadata row.
+    /// </summary>
+    /// <param name="view">The paired-list owner.</param>
+    /// <param name="parent">The list workspace.</param>
+    /// <param name="name">The authored column identity.</param>
+    /// <param name="heading">The readable column title.</param>
+    private static void BuildList(
+        ContentEditorProjectsView view,
+        Transform parent,
+        string name,
+        string heading
+    )
+    {
+        TMP_Text title = Label(name + "Heading", parent, heading, 20);
+        Assign(view, name == "Local" ? "localHeading" : "publishedHeading", title);
+        TMP_Text status = Label(
+            name + "Status",
+            parent,
+            name == "Local"
+                ? "Projects you create or open appear here."
+                : "Connect Thunderstore to see your team's published packages.",
+            14,
+            true
+        );
+        status.textWrappingMode = TextWrappingModes.Normal;
+        status.richText = false;
+        Assign(view, name == "Local" ? "localStatus" : "publishedStatus", status);
+        ScrollAreaLayout scroll = Scroll(name + "Projects", parent, 8, 8);
+        Assign(view, name == "Local" ? "localScroll" : "publishedScroll", scroll);
+        Image card = Surface(
+            name + "ProjectTemplate",
+            scroll.ScrollArea.ContentRoot,
+            ContentEditorColorRole.Panel
+        );
+        Rect(card.rectTransform, 0, 0, 544, ContentEditorProjectRowView.Height);
+        ContentEditorProjectRowView row =
+            card.gameObject.AddComponent<ContentEditorProjectRowView>();
+        foreach ((string, int) entry in new[] { ("title", 17), ("summary", 13), ("detail", 12) })
+        {
+            TMP_Text label = Label(
+                entry.Item1,
+                card.transform,
+                string.Empty,
+                entry.Item2,
+                entry.Item1 != "title"
+            );
+            label.overflowMode = TextOverflowModes.Ellipsis;
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.richText = false;
+            Assign(row, entry.Item1, label);
+        }
+        Assign(row, "primary", Button("OpenProject", card.transform, "Open"));
+        Assign(row, "secondary", PlainButton("ProjectAction", card.transform, "Publish…"));
+        Assign(view, name == "Local" ? "localTemplate" : "publishedTemplate", row);
+        card.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Creates the listing, release, and export-review dialog beneath the editor workbench.
+    /// </summary>
+    /// <param name="parent">The owning authoring canvas.</param>
+    /// <returns>The dialog whose operations are coordinated by the editor controller.</returns>
+    private static ContentEditorPublishingView BuildPublishing(Transform parent)
+    {
+        Image overlay = Surface("Publishing", parent, new Color(0, 0, 0, 0.7f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        ContentEditorPublishingView view =
+            overlay.gameObject.AddComponent<ContentEditorPublishingView>();
+        Image panel = Surface("Panel", overlay.transform, ContentEditorColorRole.Panel);
+        RectTransform rect = panel.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(1040, 730);
+        Assign(view, "_panel", rect);
+        Rect(
+            Label("Heading", rect, "Prepare a Thunderstore release", 24).rectTransform,
+            28,
+            20,
+            900,
+            38
+        );
+        TextMeshProUGUI identity = Label("Identity", rect, string.Empty, 15, true);
+        Rect(identity.rectTransform, 28, 60, 950, 24);
+        Assign(view, "_identity", identity);
+        string[] names = { "Listing", "Release", "Review" };
+        Button[] steps = new Button[names.Length];
+        GameObject[] stages = new GameObject[names.Length];
+        for (int i = 0; i < names.Length; i++)
+        {
+            steps[i] = PlainButton(names[i] + "Step", rect, i + 1 + ". " + names[i]);
+            Rect((RectTransform)steps[i].transform, 28 + i * 150, 96, 140, 36);
+            RectTransform stage = Layer(names[i], rect);
+            Rect(stage, 28, 150, 650, 440);
+            stages[i] = stage.gameObject;
+        }
+        Assign(view, "_stepButtons", steps);
+        Assign(view, "_stages", stages);
+        TMP_InputField[] fields = new TMP_InputField[6];
+        Transform listing = stages[0].transform;
+        fields[0] = Field(listing, "PackageName", "Package name", 0, 36);
+        fields[1] = Field(listing, "Description", "Short description", 78, 76);
+        fields[1].characterLimit = 250;
+        fields[2] = Field(listing, "Website", "Website (optional)", 196, 36);
+        fields[3] = Field(listing, "Readme", "Readme (Markdown)", 274, 134);
+        Transform release = stages[1].transform;
+        fields[5] = Field(release, "Version", "Release version", 0, 36);
+        fields[5].readOnly = true;
+        TextMeshProUGUI versionHelp = Label(
+            "VersionHelp",
+            release,
+            "Uses the version from your content pack. Edit it in the pack properties.",
+            14,
+            true
+        );
+        Rect(versionHelp.rectTransform, 0, 64, 650, 28);
+        Assign(view, "_dependencies", BuildDependencies(release));
+        fields[4] = Field(release, "Changelog", "Release notes (Markdown)", 282, 126);
+        string[] fieldNames =
+        {
+            "_packageName",
+            "_description",
+            "_website",
+            "_readme",
+            "_changelog",
+            "_version",
+        };
+        for (int i = 0; i < fields.Length; i++)
+            Assign(view, fieldNames[i], fields[i]);
+        Transform reviewStage = stages[2].transform;
+        Rect(Label("TeamLabel", reviewStage, "Publishing team", 14).rectTransform, 0, 0, 650, 24);
+        TMP_Dropdown team = Dropdown("PublishingTeam", reviewStage);
+        Rect((RectTransform)team.transform, 0, 30, 650, 36);
+        team.template.anchoredPosition = Vector2.zero;
+        Assign(view, "_team", team);
+        TextMeshProUGUI review = Label("ReviewText", reviewStage, string.Empty, 16);
+        Rect(review.rectTransform, 0, 84, 650, 312);
+        review.alignment = TextAlignmentOptions.TopLeft;
+        review.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "_review", review);
+        Button export = Button("ExportPackage", reviewStage, "Export ZIP…");
+        Rect((RectTransform)export.transform, 0, 410, 200, 36);
+        Assign(view, "_exportButton", export);
+        Button community = PlainButton("OpenThunderstore", reviewStage, "Open Thunderstore");
+        Rect((RectTransform)community.transform, 216, 410, 220, 36);
+        Assign(view, "_communityButton", community);
+        Button connection = PlainButton("ThunderstoreConnection", rect, "Connect Thunderstore…");
+        Rect((RectTransform)connection.transform, 726, 96, 286, 36);
+        Assign(view, "_connectionButton", connection);
+        Rect(
+            Label("PreviewHeading", rect, "Listing preview", 15, true).rectTransform,
+            726,
+            150,
+            286,
+            24
+        );
+        RawImage icon = Layer("Icon", rect).gameObject.AddComponent<RawImage>();
+        Rect(icon.rectTransform, 726, 188, 128, 128);
+        icon.raycastTarget = false;
+        Assign(view, "_icon", icon);
+        Button browse = Button("ChooseIcon", rect, "Choose icon...");
+        Rect((RectTransform)browse.transform, 726, 330, 180, 36);
+        Assign(view, "_browseButton", browse);
+        TextMeshProUGUI iconLabel = Label("IconSize", rect, string.Empty, 14, true);
+        Rect(iconLabel.rectTransform, 726, 374, 286, 28);
+        Assign(view, "_iconLabel", iconLabel);
+        TextMeshProUGUI preview = Label("ListingPreview", rect, string.Empty, 16);
+        Rect(preview.rectTransform, 726, 418, 286, 184);
+        preview.alignment = TextAlignmentOptions.TopLeft;
+        preview.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "_preview", preview);
+        TextMeshProUGUI status = Label("PublishingStatus", rect, string.Empty, 15);
+        Rect(status.rectTransform, 28, 608, 984, 54);
+        status.alignment = TextAlignmentOptions.TopLeft;
+        status.richText = false;
+        status.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "_status", status);
+        Image progressTrack = Surface("UploadProgress", rect, ContentEditorColorRole.Divider);
+        Rect(progressTrack.rectTransform, 28, 664, 984, 3);
+        Image progress = Surface("Fill", progressTrack.transform, ContentEditorColorRole.Accent);
+        Stretch(progress.rectTransform);
+        progress.rectTransform.anchorMax = Vector2.up;
+        Assign(view, "_progressTrack", progressTrack.gameObject);
+        Assign(view, "_progress", progress);
+        progressTrack.gameObject.SetActive(false);
+        Button save = Button("SaveDraft", rect, "Save draft");
+        Rect((RectTransform)save.transform, 28, 674, 144, 36);
+        Assign(view, "_saveButton", save);
+        Button close = Button("ClosePublishing", rect, "Close");
+        Rect((RectTransform)close.transform, 648, 674, 110, 36);
+        Assign(view, "_closeButton", close);
+        Button next = Button("ContinuePublishing", rect, "Continue to release");
+        Rect((RectTransform)next.transform, 774, 674, 238, 36);
+        Assign(view, "_nextButton", next);
+        Assign(view, "_imageCrop", BuildImageCrop(overlay.transform));
+        overlay.gameObject.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Creates a labelled single-line or multiline publishing field with shared text-edit behavior.
+    /// </summary>
+    /// <param name="parent">The publishing stage.</param>
+    /// <param name="name">The authored control name.</param>
+    /// <param name="caption">The user-facing field label.</param>
+    /// <param name="top">The label's vertical source coordinate.</param>
+    /// <param name="height">The input's source height.</param>
+    /// <returns>The configured text input.</returns>
+    private static TMP_InputField Field(
+        Transform parent,
+        string name,
+        string caption,
+        int top,
+        int height
+    )
+    {
+        Rect(Label(name + "Label", parent, caption, 14).rectTransform, 0, top, 650, 24);
+        TMP_InputField input = Input("Publishing" + name, parent, string.Empty);
+        Rect((RectTransform)input.transform, 0, top + 30, 650, height);
+        if (height > 36)
+        {
+            input.lineType = TMP_InputField.LineType.MultiLineNewline;
+            input.textComponent.alignment = TextAlignmentOptions.TopLeft;
+            input.textComponent.textWrappingMode = TextWrappingModes.Normal;
+        }
+        return input;
+    }
+
+    /// <summary>
+    /// Creates the shared account controls independently of a publishing draft.
+    /// </summary>
+    /// <param name="parent">The application workbench.</param>
+    /// <returns>The shared Thunderstore connection dialog.</returns>
+    private static ContentEditorThunderstoreConnectionView BuildThunderstoreConnection(
+        Transform parent
+    )
+    {
+        Image overlay = Surface("Connection", parent, new Color(0, 0, 0, 0.7f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        ContentEditorThunderstoreConnectionView view =
+            overlay.gameObject.AddComponent<ContentEditorThunderstoreConnectionView>();
+        Image panel = Surface("ConnectionPanel", overlay.transform, ContentEditorColorRole.Panel);
+        RectTransform rect = panel.rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(1040, 740);
+        Assign(view, "_panel", rect);
+        TMP_Text heading = Label("Heading", rect, "Connect Thunderstore", 24);
+        Rect(heading.rectTransform, 28, 20, 984, 36);
+        Assign(view, "_heading", heading);
+        RectTransform setup = Layer("Setup", rect);
+        Rect(setup, 0, 0, 1040, 656);
+        Assign(view, "_setup", setup.gameObject);
+        Rect(
+            Label(
+                "Help",
+                setup,
+                "Create a team token on Thunderstore, then paste it here.",
+                15,
+                true
+            ).rectTransform,
+            28,
+            64,
+            720,
+            28
+        );
+        Button tokenHelp = Button("GetToken", setup, "Open team settings");
+        Rect((RectTransform)tokenHelp.transform, 766, 60, 246, 36);
+        Assign(view, "_tokenHelpButton", tokenHelp);
+        Rect(
+            Label(
+                "ChooseTeamStep",
+                setup,
+                "1. Sign in, then choose or create your team.",
+                16
+            ).rectTransform,
+            28,
+            116,
+            600,
+            28
+        );
+        Screenshot(setup, "Teams", new UnityEngine.Rect(0, 126, 720, 204), 28, 156, 600, 170);
+        TextMeshProUGUI accountStep = Label(
+            "CreateAccountStep",
+            setup,
+            "2. Open Service Accounts, then choose Add service account.",
+            16
+        );
+        Rect(accountStep.rectTransform, 28, 350, 600, 40);
+        accountStep.textWrappingMode = TextWrappingModes.Normal;
+        Screenshot(
+            setup,
+            "ServiceAccounts",
+            new UnityEngine.Rect(0, 135, 720, 240),
+            28,
+            404,
+            600,
+            200
+        );
+        Rect(
+            Label(
+                "CopyTokenStep",
+                setup,
+                "3. Create the account and copy its token.",
+                16
+            ).rectTransform,
+            656,
+            116,
+            356,
+            28
+        );
+        Screenshot(setup, "Token", new UnityEngine.Rect(0, 0, 660, 370), 656, 156, 356, 200);
+        TextMeshProUGUI reminder = Label(
+            "TokenReminder",
+            setup,
+            "Give the account a nickname when asked. The token is shown only once; use the copy button beside it.",
+            14,
+            true
+        );
+        Rect(reminder.rectTransform, 656, 372, 356, 64);
+        reminder.textWrappingMode = TextWrappingModes.Normal;
+        Rect(
+            Label("PasteTokenStep", setup, "4. Paste the token and connect.", 16).rectTransform,
+            656,
+            456,
+            356,
+            28
+        );
+        TMP_InputField token = Input(
+            "ThunderstoreToken",
+            setup,
+            "Paste your service-account token"
+        );
+        Rect((RectTransform)token.transform, 656, 492, 356, 40);
+        token.contentType = TMP_InputField.ContentType.Password;
+        token.characterLimit = 4096;
+        Assign(view, "_token", token);
+        TextMeshProUGUI session = Label(
+            "ConnectionDuration",
+            setup,
+            "Connect saves your token securely on this device. Disconnect removes it.",
+            14,
+            true
+        );
+        Rect(session.rectTransform, 656, 546, 356, 48);
+        session.textWrappingMode = TextWrappingModes.Normal;
+        Button disconnect = PlainButton("DisconnectThunderstore", rect, "Disconnect");
+        Rect((RectTransform)disconnect.transform, 876, 604, 136, 32);
+        Assign(view, "_disconnectButton", disconnect);
+        Rect(
+            Label(
+                "ScreenshotCredit",
+                setup,
+                "Example screenshots: mbround18 / valheim-docker (BSD-3-Clause).",
+                11,
+                true
+            ).rectTransform,
+            28,
+            626,
+            600,
+            20
+        );
+        RectTransform connected = Layer("Connected", rect);
+        Rect(connected, 24, 64, 432, 28);
+        TMP_Text teams = Label("ConnectedTeams", connected, string.Empty, 17);
+        Rect(teams.rectTransform, 0, 0, 432, 28);
+        teams.GetComponent<ContentEditorColorBinding>().SetRole(ContentEditorColorRole.Success);
+        teams.textWrappingMode = TextWrappingModes.Normal;
+        teams.richText = false;
+        Assign(view, "_connected", connected.gameObject);
+        Assign(view, "_connectedTeams", teams);
+        connected.gameObject.SetActive(false);
+        TextMeshProUGUI status = Label("ConnectionStatus", rect, string.Empty, 14);
+        Rect(status.rectTransform, 28, 656, 680, 60);
+        status.textWrappingMode = TextWrappingModes.Normal;
+        status.richText = false;
+        Assign(view, "_connectionStatus", status);
+        Button close = Button("CloseConnection", rect, "Close");
+        Rect((RectTransform)close.transform, 744, 680, 120, 36);
+        Assign(view, "_connectionCloseButton", close);
+        Button connect = Button("ConnectThunderstore", rect, "Connect");
+        Rect((RectTransform)connect.transform, 880, 680, 132, 36);
+        Assign(view, "_connectButton", connect);
+        overlay.gameObject.SetActive(false);
+        return view;
+    }
+
+    /// <summary>
+    /// Shows a focused region of an instructional screenshot without changing its source image.
+    /// </summary>
+    /// <param name="parent">The connection dialog.</param>
+    /// <param name="name">The screenshot asset name.</param>
+    /// <param name="crop">The visible source pixels, measured from the top-left corner.</param>
+    /// <param name="left">The display's left coordinate.</param>
+    /// <param name="top">The display's top coordinate.</param>
+    /// <param name="width">The display width.</param>
+    /// <param name="height">The display height.</param>
+    private static void Screenshot(
+        Transform parent,
+        string name,
+        UnityEngine.Rect crop,
+        float left,
+        float top,
+        float width,
+        float height
+    )
+    {
+        Texture2D texture =
+            AssetDatabase.LoadAssetAtPath<Texture2D>(
+                $"Assets/Art/ContentEditor/Thunderstore/{name}.png"
+            )
+            ?? throw new FileNotFoundException(
+                $"Thunderstore guide screenshot '{name}' is missing."
+            );
+        RawImage image = Layer(name + "Screenshot", parent).gameObject.AddComponent<RawImage>();
+        image.texture = texture;
+        image.raycastTarget = false;
+        image.uvRect = new UnityEngine.Rect(
+            crop.x / texture.width,
+            1 - crop.yMax / texture.height,
+            crop.width / texture.width,
+            crop.height / texture.height
+        );
+        Rect(image.rectTransform, left, top, width, height);
+    }
+
+    /// <summary>
+    /// Creates focused package details without repeating them beside every browse result.
+    /// </summary>
+    /// <param name="parent">The owning overlay.</param>
+    /// <param name="view">The manager whose actions operate on the selected package.</param>
+    private static void BuildDetails(Transform parent, ContentEditorModManagerView view)
+    {
+        Image overlay = Surface("PackageDetailsOverlay", parent, new Color(0, 0, 0, 0.72f));
+        Stretch(overlay.rectTransform);
+        overlay.raycastTarget = true;
+        Assign(view, "detailOverlay", overlay.gameObject);
+        RectTransform rect = Surface(
+            "PackageDetailsPanel",
+            overlay.transform,
+            ContentEditorColorRole.Panel
+        ).rectTransform;
+        rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
+        rect.sizeDelta = new Vector2(760, 640);
+        Assign(view, "detailPanel", rect);
+        Button close = ActionButton(view, rect, "detailCloseButton", "Close", 640, 28, 88, true);
+        TMP_Text closeLabel = close.GetComponentInChildren<TMP_Text>();
+        closeLabel.alignment = TextAlignmentOptions.MidlineRight;
+        Stretch(closeLabel.rectTransform);
+        TextMeshProUGUI empty = Caption(
+            rect,
+            "EmptyDetails",
+            "This mod is no longer available.",
+            32,
+            200,
+            696,
+            100,
+            18,
+            ContentEditorColorRole.Muted
+        );
+        empty.alignment = TextAlignmentOptions.Center;
+        Assign(view, "emptyDetails", empty);
+        RectTransform content = Layer("DetailContent", rect);
+        Stretch(content);
+        Assign(view, "detailContent", content.gameObject);
+        Image cover = Surface("Cover", content, ContentEditorColorRole.Background);
+        Rect(cover.rectTransform, 32, 32, 96, 96);
+        TextMeshProUGUI initials = Caption(
+            cover.transform,
+            "IconInitials",
+            string.Empty,
+            0,
+            0,
+            96,
+            96,
+            28,
+            ContentEditorColorRole.Accent
+        );
+        initials.alignment = TextAlignmentOptions.Center;
+        Assign(view, "iconInitials", initials);
+        RawImage icon = Layer("PackageIcon", cover.transform).gameObject.AddComponent<RawImage>();
+        Stretch(icon.rectTransform);
+        icon.raycastTarget = false;
+        icon.enabled = false;
+        Assign(view, "icon", icon);
+        TextMeshProUGUI heading = Caption(
+            content,
+            "PackageName",
+            string.Empty,
+            152,
+            32,
+            464,
+            36,
+            28
+        );
+        heading.fontStyle = FontStyles.Bold;
+        Assign(view, "heading", heading);
+        Assign(
+            view,
+            "creator",
+            Caption(
+                content,
+                "Creator",
+                string.Empty,
+                152,
+                72,
+                464,
+                24,
+                14,
+                ContentEditorColorRole.Muted
+            )
+        );
+        Assign(
+            view,
+            "packageState",
+            Caption(
+                content,
+                "PackageState",
+                string.Empty,
+                152,
+                104,
+                464,
+                24,
+                13,
+                ContentEditorColorRole.Accent
+            )
+        );
+        Assign(
+            view,
+            "popularity",
+            Caption(
+                content,
+                "Popularity",
+                string.Empty,
+                32,
+                144,
+                440,
+                24,
+                13,
+                ContentEditorColorRole.Muted
+            )
+        );
+        TextMeshProUGUI updated = Caption(
+            content,
+            "Updated",
+            string.Empty,
+            488,
+            144,
+            240,
+            24,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        updated.alignment = TextAlignmentOptions.MidlineRight;
+        Assign(view, "updated", updated);
+        Assign(
+            view,
+            "categories",
+            Caption(
+                content,
+                "Categories",
+                string.Empty,
+                32,
+                176,
+                696,
+                24,
+                13,
+                ContentEditorColorRole.Muted
+            )
+        );
+        ScrollAreaLayout details = Scroll("PackageDetails", content, 8, 8);
+        Rect((RectTransform)details.transform, 32, 208, 712, 112);
+        TextMeshProUGUI description = Caption(
+            details.ScrollArea.ContentRoot,
+            "Description",
+            string.Empty,
+            0,
+            0,
+            696,
+            112,
+            16
+        );
+        description.textWrappingMode = TextWrappingModes.Normal;
+        description.alignment = TextAlignmentOptions.TopLeft;
+        description.overflowMode = TextOverflowModes.Overflow;
+        Assign(view, "details", details);
+        Assign(view, "detailText", description);
+        TextMeshProUGUI metadata = Caption(
+            content,
+            "ReleaseMetadata",
+            string.Empty,
+            32,
+            336,
+            696,
+            24,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        metadata.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "releaseMetadata", metadata);
+        TextMeshProUGUI requirement = Caption(
+            content,
+            "Requirement",
+            string.Empty,
+            32,
+            352,
+            696,
+            48,
+            14,
+            ContentEditorColorRole.Error
+        );
+        requirement.textWrappingMode = TextWrappingModes.Normal;
+        requirement.gameObject.SetActive(false);
+        Assign(view, "requirement", requirement);
+        TMP_Dropdown versions = Selector(
+            view,
+            content,
+            "versions",
+            184,
+            new[] { "Select a release" }
+        );
+        Caption(
+            versions.transform,
+            "VersionLabel",
+            "Version",
+            0,
+            -28,
+            184,
+            20,
+            13,
+            ContentEditorColorRole.Muted
+        );
+        Button install = ActionButton(view, content, "installButton", "Install", 232, 376, 496);
+        ContentEditorAppearance.SetActionStyle(install, true);
+        Button activate = ActionButton(
+            view,
+            content,
+            "activateButton",
+            "Set as default",
+            32,
+            376,
+            280
+        );
+        ContentEditorAppearance.SetActionStyle(activate, true);
+        Button uninstall = ActionButton(
+            view,
+            content,
+            "uninstallButton",
+            "Uninstall",
+            32,
+            600,
+            100,
+            true
+        );
+        Button listing = ActionButton(
+            view,
+            content,
+            "listingButton",
+            "Thunderstore page",
+            32,
+            512,
+            184,
+            true
+        );
+        Button folder = ActionButton(
+            view,
+            content,
+            "folderButton",
+            "Open folder",
+            232,
+            512,
+            200,
+            true
+        );
+        foreach (Button secondary in new[] { uninstall, listing, folder })
+        {
+            TMP_Text label = secondary.GetComponentInChildren<TMP_Text>();
+            label.alignment = TextAlignmentOptions.MidlineLeft;
+            Stretch(label.rectTransform);
+        }
+        uninstall.GetComponentInChildren<TMP_Text>().alignment = TextAlignmentOptions.MidlineRight;
+        BindColor(
+            uninstall.GetComponentInChildren<TMP_Text>(),
+            ContentEditorColorRole.Error,
+            uninstall
+        );
+        TextMeshProUGUI status = Caption(
+            rect,
+            "DetailStatus",
+            string.Empty,
+            32,
+            576,
+            696,
+            48,
+            14,
+            ContentEditorColorRole.Muted
+        );
+        status.textWrappingMode = TextWrappingModes.Normal;
+        Assign(view, "detailStatus", status);
+        overlay.gameObject.SetActive(false);
     }
 }

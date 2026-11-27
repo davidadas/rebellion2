@@ -8,8 +8,65 @@ using UnityEngine;
 /// </summary>
 public static class UserDataPaths
 {
+    private static string gameProductName;
     public static string Root =>
         Resolve(Environment.GetCommandLineArgs(), Application.persistentDataPath);
+
+    public static string GameRoot =>
+        Resolve(
+            Environment.GetCommandLineArgs(),
+            gameProductName == null
+                ? Application.persistentDataPath
+                : ResolveProductProfile(
+                    Application.persistentDataPath,
+                    Application.platform,
+                    Application.companyName,
+                    Application.productName,
+                    gameProductName
+                )
+        );
+
+    /// <summary>
+    /// Identifies the companion game's profile while retaining this application's own preferences.
+    /// </summary>
+    /// <param name="productName">The game product name recorded when building the companion.</param>
+    public static void ConfigureGameProfile(string productName)
+    {
+        if (string.IsNullOrWhiteSpace(productName) || Path.GetFileName(productName) != productName)
+            throw new ArgumentException("A game product name is required.", nameof(productName));
+        gameProductName = productName;
+    }
+
+    /// <summary>
+    /// Resolves another product's desktop profile using the platform's existing Unity data location.
+    /// </summary>
+    /// <param name="directory">The current application's persistent data path.</param>
+    /// <param name="platform">The current desktop platform.</param>
+    /// <param name="company">The shared company name.</param>
+    /// <param name="currentProduct">The current application product name.</param>
+    /// <param name="targetProduct">The companion game product name.</param>
+    /// <returns>The game's default profile, including macOS's existing editor directory.</returns>
+    internal static string ResolveProductProfile(
+        string directory,
+        RuntimePlatform platform,
+        string company,
+        string currentProduct,
+        string targetProduct
+    )
+    {
+        if (currentProduct == targetProduct)
+            return directory;
+        if (platform != RuntimePlatform.OSXPlayer)
+            return Path.Combine(Path.GetDirectoryName(directory), targetProduct);
+        string support =
+            Path.GetFileName(directory) == "unity." + company + "." + currentProduct
+                ? Path.GetDirectoryName(directory)
+                : Path.GetDirectoryName(Path.GetDirectoryName(directory));
+        string editorProfile = Path.Combine(support, company, targetProduct);
+        return Directory.Exists(editorProfile)
+            ? editorProfile
+            : Path.Combine(support, "unity." + company + "." + targetProduct);
+    }
 
     /// <summary>
     /// Uses an explicit portable profile when requested, otherwise retaining the normal application path.

@@ -54,6 +54,24 @@ and `BUILD_PLAYER_PATH` are set:
 BUILD_TARGET=StandaloneWindows64 BUILD_PLAYER_PATH=build/rebellion2.exe ./build.sh build
 ```
 
+## Toolkit launch pages
+
+The launcher opens **Library** for mod management and **Projects** for editing.
+Direct launches default to Library. Use `-startPage Projects`, `-startPage Browse`,
+or `-packPath <folder>` to open another workspace.
+
+## Local macOS signing
+
+Use the same Apple signing identity across rebuilds to retain Keychain access. Find its fingerprint
+with `security find-identity -v -p codesigning`, then configure it once:
+
+```bash
+"$UNITY" -batchmode -quit -projectPath "$PWD" -buildTarget StandaloneOSX \
+  -executeMethod MacPlayerSigning.Configure -macSigningIdentity YOUR_CERTIFICATE_SHA1
+```
+
+Builds reuse that identity. Without one, builds use ad-hoc signing and may prompt for Keychain access again.
+
 ## Windows on Arm
 
 Windows x64 and ARM64 players share Unity's `StandaloneWindows64` build target and differ only in

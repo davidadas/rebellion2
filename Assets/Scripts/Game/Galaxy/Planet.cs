@@ -53,7 +53,6 @@ namespace Rebellion.Game.Galaxy
         internal IObserver<Planet> SupportObserver { get; set; }
 
         private const int _maximumPopularSupport = 100;
-        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -242,16 +241,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Returns whether resource collection is suspended at this planet.
-        /// </summary>
-        /// <param name="blockaded">The current blockade state evaluated by gameplay.</param>
-        /// <returns>True when destroyed, blockaded, or in uprising.</returns>
-        public bool IsResourceProductionSuspended(bool blockaded)
-        {
-            return IsDestroyed || blockaded || IsInUprising;
-        }
-
-        /// <summary>
         /// Returns whether the planet has a living civilian population.
         /// </summary>
         /// <returns>True when the planet is colonized and intact.</returns>
@@ -365,16 +354,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of resource nodes available while production is active.
-        /// </summary>
-        /// <param name="blockaded">The current blockade state evaluated by gameplay.</param>
-        /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
-        public int GetAvailableResourceNodes(bool blockaded)
-        {
-            return IsResourceProductionSuspended(blockaded) ? 0 : GetRawResourceNodes();
-        }
-
-        /// <summary>
         /// Gets the number of raw resource nodes without any mine assigned.
         /// </summary>
         /// <returns>The number of unmined raw resource nodes, or zero when destroyed.</returns>
@@ -411,16 +390,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of mined resources available while production is active.
-        /// </summary>
-        /// <param name="blockaded">The current blockade state evaluated by gameplay.</param>
-        /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
-        public int GetAvailableMinedResources(bool blockaded)
-        {
-            return IsResourceProductionSuspended(blockaded) ? 0 : GetActiveMinedResources();
-        }
-
-        /// <summary>
         /// Gets the total refinement capacity based on available refinery buildings.
         /// This represents the maximum number of resources that can be refined.
         /// </summary>
@@ -437,16 +406,6 @@ namespace Rebellion.Game.Galaxy
         public int GetActiveRefinementCapacity()
         {
             return GetBuildingTypeCount(BuildingType.Refinery);
-        }
-
-        /// <summary>
-        /// Gets the completed refinement capacity available while production is active.
-        /// </summary>
-        /// <param name="blockaded">The current blockade state evaluated by gameplay.</param>
-        /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
-        public int GetAvailableRefinementCapacity(bool blockaded)
-        {
-            return IsResourceProductionSuspended(blockaded) ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -1039,42 +998,6 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Gets the manufacturing output percentage available during a blockade.
-        /// An operational KDY-150 ion cannon prevents the blockade penalty.
-        /// </summary>
-        /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
-        /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
-        /// <param name="blockaded">The current blockade state evaluated by gameplay.</param>
-        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeProductionModifier(
-            int capitalShipPenalty,
-            int fighterPenalty,
-            bool blockaded
-        )
-        {
-            if (!blockaded || HasOperationalIonCannon())
-                return _maximumProductionModifier;
-
-            List<CapitalShip> capitalShips = _fleets
-                .Where(fleet => fleet.Movement == null)
-                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
-                .Where(IsEntityActive)
-                .ToList();
-            int fighterCount = capitalShips.Sum(capitalShip =>
-                capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
-            );
-            fighterCount += GetChildren<Starfighter>().Count(IsEntityActive);
-
-            return Math.Clamp(
-                _maximumProductionModifier
-                    - capitalShips.Count * capitalShipPenalty
-                    - fighterCount * fighterPenalty,
-                0,
-                _maximumProductionModifier
-            );
         }
 
         /// <summary>

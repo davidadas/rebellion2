@@ -386,6 +386,16 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void GetVideoUrl_ExtensionlessWebMAddress_ResolvesTheVideo()
+        {
+            string video = Path.Combine(_packRoot, "crawl.webm");
+            File.WriteAllBytes(video, Array.Empty<byte>());
+            using ContentAssets assets = CreateAssets();
+
+            Assert.AreEqual(video, new Uri(assets.GetVideoUrl("Pack/crawl")).LocalPath);
+        }
+
+        [Test]
         public void GetVideoUrl_AbsoluteAddress_ThrowsArgumentException()
         {
             using ContentAssets assets = CreateAssets();
