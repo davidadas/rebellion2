@@ -623,14 +623,23 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count);
         }
 
-        [Test]
-        public void Deserialize_LegacyPrimaryWeapons_InstallsHardpointsAndPreservesRange()
+        [TestCase("", "")]
+        [TestCase("<HardpointGroups />", "")]
+        [TestCase("", "<HardpointGroups />")]
+        public void Deserialize_LegacyPrimaryWeapons_InstallsHardpointsAndPreservesRange(
+            string before,
+            string after
+        )
         {
-            const string legacy =
-                "<CapitalShip><PrimaryWeapons><Entry>"
+            string legacy =
+                "<CapitalShip>"
+                + before
+                + "<PrimaryWeapons><Entry>"
                 + "<Key><PrimaryWeaponType>Turbolaser</PrimaryWeaponType></Key>"
                 + "<Value><ArrayOfInt><int>10</int><int>20</int><int>30</int><int>40</int>"
-                + "<int>16777217</int></ArrayOfInt></Value></Entry></PrimaryWeapons></CapitalShip>";
+                + "<int>16777217</int></ArrayOfInt></Value></Entry></PrimaryWeapons>"
+                + after
+                + "</CapitalShip>";
 
             CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(legacy);
 

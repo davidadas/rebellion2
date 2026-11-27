@@ -135,7 +135,21 @@ namespace Rebellion.Game.Units
         public ShieldGenerator ShieldGenerator { get; set; }
         public StarfighterBay StarfighterBay { get; set; }
         public GravityWellGenerator GravityWellGenerator { get; set; }
-        public List<HardpointGroup> HardpointGroups { get; set; } = new();
+        private List<HardpointGroup> _hardpointGroups = new();
+
+        public List<HardpointGroup> HardpointGroups => _hardpointGroups;
+
+        [PersistableMember(Name = nameof(HardpointGroups))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private List<HardpointGroup> SavedHardpointGroups
+        {
+            get => _hardpointGroups;
+            set
+            {
+                if (value is { Count: > 0 })
+                    _hardpointGroups = value;
+            }
+        }
 
         private int? _backupHyperdrive;
 
@@ -237,7 +251,7 @@ namespace Rebellion.Game.Units
                     groups.Add(group);
                 }
 
-                HardpointGroups = groups;
+                _hardpointGroups = groups;
             }
         }
 
@@ -727,7 +741,7 @@ namespace Rebellion.Game.Units
             copy.ShieldGenerator = (ShieldGenerator)ShieldGenerator?.CreateCopy();
             copy.StarfighterBay = (StarfighterBay)StarfighterBay?.CreateCopy();
             copy.GravityWellGenerator = (GravityWellGenerator)GravityWellGenerator?.CreateCopy();
-            copy.HardpointGroups = HardpointGroups?.ConvertAll(group => group.CreateCopy());
+            copy._hardpointGroups = _hardpointGroups.ConvertAll(group => group.CreateCopy());
             copy.InitialParentInstanceID = InitialParentInstanceID;
         }
 
