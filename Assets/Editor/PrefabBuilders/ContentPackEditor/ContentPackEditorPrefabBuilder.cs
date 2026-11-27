@@ -183,7 +183,7 @@ public static class ContentPackEditorPrefabBuilder
         TextMeshProUGUI project = Label(
             "PackName",
             navigation.transform,
-            "No content pack open",
+            "No project open",
             14,
             true
         );
@@ -298,7 +298,7 @@ public static class ContentPackEditorPrefabBuilder
         Assign(view, "duplicateButton", duplicate);
         Assign(view, "resetSectionButton", resetSection);
         Assign(view, "deleteButton", delete);
-        TextMeshProUGUI title = Label("RecordName", editor, "Create or open a content pack", 28);
+        TextMeshProUGUI title = Label("RecordName", editor, "Create or open a project", 28);
         Stretch(title.rectTransform, 0, 0, 366, 0);
         title.rectTransform.anchorMin = Vector2.up;
         title.rectTransform.offsetMin = new Vector2(0, -38);
@@ -1359,9 +1359,9 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform rect = panel.rectTransform;
         rect.anchorMin = rect.anchorMax = rect.pivot = new Vector2(0.5f, 0.5f);
         rect.sizeDelta = new Vector2(640, 600);
-        TextMeshProUGUI title = Label("Heading", rect, "New era", 24);
+        TextMeshProUGUI title = Label("Heading", rect, "New game pack", 24);
         Rect(title.rectTransform, 28, 24, 584, 40);
-        TMP_InputField id = Input("PackID", rect, "my-era");
+        TMP_InputField id = Input("PackID", rect, "my-game-pack");
         Rect((RectTransform)id.transform, 28, 176, 380, 36);
         TMP_InputField name = Input("DisplayName", rect, "Display name");
         Rect((RectTransform)name.transform, 28, 102, 584, 36);
@@ -1384,17 +1384,17 @@ public static class ContentPackEditorPrefabBuilder
         error.color = new Color32(255, 130, 130, 255);
         BindColor(error, ContentEditorColorRole.Error);
         error.textWrappingMode = TextWrappingModes.Normal;
-        Button confirm = Button("Confirm", rect, "Create era");
+        Button confirm = Button("Confirm", rect, "Create game pack");
         Rect((RectTransform)confirm.transform, 444, 536, 168, 36);
         Button cancel = Button("Cancel", rect, "Cancel");
         Rect((RectTransform)cancel.transform, 322, 536, 110, 36);
         Assign(view, "packDialog", dialog);
-        TextMeshProUGUI nameLabel = Label("NameLabel", rect, "Era name *", 14);
+        TextMeshProUGUI nameLabel = Label("NameLabel", rect, "Game pack name *", 14);
         Rect(nameLabel.rectTransform, 28, 78, 584, 20);
-        TextMeshProUGUI idLabel = Label("IDLabel", rect, "Era ID *", 14);
+        TextMeshProUGUI idLabel = Label("IDLabel", rect, "Game pack ID *", 14);
         Rect(idLabel.rectTransform, 28, 152, 380, 20);
         Rect(Label("VersionLabel", rect, "Version *", 14).rectTransform, 428, 152, 184, 20);
-        TextMeshProUGUI baseLabel = Label("BaseLabel", rect, "Base era *", 14);
+        TextMeshProUGUI baseLabel = Label("BaseLabel", rect, "Base game pack *", 14);
         Rect(baseLabel.rectTransform, 28, 226, 584, 20);
         Rect(Label("FolderLabel", rect, "Location *", 14).rectTransform, 28, 302, 584, 20);
         Assign(dialog, "newIDInput", id);
@@ -1929,7 +1929,7 @@ public static class ContentPackEditorPrefabBuilder
         RectTransform description = Layer("Description", defaults);
         Rect(description, 0, 0, 600, 72);
         Assign(view, "defaultPackDescription", description);
-        Caption(description, "DefaultLabel", "Default era", 0, 0, 600, 28, 18);
+        Caption(description, "DefaultLabel", "Default game pack", 0, 0, 600, 28, 18);
         Caption(
             description,
             "DefaultHelp",
@@ -1946,7 +1946,7 @@ public static class ContentPackEditorPrefabBuilder
             label.rectTransform.anchorMax = Vector2.one;
             label.rectTransform.offsetMax = new Vector2(0, label.rectTransform.offsetMax.y);
         }
-        Selector(view, defaults, "activePack", 440, new[] { "No eras installed" });
+        Selector(view, defaults, "activePack", 440, new[] { "No game packs installed" });
         ActionButton(view, defaults, "loadOrderButton", "Load order", 0, 0, 128);
         Assign(view, "defaultPackControls", defaults.gameObject);
         TMP_InputField search = Input(
@@ -1984,7 +1984,7 @@ public static class ContentPackEditorPrefabBuilder
         TextMeshProUGUI modsHeading = Caption(
             packages.ScrollArea.ContentRoot,
             "ModsHeading",
-            "Mods / content packs",
+            "Mods",
             0,
             0,
             1120,
@@ -1994,19 +1994,19 @@ public static class ContentPackEditorPrefabBuilder
         modsHeading.fontStyle = FontStyles.Bold;
         modsHeading.gameObject.SetActive(false);
         Assign(view, "modsHeading", modsHeading);
-        TextMeshProUGUI erasHeading = Caption(
+        TextMeshProUGUI gamePacksHeading = Caption(
             packages.ScrollArea.ContentRoot,
-            "ErasHeading",
-            "Eras",
+            "GamePacksHeading",
+            "Game packs",
             0,
             0,
             1120,
             28,
             20
         );
-        erasHeading.fontStyle = FontStyles.Bold;
-        erasHeading.gameObject.SetActive(false);
-        Assign(view, "erasHeading", erasHeading);
+        gamePacksHeading.fontStyle = FontStyles.Bold;
+        gamePacksHeading.gameObject.SetActive(false);
+        Assign(view, "gamePacksHeading", gamePacksHeading);
         Assign(view, "rowTemplate", BuildCard(packages.ScrollArea.ContentRoot));
         TextMeshProUGUI empty = Caption(
             rect,
@@ -2069,7 +2069,7 @@ public static class ContentPackEditorPrefabBuilder
 
         TMP_Text title = Caption(panel, "Title", "Load order", 24, 19, 632, 34, 26);
         title.fontStyle = FontStyles.Bold;
-        Assign(view, "era", Caption(panel, "Era", string.Empty, 24, 56, 632, 24, 16));
+        Assign(view, "gamePack", Caption(panel, "GamePackName", string.Empty, 24, 56, 632, 24, 16));
         Caption(
             panel,
             "Help",
@@ -2088,7 +2088,7 @@ public static class ContentPackEditorPrefabBuilder
         TMP_Text empty = Caption(
             panel,
             "Empty",
-            "No mods are enabled for this era.",
+            "No mods are enabled for this game pack.",
             24,
             145,
             632,
@@ -2559,7 +2559,7 @@ public static class ContentPackEditorPrefabBuilder
         TextMeshProUGUI versionHelp = Label(
             "VersionHelp",
             release,
-            "Uses the version from your content pack. Edit it in the pack properties.",
+            "Uses the version from your project. Edit it in the project properties.",
             14,
             true
         );

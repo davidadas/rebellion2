@@ -477,7 +477,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
     private void OpenWorkingFolder(string folder, Action afterOpen = null)
     {
         ContentEditorPaths.VerifyWritableLocation(contentRootPath, folder);
-        string manifest = ContentPackageManifest.Find(folder, ContentPackageType.Era);
+        string manifest = ContentPackageManifest.Find(folder, ContentPackageType.GamePack);
         if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Unknown)
         {
             view.ChoosePackageType(type =>
@@ -2147,7 +2147,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 view.RenderValidationErrors(fieldErrors);
                 return;
             }
-            view.RenderStatus("Validating content pack. Press Escape to cancel.", false);
+            view.RenderStatus("Validating project. Press Escape to cancel.", false);
             IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
                 project,
                 ReportValidationProgress,

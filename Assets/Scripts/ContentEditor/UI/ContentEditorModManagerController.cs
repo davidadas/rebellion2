@@ -246,7 +246,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                         .Where(pack => !managedIDs.Contains(pack.ID))
                         .Select(pack => new ContentEditorModEntry(null, null, includedPack: pack))
                 )
-                .OrderBy(entry => entry.IsEra)
+                .OrderBy(entry => entry.IsGamePack)
                 .ThenBy(entry => entry.Name, StringComparer.OrdinalIgnoreCase)
                 .ToArray();
         view.RenderActivePacks(packs, activePack);
@@ -302,7 +302,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                     includedPack: included,
                     isActivePack: isDefault
                 ),
-                isDefault ? "Default era" : "Era",
+                isDefault ? "Default game pack" : "Game pack",
                 string.Empty,
                 string.Empty,
                 "Version " + included.Version,
@@ -310,7 +310,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 0,
                 string.Empty,
                 false,
-                isDefault ? "Default era" : "Set as default",
+                isDefault ? "Default game pack" : "Set as default",
                 !isDefault,
                 false,
                 false
@@ -351,7 +351,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
         string activePack = GetActivePack(preferences);
         bool pack = current?.Content.Any(content => content.IsPack) == true;
         if (current != null)
-            metadata.Insert(0, pack ? "Era" : ContentEditorPackDialogView.ModProjectLabel);
+            metadata.Insert(0, pack ? "Game pack" : ContentEditorPackDialogView.ModProjectLabel);
         bool enabled =
             current
                 ?.Content.Where(content => !content.IsPack)
@@ -361,10 +361,10 @@ internal sealed class ContentEditorModManagerController : IDisposable
         if (pack)
             text += selected
                 ? "\n\nUsed by default when starting the game."
-                : "\n\nSet as default to use this era when starting the game.";
+                : "\n\nSet as default to use this game pack when starting the game.";
         string activateLabel = pack
             ? selected
-                ? "Default era"
+                ? "Default game pack"
                 : "Set as default"
             : enabled
                 ? "Disable add-on"
@@ -382,7 +382,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                     ? "Needs attention"
                     : pack
                         ? selected
-                            ? "Default era"
+                            ? "Default game pack"
                             : "Installed"
                         : enabled
                             ? "Enabled"
@@ -561,7 +561,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
                 if (dependent != null)
                     throw new InvalidOperationException(
                         dependent.Name
-                            + " requires this add-on. Disable that package or choose another default era first."
+                            + " requires this add-on. Disable that package or choose another default game pack first."
                     );
                 UserSettingsManager.UpdateContentSelection(contentRoot, null, null, mods, false);
             }
@@ -595,7 +595,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
             UserSettingsManager.UpdateContentSelection(contentRoot, id, null, mods, true);
             RenderRows();
             RenderDetails();
-            view.SetStatus("Default era set to " + pack.DisplayName + ".");
+            view.SetStatus("Default game pack set to " + pack.DisplayName + ".");
         }
         catch (Exception exception)
         {
@@ -605,7 +605,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     }
 
     /// <summary>
-    /// Opens the player order for the selected era and saves it through the shared game settings.
+    /// Opens the player order for the selected game pack and saves it through the shared game settings.
     /// </summary>
     private void ShowLoadOrder()
     {
@@ -655,7 +655,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// </summary>
     /// <param name="package">The installed package to inspect.</param>
     /// <param name="activePack">The selected pack identity.</param>
-    /// <param name="preferences">The recorded enabled state for each era.</param>
+    /// <param name="preferences">The recorded enabled state for each game pack.</param>
     /// <returns>Whether this package participates in the selected content.</returns>
     private static bool IsPackageEnabled(
         InstalledModPackage package,
@@ -673,7 +673,7 @@ internal sealed class ContentEditorModManagerController : IDisposable
     /// </summary>
     /// <param name="content">The installed add-on to check.</param>
     /// <param name="preferences">The saved content selection.</param>
-    /// <returns>Whether the add-on is enabled for its era.</returns>
+    /// <returns>Whether the add-on is enabled for its game pack.</returns>
     private static bool IsAddOnEnabled(
         InstalledModContent content,
         UserContentSettings preferences
@@ -682,10 +682,10 @@ internal sealed class ContentEditorModManagerController : IDisposable
         && preferences.GetModLoadOrder(content.BasePackID)?.Contains(content.ID) != false;
 
     /// <summary>
-    /// Resolves a blank preference to the installation's default era.
+    /// Resolves a blank preference to the installation's default game pack.
     /// </summary>
     /// <param name="preferences">The saved content selection.</param>
-    /// <returns>The selected era's ID.</returns>
+    /// <returns>The selected game pack's ID.</returns>
     private string GetActivePack(UserContentSettings preferences) =>
         string.IsNullOrWhiteSpace(preferences.ActivePackID)
             ? catalogDefaultPack

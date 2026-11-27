@@ -211,7 +211,7 @@ public sealed class ContentFileResolver
             try
             {
                 definitionPath = ContentPackageManifest.Find(modRoot, ContentPackageType.Mod);
-                if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.Era)
+                if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.GamePack)
                     continue;
                 definition =
                     modRoot == workingModRoot ? workingMod : ReadModDefinition(definitionPath);
@@ -519,7 +519,7 @@ public sealed class ContentFileResolver
             try
             {
                 string path = ContentPackageManifest.Find(folder, ContentPackageType.Mod);
-                if (ContentPackageManifest.ReadType(path) == ContentPackageType.Era)
+                if (ContentPackageManifest.ReadType(path) == ContentPackageType.GamePack)
                     continue;
                 ContentModDefinition mod = ReadModDefinition(path);
                 ValidateDefinition(mod);

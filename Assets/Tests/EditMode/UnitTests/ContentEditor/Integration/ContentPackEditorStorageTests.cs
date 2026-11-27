@@ -282,7 +282,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             Assert.AreEqual("1.0.0", saved.Mod.Requires.Single(mod => mod.ID == "colors").Version);
         }
 
-        [TestCase(ContentPackageType.Era)]
+        [TestCase(ContentPackageType.GamePack)]
         [TestCase(ContentPackageType.Mod)]
         public void SetPackageType_UntypedManifest_OpensAsChosenType(ContentPackageType type)
         {
@@ -301,6 +301,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             string path = Path.Combine(folder, ContentPackageManifest.FileName);
             XElement manifest = XElement.Load(path);
             Assert.That(manifest.Name.LocalName, Is.EqualTo(ContentPackageManifest.RootName));
+            Assert.That((string)manifest.Attribute("Type"), Is.EqualTo(type.ToString()));
             manifest.Attribute("Type")?.Remove();
             manifest.Save(path);
 
@@ -311,6 +312,34 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 folder
             );
             Assert.That(reopened.Mod != null, Is.EqualTo(type == ContentPackageType.Mod));
+        }
+
+        [Test]
+        public void OpenFolder_LegacyEraType_LoadsGamePack()
+        {
+            string folder = Path.Combine(contentRoot, "LegacyGamePack");
+            using (
+                ContentPackEditorStorage.CreateInFolder(
+                    contentRoot,
+                    "base-pack",
+                    folder,
+                    "legacy-game-pack",
+                    "Legacy game pack",
+                    "1.0.0"
+                )
+            ) { }
+            string path = Path.Combine(folder, ContentPackageManifest.FileName);
+            XElement manifest = XElement.Load(path);
+            manifest.SetAttributeValue("Type", "Era");
+            manifest.Save(path);
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                folder
+            );
+
+            Assert.That(reopened.ID, Is.EqualTo("legacy-game-pack"));
+            Assert.That(reopened.Mod, Is.Null);
         }
 
         [Test]

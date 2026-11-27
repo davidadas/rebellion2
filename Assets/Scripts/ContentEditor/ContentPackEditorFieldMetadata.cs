@@ -288,7 +288,7 @@ internal static class ContentPackEditorFieldMetadata
         ["LeadershipBonus"] = "Leadership points added while this trait is active.",
         ["BasePackID"] = "The installed pack that supplies files not overridden by this pack.",
         ["Version"] =
-            "This content pack's version, used to identify installed updates and save requirements.",
+            "This project's version, used to identify installed updates and save requirements.",
     };
 
     private static readonly IReadOnlyDictionary<string, string> _missionCaptions =

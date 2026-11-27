@@ -125,7 +125,7 @@ public static class ContentPackLoader
         {
             resolver = null;
             errorMessage = GetContentErrorMessage(exception);
-            GameLogger.Warning($"Content pack '{packID}' could not be inspected: {errorMessage}");
+            GameLogger.Warning($"Game pack '{packID}' could not be inspected: {errorMessage}");
             return false;
         }
     }
@@ -184,10 +184,10 @@ public static class ContentPackLoader
     }
 
     /// <summary>
-    /// Lists the installed mod releases compatible with an era for authors selecting load rules.
+    /// Lists the installed mod releases compatible with a game pack for authors selecting load rules.
     /// </summary>
     /// <param name="contentRootPath">The installed content directory.</param>
-    /// <param name="packID">The era the working mod targets.</param>
+    /// <param name="packID">The game pack the working mod targets.</param>
     /// <returns>The compatible, unambiguous releases.</returns>
     public static IReadOnlyList<ContentModDefinition> DiscoverCompatibleMods(
         string contentRootPath,
@@ -244,7 +244,7 @@ public static class ContentPackLoader
                     Path.Combine(inheritedRoot, "pack.xml")
                 );
             if (inherited.ID == definition.ID)
-                throw new InvalidDataException("The content pack cannot inherit from itself.");
+                throw new InvalidDataException("The game pack cannot inherit from itself.");
         }
         return new ContentFileResolver(
             contentRootPath,
@@ -366,7 +366,7 @@ public static class ContentPackLoader
         string scenarioID = null
     )
     {
-        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.Era);
+        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.GamePack);
         if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
         {
             ContentModDefinition mod = ContentFileResolver.ReadValidatedMod(packRootPath);
@@ -466,7 +466,7 @@ public static class ContentPackLoader
             : scenarioIdOverride;
         if (string.IsNullOrWhiteSpace(packID))
             throw new InvalidDataException(
-                "No active content pack is selected (set ContentCatalog.ActivePackID or a user selection)."
+                "No active game pack is selected (set ContentCatalog.ActivePackID or a user selection)."
             );
 
         bool usingOverride =
@@ -575,7 +575,7 @@ public static class ContentPackLoader
     )
     {
         if (string.IsNullOrWhiteSpace(packID))
-            throw new InvalidDataException("The save does not identify a content pack.");
+            throw new InvalidDataException("The save does not identify a game pack.");
         if (string.IsNullOrWhiteSpace(scenarioID))
             throw new InvalidDataException("The save does not identify a content scenario.");
 
@@ -675,7 +675,7 @@ public static class ContentPackLoader
         if (!string.Equals(pack.ID, packID, StringComparison.Ordinal))
         {
             throw new InvalidDataException(
-                $"Content pack '{pack.ID}' does not match selection '{packID}'."
+                $"Game pack '{pack.ID}' does not match selection '{packID}'."
             );
         }
 
@@ -746,7 +746,7 @@ public static class ContentPackLoader
                 string.Equals(candidate.ID, resolvedScenarioID, StringComparison.Ordinal)
             )
             ?? throw new InvalidDataException(
-                $"Content pack '{pack.ID}' has no scenario '{resolvedScenarioID}'."
+                $"Game pack '{pack.ID}' has no scenario '{resolvedScenarioID}'."
             );
 
         ValidateDefinitions(pack, factions, scenarios, scenario);
@@ -986,7 +986,7 @@ public static class ContentPackLoader
                 DeserializeGameData<FactionThemes>(fileResolver, path, nameof(FactionThemes))
             );
         if (themes.Count(theme => FactionThemes.IsNeutral(theme.FactionInstanceID)) != 1)
-            throw new InvalidDataException("A content pack must define exactly one Neutral theme.");
+            throw new InvalidDataException("A game pack must define exactly one Neutral theme.");
 
         List<Faction> factionData = new List<Faction>();
         List<CapitalShip> capitalShips = new List<CapitalShip>();
@@ -1434,26 +1434,25 @@ public static class ContentPackLoader
         string definitionPath = Path.Combine(packRoot, _packFileName);
         try
         {
-            definitionPath = ContentPackageManifest.Find(packRoot, ContentPackageType.Era);
+            definitionPath = ContentPackageManifest.Find(packRoot, ContentPackageType.GamePack);
             if (ContentPackageManifest.ReadType(definitionPath) == ContentPackageType.Mod)
                 return null;
             ContentPackDefinition definition =
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(definitionPath);
             if (string.IsNullOrWhiteSpace(definition.ID))
             {
-                const string message = "Content pack definition is missing required field 'ID'.";
+                const string message = "Game pack definition is missing required field 'ID'.";
                 GameLogger.Warning(
-                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                    $"Skipping invalid game pack definition '{definitionPath}': {message}"
                 );
                 return new InstalledContentPack(directoryName, directoryName, null, message);
             }
 
             if (string.IsNullOrWhiteSpace(definition.Version))
             {
-                const string message =
-                    "Content pack definition is missing required field 'Version'.";
+                const string message = "Game pack definition is missing required field 'Version'.";
                 GameLogger.Warning(
-                    $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                    $"Skipping invalid game pack definition '{definitionPath}': {message}"
                 );
                 return new InstalledContentPack(
                     definition.ID,
@@ -1478,7 +1477,7 @@ public static class ContentPackLoader
         {
             string message = GetContentErrorMessage(exception);
             GameLogger.Warning(
-                $"Skipping invalid content pack definition '{definitionPath}': {message}"
+                $"Skipping invalid game pack definition '{definitionPath}': {message}"
             );
             return new InstalledContentPack(directoryName, directoryName, null, message);
         }
@@ -1533,7 +1532,7 @@ public static class ContentPackLoader
             && !Directory.Exists(ContentFileResolver.ResolveModsRootPath(contentRootPath))
         )
             throw new DirectoryNotFoundException(
-                $"Content packs directory not found: {packsRootPath}"
+                $"Game packs directory not found: {packsRootPath}"
             );
 
         Dictionary<string, List<(string Root, ContentPackDefinition Definition)>> packs =
@@ -1571,7 +1570,7 @@ public static class ContentPackLoader
             if (!visited.Add(currentPackID))
             {
                 throw new InvalidDataException(
-                    $"Content pack inheritance contains a cycle at '{currentPackID}'."
+                    $"Game pack inheritance contains a cycle at '{currentPackID}'."
                 );
             }
             if (inheritedPacks is { Count: > 0 })
@@ -1602,7 +1601,7 @@ public static class ContentPackLoader
                         )
                 );
                 throw new InvalidDataException(
-                    $"No installed content pack declares ID '{currentPackID}'. "
+                    $"No installed game pack declares ID '{currentPackID}'. "
                         + $"Content root: '{Path.GetFullPath(contentRootPath)}'. "
                         + $"Readable pack definitions: {(discovered.Length == 0 ? "none" : discovered)}. "
                         + $"Pack definition issues: {(definitionIssues.Count == 0 ? "none" : string.Join("; ", definitionIssues))}."
@@ -1611,7 +1610,7 @@ public static class ContentPackLoader
             if (matches.Count > 1)
             {
                 throw new InvalidDataException(
-                    $"Multiple content packs declare ID '{currentPackID}'."
+                    $"Multiple game packs declare ID '{currentPackID}'."
                 );
             }
 
@@ -1619,7 +1618,7 @@ public static class ContentPackLoader
             if (string.IsNullOrWhiteSpace(currentPack.Definition.Version))
             {
                 throw new InvalidDataException(
-                    $"Content pack '{currentPackID}' must declare Version."
+                    $"Game pack '{currentPackID}' must declare Version."
                 );
             }
             roots.Add(currentPack.Root);
@@ -1668,7 +1667,7 @@ public static class ContentPackLoader
             matches = ReadRetainedPack(contentRootPath, packID, version);
         if (matches.Count == 0)
             throw new InvalidOperationException(
-                $"Required content pack '{packID}' version '{version}' is not installed."
+                $"Required game pack '{packID}' version '{version}' is not installed."
             );
         return matches;
     }
@@ -1727,7 +1726,7 @@ public static class ContentPackLoader
             {
                 string manifest = ContentPackageManifest.Find(
                     Path.GetDirectoryName(path),
-                    ContentPackageType.Era
+                    ContentPackageType.GamePack
                 );
                 if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
                     continue;
@@ -1737,7 +1736,7 @@ public static class ContentPackLoader
             {
                 definitionIssues.Add($"'{path}': {GetContentErrorMessage(exception)}");
                 GameLogger.Warning(
-                    $"Content pack could not be loaded: {path}. {GetContentErrorMessage(exception)}"
+                    $"Game pack could not be loaded: {path}. {GetContentErrorMessage(exception)}"
                 );
                 continue;
             }

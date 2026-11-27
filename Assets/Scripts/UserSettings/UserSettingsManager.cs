@@ -203,10 +203,10 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Gets the enabled mod releases in the order used by the selected era.
+    /// Gets the enabled mod releases in the order used by the selected game pack.
     /// </summary>
-    /// <param name="contentRoot">The installation containing the era and mods.</param>
-    /// <param name="packID">The era whose order will be shown.</param>
+    /// <param name="contentRoot">The installation containing the game pack and mods.</param>
+    /// <param name="packID">The game pack whose order will be shown.</param>
     /// <returns>The saved stack or the resolved legacy selection.</returns>
     public static IReadOnlyList<ContentModDefinition> ReadModLoadOrder(
         string contentRoot,
@@ -216,8 +216,8 @@ public sealed class UserSettingsManager
     /// <summary>
     /// Applies a new order to the same enabled mod releases and validates their combined campaign.
     /// </summary>
-    /// <param name="contentRoot">The installation containing the era and mods.</param>
-    /// <param name="packID">The era whose order will be changed.</param>
+    /// <param name="contentRoot">The installation containing the game pack and mods.</param>
+    /// <param name="packID">The game pack whose order will be changed.</param>
     /// <param name="original">The applied releases when editing began.</param>
     /// <param name="requested">The same mod IDs in the player's proposed order.</param>
     public static void UpdateModLoadOrder(
@@ -287,8 +287,8 @@ public sealed class UserSettingsManager
     /// <summary>
     /// Resolves the applied membership and release versions using the active game's discovery rules.
     /// </summary>
-    /// <param name="contentRoot">The installation containing the era and mods.</param>
-    /// <param name="packID">The era whose stack is requested.</param>
+    /// <param name="contentRoot">The installation containing the game pack and mods.</param>
+    /// <param name="packID">The game pack whose stack is requested.</param>
     /// <param name="preferences">The player settings currently being read or modified.</param>
     /// <returns>The resolved mods in application order.</returns>
     private static IReadOnlyList<ContentModDefinition> ResolveSavedModOrder(
@@ -311,12 +311,12 @@ public sealed class UserSettingsManager
     }
 
     /// <summary>
-    /// Applies a package selection to the matching era using the same native load rules as the game.
+    /// Applies a package selection to the matching game pack using the same native load rules as the game.
     /// </summary>
-    /// <param name="contentRoot">The installation containing the era and add-ons.</param>
+    /// <param name="contentRoot">The installation containing the game pack and add-ons.</param>
     /// <param name="selection">The preferences read under the publication lock.</param>
-    /// <param name="packID">The era targeted by the selected add-ons.</param>
-    /// <param name="mods">The selected add-ons for this era.</param>
+    /// <param name="packID">The game pack targeted by the selected add-ons.</param>
+    /// <param name="mods">The selected add-ons for this game pack.</param>
     /// <param name="enabled">Whether the selected add-ons should load.</param>
     private static void UpdateModSelection(
         string contentRoot,
@@ -367,7 +367,7 @@ public sealed class UserSettingsManager
         );
         if (unavailable != null)
             throw new InvalidOperationException(
-                $"Mod '{unavailable}' is unavailable for the selected era."
+                $"Mod '{unavailable}' is unavailable for the selected game pack."
             );
         CampaignContentValidator.ValidateCampaigns(candidate);
         selection.SetModLoadOrder(
@@ -617,7 +617,7 @@ public sealed class UserSettingsManager
         _savedContent = JsonUtility.FromJson<UserContentSettings>(JsonUtility.ToJson(content));
 
     /// <summary>
-    /// Compares nullable per-era preferences by their recorded IDs and versions.
+    /// Compares nullable per-pack preferences by their recorded IDs and versions.
     /// </summary>
     /// <param name="left">The order to compare.</param>
     /// <param name="right">The prior order.</param>

@@ -116,7 +116,7 @@ internal sealed class ContentLoadOperation
     )
     {
         if (string.IsNullOrWhiteSpace(packID))
-            throw new ArgumentException("A content pack identifier is required.", nameof(packID));
+            throw new ArgumentException("A game pack identifier is required.", nameof(packID));
 
         BeginPreparation();
         _isContentReload = true;
@@ -133,9 +133,7 @@ internal sealed class ContentLoadOperation
                         string.Equals(pack.ID, packID, StringComparison.Ordinal)
                     );
                 if (definition == null)
-                    throw new InvalidOperationException(
-                        $"Content pack '{packID}' is not installed."
-                    );
+                    throw new InvalidOperationException($"Game pack '{packID}' is not installed.");
 
                 return OpenValidatedPack(packID, disabled, order);
             })
@@ -204,7 +202,7 @@ internal sealed class ContentLoadOperation
             throw new ArgumentNullException(nameof(summary));
         if (!contentPack.MatchesContentIdentity(summary))
             throw new InvalidOperationException(
-                "The custom-game configuration does not match its selected content pack."
+                "The custom-game configuration does not match its selected game pack."
             );
 
         BeginPreparation();

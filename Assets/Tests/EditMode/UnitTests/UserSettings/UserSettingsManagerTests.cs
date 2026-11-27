@@ -185,7 +185,7 @@ namespace Rebellion.Tests.Managers
         {
             string directory = Path.Combine(
                 Path.GetTempPath(),
-                "era-orders-" + Guid.NewGuid().ToString("N")
+                "game-pack-orders-" + Guid.NewGuid().ToString("N")
             );
             string path = Path.Combine(directory, "user-settings.json");
             try

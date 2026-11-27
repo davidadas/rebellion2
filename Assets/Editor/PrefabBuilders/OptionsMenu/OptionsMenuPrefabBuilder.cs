@@ -222,7 +222,7 @@ public static class OptionsMenuPrefabBuilder
         const int viewportHeight = 222;
         int viewportWidth = bodyWidth - 2 * panelPadding - scrollbarGap - scrollBarWidth;
         int scrollBarX = viewportWidth + scrollbarGap;
-        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "ERA", 16, accent);
+        CreateOptionsSectionHeader(modsPage, "ContentPackHeader", "GAME PACK", 16, accent);
         TextMeshProUGUI packValue = CreateOptionsFieldRow(
             modsPage,
             "ContentPack",
@@ -235,13 +235,7 @@ public static class OptionsMenuPrefabBuilder
             textInset: 28
         );
         packValue.overflowMode = TextOverflowModes.Ellipsis;
-        CreateOptionsSectionHeader(
-            modsPage,
-            "LoadedModsHeader",
-            "MODS & CONTENT PACKS",
-            74,
-            accent
-        );
+        CreateOptionsSectionHeader(modsPage, "LoadedModsHeader", "MODS", 74, accent);
 
         RectTransform listPanel = CreateChildLayer("ModsListPanel", modsPage);
         SetSourceRect(

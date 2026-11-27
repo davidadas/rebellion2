@@ -230,7 +230,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         _dependencies.Show(settings.GetDependencies());
         _changelog.SetTextWithoutNotify(settings.Changelog ?? string.Empty);
         _version.SetTextWithoutNotify(_release.Version);
-        _identity.text = project.DisplayName + (project.Mod == null ? " · Era" : " · Mod");
+        _identity.text = project.DisplayName + (project.Mod == null ? " · Game pack" : " · Mod");
         SetIcon(settings.IconPath, null);
         ShowStatus(string.Empty);
         SetStep(0);
@@ -465,7 +465,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
         if (_release.ID == null)
             return;
         string basePack = string.IsNullOrEmpty(_release.BasePackID)
-            ? "Standalone era"
+            ? "Standalone game pack"
             : "Requires " + _release.BasePackID;
         _preview.text =
             _packageName.text
@@ -482,7 +482,7 @@ public sealed class ContentEditorPublishingView : MonoBehaviour, ICancelable
             + _packageName.text
             + " · "
             + _release.Version
-            + "\n\nRequired era\n"
+            + "\n\nRequired game pack\n"
             + (string.IsNullOrEmpty(_release.BasePackID) ? "None" : _release.BasePackID)
             + "\n\nRequired Thunderstore packages\n"
             + dependencies

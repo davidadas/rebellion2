@@ -99,16 +99,16 @@ namespace Rebellion.Tests.ContentEditor.UI
 
             TMP_Text[] labels = view.ModManager.GetComponentsInChildren<TMP_Text>();
             TMP_Text mods = labels.Single(label => label.name == "ModsHeading");
-            TMP_Text eras = labels.Single(label => label.name == "ErasHeading");
+            TMP_Text gamePacks = labels.Single(label => label.name == "GamePacksHeading");
             var cards = view.ModManager.GetComponentsInChildren<ContentEditorModCardView>();
 
             Assert.That(
-                eras.rectTransform.anchoredPosition.y,
+                gamePacks.rectTransform.anchoredPosition.y,
                 Is.LessThan(mods.rectTransform.anchoredPosition.y)
             );
             CollectionAssert.AreEqual(
                 new[] { false, false, true },
-                cards.Select(card => card.Entry.IsEra)
+                cards.Select(card => card.Entry.IsGamePack)
             );
         }
 
@@ -310,9 +310,9 @@ namespace Rebellion.Tests.ContentEditor.UI
         /// Creates cached add-on releases and records their dependency through installation.
         /// </summary>
         /// <param name="store">The fixture-owned package store.</param>
-        /// <param name="era">The compatible era for the test add-ons.</param>
+        /// <param name="gamePack">The compatible game pack for the test add-ons.</param>
         /// <returns>The installation completion.</returns>
-        private async Task InstallAddOnsAsync(ModPackageStore store, ContentPackDefinition era)
+        private async Task InstallAddOnsAsync(ModPackageStore store, ContentPackDefinition gamePack)
         {
             ThunderstorePackage[] listings = new ThunderstorePackage[2];
             string[] names = { "Dependency", "Parent" };
@@ -328,7 +328,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                         + "</ID><DisplayName>"
                         + name
                         + "</DisplayName><Version>1.0.0</Version>"
-                        + $"<BasePackID>{era.ID}</BasePackID><BasePackVersion>{era.Version}</BasePackVersion></ContentModDefinition>"
+                        + $"<BasePackID>{gamePack.ID}</BasePackID><BasePackVersion>{gamePack.Version}</BasePackVersion></ContentModDefinition>"
                 );
                 File.WriteAllText(
                     Path.Combine(source, "manifest.json"),

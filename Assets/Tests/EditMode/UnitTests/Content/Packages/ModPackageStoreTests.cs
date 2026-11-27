@@ -629,7 +629,7 @@ namespace Rebellion.Tests.Content.Packages
         }
 
         /// <summary>
-        /// Installs a fixture era directly in the pack directory.
+        /// Installs a fixture game pack directly in the pack directory.
         /// </summary>
         /// <param name="name">The pack folder name.</param>
         /// <param name="id">The pack ID.</param>

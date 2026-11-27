@@ -188,7 +188,7 @@ public sealed class ModPackageStore
                 ? null
                 : packs.FirstOrDefault(pack => pack.ID == content.BasePackID);
             if (!string.IsNullOrEmpty(content.BasePackID) && basis == null)
-                return "Requires " + content.BasePackID + ". Install that content pack first.";
+                return "Requires " + content.BasePackID + ". Install that game pack first.";
             if (
                 basis != null
                 && !string.IsNullOrEmpty(content.BasePackVersion)
@@ -1266,7 +1266,7 @@ public sealed class ModPackageStore
                 "Set the project type in the content editor before installing it."
             );
         InstalledModContent content;
-        if (type == ContentPackageType.Era)
+        if (type == ContentPackageType.GamePack)
         {
             ContentPackDefinition pack =
                 ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(manifest);
@@ -1499,7 +1499,7 @@ public sealed class ModPackageStore
     {
         if (installed.Any(item => item.BasePackID == content.ID))
             throw new InvalidOperationException(
-                "Another installed content pack requires " + content.DisplayName + "."
+                "Another installed package requires " + content.DisplayName + "."
             );
     }
 

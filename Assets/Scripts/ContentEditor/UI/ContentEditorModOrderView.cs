@@ -5,10 +5,11 @@ using System.Linq;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
-/// Previews and applies the enabled mod order for one era.
+/// Previews and applies the enabled mod order for one game pack.
 /// </summary>
 public sealed class ContentEditorModOrderView : MonoBehaviour, ICancelable
 {
@@ -24,7 +25,8 @@ public sealed class ContentEditorModOrderView : MonoBehaviour, ICancelable
     private SortableRowView rowTemplate;
 
     [SerializeField]
-    private TMP_Text era;
+    [FormerlySerializedAs("era")]
+    private TMP_Text gamePack;
 
     [SerializeField]
     private TMP_Text empty;
@@ -83,9 +85,9 @@ public sealed class ContentEditorModOrderView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Shows the active era and its enabled mods in application order.
+    /// Shows the active game pack and its enabled mods in application order.
     /// </summary>
-    /// <param name="displayName">The selected era.</param>
+    /// <param name="displayName">The selected game pack.</param>
     /// <param name="mods">The currently applied mod releases.</param>
     /// <param name="onApply">Called with the proposed order. A failure leaves the dialog open.</param>
     internal void Show(
@@ -105,7 +107,7 @@ public sealed class ContentEditorModOrderView : MonoBehaviour, ICancelable
         original = mods;
         modsByID = mods.ToDictionary(mod => mod.ID, StringComparer.Ordinal);
         save = onApply;
-        era.text = displayName;
+        gamePack.text = displayName;
         status.text = string.Empty;
         empty.gameObject.SetActive(mods.Count == 0);
         gameObject.SetActive(true);

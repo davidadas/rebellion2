@@ -8,11 +8,11 @@ content can therefore be changed without rebuilding the game.
 A Rebellion 2 mod is a folder containing a `pack.xml` manifest and a `Content` folder. It can
 replace art, audio, video, configuration, or game-data files without rebuilding the game.
 
-In the Content Pack Editor, choose **File > New > Mod / content pack** and pick the era it works
+In the Content Pack Editor, choose **File > New > Mod** and pick the game pack it works
 with. A mod saved in the default location appears in **Options > Mods**. Select **Apply** to
 activate it.
-Use **Export** to share a ZIP. A content pack that adds units, factions, or scenarios uses this
-same mod workflow. **Open project** supports both mods and eras.
+Use **Export** to share a ZIP. Mods can add units, factions, or scenarios.
+**Open project** supports both mods and game packs.
 
 ### 1. Find the Mods directory
 
@@ -146,7 +146,7 @@ Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears 
 Use the switch to enable or disable the mod, then select **Apply**. The game reloads the selected
 content and returns to the main menu without closing. If the mod does not appear, confirm that
 the manifest is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
-active content pack. Invalid definitions are skipped without preventing other mods from loading; the
+active game pack. Invalid definitions are skipped without preventing other mods from loading; the
 game log identifies the invalid file and reason.
 
 New compatible mods appear checked in the proposed selection. The game uses the last applied
@@ -168,14 +168,15 @@ Use a sparse `Content/Pack/pack.xml` to add paths under `ScenarioPaths` or `Fact
 Keep the base pack's identity in the base manifest. Registered campaigns appear under **Scenario**
 in Custom Game when there is more than one available.
 
-## Creating an era
+## Creating a game pack
 
-Choose **New project > Era** in **Projects** when players should select your content pack as its own
-game setup. Pick a base pack. The editor saves your changes in the new project's folder.
+Game packs are the selectable content packs from earlier releases.
+Choose **New project > Game pack** in **Projects** when players should select your project as its own
+game setup. Pick a base game pack. The editor saves your changes in the new project's folder.
 Export records every inherited release in `pack.xml`, starting with the immediate parent.
 
 ```xml
-<ContentPackage Type="Era">
+<ContentPackage Type="GamePack">
   <ID>example-derived-pack</ID>
   <BasePackID>example-base-pack</BasePackID>
   <InheritedPacks>
@@ -184,6 +185,8 @@ Export records every inherited release in `pack.xml`, starting with the immediat
   <!-- The remaining pack definition is omitted here. -->
 </ContentPackage>
 ```
+
+Game packs also open with the legacy `ContentPack` root or `Type="Era"`.
 
 Files present in the derived pack override files at the same `Pack/` address. Missing files fall
 back through the declared base-pack chain. Each derived pack still provides a complete `pack.xml`
@@ -329,10 +332,10 @@ also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a l
 ### Community mods
 
 Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
-choose the default era or enable add-ons for the next game startup. **Install from file…**
+choose the default game pack or enable mods for the next game startup. **Install from file…**
 accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
 
-### Publishing an era or mod
+### Publishing a game pack or mod
 
 Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
 description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
@@ -367,7 +370,7 @@ through the ownership-verifying installer.
 
 Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
 Increment a mod's version when publishing compatibility-breaking changes, then test both new games
-and existing saves. Use the Options menu's Mods page to select an era and enable or disable
+and existing saves. Use the Options menu's Mods page to select a game pack and enable or disable
 its compatible mods. Select **Apply** to reload those changes and return to the main menu.
 
 The game restores a save's recorded mod order for that campaign and keeps your new-game

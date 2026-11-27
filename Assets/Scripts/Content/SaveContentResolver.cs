@@ -104,7 +104,7 @@ internal static class SaveContentResolver
         if (!requiredPack.MatchesContentIdentity(metadata))
         {
             throw new InvalidOperationException(
-                $"Save requires content pack '{metadata.PackID}' version "
+                $"Save requires game pack '{metadata.PackID}' version "
                     + $"'{metadata.PackVersion}' and scenario '{metadata.ScenarioID}', but the installed "
                     + $"pack is version '{requiredPack.Definition.Version}' with scenario "
                     + $"'{requiredPack.Scenario.ID}'."

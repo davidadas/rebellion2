@@ -568,7 +568,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             rowIndex++,
             contentOffset,
             "content-pack",
-            "Era",
+            "Game pack",
             "Selects the game setup, including its units, rules, and scenarios.",
             string.IsNullOrWhiteSpace(settingsSession.Pack.Definition.DisplayName)
                 ? settingsSession.Pack.Definition.ID

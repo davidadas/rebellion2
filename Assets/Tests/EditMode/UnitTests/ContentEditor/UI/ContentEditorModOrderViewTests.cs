@@ -88,11 +88,11 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             view.ModManager.Show();
             var dialog = view.ModManager.GetComponentInChildren<ContentEditorModOrderView>(true);
-            var era = new ContentPackDefinition { ID = "era", Version = "1.0.0" };
+            var gamePack = new ContentPackDefinition { ID = "gamePack", Version = "1.0.0" };
             dialog.Show(
-                "Test era",
+                "Test game pack",
                 new[] { "first", "second", "third" }
-                    .Select(id => ContentModDefinition.Create(id, "1.0.0", id, era))
+                    .Select(id => ContentModDefinition.Create(id, "1.0.0", id, gamePack))
                     .ToArray(),
                 _ => { }
             );

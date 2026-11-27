@@ -240,7 +240,7 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
     /// <summary>
     /// Combines remembered folders with the open project's live metadata.
     /// </summary>
-    /// <returns>Local mods followed by eras, with the working copy first within its type.</returns>
+    /// <returns>Local mods followed by game packs, with the working copy first within its type.</returns>
     private ContentEditorLocalProject[] GetLocalProjects()
     {
         IEnumerable<ContentEditorLocalProject> projects =
@@ -249,7 +249,7 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
                     local.Where(item => item.Folder != currentEntry.Folder)
                 )
                 : local;
-        return projects.OrderBy(item => item.IsEra).ToArray();
+        return projects.OrderBy(item => item.IsGamePack).ToArray();
     }
 
     /// <summary>
@@ -279,7 +279,11 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
                 row.Render(
                     item.Name,
                     item.Error
-                        ?? (item.IsEra ? "Era" : ContentEditorPackDialogView.ModProjectLabel)
+                        ?? (
+                            item.IsGamePack
+                                ? "Game pack"
+                                : ContentEditorPackDialogView.ModProjectLabel
+                        )
                             + " · "
                             + item.Version
                             + (active ? " · Open now" : string.Empty),

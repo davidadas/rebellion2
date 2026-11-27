@@ -442,7 +442,7 @@ namespace Rebellion.Tests.UI.SceneUI.OptionsMenu
 
             Assert.IsTrue(_controller.IsOpen);
             string status = GetField<TextMeshProUGUI>(view, "_settingsStatusTextField").text;
-            Assert.AreEqual("Era could not be loaded. See Player.log for details.", status);
+            Assert.AreEqual("Game pack could not be loaded. See Player.log for details.", status);
         }
 
         [Test]

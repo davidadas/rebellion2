@@ -172,7 +172,7 @@ public static class ContentPackEditorStorage
     public static ContentPackEditorProject OpenFolder(string contentRootPath, string packRootPath)
     {
         ContentEditorPaths.VerifyWritableLocation(contentRootPath, packRootPath);
-        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.Era);
+        string manifest = ContentPackageManifest.Find(packRootPath, ContentPackageType.GamePack);
         if (ContentPackageManifest.ReadType(manifest) == ContentPackageType.Mod)
         {
             ContentModDefinition mod = ContentFileResolver.ReadValidatedMod(packRootPath);
@@ -309,20 +309,18 @@ public static class ContentPackEditorStorage
             File.Exists(packRoot)
             || directoryExisted && Directory.EnumerateFileSystemEntries(packRoot).Any()
         )
-            throw new IOException("Choose a new or empty content-pack folder.");
+            throw new IOException("Choose a new or empty project folder.");
         foreach (string inheritedRoot in baseResolver.PackRootPaths)
         {
             if (ContentEditorPaths.Contains(inheritedRoot, packRoot))
-                throw new IOException(
-                    "Choose a working folder outside the inherited content pack."
-                );
+                throw new IOException("Choose a working folder outside the base game pack.");
         }
         if (
             ContentPackLoader
                 .DiscoverPacks(contentRootPath)
                 .Any(pack => string.Equals(pack.ID, packID, StringComparison.Ordinal))
         )
-            throw new InvalidDataException($"A content pack already declares ID '{packID}'.");
+            throw new InvalidDataException($"A game pack already declares ID '{packID}'.");
 
         string[] themePaths = ContentPackLoader
             .ReadThemePaths(baseResolver, baseDefinition)
@@ -1415,7 +1413,7 @@ public static class ContentPackEditorStorage
             themeDocuments.SelectMany(FactionThemes.ReadFactionIDs).Count(FactionThemes.IsNeutral)
             != 1
         )
-            throw new InvalidDataException("A content pack must define exactly one Neutral theme.");
+            throw new InvalidDataException("A game pack must define exactly one Neutral theme.");
     }
 
     /// <summary>

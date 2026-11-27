@@ -579,7 +579,7 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
     {
         if (_selectedModResolver == null || !string.IsNullOrWhiteSpace(_selectedPackError))
         {
-            SetStatus(BuildContentErrorStatus("Era"), true);
+            SetStatus(BuildContentErrorStatus("Game pack"), true);
             return;
         }
 
@@ -1093,7 +1093,10 @@ public sealed class OptionsMenuController : ICancelable, IDisposable
                 RequestConfirm("Reset all key bindings to their defaults?", ApplyActiveDefaults);
                 break;
             case OptionsMenuTab.Mods:
-                RequestConfirm("Reset the era and mods to their defaults?", ApplyActiveDefaults);
+                RequestConfirm(
+                    "Reset the game pack and mods to their defaults?",
+                    ApplyActiveDefaults
+                );
                 break;
         }
     }

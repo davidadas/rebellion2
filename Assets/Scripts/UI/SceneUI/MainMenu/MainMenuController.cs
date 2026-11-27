@@ -567,7 +567,7 @@ public sealed class MainMenuController : MonoBehaviour, ICancelable
             string.Equals(candidate.ID, packID, StringComparison.Ordinal)
         );
         if (definition == null)
-            throw new InvalidDataException($"Content pack '{packID}' is not installed.");
+            throw new InvalidDataException($"Game pack '{packID}' is not installed.");
 
         ContentPack current = _appBootstrap.GetContentPack();
         UserContentSettings preferences = _appBootstrap.GetUserSettingsManager().Settings.Content;

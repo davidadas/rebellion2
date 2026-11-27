@@ -11,7 +11,7 @@ internal sealed class ContentEditorLocalProject
     internal string Name { get; }
     internal string Version { get; }
     internal string PackageID { get; }
-    internal bool IsEra { get; }
+    internal bool IsGamePack { get; }
     internal bool NeedsType { get; }
     internal string Error { get; }
 
@@ -22,7 +22,7 @@ internal sealed class ContentEditorLocalProject
     /// <param name="name">The project name.</param>
     /// <param name="version">The authored version.</param>
     /// <param name="packageID">The linked publishing identity, when present.</param>
-    /// <param name="isEra">Whether the project defines a selectable era.</param>
+    /// <param name="isGamePack">Whether the project defines a selectable game pack.</param>
     /// <param name="needsType">Whether the editor can ask the author to set a missing type.</param>
     /// <param name="error">The folder's availability problem, when present.</param>
     private ContentEditorLocalProject(
@@ -30,7 +30,7 @@ internal sealed class ContentEditorLocalProject
         string name,
         string version,
         string packageID,
-        bool isEra = false,
+        bool isGamePack = false,
         bool needsType = false,
         string error = null
     )
@@ -39,7 +39,7 @@ internal sealed class ContentEditorLocalProject
         Name = name;
         Version = version;
         PackageID = packageID;
-        IsEra = isEra;
+        IsGamePack = isGamePack;
         NeedsType = needsType;
         Error = error;
     }
@@ -53,7 +53,7 @@ internal sealed class ContentEditorLocalProject
     {
         try
         {
-            string manifest = ContentPackageManifest.Find(folder, ContentPackageType.Era);
+            string manifest = ContentPackageManifest.Find(folder, ContentPackageType.GamePack);
             ContentPackageType type = ContentPackageManifest.ReadType(manifest);
             if (type == ContentPackageType.Unknown)
                 return new ContentEditorLocalProject(
@@ -81,7 +81,7 @@ internal sealed class ContentEditorLocalProject
                 definition.DisplayName,
                 definition.Version,
                 ContentEditorPublishingStorage.ReadPackageID(folder),
-                isEra: true
+                isGamePack: true
             );
         }
         catch (Exception exception)
@@ -117,6 +117,6 @@ internal sealed class ContentEditorLocalProject
             project.DisplayName,
             project.Version,
             ContentEditorPublishingStorage.ReadPackageID(project.ProjectRootPath),
-            isEra: project.Mod == null
+            isGamePack: project.Mod == null
         );
 }

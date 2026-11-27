@@ -1398,7 +1398,7 @@ public sealed class ContentPackEditorProject : IDisposable
             record.Kind == nameof(FactionTheme)
             && FactionThemes.IsNeutral(record.Element.Element("FactionInstanceID")?.Value)
         )
-            throw new InvalidOperationException("A content pack must have a Neutral theme.");
+            throw new InvalidOperationException("A game pack must have a Neutral theme.");
         if (record.Kind == "Faction")
         {
             RemoveFaction(record);
@@ -1754,7 +1754,7 @@ public sealed class ContentPackEditorProject : IDisposable
     {
         if (IsInstalledPath(contentRootPath, folder))
             throw new IOException(
-                "Installed content is read-only. Create a new content pack in your own folder."
+                "Installed content is read-only. Create a project in your own folder."
             );
     }
 

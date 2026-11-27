@@ -12,7 +12,7 @@ using UnityEngine.UI;
 /// </summary>
 public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
 {
-    internal const string ModProjectLabel = "Mod / content pack";
+    internal const string ModProjectLabel = "Mod";
 
     [SerializeField]
     private TMP_InputField newIDInput;
@@ -152,17 +152,17 @@ public sealed class ContentEditorPackDialogView : MonoBehaviour, ICancelable
     {
         BindControls();
         createAsMod = asMod;
-        heading.text = asMod ? "New mod / content pack" : "New era";
-        nameLabel.text = asMod ? "Name *" : "Era name *";
-        idLabel.text = asMod ? "ID *" : "Era ID *";
-        baseLabel.text = asMod ? "Compatible era *" : "Base era *";
-        ((TMP_Text)newIDInput.placeholder).text = asMod ? "my-mod" : "my-era";
+        heading.text = asMod ? "New mod" : "New game pack";
+        nameLabel.text = asMod ? "Name *" : "Game pack name *";
+        idLabel.text = asMod ? "ID *" : "Game pack ID *";
+        baseLabel.text = asMod ? "Compatible game pack *" : "Base game pack *";
+        ((TMP_Text)newIDInput.placeholder).text = asMod ? "my-mod" : "my-game-pack";
         dialogConfirmButton.GetComponentInChildren<TMP_Text>(true).text = asMod
-            ? "Create project"
-            : "Create era";
+            ? "Create mod"
+            : "Create game pack";
         helpText.text = asMod
-            ? "Players can enable this project alongside other mods for the selected era."
-            : "Players can select this era when starting a game. Edits are saved in its own project folder.";
+            ? "Players can enable this project alongside other mods for the selected game pack."
+            : "Players can select this game pack when starting a game. Edits are saved in its own project folder.";
         automaticPackID = string.Empty;
         newNameInput.SetTextWithoutNotify(string.Empty);
         newIDInput.SetTextWithoutNotify(string.Empty);

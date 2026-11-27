@@ -9,18 +9,18 @@ using System.Xml.Linq;
 public enum ContentPackageType
 {
     Unknown,
-    Era,
+    GamePack,
     Mod,
 }
 
 /// <summary>
-/// Identifies the shared package manifest and the two legacy manifest forms.
+/// Identifies the shared package manifest and its compatible legacy forms.
 /// </summary>
 public static class ContentPackageManifest
 {
     public const string FileName = "pack.xml";
     public const string RootName = "ContentPackage";
-    internal const string LegacyEraRoot = "ContentPack";
+    internal const string LegacyPackRoot = "ContentPack";
     private const string _legacyModFileName = "mod.xml";
     private const string _typeAttribute = "Type";
 
@@ -51,7 +51,7 @@ public static class ContentPackageManifest
             if (File.Exists(legacyMod))
                 return legacyPreference switch
                 {
-                    ContentPackageType.Era => manifest,
+                    ContentPackageType.GamePack => manifest,
                     ContentPackageType.Mod => legacyMod,
                     _ => throw new InvalidDataException(
                         "Choose a folder with a single package manifest."
@@ -94,11 +94,11 @@ public static class ContentPackageManifest
     internal static ContentPackageType ReadType(string root, string type) =>
         root switch
         {
-            LegacyEraRoot => ContentPackageType.Era,
+            LegacyPackRoot => ContentPackageType.GamePack,
             nameof(ContentModDefinition) => ContentPackageType.Mod,
             RootName => type switch
             {
-                nameof(ContentPackageType.Era) => ContentPackageType.Era,
+                nameof(ContentPackageType.GamePack) or "Era" => ContentPackageType.GamePack,
                 nameof(ContentPackageType.Mod) => ContentPackageType.Mod,
                 _ => ContentPackageType.Unknown,
             },
@@ -114,24 +114,27 @@ public static class ContentPackageManifest
     /// <param name="type">The selected package role.</param>
     public static void SetType(XElement root, ContentPackageType type)
     {
-        if (type is not (ContentPackageType.Era or ContentPackageType.Mod))
+        if (type is not (ContentPackageType.GamePack or ContentPackageType.Mod))
             throw new ArgumentOutOfRangeException(nameof(type));
         root.Name = RootName;
         root.SetAttributeValue(_typeAttribute, type.ToString());
     }
 
     /// <summary>
-    /// Makes a typed era readable by existing campaign-override logic.
+    /// Makes a typed game pack readable by existing campaign-override logic.
     /// </summary>
-    /// <param name="root">The authored era manifest.</param>
+    /// <param name="root">The authored game pack manifest.</param>
     /// <returns>The same XML element using the existing campaign root.</returns>
     internal static XElement AsCampaignRoot(XElement root)
     {
         if (root.Name != RootName)
             return root;
-        if (ReadType(RootName, (string)root.Attribute(_typeAttribute)) != ContentPackageType.Era)
-            throw new InvalidDataException("The package manifest must declare Type=\"Era\".");
-        root.Name = LegacyEraRoot;
+        if (
+            ReadType(RootName, (string)root.Attribute(_typeAttribute))
+            != ContentPackageType.GamePack
+        )
+            throw new InvalidDataException("The package manifest must declare Type=\"GamePack\".");
+        root.Name = LegacyPackRoot;
         root.Attribute(_typeAttribute)?.Remove();
         return root;
     }

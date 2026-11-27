@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using TMPro;
 using UnityEngine;
+using UnityEngine.Serialization;
 using UnityEngine.UI;
 
 /// <summary>
@@ -118,7 +119,8 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     private TextMeshProUGUI modsHeading;
 
     [SerializeField]
-    private TextMeshProUGUI erasHeading;
+    [FormerlySerializedAs("erasHeading")]
+    private TextMeshProUGUI gamePacksHeading;
 
     [SerializeField]
     private TextMeshProUGUI emptyResults;
@@ -249,7 +251,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             || resetButton == null
             || resultCount == null
             || modsHeading == null
-            || erasHeading == null
+            || gamePacksHeading == null
             || emptyResults == null
             || creator == null
             || popularity == null
@@ -461,7 +463,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     )
     {
         library = installed;
-        libraryModCount = installed ? items.Count(entry => !entry.IsEra) : 0;
+        libraryModCount = installed ? items.Count(entry => !entry.IsGamePack) : 0;
         LayoutResults(items.Count, resetScroll);
         packageList.Render(
             items,
@@ -571,13 +573,13 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
             160
         );
         modsHeading.gameObject.SetActive(library && libraryModCount > 0);
-        erasHeading.gameObject.SetActive(library && count > libraryModCount);
+        gamePacksHeading.gameObject.SetActive(library && count > libraryModCount);
         int modsHeight = modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
-        int erasHeight = erasHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
+        int gamePacksHeight = gamePacksHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0;
         int widthAvailable = Mathf.FloorToInt(packages.ScrollArea.ViewportWidth);
         UILayout.SetSourceRect(modsHeading.rectTransform, 0, 0, widthAvailable, 28);
         UILayout.SetSourceRect(
-            erasHeading.rectTransform,
+            gamePacksHeading.rectTransform,
             0,
             modsHeight + libraryModCount * _cardHeight,
             widthAvailable,
@@ -586,7 +588,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         packages.SetContentHeight(
             inlineFilterHeight
                 + modsHeight
-                + erasHeight
+                + gamePacksHeight
                 + (
                     inlineFilterHeight > 0 && count == 0
                         ? 208
@@ -617,7 +619,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         + (index / _columns) * _cardHeight
         + (modsHeading.gameObject.activeSelf ? _sectionHeadingHeight : 0)
         + (
-            erasHeading.gameObject.activeSelf && index >= libraryModCount
+            gamePacksHeading.gameObject.activeSelf && index >= libraryModCount
                 ? _sectionHeadingHeight
                 : 0
         );
@@ -633,7 +635,7 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
         activePack.ClearOptions();
         activePack.AddOptions(
             packs.Count == 0
-                ? new List<string> { "No eras installed" }
+                ? new List<string> { "No game packs installed" }
                 : packs.Select(pack => pack.DisplayName).ToList()
         );
         activePack.SetValueWithoutNotify(Mathf.Max(0, Array.IndexOf(activePackIDs, selectedID)));
@@ -643,19 +645,19 @@ public sealed class ContentEditorModManagerView : MonoBehaviour, ICancelable
     }
 
     /// <summary>
-    /// Opens the focused editor for the enabled order of the current era.
+    /// Opens the focused editor for the enabled order of the current game pack.
     /// </summary>
-    /// <param name="era">The default era name shown in the library.</param>
+    /// <param name="gamePack">The default game pack name shown in the library.</param>
     /// <param name="mods">The currently applied stack.</param>
     /// <param name="apply">The action that saves the proposed order.</param>
     internal void ShowLoadOrder(
-        string era,
+        string gamePack,
         IReadOnlyList<ContentModDefinition> mods,
         Action<IReadOnlyList<string>> apply
-    ) => modOrder.Show(era, mods, apply);
+    ) => modOrder.Show(gamePack, mods, apply);
 
     /// <summary>
-    /// Requests the load order for the library's current era.
+    /// Requests the load order for the library's current game pack.
     /// </summary>
     private void RequestLoadOrder() => LoadOrderRequested?.Invoke();
 

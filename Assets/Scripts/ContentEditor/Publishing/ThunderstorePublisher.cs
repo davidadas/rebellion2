@@ -192,7 +192,7 @@ internal sealed class ThunderstorePublisher : IDisposable
         );
         if (existing != null)
             throw new InvalidOperationException(
-                "This version is already published. Increase the content pack version before publishing again."
+                "This version is already published. Increase the project version before publishing again."
             );
         string uploadID = null;
         bool finished = false;

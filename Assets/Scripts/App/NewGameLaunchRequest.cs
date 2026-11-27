@@ -59,7 +59,7 @@ public sealed class NewGameLaunchRequest
         );
         if (!pack.MatchesContentIdentity(Summary))
             throw new InvalidDataException(
-                "The launch settings do not match the requested content pack."
+                "The launch settings do not match the requested game pack."
             );
         if (!pack.Scenario.PlayableFactionIDs.Contains(Summary.PlayerFactionID))
             throw new InvalidDataException(

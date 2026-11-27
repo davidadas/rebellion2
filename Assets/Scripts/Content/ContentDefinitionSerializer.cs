@@ -88,7 +88,7 @@ public static class ContentDefinitionSerializer
     }
 
     /// <summary>
-    /// Reads a definition using its existing model and remembers the shared era manifest format.
+    /// Reads a definition using its existing model and remembers the shared game pack manifest format.
     /// </summary>
     /// <typeparam name="T">The expected definition type.</typeparam>
     /// <param name="reader">The XML source.</param>
@@ -118,10 +118,10 @@ public static class ContentDefinitionSerializer
             var legacyThemePath = (string)root.Element(_legacyThemePathElement);
             using XmlReader normalized = root.CreateReader();
             result = serializer.Deserialize(normalized);
-            if (result is ContentPackDefinition era)
+            if (result is ContentPackDefinition gamePack)
             {
-                era.UsesPackageManifest = usesPackageManifest;
-                era.LegacyNeutralThemePath = legacyThemePath;
+                gamePack.UsesPackageManifest = usesPackageManifest;
+                gamePack.LegacyNeutralThemePath = legacyThemePath;
             }
         }
         else
@@ -136,7 +136,7 @@ public static class ContentDefinitionSerializer
     /// <typeparam name="T">The definition type.</typeparam>
     /// <param name="filePath">The absolute destination path.</param>
     /// <param name="definition">The definition to write.</param>
-    /// <param name="usePackageManifest">Whether a new era should use the shared package manifest.</param>
+    /// <param name="usePackageManifest">Whether a new game pack should use the shared package manifest.</param>
     public static void Serialize<T>(string filePath, T definition, bool usePackageManifest = false)
         where T : class
     {
@@ -166,23 +166,24 @@ public static class ContentDefinitionSerializer
             using (XmlWriter writer = XmlWriter.Create(temporaryPath, settings))
             {
                 if (
-                    definition is ContentPackDefinition era
+                    definition is ContentPackDefinition gamePack
                     && (
                         usePackageManifest
-                        || era.UsesPackageManifest
-                        || era.LegacyNeutralThemePath != null
+                        || gamePack.UsesPackageManifest
+                        || gamePack.LegacyNeutralThemePath != null
                     )
                 )
                 {
                     XDocument document = new();
                     using (XmlWriter buffer = document.CreateWriter())
                         serializer.Serialize(buffer, definition, namespaces);
-                    if (usePackageManifest || era.UsesPackageManifest)
-                        ContentPackageManifest.SetType(document.Root, ContentPackageType.Era);
-                    if (!string.IsNullOrWhiteSpace(era.LegacyNeutralThemePath))
+                    if (usePackageManifest || gamePack.UsesPackageManifest)
+                        ContentPackageManifest.SetType(document.Root, ContentPackageType.GamePack);
+                    if (!string.IsNullOrWhiteSpace(gamePack.LegacyNeutralThemePath))
                         SetThemePaths(
                             document.Root,
-                            era.ThemePaths.Append(era.LegacyNeutralThemePath)
+                            gamePack
+                                .ThemePaths.Append(gamePack.LegacyNeutralThemePath)
                                 .Distinct(StringComparer.Ordinal)
                         );
                     document.Save(writer);

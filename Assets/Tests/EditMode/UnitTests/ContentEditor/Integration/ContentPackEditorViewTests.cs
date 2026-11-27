@@ -2626,11 +2626,11 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void ShowNewEraDialog_OpeningTheWorkflow_LeavesTheWorkingPackUnchanged()
+        public void ShowNewGamePackDialog_OpeningTheWorkflow_LeavesTheWorkingPackUnchanged()
         {
-            view.ShowNewEraDialog();
+            view.ShowNewGamePackDialog();
             Assert.IsTrue(
-                view.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "New era")
+                view.GetComponentsInChildren<TMP_Text>().Any(label => label.text == "New game pack")
             );
             Assert.IsFalse(project.IsDirty);
         }
@@ -2651,8 +2651,8 @@ namespace Rebellion.Tests.ContentEditor.Integration
             );
         }
 
-        [TestCase("Mod / content pack", "New mod / content pack")]
-        [TestCase("Era", "New era")]
+        [TestCase("Mod", "New mod")]
+        [TestCase("Game pack", "New game pack")]
         public void ClearProject_SelectingProjectType_OpensTheMatchingForm(
             string projectType,
             string heading
@@ -2669,7 +2669,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
             string[] choices = commands
                 .Select(item => item.GetComponentInChildren<TMP_Text>().text)
                 .ToArray();
-            CollectionAssert.AreEqual(new[] { "Mod / content pack", "Era" }, choices);
+            CollectionAssert.AreEqual(new[] { "Mod", "Game pack" }, choices);
             commands[Array.IndexOf(choices, projectType)]
                 .OnPointerClick(
                     new PointerEventData(EventSystem.current)
@@ -2705,7 +2705,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
-        public void ClearProject_FileNewSubmenu_ListsModsBeforeEras()
+        public void ClearProject_FileNewSubmenu_ListsModsBeforeGamePacks()
         {
             view.ClearProject();
             view.GetComponentsInChildren<Button>()
@@ -2722,7 +2722,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
                 .Except(commands)
                 .Select(command => command.GetComponentInChildren<TMP_Text>().text)
                 .ToArray();
-            CollectionAssert.AreEqual(new[] { "Mod / content pack", "Era" }, choices);
+            CollectionAssert.AreEqual(new[] { "Mod", "Game pack" }, choices);
         }
 
         [Test]
@@ -2815,7 +2815,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         public void HandleKeyboardShortcut_EscapeWithNewEraDialog_ClosesOnlyTheDialog()
         {
             view.RenderStatus("Keep this status.", false);
-            view.ShowNewEraDialog();
+            view.ShowNewGamePackDialog();
             Event key = new Event { type = EventType.KeyDown, keyCode = KeyCode.Escape };
             Assert.IsTrue(view.HandleKeyboardShortcut(key));
             Assert.AreEqual(EventType.Used, key.type);

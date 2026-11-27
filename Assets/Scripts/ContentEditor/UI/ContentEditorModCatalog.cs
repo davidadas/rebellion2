@@ -14,7 +14,7 @@ internal sealed class ContentEditorModEntry
     internal ContentPackDefinition IncludedPack { get; }
     internal bool IsActivePack { get; }
     internal bool IsInstalled => Installation != null || IncludedPack != null;
-    internal bool IsEra =>
+    internal bool IsGamePack =>
         IncludedPack != null || Installation?.Content.Any(content => content.IsPack) == true;
     internal string CompatibilityIssue { get; }
     internal string ID => Listing?.full_name ?? Installation?.PackageID ?? IncludedPack.ID;
@@ -49,7 +49,7 @@ internal sealed class ContentEditorModEntry
         && latest > installed;
     internal string State =>
         !string.IsNullOrEmpty(CompatibilityIssue) ? "Needs attention"
-        : IsActivePack ? "Default era"
+        : IsActivePack ? "Default game pack"
         : IncludedPack != null ? "Installed"
         : HasUpdate ? "Update available"
         : Installation != null

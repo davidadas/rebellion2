@@ -872,7 +872,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         InitializeControls();
         if (value.IsInstalled)
             throw new InvalidOperationException(
-                "Create a new content pack instead of editing installed content."
+                "Create a project to edit a copy of installed content."
             );
         modManager.Hide();
         editingProject = true;
@@ -985,7 +985,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
         if (project != null)
             projectLabel.text =
                 project.DisplayName
-                + (project.Mod == null ? "  /  Era" : "  /  Mod")
+                + (project.Mod == null ? "  /  Game pack" : "  /  Mod")
                 + (project.IsDirty ? "  /  Unsaved changes" : "");
         if (selectedRecord == null)
             return;
@@ -1292,16 +1292,16 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 ContentEditorPackDialogView.ModProjectLabel,
                 ShowNewModDialog
             ),
-            new ContentEditorMenuCommand("Era", ShowNewEraDialog),
+            new ContentEditorMenuCommand("Game pack", ShowNewGamePackDialog),
         };
 
     /// <summary>
-    /// Opens the creation form for a selectable era derived from an installed era.
+    /// Opens the creation form for a selectable game pack derived from an installed game pack.
     /// </summary>
-    public void ShowNewEraDialog() => ShowProjectCreationDialog(asMod: false);
+    public void ShowNewGamePackDialog() => ShowProjectCreationDialog(asMod: false);
 
     /// <summary>
-    /// Opens the creation form for a stackable mod or content pack.
+    /// Opens the creation form for a stackable mod.
     /// </summary>
     private void ShowNewModDialog() => ShowProjectCreationDialog(asMod: true);
 
@@ -1357,8 +1357,8 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     internal void ChoosePackageType(Action<ContentPackageType> choose) =>
         confirmation.Show(
             "The project’s type is missing or unrecognized. Choose its type to open it.",
-            "Era",
-            () => choose(ContentPackageType.Era),
+            "Game pack",
+            () => choose(ContentPackageType.GamePack),
             ContentEditorPackDialogView.ModProjectLabel,
             () => choose(ContentPackageType.Mod)
         );

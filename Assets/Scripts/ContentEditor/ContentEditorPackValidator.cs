@@ -191,7 +191,7 @@ internal static class ContentEditorPackValidator
     internal static void ValidateFields(ContentPackEditorProject project)
     {
         if (project.IsDirty)
-            throw new InvalidOperationException("Save the content pack before validating it.");
+            throw new InvalidOperationException("Save the project before validating it.");
         ContentEditorValidationIssue issue = GetFieldErrors(project).FirstOrDefault();
         if (issue != null)
             throw issue.Exception;

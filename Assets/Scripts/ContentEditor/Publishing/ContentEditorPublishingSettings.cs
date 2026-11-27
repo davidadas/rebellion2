@@ -41,7 +41,7 @@ internal sealed class ContentEditorPublishingSettings
         if (string.IsNullOrWhiteSpace(Description) || Description.Length > 250)
             throw new ArgumentException("Enter a description of 1–250 characters.");
         if (string.IsNullOrWhiteSpace(Readme))
-            throw new ArgumentException("Add a readme describing your content pack.");
+            throw new ArgumentException("Add a readme describing your project.");
         if (
             !string.IsNullOrWhiteSpace(WebsiteUrl)
             && (
