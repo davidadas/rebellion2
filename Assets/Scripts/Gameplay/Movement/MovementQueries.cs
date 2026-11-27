@@ -229,6 +229,9 @@ namespace Rebellion.Gameplay
                 )
                     return false;
 
+                if (!CanStartCapitalShipTravel(liveUnit, origin, destinationPlanet, out _))
+                    return false;
+
                 int unitTransitTicks =
                     IsManufacturingDestinationChange(liveUnit)
                     || ReferenceEquals(destinationPlanet, origin)
@@ -551,6 +554,16 @@ namespace Rebellion.Gameplay
                     reservedChildren.Add(resolvedDestination, destinationChildren);
                 }
 
+                if (
+                    !CanStartCapitalShipTravel(
+                        unit,
+                        unitOrigin,
+                        RequireDestinationPlanet(resolvedDestination),
+                        out rejectionReason
+                    )
+                )
+                    return false;
+
                 destinationChildren.Add(unit);
                 resolvedDestinations.Add(resolvedDestination);
             }
@@ -727,7 +740,7 @@ namespace Rebellion.Gameplay
             if (
                 fleets.Any(fleet =>
                     fleet.IsInCombat
-                    || !fleet.HasOperationalCapitalShips()
+                    || !CanTravelBetweenPlanets(fleet)
                     || fleet.HasWaypoints()
                     || fleet.Movement != null != fleetsAreMoving
                     || fleet.GetParentOfType<Planet>() == null
@@ -798,6 +811,10 @@ namespace Rebellion.Gameplay
                 || ReferenceEquals(origin, destinations[0])
             )
                 return false;
+
+            foreach (CapitalShip ship in capitalShips)
+                if (!CanStartCapitalShipTravel(ship, origin, destinations[0], out rejectionReason))
+                    return false;
 
             return TryGetTransitTicks(
                 capitalShips.Cast<IMovable>().ToList(),
@@ -1262,7 +1279,7 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Returns whether a unit can cross interplanetary space under its own power or as part
-        /// of a fleet with at least one operational hyperdrive.
+        /// of a fleet whose ready ships each have a working hyperdrive.
         /// </summary>
         /// <param name="unit">The unit attempting to travel.</param>
         /// <returns>True when the unit has a valid interplanetary movement source.</returns>
@@ -1272,16 +1289,42 @@ namespace Rebellion.Gameplay
             {
                 Starfighter fighter => fighter.Hyperdrive > 0,
                 CapitalShip capitalShip => capitalShip.GetOperationalHyperdrive() > 0,
-                Fleet fleet => fleet
-                    .GetChildren<CapitalShip>()
-                    .Any(ship =>
-                        ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.Movement == null
-                        && ship.CurrentHullStrength > 0
-                        && ship.GetOperationalHyperdrive() > 0
-                    ),
+                Fleet fleet => fleet.HasOperationalCapitalShips()
+                    && fleet
+                        .GetOperationalCapitalShips()
+                        .All(ship => ship.GetOperationalHyperdrive() > 0),
                 _ => unit != null,
             };
+        }
+
+        /// <summary>
+        /// Validates the drive requirements for a new capital ship or fleet order.
+        /// </summary>
+        /// <param name="unit">The unit receiving the order.</param>
+        /// <param name="origin">The planet the unit is leaving.</param>
+        /// <param name="destination">The planet receiving the unit.</param>
+        /// <param name="rejectionReason">The reason why the order cannot start.</param>
+        /// <returns>Whether the order can proceed under the ship travel rules.</returns>
+        internal static bool CanStartCapitalShipTravel(
+            IMovable unit,
+            Planet origin,
+            Planet destination,
+            out string rejectionReason
+        )
+        {
+            rejectionReason = null;
+            if (
+                origin == destination
+                || unit is not (Fleet or CapitalShip)
+                || IsManufacturingDestinationChange(unit)
+            )
+                return true;
+            if (CanTravelBetweenPlanets(unit))
+                return true;
+
+            rejectionReason =
+                $"{unit.GetDisplayName()} requires working hyperdrives to travel between planets.";
+            return false;
         }
 
         /// <summary>
@@ -2030,13 +2073,7 @@ namespace Rebellion.Gameplay
         {
             if (unit is Fleet fleet)
             {
-                List<CapitalShip> completedShips = fleet
-                    .GetChildren<CapitalShip>()
-                    .Where(ship =>
-                        ship.ManufacturingStatus == ManufacturingStatus.Complete
-                        && ship.Movement == null
-                    )
-                    .ToList();
+                List<CapitalShip> completedShips = fleet.GetOperationalCapitalShips().ToList();
                 if (completedShips.Count > 0)
                 {
                     return completedShips

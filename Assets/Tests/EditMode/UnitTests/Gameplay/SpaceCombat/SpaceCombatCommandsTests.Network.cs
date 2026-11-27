@@ -255,6 +255,34 @@ namespace Rebellion.Tests.Gameplay
             );
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TryCompleteNetworkTacticalCombat_RejectsInvalidLandingBeforeApplyingSquadronLoss(
+            bool carrierDestroyed
+        )
+        {
+            (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
+                CreateNetworkEncounter();
+            attacker.StarfighterCapacity = carrierDestroyed ? 1 : 0;
+            Planet planet = attacker.GetParentOfType<Planet>();
+            CreateDeploymentFighter(game, planet, "FNEMP1", "landing-fighter", "SFEM01");
+            Starfighter fighter = game.GetSceneNodeByInstanceID<Starfighter>("landing-fighter");
+            TacticalCombatSession battle = AdmitNetworkBattle(commands);
+            TacticalCombatOutcome outcome = FinishNetworkBattle(game, battle);
+            var landing = outcome.Fighters.Single(row => row.UnitID == fighter.InstanceID);
+            landing.SquadronSize = 11;
+            landing.CarrierID = attacker.InstanceID;
+            if (carrierDestroyed)
+                outcome.Ships.Single(row => row.UnitID == attacker.InstanceID).Hull = 0;
+
+            Assert.IsFalse(
+                commands.TryCompleteNetworkTacticalCombat(_networkBattleID, outcome, out _)
+            );
+            Assert.AreEqual(12, fighter.CurrentSquadronSize);
+            Assert.IsTrue(commands.HasPendingDecision);
+            Assert.AreSame(planet, fighter.GetParent());
+        }
+
         /// <summary>
         /// Binds both human commanders to the existing content-backed pending encounter.
         /// </summary>

@@ -731,7 +731,10 @@ namespace Rebellion.Gameplay
             foreach (CapitalShipState ship in ships)
             {
                 int hullAfter = GetCommittedHullStrength(ship);
-                if (hullAfter >= ship.InitialHull)
+                if (
+                    hullAfter >= ship.InitialHull
+                    && ship.SystemDamage.Total == (ship.Ship.SystemDamage?.Total ?? 0)
+                )
                     continue;
 
                 result.ShipDamage.Add(
@@ -740,6 +743,7 @@ namespace Rebellion.Gameplay
                         Ship = ship.Ship,
                         HullBefore = ship.InitialHull,
                         HullAfter = hullAfter,
+                        SystemDamage = ship.SystemDamage,
                     }
                 );
             }
@@ -1615,14 +1619,14 @@ namespace Rebellion.Gameplay
         private abstract class TacticalUnit
         {
             private readonly double _minimumManeuverRatio;
-            private readonly CapitalShipSystemDamage _systemDamage = new();
+            internal CapitalShipSystemDamage SystemDamage { get; }
             protected readonly int InstalledHyperdriveSystems;
 
-            protected int ShieldDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Shields);
-            protected int WeaponDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Weapons);
-            protected int EngineDamage => _systemDamage.GetCombatDamage(TacticalShipSystem.Engines);
+            protected int ShieldDamage => SystemDamage.GetCombatDamage(TacticalShipSystem.Shields);
+            protected int WeaponDamage => SystemDamage.GetCombatDamage(TacticalShipSystem.Weapons);
+            protected int EngineDamage => SystemDamage.GetCombatDamage(TacticalShipSystem.Engines);
             protected int HyperdriveDamage =>
-                _systemDamage.GetCombatDamage(TacticalShipSystem.Hyperdrive);
+                SystemDamage.GetCombatDamage(TacticalShipSystem.Hyperdrive);
             internal int StableOrder { get; set; }
             internal abstract double HullStrength { get; }
             internal abstract double HullFraction { get; }
@@ -1710,10 +1714,16 @@ namespace Rebellion.Gameplay
             /// </summary>
             /// <param name="minimumManeuverRatio">The minimum maneuver value and multiplier.</param>
             /// <param name="hyperdriveSystems">The number of installed hyperdrive systems.</param>
-            protected TacticalUnit(double minimumManeuverRatio, int hyperdriveSystems)
+            /// <param name="initialDamage">The ship's component damage before combat.</param>
+            protected TacticalUnit(
+                double minimumManeuverRatio,
+                int hyperdriveSystems,
+                CapitalShipSystemDamage initialDamage = null
+            )
             {
                 _minimumManeuverRatio = minimumManeuverRatio;
                 InstalledHyperdriveSystems = Math.Max(hyperdriveSystems, 0);
+                SystemDamage = initialDamage?.CreateCopy() ?? new CapitalShipSystemDamage();
             }
 
             /// <summary>
@@ -1796,10 +1806,20 @@ namespace Rebellion.Gameplay
             /// <param name="system">The damaged system category.</param>
             private void DamageSystem(TacticalShipSystem system)
             {
-                int capacity =
-                    system == TacticalShipSystem.Hyperdrive ? InstalledHyperdriveSystems : 4;
-                _systemDamage.AddCombatDamage(system, capacity);
+                if (system == TacticalShipSystem.Hyperdrive)
+                    DamageHyperdrive();
+                else
+                    SystemDamage.AddCombatDamage(system, 4);
             }
+
+            /// <summary>
+            /// Records damage to a drive used by automatic withdrawal.
+            /// </summary>
+            protected virtual void DamageHyperdrive() =>
+                SystemDamage.AddCombatDamage(
+                    TacticalShipSystem.Hyperdrive,
+                    InstalledHyperdriveSystems
+                );
 
             /// <summary>
             /// Calculates the maneuver-rate adjustment used against fighter targets.
@@ -2029,6 +2049,7 @@ namespace Rebellion.Gameplay
             private readonly double _maximumShields;
             private readonly CombatForce _force;
             private readonly int _hostedUnitCount;
+            private int _unratedHyperdriveDamage;
             private double _hull;
             private double _shields;
 
@@ -2054,7 +2075,8 @@ namespace Rebellion.Gameplay
             internal override ISceneNode Node => Ship;
             internal override bool IsAlive => _hull > 0;
             internal override bool CanWithdrawIndependently =>
-                InstalledHyperdriveSystems > HyperdriveDamage && ClosingSpeed > 0;
+                Ship.GetOperationalHyperdriveCount(SystemDamage) > _unratedHyperdriveDamage
+                && ClosingSpeed > 0;
             internal override bool IsStarfighter => false;
             internal override double ClosingSpeed =>
                 Math.Max(
@@ -2078,7 +2100,11 @@ namespace Rebellion.Gameplay
                 GameConfig.SpaceCombatConfig config,
                 CombatForce force
             )
-                : base(config.AutoResolveMinimumManeuverRatio, ship.GetOperationalHyperdriveCount())
+                : base(
+                    config.AutoResolveMinimumManeuverRatio,
+                    ship.HyperdriveCount,
+                    ship.SystemDamage
+                )
             {
                 Ship = ship;
                 InitialHull = Math.Max(ship.CurrentHullStrength, 0);
@@ -2100,6 +2126,28 @@ namespace Rebellion.Gameplay
                         }
                     );
                 _damage = new SpaceCombatDamageCalculator(ship, config);
+            }
+
+            /// <summary>
+            /// Disables the first remaining drive in the ship's equipment order.
+            /// </summary>
+            protected override void DamageHyperdrive()
+            {
+                if (Ship.GetOperationalHyperdriveCount(SystemDamage) <= _unratedHyperdriveDamage)
+                    return;
+
+                for (int index = 0; index < Ship.Hyperdrives.Length; index++)
+                {
+                    if (
+                        Ship.GetHyperdriveRating(index) <= 0
+                        || SystemDamage.GetHyperdriveDamage(index) != 0
+                    )
+                        continue;
+                    SystemDamage.SetHyperdriveDamage(index, 1);
+                    return;
+                }
+
+                _unratedHyperdriveDamage++;
             }
 
             /// <summary>

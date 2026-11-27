@@ -44,7 +44,6 @@ namespace Rebellion.Game
 
         // Scene graph.
         private GalaxyMap _galaxy;
-        private string[] _blockadeFactionIds = Array.Empty<string>();
 
         // Game details.
         [PersistableMember(Name = nameof(Summary))]
@@ -231,8 +230,6 @@ namespace Rebellion.Game
             set => PersistedGalaxy = value;
         }
 
-        internal IReadOnlyList<string> BlockadeFactionIds => _blockadeFactionIds;
-
         /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
@@ -305,21 +302,6 @@ namespace Rebellion.Game
             Config = config;
             foreach (Officer officer in _registeredOfficers)
                 officer.BindForceRules(config.Jedi);
-        }
-
-        /// <summary>
-        /// Sets the faction pair used by campaign blockade queries.
-        /// </summary>
-        /// <param name="factionIds">The faction identities in starting order.</param>
-        internal void ConfigureBlockadeFactions(IReadOnlyList<string> factionIds)
-        {
-            _blockadeFactionIds =
-                factionIds?.Count == 2
-                && !string.IsNullOrEmpty(factionIds[0])
-                && !string.IsNullOrEmpty(factionIds[1])
-                && factionIds[0] != factionIds[1]
-                    ? new[] { factionIds[0], factionIds[1] }
-                    : Array.Empty<string>();
         }
 
         /// <summary>

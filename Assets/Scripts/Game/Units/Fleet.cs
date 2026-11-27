@@ -251,9 +251,14 @@ namespace Rebellion.Game.Units
         /// Returns the number of active, complete, stationary capital ships owned by this fleet's faction.
         /// </summary>
         /// <returns>The operational capital ship count.</returns>
-        public int GetOperationalCapitalShipCount()
+        public int GetOperationalCapitalShipCount() => GetOperationalCapitalShips().Count();
+
+        /// <summary>
+        /// Enumerates the capital ships that currently contribute to the fleet.
+        /// </summary>
+        /// <returns>The ready ships in fleet order.</returns>
+        internal IEnumerable<CapitalShip> GetOperationalCapitalShips()
         {
-            int count = 0;
             foreach (CapitalShip ship in GetChildren<CapitalShip>())
                 if (
                     ship.IsEnabled
@@ -261,8 +266,7 @@ namespace Rebellion.Game.Units
                     && ship.Movement == null
                     && ship.OwnerInstanceID == OwnerInstanceID
                 )
-                    count++;
-            return count;
+                    yield return ship;
         }
 
         /// <summary>
@@ -271,7 +275,7 @@ namespace Rebellion.Game.Units
         /// <returns>True when at least one operational capital ship is present.</returns>
         public bool HasOperationalCapitalShips()
         {
-            return GetOperationalCapitalShipCount() > 0;
+            return GetOperationalCapitalShips().Any();
         }
 
         /// <summary>

@@ -735,9 +735,11 @@ namespace Rebellion.Game.Units
         /// <summary>
         /// Counts the drives that can still support automatic combat withdrawal.
         /// </summary>
+        /// <param name="damage">The damage to check when evaluating detached battle state.</param>
         /// <returns>The number of functioning drives up to the legacy auto-resolve limit.</returns>
-        internal int GetOperationalHyperdriveCount()
+        internal int GetOperationalHyperdriveCount(CapitalShipSystemDamage damage = null)
         {
+            damage ??= SystemDamage;
             int installed = 0;
             int working = 0;
             for (int index = 0; index < _hyperdrives.Length; index++)
@@ -745,7 +747,7 @@ namespace Rebellion.Game.Units
                 if (GetHyperdriveRating(index) <= 0)
                     continue;
                 installed++;
-                if ((SystemDamage?.GetHyperdriveDamage(index) ?? 0) == 0)
+                if ((damage?.GetHyperdriveDamage(index) ?? 0) == 0)
                     working++;
             }
 
