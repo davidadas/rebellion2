@@ -223,9 +223,7 @@ namespace Rebellion.Gameplay
         {
             return faction
                 .GetOwnedUnitsByType<Planet>()
-                .Where(planet =>
-                    !planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet))
-                )
+                .Where(planet => !IsProductionSuspended(game, planet))
                 .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
                 .Select(planet =>
                     (
@@ -382,7 +380,7 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet)))
+                if (IsProductionSuspended(game, planet))
                     continue;
 
                 facilities.AddRange(
@@ -447,9 +445,7 @@ namespace Rebellion.Gameplay
                     .OrderBy(planet => planet.InstanceID, StringComparer.Ordinal)
             )
             {
-                if (
-                    planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(_game, planet))
-                )
+                if (IsProductionSuspended(_game, planet))
                     continue;
 
                 IEnumerable<Building> planetFacilities = planet
@@ -878,6 +874,15 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Checks whether a planet can currently collect or refine resources.
+        /// </summary>
+        /// <param name="game">The campaign supplying live orbital state.</param>
+        /// <param name="planet">The producing planet.</param>
+        /// <returns>Whether destruction, uprising or blockade suspends production.</returns>
+        internal static bool IsProductionSuspended(GameRoot game, Planet planet) =>
+            planet.IsDestroyed || planet.IsInUprising || BlockadeQueries.IsBlockaded(game, planet);
+
+        /// <summary>
         /// Selects the owned planets whose resource production is active.
         /// </summary>
         /// <param name="game">The campaign used to check blockades.</param>
@@ -886,9 +891,7 @@ namespace Rebellion.Gameplay
         private static IEnumerable<Planet> GetProducingPlanets(GameRoot game, Faction faction) =>
             faction
                 ?.GetOwnedUnitsByType<Planet>()
-                .Where(planet =>
-                    !planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet))
-                )
+                .Where(planet => !IsProductionSuspended(game, planet))
             ?? Enumerable.Empty<Planet>();
 
         /// <summary>

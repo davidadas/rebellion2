@@ -30,6 +30,41 @@ namespace Rebellion.Tests.Gameplay
             _game.AttachNode(_sector, _game.Galaxy);
         }
 
+        [TestCase(false, false, 8)]
+        [TestCase(true, false, 0)]
+        [TestCase(false, true, 0)]
+        public void GetAvailableResourceNodes_OrbitalAndPlanetState_CountsProducingPlanets(
+            bool blockaded,
+            bool destroyed,
+            int expected
+        )
+        {
+            Planet planet = AddPlanet("planet", rawResourceNodes: 8);
+            planet.IsDestroyed = destroyed;
+            if (blockaded)
+            {
+                _game.GetFactions().Add(new Faction { InstanceID = "enemy" });
+                Fleet fleet = EntityFactory.CreateFleet("blockading-fleet", "enemy");
+                _game.AttachNode(fleet, planet);
+                _game.AttachNode(
+                    new CapitalShip
+                    {
+                        InstanceID = "blockading-ship",
+                        OwnerInstanceID = "enemy",
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        MaxHullStrength = 100,
+                        CurrentHullStrength = 100,
+                    },
+                    fleet
+                );
+            }
+
+            Assert.AreEqual(
+                expected,
+                ResourceProductionQueries.GetAvailableResourceNodes(_game, _faction)
+            );
+        }
+
         [Test]
         public void GetSummary_MixedFacilityStates_ReturnsCountsRatesAndMaintenance()
         {

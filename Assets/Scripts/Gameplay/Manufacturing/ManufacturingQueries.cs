@@ -643,11 +643,7 @@ namespace Rebellion.Gameplay
             if (producer.IsInUprising)
                 return 0;
 
-            int blockadePercent = producer.GetBlockadeProductionModifier(
-                game.Config.Blockade.CapitalShipProductionPenaltyPercent,
-                game.Config.Blockade.FighterProductionPenaltyPercent,
-                BlockadeQueries.IsBlockaded(game, producer)
-            );
+            int blockadePercent = GetBlockadedProductionPercent(game, producer);
             int difficultyPercent = game.GetDifficultyModifier(
                 producer.GetOwnerInstanceID()
             ).ManufacturingSpeedPercent;
@@ -655,6 +651,50 @@ namespace Rebellion.Gameplay
                 * difficultyPercent
                 / (_percentageScale * _percentageScale);
         }
+
+        /// <summary>
+        /// Gets the production percentage after the orbital blockade penalty.
+        /// </summary>
+        /// <param name="game">The campaign supplying blockade rules and orbital state.</param>
+        /// <param name="producer">The planet whose manufacturing is affected.</param>
+        /// <returns>The remaining production percentage.</returns>
+        private static int GetBlockadedProductionPercent(GameRoot game, Planet producer)
+        {
+            GameConfig.BlockadeConfig rules = game.Config.Blockade;
+            if (!BlockadeQueries.IsBlockaded(game, producer) || producer.HasOperationalIonCannon())
+                return _percentageScale;
+
+            int ships = 0;
+            int fighters = producer.GetChildren<Starfighter>().Count(IsCompleteAndStationary);
+            foreach (Fleet fleet in producer.DirectOrbitalFleets)
+            {
+                if (fleet.Movement != null)
+                    continue;
+                foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
+                {
+                    if (!IsCompleteAndStationary(ship))
+                        continue;
+                    ships++;
+                    fighters += ship.GetChildren<Starfighter>().Count(IsCompleteAndStationary);
+                }
+            }
+
+            return Math.Clamp(
+                _percentageScale
+                    - ships * rules.CapitalShipProductionPenaltyPercent
+                    - fighters * rules.FighterProductionPenaltyPercent,
+                0,
+                _percentageScale
+            );
+        }
+
+        /// <summary>
+        /// Checks whether a completed orbital unit is stationary at the planet.
+        /// </summary>
+        /// <param name="unit">The manufactured unit to count.</param>
+        /// <returns>Whether the unit counts toward the production penalty.</returns>
+        private static bool IsCompleteAndStationary(IManufacturable unit) =>
+            unit.ManufacturingStatus == ManufacturingStatus.Complete && unit.Movement == null;
 
         /// <summary>
         /// Estimates when the current queue for one manufacturing category will finish.

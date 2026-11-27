@@ -252,9 +252,7 @@ public static partial class HeadlessSimulationRunner
     )
     {
         return game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
-            .Where(planet =>
-                !planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(game, planet))
-            )
+            .Where(planet => !ResourceProductionQueries.IsProductionSuspended(game, planet))
             .Select(planet => new CurrentIdlePlanetSummary
             {
                 PlanetId = planet.InstanceID,
@@ -392,11 +390,7 @@ public static partial class HeadlessSimulationRunner
                     Planet planet in game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
                 )
                 {
-                    if (
-                        planet.IsResourceProductionSuspended(
-                            BlockadeQueries.IsBlockaded(game, planet)
-                        )
-                    )
+                    if (ResourceProductionQueries.IsProductionSuspended(game, planet))
                         continue;
 
                     RecordPlanetType(

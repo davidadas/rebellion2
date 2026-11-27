@@ -345,8 +345,9 @@ namespace Rebellion.AI.Planners
                         )
                 );
 
-                bool productionActive = !planet.IsResourceProductionSuspended(
-                    BlockadeQueries.IsBlockaded(context.Game, planet)
+                bool productionActive = !ResourceProductionQueries.IsProductionSuspended(
+                    context.Game,
+                    planet
                 );
                 int availableMinedAfterRemoval = Math.Max(
                     0,

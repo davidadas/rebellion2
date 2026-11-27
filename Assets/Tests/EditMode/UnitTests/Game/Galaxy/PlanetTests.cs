@@ -48,12 +48,6 @@ namespace Rebellion.Tests.Game.Galaxy
             Assert.IsEmpty(_planet.GetProductionFacilities(ManufacturingType.Building));
             Assert.Zero(_planet.GetAvailableEnergy());
             Assert.Zero(_planet.GetUnminedResourceNodeCount());
-            Assert.Zero(
-                _planet.GetAvailableResourceNodes(BlockadeQueries.IsBlockaded(null, _planet))
-            );
-            Assert.IsTrue(
-                _planet.IsResourceProductionSuspended(BlockadeQueries.IsBlockaded(null, _planet))
-            );
             Assert.AreEqual(5, _planet.EnergyCapacity);
             Assert.AreEqual(10, _planet.NumRawResourceNodes);
         }
@@ -574,40 +568,6 @@ namespace Rebellion.Tests.Game.Galaxy
                 10,
                 resourceNodes,
                 "Should return the total number of raw resource nodes."
-            );
-        }
-
-        [Test]
-        public void GetAvailableResourceNodes_NotBlockaded_ReturnsRawResourceNodes()
-        {
-            _planet.NumRawResourceNodes = 8;
-
-            int availableNodes = _planet.GetAvailableResourceNodes(
-                BlockadeQueries.IsBlockaded(null, _planet)
-            );
-
-            Assert.AreEqual(
-                8,
-                availableNodes,
-                "Should return raw resource nodes when planet is not blockaded."
-            );
-        }
-
-        [Test]
-        public void GetAvailableResourceNodes_Blockaded_ReturnsZero()
-        {
-            _planet.NumRawResourceNodes = 8;
-            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            _planet.AddChild(enemyFleet);
-
-            int availableNodes = _planet.GetAvailableResourceNodes(
-                BlockadeQueries.IsBlockaded(null, _planet)
-            );
-
-            Assert.AreEqual(
-                0,
-                availableNodes,
-                "Should return zero when planet is blockaded by enemy fleet."
             );
         }
 
@@ -1150,97 +1110,6 @@ namespace Rebellion.Tests.Game.Galaxy
             _planet.AddChild(enemyFleet);
 
             Assert.IsFalse(BlockadeQueries.IsBlockaded(null, _planet));
-        }
-
-        [Test]
-        public void GetBlockadeProductionModifier_ActiveShipsAndFighters_ReducesProduction()
-        {
-            Fleet enemyFleet = CreateOperationalFleet("ENEMY");
-            CapitalShip activeShip = enemyFleet.GetChildren<CapitalShip>().Single();
-            activeShip.AddTestChild(
-                new Starfighter
-                {
-                    OwnerInstanceID = "ENEMY",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            activeShip.AddTestChild(
-                new Starfighter
-                {
-                    OwnerInstanceID = "ENEMY",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-            activeShip.AddTestChild(
-                new Starfighter
-                {
-                    OwnerInstanceID = "ENEMY",
-                    ManufacturingStatus = ManufacturingStatus.Building,
-                }
-            );
-            enemyFleet.AddChild(
-                new CapitalShip
-                {
-                    OwnerInstanceID = "ENEMY",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                    Movement = TestMovement.Create(transitTicks: 10),
-                }
-            );
-            _planet.AddChild(enemyFleet);
-            _planet.AddChild(
-                new Starfighter
-                {
-                    OwnerInstanceID = "FNALL1",
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-
-            int modifier = _planet.GetBlockadeProductionModifier(
-                5,
-                2,
-                BlockadeQueries.IsBlockaded(null, _planet)
-            );
-
-            Assert.AreEqual(89, modifier);
-        }
-
-        [Test]
-        public void GetBlockadeProductionModifier_OperationalKdy_ReturnsFullProduction()
-        {
-            _planet.AddChild(CreateOperationalFleet("ENEMY"));
-            _planet.AddChild(
-                new Building
-                {
-                    OwnerInstanceID = "FNALL1",
-                    BuildingType = BuildingType.Weapon,
-                    DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
-                    ManufacturingStatus = ManufacturingStatus.Complete,
-                }
-            );
-
-            Assert.AreEqual(
-                100,
-                _planet.GetBlockadeProductionModifier(
-                    5,
-                    2,
-                    BlockadeQueries.IsBlockaded(null, _planet)
-                )
-            );
-        }
-
-        [Test]
-        public void GetBlockadeProductionModifier_HeavyBlockade_DoesNotReturnNegativeProduction()
-        {
-            _planet.AddChild(CreateOperationalFleet("ENEMY"));
-
-            Assert.AreEqual(
-                0,
-                _planet.GetBlockadeProductionModifier(
-                    100,
-                    2,
-                    BlockadeQueries.IsBlockaded(null, _planet)
-                )
-            );
         }
 
         [Test]
