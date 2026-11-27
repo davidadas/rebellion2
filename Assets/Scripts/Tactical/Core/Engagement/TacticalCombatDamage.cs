@@ -1,6 +1,7 @@
 using System;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
@@ -11,7 +12,7 @@ namespace Rebellion.Tactical
         internal event Action<CombatUnit, string> LethalHit;
         internal event Action<
             CombatUnit,
-            TacticalWeaponType,
+            HardpointWeaponType,
             TacticalCombatImpactKind
         > ImpactApplied;
 
@@ -170,7 +171,7 @@ namespace Rebellion.Tactical
         /// <returns>The affected surface, destruction, or no impact for an inactive target.</returns>
         internal TacticalCombatImpactKind ApplyHit(
             CombatUnit unit,
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             float damage,
             float ownTurnBudget,
             float attackerTurnBudget,
@@ -188,7 +189,7 @@ namespace Rebellion.Tactical
             float previousHull = unit.Hull;
             float previousShields = unit.Shields;
             double applied = damage;
-            if (unit.IsFighter && weapon != TacticalWeaponType.Torpedo)
+            if (unit.IsFighter && weapon != HardpointWeaponType.TorpedoLauncher)
             {
                 float ratio = (float)((double)ownTurnBudget / attackerTurnBudget);
                 applied /= Math.Max(ratio, 0.1f);
@@ -199,7 +200,7 @@ namespace Rebellion.Tactical
             if (!(remainingShields >= 0))
             {
                 unit.Shields = 0;
-                if (weapon == TacticalWeaponType.IonCannon)
+                if (weapon == HardpointWeaponType.IonCannon)
                 {
                     playSound?.Invoke(TacticalCombatAudio.GetImpactSound(weapon, true));
                     ImpactApplied?.Invoke(unit, weapon, TacticalCombatImpactKind.Hull);

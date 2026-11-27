@@ -35,6 +35,16 @@ namespace Rebellion.Tests.Game.Combat
         }
 
         [Test]
+        public void Create_SourceWithoutAnAssignedID_UsesOneIdentityForBothCopies()
+        {
+            CapitalShip source = new();
+            CombatUnit combatant = CombatUnit.Create(source);
+
+            Assert.AreEqual(source.InstanceID, combatant.SourceUnitInstanceID);
+            Assert.AreEqual(source.InstanceID, combatant.Unit.InstanceID);
+        }
+
+        [Test]
         public void Create_Starfighter_CapturesCampaignCarrierIdentity()
         {
             CapitalShip carrier = new CapitalShip
@@ -212,11 +222,11 @@ namespace Rebellion.Tests.Game.Combat
             Assert.IsTrue(unit.HasHyperdriveAt(0));
             Assert.AreEqual(
                 10,
-                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon)
             );
             Assert.AreEqual(
                 50,
-                unit.GetWeaponRange(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+                unit.GetWeaponRange(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon)
             );
         }
 
@@ -248,7 +258,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(24, unit.MaximumShields);
             Assert.AreEqual(
                 36,
-                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.LaserCannon)
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, HardpointWeaponType.LaserCannon)
             );
         }
     }

@@ -306,7 +306,7 @@ namespace Rebellion.Tests.Game.Combat
             Assert.AreEqual(200, source.GetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon));
             CombatUnit unit = game.ActiveBattle.AddCombatant(source);
             TacticalCombatDeployment.InitializeUnit(unit, null, CombatSide.Attacker, 1);
-            unit.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
+            unit.DischargeBattery(TacticalWeaponArc.Starboard, HardpointWeaponType.LaserCannon);
             TacticalCombatFireControl.RechargeBatteries(unit, 1, 6);
 
             string xml = SerializationHelper.Serialize(game);
@@ -319,19 +319,22 @@ namespace Rebellion.Tests.Game.Combat
                 0,
                 restored.GetWeaponStrength(
                     TacticalWeaponArc.Forward,
-                    TacticalWeaponType.LaserCannon
+                    HardpointWeaponType.LaserCannon
                 )
             );
             Assert.AreEqual(
                 18,
                 restored.GetWeaponStrength(
                     TacticalWeaponArc.Starboard,
-                    TacticalWeaponType.LaserCannon
+                    HardpointWeaponType.LaserCannon
                 )
             );
             Assert.AreEqual(
                 200,
-                restored.GetWeaponRange(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon)
+                restored.GetWeaponRange(
+                    TacticalWeaponArc.Starboard,
+                    HardpointWeaponType.LaserCannon
+                )
             );
             Assert.AreEqual(6, restored.GetBatteryCharge(TacticalWeaponArc.Starboard));
             Assert.AreEqual(10, ((CapitalShip)restored.Unit).SublightSpeed);

@@ -488,16 +488,16 @@ namespace Rebellion.Tactical
                     hasLaser |=
                         primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
-                            TacticalWeaponType.LaserCannon
+                            HardpointWeaponType.LaserCannon
                         ) != 0;
                     hasOther |=
                         primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
-                            TacticalWeaponType.IonCannon
+                            HardpointWeaponType.IonCannon
                         ) != 0
                         || primary.GetWeaponStrength(
                             (TacticalWeaponArc)arc,
-                            TacticalWeaponType.Turbolaser
+                            HardpointWeaponType.Turbolaser
                         ) != 0;
                 }
                 float nearest = float.MaxValue;

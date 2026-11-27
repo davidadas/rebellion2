@@ -1,6 +1,6 @@
 using System;
-using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical.Synchronization
 {
@@ -13,7 +13,7 @@ namespace Rebellion.Tactical.Synchronization
         public TacticalCombatEventKind Kind;
         public string SourceID;
         public string TargetID;
-        public TacticalWeaponType Weapon;
+        public HardpointWeaponType Weapon;
         public TacticalCombatImpactKind Impact;
         public float Strength;
         public bool Enabled;

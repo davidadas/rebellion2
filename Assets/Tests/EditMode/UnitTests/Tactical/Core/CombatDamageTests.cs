@@ -23,20 +23,20 @@ namespace Rebellion.Tests.Tactical
         [SetUp]
         public void SetUp() => _damage = new TacticalCombatDamage();
 
-        [TestCase(TacticalWeaponType.LaserCannon, 0f)]
-        [TestCase(TacticalWeaponType.LaserCannon, -5f)]
-        [TestCase(TacticalWeaponType.LaserCannon, float.NaN)]
-        [TestCase(TacticalWeaponType.IonCannon, 0f)]
-        [TestCase(TacticalWeaponType.IonCannon, -5f)]
-        [TestCase(TacticalWeaponType.IonCannon, float.NaN)]
-        [TestCase(TacticalWeaponType.Turbolaser, 0f)]
-        [TestCase(TacticalWeaponType.Turbolaser, -5f)]
-        [TestCase(TacticalWeaponType.Turbolaser, float.NaN)]
-        [TestCase(TacticalWeaponType.Torpedo, 0f)]
-        [TestCase(TacticalWeaponType.Torpedo, -5f)]
-        [TestCase(TacticalWeaponType.Torpedo, float.NaN)]
+        [TestCase(HardpointWeaponType.LaserCannon, 0f)]
+        [TestCase(HardpointWeaponType.LaserCannon, -5f)]
+        [TestCase(HardpointWeaponType.LaserCannon, float.NaN)]
+        [TestCase(HardpointWeaponType.IonCannon, 0f)]
+        [TestCase(HardpointWeaponType.IonCannon, -5f)]
+        [TestCase(HardpointWeaponType.IonCannon, float.NaN)]
+        [TestCase(HardpointWeaponType.Turbolaser, 0f)]
+        [TestCase(HardpointWeaponType.Turbolaser, -5f)]
+        [TestCase(HardpointWeaponType.Turbolaser, float.NaN)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, 0f)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, -5f)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, float.NaN)]
         public void ApplyHit_NonpositiveEntryHull_ClampsHullWithoutImpactSideEffects(
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             float entryHull
         )
         {
@@ -95,7 +95,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateSystems();
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 125,
                 1,
                 1,
@@ -113,7 +113,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateSystems();
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.IonCannon,
+                HardpointWeaponType.IonCannon,
                 101,
                 1,
                 1,
@@ -142,7 +142,7 @@ namespace Rebellion.Tests.Tactical
             };
             _damage.ImpactApplied += (_, weapon, impact) =>
             {
-                Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
+                Assert.AreEqual(HardpointWeaponType.Turbolaser, weapon);
                 Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
                 Assert.AreEqual(0, systems.Hull);
                 events.Add("effect");
@@ -150,7 +150,7 @@ namespace Rebellion.Tests.Tactical
 
             TacticalCombatImpactKind result = _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 damage,
                 1,
                 1,
@@ -176,7 +176,7 @@ namespace Rebellion.Tests.Tactical
 
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.IonCannon,
+                HardpointWeaponType.IonCannon,
                 150,
                 1,
                 1,
@@ -211,7 +211,7 @@ namespace Rebellion.Tests.Tactical
             SequenceRandom random =
                 selector <= 2 ? new SequenceRandom(selector, 35) : new SequenceRandom(selector);
 
-            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, 101, 1, 1, random, null);
+            _damage.ApplyHit(systems, HardpointWeaponType.IonCannon, 101, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(TacticalSystemEventKind.Disruption, events[0].Kind);
@@ -232,7 +232,7 @@ namespace Rebellion.Tests.Tactical
             _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random = new(1, 30, 2, 50, 3, 5, 7, 10);
 
-            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, 106, 1, 1, random, null);
+            _damage.ApplyHit(systems, HardpointWeaponType.IonCannon, 106, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(15, events[0].DischargedArcMask);
@@ -252,7 +252,7 @@ namespace Rebellion.Tests.Tactical
             _damage.SystemChangeRequested += (_, change) => events.Add(change);
             SequenceRandom random = new();
 
-            _damage.ApplyHit(systems, TacticalWeaponType.IonCannon, float.NaN, 1, 1, random, null);
+            _damage.ApplyHit(systems, HardpointWeaponType.IonCannon, float.NaN, 1, 1, random, null);
 
             Assert.AreEqual(1, events.Count);
             Assert.AreEqual(0, events[0].DischargedArcMask);
@@ -270,7 +270,7 @@ namespace Rebellion.Tests.Tactical
 
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.IonCannon,
+                HardpointWeaponType.IonCannon,
                 104,
                 1,
                 1,
@@ -651,12 +651,12 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(1, systems.MovementDelay);
         }
 
-        [TestCase(TacticalWeaponType.LaserCannon)]
-        [TestCase(TacticalWeaponType.IonCannon)]
-        [TestCase(TacticalWeaponType.Turbolaser)]
-        [TestCase(TacticalWeaponType.Torpedo)]
+        [TestCase(HardpointWeaponType.LaserCannon)]
+        [TestCase(HardpointWeaponType.IonCannon)]
+        [TestCase(HardpointWeaponType.Turbolaser)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher)]
         public void ApplyHit_UnorderedShieldDamageProgress_RequestsShieldDamage(
-            TacticalWeaponType weapon
+            HardpointWeaponType weapon
         )
         {
             CombatUnit systems = CreateUnitWithPools(
@@ -714,7 +714,7 @@ namespace Rebellion.Tests.Tactical
 
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 1,
                 1,
                 1,
@@ -748,7 +748,7 @@ namespace Rebellion.Tests.Tactical
 
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 1,
                 1,
                 1,
@@ -800,7 +800,7 @@ namespace Rebellion.Tests.Tactical
 
             TacticalCombatImpactKind result = _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 float.NaN,
                 1,
                 1,
@@ -834,7 +834,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 8, 8, 0, 1, 0);
             _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.LaserCannon,
+                HardpointWeaponType.LaserCannon,
                 8,
                 8,
                 4,
@@ -959,12 +959,12 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(0, systems.CaptureDamage().Total);
         }
 
-        [TestCase(TacticalWeaponType.LaserCannon)]
-        [TestCase(TacticalWeaponType.Turbolaser)]
-        [TestCase(TacticalWeaponType.Torpedo)]
-        [TestCase(TacticalWeaponType.IonCannon)]
+        [TestCase(HardpointWeaponType.LaserCannon)]
+        [TestCase(HardpointWeaponType.Turbolaser)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher)]
+        [TestCase(HardpointWeaponType.IonCannon)]
         public void ApplyHit_HullImpact_RequestsEffectBeforeComponentEvent(
-            TacticalWeaponType weapon
+            HardpointWeaponType weapon
         )
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 1, 0);
@@ -982,19 +982,19 @@ namespace Rebellion.Tests.Tactical
                 1,
                 1,
                 1,
-                new SequenceRandom(weapon == TacticalWeaponType.IonCannon ? 3 : 99),
+                new SequenceRandom(weapon == HardpointWeaponType.IonCannon ? 3 : 99),
                 null,
                 playSound: _ => events.Add("sound")
             );
             CollectionAssert.AreEqual(new[] { "sound", "effect", "component" }, events);
         }
 
-        [TestCase(TacticalWeaponType.LaserCannon)]
-        [TestCase(TacticalWeaponType.Turbolaser)]
-        [TestCase(TacticalWeaponType.Torpedo)]
-        [TestCase(TacticalWeaponType.IonCannon)]
+        [TestCase(HardpointWeaponType.LaserCannon)]
+        [TestCase(HardpointWeaponType.Turbolaser)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher)]
+        [TestCase(HardpointWeaponType.IonCannon)]
         public void ApplyHit_ShieldImpact_RequestsComponentEventBeforeEffect(
-            TacticalWeaponType weapon
+            HardpointWeaponType weapon
         )
         {
             CombatUnit systems = CreateSystems();
@@ -1032,7 +1032,7 @@ namespace Rebellion.Tests.Tactical
 
             TacticalCombatImpactKind impact = _damage.ApplyHit(
                 systems,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 100,
                 1,
                 1,

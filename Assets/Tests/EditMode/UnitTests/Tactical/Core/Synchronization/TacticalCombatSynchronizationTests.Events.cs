@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Tactical.Synchronization;
@@ -114,7 +115,7 @@ namespace Rebellion.Tests.Tactical
                 Kind = TacticalCombatEventKind.Shot,
                 SourceID = "empire",
                 TargetID = "alliance",
-                Weapon = TacticalWeaponType.LaserCannon,
+                Weapon = HardpointWeaponType.LaserCannon,
                 Strength = 1,
             };
     }

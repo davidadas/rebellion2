@@ -20,11 +20,11 @@ namespace Rebellion.Tests.Tactical
     [TestFixture]
     public sealed class TacticalCombatSessionTests
     {
-        [TestCase(TacticalWeaponType.LaserCannon)]
-        [TestCase(TacticalWeaponType.Turbolaser)]
-        [TestCase(TacticalWeaponType.Torpedo)]
+        [TestCase(HardpointWeaponType.LaserCannon)]
+        [TestCase(HardpointWeaponType.Turbolaser)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher)]
         public void Advance_FreshArmedEncounter_RechargesAndFiresRepeatedly(
-            TacticalWeaponType weapon
+            HardpointWeaponType weapon
         )
         {
             TacticalCombatSession session = CreateDischargeSession(weapon);
@@ -360,16 +360,16 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(3, session.SystemTime);
         }
 
-        [TestCase(TacticalWeaponType.LaserCannon, true)]
-        [TestCase(TacticalWeaponType.IonCannon, true)]
-        [TestCase(TacticalWeaponType.Turbolaser, true)]
-        [TestCase(TacticalWeaponType.Torpedo, true)]
-        [TestCase(TacticalWeaponType.LaserCannon, false)]
-        [TestCase(TacticalWeaponType.IonCannon, false)]
-        [TestCase(TacticalWeaponType.Turbolaser, false)]
-        [TestCase(TacticalWeaponType.Torpedo, false)]
+        [TestCase(HardpointWeaponType.LaserCannon, true)]
+        [TestCase(HardpointWeaponType.IonCannon, true)]
+        [TestCase(HardpointWeaponType.Turbolaser, true)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, true)]
+        [TestCase(HardpointWeaponType.LaserCannon, false)]
+        [TestCase(HardpointWeaponType.IonCannon, false)]
+        [TestCase(HardpointWeaponType.Turbolaser, false)]
+        [TestCase(HardpointWeaponType.TorpedoLauncher, false)]
         public void Advance_QueuedDischargeActorReachesZeroHull_StillAnnouncesFire(
-            TacticalWeaponType weapon,
+            HardpointWeaponType weapon,
             bool sourceReachesZero
         )
         {
@@ -396,7 +396,7 @@ namespace Rebellion.Tests.Tactical
             float entryHull
         )
         {
-            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            TacticalCombatSession session = CreateDischargeSession(HardpointWeaponType.Turbolaser);
             CombatUnit target = session.GetUnit("b");
             int shots = 0;
             int effects = 0;
@@ -424,7 +424,7 @@ namespace Rebellion.Tests.Tactical
         [TestCase(false)]
         public void Advance_QueuedDischargeActorEntersHyperspace_RejectsFire(bool sourceLeaves)
         {
-            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            TacticalCombatSession session = CreateDischargeSession(HardpointWeaponType.Turbolaser);
             int shots = 0;
             session.ShotFired += _ => shots++;
             WaitForQueuedDischarge(session);
@@ -438,7 +438,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_QueuedImpactSourceLeavesAfterDischarge_StillDamagesActiveTarget()
         {
-            TacticalCombatSession session = CreateDischargeSession(TacticalWeaponType.Turbolaser);
+            TacticalCombatSession session = CreateDischargeSession(HardpointWeaponType.Turbolaser);
             CombatUnit source = session.GetUnit("a");
             CombatUnit target = session.GetUnit("b");
             session.ShotFired += _ => source.Status = CombatUnitStatus.Withdrawn;
@@ -483,7 +483,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit target = session.GetUnit("b");
             session.Damage.ApplyHit(
                 target,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 1,
                 1,
                 1,
@@ -526,7 +526,7 @@ namespace Rebellion.Tests.Tactical
             };
             session.Damage.ApplyHit(
                 target,
-                TacticalWeaponType.IonCannon,
+                HardpointWeaponType.IonCannon,
                 1,
                 1,
                 1,
@@ -716,7 +716,7 @@ namespace Rebellion.Tests.Tactical
             session.ImpactApplied += (victim, weapon, impact) =>
             {
                 Assert.AreSame(session.GetUnit("b"), victim);
-                Assert.AreEqual(TacticalWeaponType.Turbolaser, weapon);
+                Assert.AreEqual(HardpointWeaponType.Turbolaser, weapon);
                 Assert.AreEqual(TacticalCombatImpactKind.Destroyed, impact);
                 Assert.AreEqual(0, victim.Hull);
                 Assert.AreEqual(CombatUnitStatus.Active, victim.Status);
@@ -758,7 +758,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 victim,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 2000,
                 1,
                 1,
@@ -797,7 +797,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 victim,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 2000,
                 1,
                 1,
@@ -830,7 +830,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 session.GetUnit("enemy"),
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 200,
                 1,
                 1,
@@ -866,7 +866,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 session.GetUnit("enemy"),
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 200,
                 1,
                 1,
@@ -897,7 +897,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 session.GetUnit("b"),
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 2000,
                 1,
                 1,
@@ -926,7 +926,7 @@ namespace Rebellion.Tests.Tactical
 
             session.Damage.ApplyHit(
                 session.GetUnit("b"),
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 2000,
                 1,
                 1,
@@ -2990,9 +2990,9 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="weapon">The queued discharge category to observe.</param>
         /// <returns>The targeted encounter with no automated orders.</returns>
-        private static TacticalCombatSession CreateDischargeSession(TacticalWeaponType weapon)
+        private static TacticalCombatSession CreateDischargeSession(HardpointWeaponType weapon)
         {
-            if (weapon == TacticalWeaponType.Torpedo)
+            if (weapon == HardpointWeaponType.TorpedoLauncher)
             {
                 CombatUnit source = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
@@ -3027,8 +3027,8 @@ namespace Rebellion.Tests.Tactical
             ship.WeaponRecharge = 10;
             PrimaryWeaponType lane = weapon switch
             {
-                TacticalWeaponType.LaserCannon => PrimaryWeaponType.LaserCannon,
-                TacticalWeaponType.IonCannon => PrimaryWeaponType.IonCannon,
+                HardpointWeaponType.LaserCannon => PrimaryWeaponType.LaserCannon,
+                HardpointWeaponType.IonCannon => PrimaryWeaponType.IonCannon,
                 _ => PrimaryWeaponType.Turbolaser,
             };
             ship.SetPrimaryWeapon(lane, new[] { 10, 10, 10, 10, 100 });

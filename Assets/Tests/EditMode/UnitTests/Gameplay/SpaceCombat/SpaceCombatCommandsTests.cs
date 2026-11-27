@@ -4775,7 +4775,7 @@ namespace Rebellion.Tests.Gameplay
 
             battle.Damage.ApplyHit(
                 victim,
-                TacticalWeaponType.Turbolaser,
+                HardpointWeaponType.Turbolaser,
                 2000,
                 1,
                 1,
@@ -4816,7 +4816,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 weaponStrength,
-                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.Turbolaser)
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, HardpointWeaponType.Turbolaser)
             );
             Assert.AreEqual(4, unit.Batteries.Count);
         }
@@ -6406,6 +6406,9 @@ namespace Rebellion.Tests.Gameplay
                 }
             }
 
+            static string GetTraceWeapon(HardpointWeaponType weapon) =>
+                weapon == HardpointWeaponType.TorpedoLauncher ? "Torpedo" : weapon.ToString();
+
             List<string> trace = new();
             List<string> cues = new();
             List<GameResult> results;
@@ -6422,12 +6425,12 @@ namespace Rebellion.Tests.Gameplay
                 battle.ShotFired += shot =>
                     trace.Add(
                         FormattableString.Invariant(
-                            $"shot {frame} {battle.SystemTime} {shot.Source.InstanceID} {shot.Target.InstanceID} {shot.Weapon} {shot.Strength:R} {shot.ImpactDelay}"
+                            $"shot {frame} {battle.SystemTime} {shot.Source.InstanceID} {shot.Target.InstanceID} {GetTraceWeapon(shot.Weapon)} {shot.Strength:R} {shot.ImpactDelay}"
                         )
                     );
                 battle.ImpactApplied += (unit, weapon, kind) =>
                     trace.Add(
-                        $"impact {frame} {battle.SystemTime} {unit.InstanceID} {weapon} {kind}"
+                        $"impact {frame} {battle.SystemTime} {unit.InstanceID} {GetTraceWeapon(weapon)} {kind}"
                     );
                 battle.UnitDestroyed += unit => trace.Add($"destroyed {frame} {unit.InstanceID}");
                 battle.UnitWithdrawn += unit => trace.Add($"withdrawn {frame} {unit.InstanceID}");

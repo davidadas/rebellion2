@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Util.Random;
 using Stopwatch = global::System.Diagnostics.Stopwatch;
 
@@ -41,13 +42,13 @@ namespace Rebellion.Tactical
         /// <param name="weapon">The impacting weapon.</param>
         /// <param name="hull">Whether the impact passed through the shields.</param>
         /// <returns>The sound associated with this impact.</returns>
-        internal static TacticalCombatSound GetImpactSound(TacticalWeaponType weapon, bool hull) =>
+        internal static TacticalCombatSound GetImpactSound(HardpointWeaponType weapon, bool hull) =>
             weapon switch
             {
-                TacticalWeaponType.LaserCannon => hull
+                HardpointWeaponType.LaserCannon => hull
                     ? TacticalCombatSound.LaserHullHit
                     : TacticalCombatSound.LaserShieldHit,
-                TacticalWeaponType.IonCannon => hull
+                HardpointWeaponType.IonCannon => hull
                     ? TacticalCombatSound.IonHullHit
                     : TacticalCombatSound.IonShieldHit,
                 _ => hull ? TacticalCombatSound.HeavyHullHit : TacticalCombatSound.HeavyShieldHit,

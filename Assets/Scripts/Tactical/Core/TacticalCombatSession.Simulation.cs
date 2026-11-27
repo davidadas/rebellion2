@@ -537,26 +537,6 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
-        /// Selects the firing sound from the firing unit's weapon and authored faction.
-        /// </summary>
-        /// <param name="shot">The queued discharge.</param>
-        /// <returns>The sound requested before drawing the weapon effect.</returns>
-        private TacticalCombatSound GetFiringSound(TacticalCombatShot shot) =>
-            shot.Weapon switch
-            {
-                TacticalWeaponType.LaserCannon when shot.Source.IsFighter => GetSide(
-                    shot.Source.Side
-                ).FactionIndex == 0
-                    ? TacticalCombatSound.AllianceFighterLaser
-                    : TacticalCombatSound.EmpireFighterLaser,
-                TacticalWeaponType.LaserCannon => TacticalCombatSound.CapitalLaser,
-                TacticalWeaponType.IonCannon => shot.Source.IsFighter
-                    ? TacticalCombatSound.FighterIon
-                    : TacticalCombatSound.CapitalIon,
-                _ => TacticalCombatSound.HeavyWeapon,
-            };
-
-        /// <summary>
         /// Applies one queued mutation after resolving its current participation guards.
         /// </summary>
         /// <param name="command">The due command.</param>
@@ -669,7 +649,11 @@ namespace Rebellion.Tactical
                 case CommandKind.Fire:
                     if (IsActiveDisplayObject(source) && IsActiveDisplayObject(target))
                     {
-                        Audio.Enqueue(GetFiringSound(command.Shot));
+                        Audio.Enqueue(
+                            command.Shot.GetFiringSound(
+                                GetSide(command.Shot.Source.Side).FactionIndex
+                            )
+                        );
                         ShotFired?.Invoke(command.Shot);
                     }
                     break;

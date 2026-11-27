@@ -5,6 +5,7 @@ using System.Numerics;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
 
@@ -112,7 +113,11 @@ namespace Rebellion.Tactical
         /// <summary>
         /// Projects a stored weapon impact at its effect boundary within damage processing.
         /// </summary>
-        public event Action<CombatUnit, TacticalWeaponType, TacticalCombatImpactKind> ImpactApplied;
+        public event Action<
+            CombatUnit,
+            HardpointWeaponType,
+            TacticalCombatImpactKind
+        > ImpactApplied;
 
         /// <summary>
         /// Requests an admitted direct destruction effect before deactivating its participant.
