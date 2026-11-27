@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 using Rebellion.Game;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
@@ -206,7 +207,7 @@ namespace Rebellion.Gameplay
         public void OnError(Exception error)
         {
             Dispose();
-            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(error).Throw();
+            ExceptionDispatchInfo.Capture(error).Throw();
         }
 
         /// <summary>
