@@ -2759,7 +2759,7 @@ namespace Rebellion.Tests.AI.Demands
                 regimentCapacity: 1,
                 starfighterCapacity: 0
             );
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 1;
+            ship.SetPrimaryWeaponStrength(PrimaryWeaponType.LaserCannon, PrimaryWeaponArc.Fore, 1);
             game.AttachNode(ship, fleet);
             AITurnContext context = AITestSceneBuilder.CreateContext(game, empire);
 

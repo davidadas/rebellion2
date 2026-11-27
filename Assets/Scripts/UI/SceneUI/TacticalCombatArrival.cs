@@ -130,7 +130,7 @@ namespace Rebellion.UI
                     members.Add(
                         new TacticalCombatArrivalMember(
                             unit.Index,
-                            unit.PresentationIndex,
+                            session.Definition?.FindUnit(unit.TypeID)?.PresentationIndex ?? 0,
                             unit.Side,
                             unit.IsFighter,
                             unit.Status == CombatUnitStatus.Docked,

@@ -171,7 +171,7 @@ namespace Rebellion.Gameplay
                     }
                 )
                     continue;
-                int value = CombatUnitSnapshot.GetMilitaryValue(unit);
+                int value = SpaceCombatQueries.GetMilitaryValue(unit);
                 string owner = unit.OwnerInstanceID;
                 if (owner == firstOwnerInstanceId)
                     first = unchecked(first + value);
@@ -207,7 +207,7 @@ namespace Rebellion.Gameplay
                     }
                 )
                     continue;
-                int value = CombatUnitSnapshot.GetMilitaryValue(unit);
+                int value = SpaceCombatQueries.GetMilitaryValue(unit);
                 string owner = unit.OwnerInstanceID;
                 if (owner == firstOwner)
                     firstLoss = unchecked(firstLoss + value);

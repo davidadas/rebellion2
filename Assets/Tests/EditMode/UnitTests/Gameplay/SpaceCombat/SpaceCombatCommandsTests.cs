@@ -726,7 +726,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 WeaponRecharge = 2,
             };
-            carrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 0, 0, 0, 100 };
+            carrier.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 0, 0, 0, 100 });
             CapitalShip survivor = new CapitalShip
             {
                 InstanceID = "survivor",
@@ -738,7 +738,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 WeaponRecharge = 1,
             };
-            survivor.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
+            survivor.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1000, 0, 0, 0, 100 });
             game.AttachNode(carrier, allianceFleet);
             game.AttachNode(survivor, allianceFleet);
 
@@ -878,8 +878,8 @@ namespace Rebellion.Tests.Gameplay
             Fleet allianceFleet = CreateFleet(game, "f2", "alliance", planet, 1, 100, 0);
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
-            empireShip.PrimaryWeapons.Clear();
-            allianceShip.PrimaryWeapons.Clear();
+            empireShip.HardpointGroups.Clear();
+            allianceShip.HardpointGroups.Clear();
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
             TryResolveCombat(manager, empireFleet, allianceFleet, out List<GameResult> results);
@@ -1021,8 +1021,8 @@ namespace Rebellion.Tests.Gameplay
             Fleet fleet = CreateFleet(game, "fleet", owner, planet, 1, 10000, 6, 0);
             CapitalShip ship = fleet.GetChildren<CapitalShip>().Single();
             ship.SublightSpeed = 6;
-            ship.PrimaryWeapons.Clear();
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 60, 60, 60, 60, 100 };
+            ship.HardpointGroups.Clear();
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 60, 60, 60, 60, 100 });
             Starfighter enemy = new Starfighter
             {
                 InstanceID = "enemy-fighter",
@@ -1914,8 +1914,8 @@ namespace Rebellion.Tests.Gameplay
 
             Fleet empireFleet = CreateFleet(game, "ef1", "empire", combatPlanet, 1, 100, 0);
             Fleet allianceFleet = CreateFleet(game, "af1", "alliance", combatPlanet, 1, 100, 0);
-            empireFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
-            allianceFleet.GetChildren<CapitalShip>()[0].PrimaryWeapons.Clear();
+            empireFleet.GetChildren<CapitalShip>()[0].HardpointGroups.Clear();
+            allianceFleet.GetChildren<CapitalShip>()[0].HardpointGroups.Clear();
 
             SpaceCombatCommands manager = MakeSpaceCombat(game);
 
@@ -3184,7 +3184,7 @@ namespace Rebellion.Tests.Gameplay
                 CurrentHullStrength = 500,
                 WeaponRecharge = 100,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0, 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100, 0, 0, 0, 100 });
             game.AttachNode(ship, fleet);
 
             Starfighter fighter = new Starfighter
@@ -3258,7 +3258,7 @@ namespace Rebellion.Tests.Gameplay
             survivor.CurrentHullStrength = 1000000;
             survivor.ShieldRechargeRate = 0;
             survivor.WeaponRecharge = 1;
-            survivor.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
+            survivor.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1000, 0, 0, 0, 100 });
             Starfighter displaced = AttachWithdrawalFighter(game, destroyedCarrier, "displaced", 0);
             Starfighter resident = AttachWithdrawalFighter(game, survivor, "resident", 60);
             Fleet enemy = combat.GetChildren<Fleet>().Single(candidate => candidate != fleet);
@@ -4004,7 +4004,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 WeaponRecharge = 2,
             };
-            weakShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 0, 0, 0, 100 };
+            weakShip.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 0, 0, 0, 100 });
             CapitalShip strongShip = new CapitalShip
             {
                 InstanceID = "strong",
@@ -4015,7 +4015,7 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Complete,
                 WeaponRecharge = 1,
             };
-            strongShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1000, 0, 0, 0, 100 };
+            strongShip.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1000, 0, 0, 0, 100 });
             allianceFleet.AddChild(weakShip);
             weakShip.SetParent(allianceFleet);
             allianceFleet.AddChild(strongShip);
@@ -4342,9 +4342,12 @@ namespace Rebellion.Tests.Gameplay
                 CreatePendingEncounter();
             CapitalShip empireShip = empireFleet.GetChildren<CapitalShip>().Single();
             CapitalShip allianceShip = allianceFleet.GetChildren<CapitalShip>().Single();
-            empireShip.PrimaryWeapons.Clear();
-            allianceShip.PrimaryWeapons.Clear();
-            allianceShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0, 100 };
+            empireShip.HardpointGroups.Clear();
+            allianceShip.HardpointGroups.Clear();
+            allianceShip.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { 100, 0, 0, 0, 100 }
+            );
 
             bool accepted = commands.TrySubmitResponse(
                 empireFleet.OwnerInstanceID,
@@ -4659,9 +4662,12 @@ namespace Rebellion.Tests.Gameplay
                 .ToArray();
             foreach (CapitalShip ship in ships)
                 ConfigureDeploymentCapital(ship, 0, 0, 10, 10);
-            ships[1].PrimaryWeapons[PrimaryWeaponType.Turbolaser][
-                CapitalShip.PrimaryWeaponRangeIndex
-            ] = 20;
+            ships[1]
+                .SetPrimaryWeaponStrength(
+                    PrimaryWeaponType.Turbolaser,
+                    (PrimaryWeaponArc)CapitalShip.PrimaryWeaponRangeIndex,
+                    20
+                );
             ships[1].SystemDamage.Weapons = 4;
             ships[0].SublightSpeed = 8;
             ships[2].SublightSpeed = 8;
@@ -5088,9 +5094,7 @@ namespace Rebellion.Tests.Gameplay
             stranded.DamageControl = 0;
             game.AttachNode(stranded, fleet);
             foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
-            foreach (int[] battery in ship.PrimaryWeapons.Values)
-                for (int arc = 0; arc < 4; arc++)
-                    battery[arc] = 0;
+                ship.ClearPrimaryWeaponDamage();
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
             for (int frame = 0; frame < 6000 && !battle.IsComplete; frame++)
@@ -5129,9 +5133,7 @@ namespace Rebellion.Tests.Gameplay
             foreach (CapitalShip ship in fleet.GetChildren<CapitalShip>())
             {
                 ship.DamageControl = 0;
-                foreach (int[] battery in ship.PrimaryWeapons.Values)
-                    for (int arc = 0; arc < 4; arc++)
-                        battery[arc] = 0;
+                ship.ClearPrimaryWeaponDamage();
             }
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             Assert.IsTrue(battle.CanWithdraw(battle.PlayerSide));
@@ -5597,16 +5599,12 @@ namespace Rebellion.Tests.Gameplay
         {
             ship.TypeID = "CSEM006";
             ship.SublightSpeed = 4;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { laser, 0, 0, 0, range };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { ion, 0, 0, 0, range };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                turbolaser,
-                0,
-                0,
-                0,
-                range,
-            };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { laser, 0, 0, 0, range });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { ion, 0, 0, 0, range });
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { turbolaser, 0, 0, 0, range }
+            );
         }
 
         /// <summary>
@@ -5976,14 +5974,10 @@ namespace Rebellion.Tests.Gameplay
                     WeaponRecharge = 1000,
                     ManufacturingStatus = ManufacturingStatus.Complete,
                 };
-                fighterHunter.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
-                {
-                    1000,
-                    0,
-                    0,
-                    0,
-                    100,
-                };
+                fighterHunter.SetPrimaryWeapon(
+                    PrimaryWeaponType.LaserCannon,
+                    new[] { 1000, 0, 0, 0, 100 }
+                );
                 game.AttachNode(fighterHunter, attackingFleet);
             }
             Fleet retreatingFleet = CreateFleet(
@@ -6004,14 +5998,7 @@ namespace Rebellion.Tests.Gameplay
             destroyedCarrier.StarfighterCapacity = displacedFighterHyperdrives.Count;
             destroyedCarrier.WeaponRecharge = 20;
             destroyedCarrier.SublightSpeed = 10;
-            destroyedCarrier.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-            {
-                20,
-                0,
-                0,
-                0,
-                100,
-            };
+            destroyedCarrier.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, 20, 0, 0, 0, 100);
             CapitalShip recoveryCarrier = retreatingShips[1];
             recoveryCarrier.StarfighterCapacity = recoveryCapacity;
             recoveryCarrier.SublightSpeed = 10;
@@ -6216,14 +6203,7 @@ namespace Rebellion.Tests.Gameplay
                 // Add weapon arcs
                 if (weaponPower > 0)
                 {
-                    ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-                    {
-                        weaponPower,
-                        0,
-                        0,
-                        0,
-                        100,
-                    };
+                    ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, weaponPower, 0, 0, 0, 100);
                 }
 
                 fleet.AddChild(ship);
@@ -6337,9 +6317,7 @@ namespace Rebellion.Tests.Gameplay
             if (scenario == "withdrawal")
             {
                 CreatePlanet(game, "withdrawal-home", "FNEMP1");
-                foreach (int[] battery in attacker.PrimaryWeapons.Values)
-                    for (int arc = 0; arc < 4; arc++)
-                        battery[arc] = 0;
+                attacker.ClearPrimaryWeaponDamage();
             }
 
             const string stationID = "battle-station";
@@ -6350,9 +6328,7 @@ namespace Rebellion.Tests.Gameplay
                     .GetChildren<CapitalShip>(recursive: true)
                     .Single(ship => ship != attacker);
                 enemy.MaxHullStrength = enemy.CurrentHullStrength = 2000;
-                foreach (int[] battery in attacker.PrimaryWeapons.Values)
-                    for (int arc = 0; arc < 4; arc++)
-                        battery[arc] = 0;
+                attacker.ClearPrimaryWeaponDamage();
                 if (scenario == "station")
                 {
                     CapitalShip station = TacticalTestData.CreateCapital(

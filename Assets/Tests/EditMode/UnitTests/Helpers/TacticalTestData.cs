@@ -106,7 +106,7 @@ internal static class TacticalTestData
             ManufacturingStatus = ManufacturingStatus.Complete,
             CanDestroyPlanets = typeID == StationTypeID,
         };
-        ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 20, 20, 20, 20, 100 };
+        ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 20, 20, 20, 20, 100 });
         return ship;
     }
 

@@ -4065,14 +4065,14 @@ namespace Rebellion.Tests.Gameplay
 
             if (weaponPower > 0)
             {
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-                {
+                ship.SetPrimaryWeapon(
+                    PrimaryWeaponType.Turbolaser,
                     weaponPower,
                     weaponPower,
                     weaponPower,
                     weaponPower,
-                    100,
-                };
+                    100
+                );
             }
 
             game.AttachNode(fleet, planet);

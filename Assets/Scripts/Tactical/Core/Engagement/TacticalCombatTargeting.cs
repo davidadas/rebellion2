@@ -95,7 +95,7 @@ namespace Rebellion.Tactical
             float durability = (float)((double)weightedHull + target.Shields);
             if (durability < 1)
                 durability = 1;
-            float recharge = (float)target.GetShieldRecharge();
+            float recharge = (float)TacticalCombatDamage.GetShieldRecharge(target);
             float remaining = (float)((double)attack - recharge);
             if (!(remaining > 0))
                 return -1;
@@ -265,10 +265,10 @@ namespace Rebellion.Tactical
             CombatSide attackingSide =
                 target.Side == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
             if (!_session.GetSide(attackingSide).IsWithdrawing)
-                return target.GetWeaponRecharge() != 0;
+                return TacticalCombatFireControl.GetWeaponRecharge(target) != 0;
             return target.HasHyperdrive
                 && (
-                    target.GetSpeed() > 0
+                    TacticalCombatMotion.GetSpeed(target) > 0
                     || target.GetDamage(TacticalShipSystem.Engines) < 4
                         && target.MovementDelay < 10000
                 );
@@ -285,7 +285,7 @@ namespace Rebellion.Tactical
             float priority = (float)(
                 (double)TacticalCombatEngagement.GetAttackRate(unit, null) * 15 + payload
             );
-            double rechargeRatio = unit.GetShieldRechargeRatio();
+            double rechargeRatio = TacticalCombatDamage.GetShieldRechargeRatio(unit);
             priority = (float)((double)priority - rechargeRatio * 0.01f);
             priority = (float)((double)priority - unit.HullFraction * 0.01f);
             if (unit.Status == CombatUnitStatus.Docked)
@@ -317,7 +317,7 @@ namespace Rebellion.Tactical
                 foreach (TacticalCombatGroup group in _targetingGroups[unit])
                 {
                     float interaction = group.GetAttackRate(unit);
-                    double recharge = unit.GetShieldRecharge();
+                    double recharge = TacticalCombatDamage.GetShieldRecharge(unit);
                     if (!(recharge > interaction))
                     {
                         suppressed = true;

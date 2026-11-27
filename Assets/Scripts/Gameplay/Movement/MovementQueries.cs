@@ -298,9 +298,10 @@ namespace Rebellion.Gameplay
 
             if (
                 unit is Starfighter
-                && destinationPlanet.IsBlockadedFor(
-                    ownerInstanceId ?? GetMovementControlOwner(unit),
-                    _game
+                && BlockadeQueries.IsBlockadedFor(
+                    _game,
+                    destinationPlanet,
+                    ownerInstanceId ?? GetMovementControlOwner(unit)
                 )
             )
             {
@@ -1065,7 +1066,11 @@ namespace Rebellion.Gameplay
         )
         {
             return unit is Starfighter or Regiment or Building
-                && destinationPlanet.IsBlockadedFor(GetMovementControlOwner(unit), game);
+                && BlockadeQueries.IsBlockadedFor(
+                    game,
+                    destinationPlanet,
+                    GetMovementControlOwner(unit)
+                );
         }
 
         /// <summary>
@@ -1155,7 +1160,7 @@ namespace Rebellion.Gameplay
             {
                 if (
                     planet.GetOwnerInstanceID() != ownerInstanceID
-                    || planet.IsBlockadedFor(ownerInstanceID, _game)
+                    || BlockadeQueries.IsBlockadedFor(_game, planet, ownerInstanceID)
                 )
                     continue;
                 ContainerNode destination = FindFighterDestinationInContext(fighter, planet);
@@ -1216,7 +1221,7 @@ namespace Rebellion.Gameplay
                 return null;
             if (
                 context is Planet planet
-                && !planet.IsBlockadedFor(fighter.GetOwnerInstanceID(), _game)
+                && !BlockadeQueries.IsBlockadedFor(_game, planet, fighter.GetOwnerInstanceID())
                 && CanReceiveRelocatedUnit(fighter, planet)
             )
                 return planet;
@@ -1524,12 +1529,12 @@ namespace Rebellion.Gameplay
         )
         {
             if (blockades == null)
-                return planet.IsBlockadedFor(factionInstanceId, _game);
+                return BlockadeQueries.IsBlockadedFor(_game, planet, factionInstanceId);
 
             var key = (planet, factionInstanceId);
             if (!blockades.TryGetValue(key, out bool isBlockaded))
             {
-                isBlockaded = planet.IsBlockadedFor(factionInstanceId, _game);
+                isBlockaded = BlockadeQueries.IsBlockadedFor(_game, planet, factionInstanceId);
                 blockades.Add(key, isBlockaded);
             }
             return isBlockaded;

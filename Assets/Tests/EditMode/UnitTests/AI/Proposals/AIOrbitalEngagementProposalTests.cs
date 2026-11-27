@@ -214,19 +214,18 @@ namespace Rebellion.Tests.AI.Fleets
                 1d / 6d;
             CapitalShip attackingShip = scenario.Fleet.GetChildren<CapitalShip>()[0];
             ConfigureCombatShip(attackingShip, hullStrength: 1200);
-            attackingShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
-            {
-                60,
-                60,
-                90,
-                90,
-                0,
-            };
+            attackingShip.SetPrimaryWeapon(
+                PrimaryWeaponType.LaserCannon,
+                new[] { 60, 60, 90, 90, 0 }
+            );
             CapitalShip defendingShip = scenario
                 .Target.GetChildren<Fleet>()[0]
                 .GetChildren<CapitalShip>()[0];
             ConfigureCombatShip(defendingShip, hullStrength: 1400);
-            defendingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 15, 0, 30, 30, 0 };
+            defendingShip.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { 15, 0, 30, 30, 0 }
+            );
             AITestSceneBuilder.RevealPlanet(
                 scenario.Context.Game,
                 scenario.Context.Faction,
@@ -312,8 +311,7 @@ namespace Rebellion.Tests.AI.Fleets
             ship.MaxHullStrength = hullStrength;
             ship.CurrentHullStrength = hullStrength;
             ship.MaxShieldStrength = 0;
-            foreach (PrimaryWeaponType weaponType in ship.PrimaryWeapons.Keys.ToList())
-                ship.PrimaryWeapons[weaponType] = new int[5];
+            ship.HardpointGroups.Clear();
         }
 
         /// <summary>

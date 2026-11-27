@@ -2,6 +2,7 @@ using NUnit.Framework;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Tactical;
 using CapitalShipRank = Rebellion.Tactical.TacticalCombatDeployment.CapitalShipRank;
 
 namespace Rebellion.Tests.Tactical
@@ -28,7 +29,7 @@ namespace Rebellion.Tests.Tactical
             for (int damage = 0; damage < 4; damage++)
                 unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
 
-            Assert.AreEqual(0, unit.GetSpeed());
+            Assert.AreEqual(0, TacticalCombatMotion.GetSpeed(unit));
             Assert.AreEqual(-120001.96f, deployment.Score);
         }
 
@@ -59,7 +60,7 @@ namespace Rebellion.Tests.Tactical
                 WeaponRecharge = 10,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 5, 0, 0, 0, range };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 5, 0, 0, 0, range });
             return new CombatUnit(ship, CombatSide.Attacker, index);
         }
     }

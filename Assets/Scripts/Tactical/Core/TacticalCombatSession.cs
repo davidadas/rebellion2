@@ -304,7 +304,7 @@ namespace Rebellion.Tactical
                     );
                 }
                 unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
-                unit.TurnRate = unit.GetInitialTurnRate();
+                unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
                 if (!unit.IsFighter)
                 {
                     TacticalCombatCarrier carrier = new TacticalCombatCarrier(unit);

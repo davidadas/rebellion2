@@ -84,7 +84,7 @@ namespace Rebellion.Tests.Tactical
                 1000001
             );
             target.ApplyHullLoss(5);
-            float attack = (float)target.GetShieldRecharge();
+            float attack = (float)TacticalCombatDamage.GetShieldRecharge(target);
 
             float metric = TacticalCombatTargeting.GetTargetMetric(group, target, ref attack);
 

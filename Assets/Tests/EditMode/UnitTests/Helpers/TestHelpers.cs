@@ -14,6 +14,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
@@ -476,6 +477,72 @@ public static class DragPreviewTestFactory
 /// </summary>
 public static class TestGameData
 {
+    internal static void SetPrimaryWeapon(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        params int[] ratings
+    )
+    {
+        foreach (PrimaryWeaponArc arc in CapitalShip.PrimaryWeaponArcs)
+        {
+            WeaponData mount = GetOrAddWeapon(ship, weapon, arc);
+            mount.Damage = (int)arc < ratings.Length ? ratings[(int)arc] : 0;
+            int rangeIndex = CapitalShip.PrimaryWeaponRangeIndex;
+            mount.Range = rangeIndex < ratings.Length ? ratings[rangeIndex] : 0;
+        }
+    }
+
+    internal static void SetPrimaryWeaponStrength(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        PrimaryWeaponArc arc,
+        int strength
+    ) => GetOrAddWeapon(ship, weapon, arc).Damage = strength;
+
+    internal static void SetPrimaryWeaponRange(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        int range
+    )
+    {
+        foreach (PrimaryWeaponArc arc in CapitalShip.PrimaryWeaponArcs)
+            GetOrAddWeapon(ship, weapon, arc).Range = range;
+    }
+
+    internal static void ClearPrimaryWeaponDamage(this CapitalShip ship)
+    {
+        foreach (HardpointGroup group in ship.HardpointGroups)
+        foreach (Hardpoint mount in group.GetHardpoints())
+            if (mount.Weapon != null)
+                mount.Weapon.Damage = 0;
+    }
+
+    private static WeaponData GetOrAddWeapon(
+        CapitalShip ship,
+        PrimaryWeaponType weapon,
+        PrimaryWeaponArc arc
+    )
+    {
+        TacticalWeaponArc batteryArc = CapitalShip.GetBatteryArc(arc);
+        HardpointGroup group = ship.HardpointGroups.Find(item => item.Arc == batteryArc);
+        if (group == null)
+        {
+            group = new HardpointGroup { Arc = batteryArc };
+            ship.HardpointGroups.Add(group);
+        }
+
+        HardpointWeaponType type = CapitalShip.GetHardpointWeaponType(weapon);
+        List<Hardpoint> mounts = group.GetHardpoints();
+        WeaponData weaponData = mounts.Find(item => item.Weapon?.WeaponType == type)?.Weapon;
+        if (weaponData == null)
+        {
+            weaponData = new WeaponData { WeaponType = type };
+            mounts.Add(new Hardpoint { Weapon = weaponData });
+        }
+
+        return weaponData;
+    }
+
     /// <summary>
     /// Creates a synthetic catalog around the supplied configuration and message definitions.
     /// </summary>

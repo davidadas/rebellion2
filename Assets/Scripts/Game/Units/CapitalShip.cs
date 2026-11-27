@@ -50,7 +50,7 @@ namespace Rebellion.Game.Units
 
         public static int PrimaryWeaponRangeIndex => PrimaryWeaponArcs.Count;
 
-        private static readonly IReadOnlyList<PrimaryWeaponType> _primaryWeaponTypes =
+        internal static IReadOnlyList<PrimaryWeaponType> PrimaryWeaponTypes { get; } =
             Array.AsReadOnly((PrimaryWeaponType[])Enum.GetValues(typeof(PrimaryWeaponType)));
 
         [PersistableMember(Name = "HasAssignedName")]
@@ -197,23 +197,48 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = "Starfighters")]
         private List<Starfighter> _starfighters = new List<Starfighter>();
 
-        // Weapon Info.
-        private Dictionary<PrimaryWeaponType, int[]> _primaryWeapons = new Dictionary<
-            PrimaryWeaponType,
-            int[]
-        >()
-        {
-            { PrimaryWeaponType.Turbolaser, new int[PrimaryWeaponRangeIndex + 1] },
-            { PrimaryWeaponType.IonCannon, new int[PrimaryWeaponRangeIndex + 1] },
-            { PrimaryWeaponType.LaserCannon, new int[PrimaryWeaponRangeIndex + 1] },
-        };
-
-        [PersistableMember(Name = nameof(PrimaryWeapons))]
-        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        [PersistableMember(Name = "PrimaryWeapons")]
+        [PersistableIgnore]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Reads older saves and content.")]
         private Dictionary<PrimaryWeaponType, int[]> LegacyPrimaryWeapons
         {
-            get => HardpointGroups is { Count: > 0 } ? null : _primaryWeapons;
-            set => _primaryWeapons = value;
+            get => null;
+            set
+            {
+                if (HardpointGroups is { Count: > 0 } || value == null)
+                    return;
+
+                List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
+                foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
+                {
+                    HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
+                    foreach (PrimaryWeaponType weapon in PrimaryWeaponTypes)
+                    {
+                        if (!value.TryGetValue(weapon, out int[] ratings) || ratings == null)
+                            continue;
+                        group
+                            .GetHardpoints()
+                            .Add(
+                                new Hardpoint
+                                {
+                                    Weapon = new WeaponData
+                                    {
+                                        WeaponType = GetHardpointWeaponType(weapon),
+                                        Damage = (int)arc < ratings.Length ? ratings[(int)arc] : 0,
+                                        Range =
+                                            PrimaryWeaponRangeIndex < ratings.Length
+                                                ? ratings[PrimaryWeaponRangeIndex]
+                                                : 0,
+                                    },
+                                }
+                            );
+                    }
+
+                    groups.Add(group);
+                }
+
+                HardpointGroups = groups;
+            }
         }
 
         [PersistableMember(Name = nameof(WeaponRecharge))]
@@ -433,17 +458,6 @@ namespace Rebellion.Game.Units
         }
 
         [PersistableIgnore]
-        public Dictionary<PrimaryWeaponType, int[]> PrimaryWeapons
-        {
-            get => _primaryWeapons;
-            set
-            {
-                _primaryWeapons = value;
-                HardpointGroups?.Clear();
-            }
-        }
-
-        [PersistableIgnore]
         public int WeaponRecharge
         {
             get => _weaponRecharge;
@@ -553,50 +567,10 @@ namespace Rebellion.Game.Units
             StarfighterBay ??= new StarfighterBay { Capacity = _starfighterCapacity };
             if (_hasGravityWell)
                 GravityWellGenerator ??= new GravityWellGenerator();
-            if (HardpointGroups is not { Count: > 0 })
-                HardpointGroups = CaptureLegacyHardpoints();
         }
 
         /// <summary>
-        /// Builds battery groups from a ship's legacy per-arc weapon ratings.
-        /// </summary>
-        /// <returns>The generated forward, starboard, aft, and port batteries.</returns>
-        internal List<HardpointGroup> CaptureLegacyHardpoints()
-        {
-            List<HardpointGroup> groups = new(PrimaryWeaponArcs.Count);
-            foreach (PrimaryWeaponArc arc in PrimaryWeaponArcs)
-            {
-                HardpointGroup group = new() { Arc = GetBatteryArc(arc) };
-                foreach (PrimaryWeaponType weapon in _primaryWeaponTypes)
-                {
-                    group
-                        .GetHardpoints()
-                        .Add(
-                            new Hardpoint
-                            {
-                                Weapon = new WeaponData
-                                {
-                                    WeaponType = GetHardpointWeaponType(weapon),
-                                    Damage = GetLegacyWeaponValue(weapon, (int)arc),
-                                    Range = GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex),
-                                },
-                            }
-                        );
-                }
-                groups.Add(group);
-            }
-            return groups;
-        }
-
-        /// <summary>
-        /// Enumerates the primary weapon categories used by older ship data.
-        /// </summary>
-        /// <returns>The supported categories.</returns>
-        internal IEnumerable<PrimaryWeaponType> GetPrimaryWeaponTypes() =>
-            HardpointGroups is { Count: > 0 } ? _primaryWeaponTypes : _primaryWeapons.Keys;
-
-        /// <summary>
-        /// Reads a weapon strength using installed equipment or legacy ratings.
+        /// Reads the strength of the installed weapons.
         /// </summary>
         /// <param name="weapon">The weapon type being read or translated.</param>
         /// <param name="arc">The requested ship-relative weapon arc.</param>
@@ -604,7 +578,7 @@ namespace Rebellion.Game.Units
         public int GetPrimaryWeaponStrength(PrimaryWeaponType weapon, PrimaryWeaponArc arc)
         {
             if (HardpointGroups is not { Count: > 0 })
-                return GetLegacyWeaponValue(weapon, (int)arc);
+                return 0;
 
             TacticalWeaponArc batteryArc = GetBatteryArc(arc);
             HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
@@ -616,14 +590,14 @@ namespace Rebellion.Game.Units
         }
 
         /// <summary>
-        /// Reads the installed or legacy range for a primary weapon.
+        /// Reads the maximum installed range for a primary weapon.
         /// </summary>
         /// <param name="weapon">The weapon type being read or translated.</param>
         /// <returns>The stored range in campaign units.</returns>
         internal int GetPrimaryWeaponRange(PrimaryWeaponType weapon)
         {
             if (HardpointGroups is not { Count: > 0 })
-                return GetLegacyWeaponValue(weapon, PrimaryWeaponRangeIndex);
+                return 0;
 
             HardpointWeaponType mountWeapon = GetHardpointWeaponType(weapon);
             int range = 0;
@@ -631,21 +605,6 @@ namespace Rebellion.Game.Units
                 range = Math.Max(range, (int)group.GetRange(mountWeapon));
             return range;
         }
-
-        /// <summary>
-        /// Reads an arc strength or range from the older weapon array.
-        /// </summary>
-        /// <param name="weapon">The weapon type being read or translated.</param>
-        /// <param name="index">The legacy arc or range slot to read.</param>
-        /// <returns>The stored value, or zero when it is missing.</returns>
-        private int GetLegacyWeaponValue(PrimaryWeaponType weapon, int index) =>
-            _primaryWeapons != null
-            && _primaryWeapons.TryGetValue(weapon, out int[] values)
-            && values != null
-            && index >= 0
-            && index < values.Length
-                ? values[index]
-                : 0;
 
         /// <summary>
         /// Returns the ship's surviving installed hyperdrive rating.
@@ -746,10 +705,6 @@ namespace Rebellion.Game.Units
             copy.StarfighterCapacity = StarfighterCapacity;
             copy.RegimentCapacity = RegimentCapacity;
             copy.Roles = new List<CapitalShipRole>(Roles);
-            copy._primaryWeapons = _primaryWeapons.ToDictionary(
-                entry => entry.Key,
-                entry => entry.Value?.ToArray()
-            );
             copy.WeaponRecharge = WeaponRecharge;
             copy.Bombardment = Bombardment;
             copy.ManufacturingProgress = ManufacturingProgress;
@@ -860,10 +815,10 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <returns>The summed primary weapon strength.</returns>
         public int GetPrimaryWeaponStrength() =>
-            GetPrimaryWeaponTypes().Sum(weapon => GetPrimaryWeaponStrength(weapon));
+            PrimaryWeaponTypes.Sum(weapon => GetPrimaryWeaponStrength(weapon));
 
         /// <summary>
-        /// Reads a weapon strength using installed equipment or legacy ratings.
+        /// Reads the strength of the installed weapons.
         /// </summary>
         /// <param name="weapon">The weapon type being read or translated.</param>
         /// <returns>The weapon strength in one arc or across all arcs.</returns>

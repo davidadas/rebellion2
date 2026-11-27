@@ -205,7 +205,7 @@ namespace Rebellion.Tactical
             for (int index = 0; index < _memberOrder.Count; index++)
             {
                 CombatUnit unit = _memberOrder[index];
-                float speed = unit.GetSpeed();
+                float speed = TacticalCombatMotion.GetSpeed(unit);
                 if (!(speed > 0))
                     continue;
                 movement = Math.Min(movement, speed);

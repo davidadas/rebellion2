@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -348,18 +349,25 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <param name="index">The unit's distinct battle registration identifier.</param>
         /// <returns>The initialized turning unit.</returns>
-        private static CombatUnit CreateTurningUnit(int index) =>
-            new(
+        private static CombatUnit CreateTurningUnit(int index)
+        {
+            CombatUnit unit = CombatUnit.Create(
                 new CapitalShip
                 {
                     InstanceID = "turning-" + index,
                     MaxHullStrength = 100,
                     CurrentHullStrength = 100,
                     Maneuverability = 2,
-                },
+                }
+            );
+            TacticalCombatDeployment.InitializeUnit(
+                unit,
+                new TacticalCombatUnitDefinition(),
                 CombatSide.Attacker,
                 index
             );
+            return unit;
+        }
 
         /// <summary>
         /// Captures a mobile unit with one unit of movement budget and a deterministic recovery phase.

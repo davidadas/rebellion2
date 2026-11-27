@@ -8,6 +8,7 @@ using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
+using Rebellion.Tactical;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.Tests.Game.Combat
@@ -302,7 +303,7 @@ namespace Rebellion.Tests.Game.Combat
             CombatUnit unit = game.ActiveBattle.AddCombatant(source);
             unit.InitializeTacticalState(CombatSide.Attacker, 1);
             unit.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
-            unit.RechargeBatteries(1, 6);
+            TacticalCombatFireControl.RechargeBatteries(unit, 1, 6);
 
             string xml = SerializationHelper.Serialize(game);
             Assert.That(xml, Does.Contain("<HardpointGroups>").And.Not.Contain("<PrimaryWeapons>"));
@@ -330,7 +331,7 @@ namespace Rebellion.Tests.Game.Combat
             );
             Assert.AreEqual(6, restored.GetBatteryCharge(TacticalWeaponArc.Starboard));
             Assert.AreEqual(10, ((CapitalShip)restored.Unit).SublightSpeed);
-            restored.RechargeBatteries(1, 12);
+            TacticalCombatFireControl.RechargeBatteries(restored, 1, 12);
             Assert.IsTrue(restored.IsBatteryReady(TacticalWeaponArc.Starboard));
             Assert.AreEqual(25, restored.Batteries[1].GetHardpoints()[0].FiringArcDegrees);
             Assert.AreNotSame(group, unit.Batteries[1]);

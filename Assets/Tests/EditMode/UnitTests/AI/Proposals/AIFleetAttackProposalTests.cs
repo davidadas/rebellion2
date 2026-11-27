@@ -57,16 +57,11 @@ namespace Rebellion.Tests.AI.Fleets
             CapitalShip attackingShip = attacker.GetChildren<CapitalShip>().Single();
             attackingShip.MaxHullStrength = 1000;
             attackingShip.CurrentHullStrength = 1000;
-            foreach (PrimaryWeaponType weapon in attackingShip.PrimaryWeapons.Keys.ToArray())
-                attackingShip.PrimaryWeapons[weapon] = new int[5];
-            attackingShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                250,
-                250,
-                250,
-                250,
-                0,
-            };
+            attackingShip.HardpointGroups.Clear();
+            attackingShip.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { 250, 250, 250, 250, 0 }
+            );
             Fleet defender = EntityFactory.CreateFleet("defender", enemy.InstanceID);
             game.AttachNode(defender, target);
             game.AttachNode(

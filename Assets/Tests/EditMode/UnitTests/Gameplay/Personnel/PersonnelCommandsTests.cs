@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
@@ -302,6 +303,179 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(57, favoredOfficer.Loyalty);
             Assert.AreEqual(43, opposingOfficer.Loyalty);
         }
+
+        [TestCase(false, false, "first", 65)]
+        [TestCase(false, false, "second", 65)]
+        [TestCase(true, false, "first", 85)]
+        [TestCase(true, false, "second", 65)]
+        [TestCase(false, true, "first", 65)]
+        [TestCase(false, true, "second", 85)]
+        [TestCase(true, true, "first", 65)]
+        [TestCase(true, true, "second", 65)]
+        public void ApplyGlobalLoyaltyShift_RecruitmentFactionFlags_ChoosesRelativeDirection(
+            bool first,
+            bool second,
+            string favored,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+            if (first)
+                officer.RecruitingFactionInstanceIDs.Add("first");
+            if (second)
+                officer.RecruitingFactionInstanceIDs.Add("second");
+
+            ApplyLoyaltyShift(10, favored, favored == "first" ? "second" : "first");
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void ApplyGlobalLoyaltyShift_ChangedCurrentOwner_KeepsRecruitmentFactionDirection()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+            officer.OwnerInstanceID = "second";
+
+            ApplyLoyaltyShift(10, "first", "second");
+
+            Assert.AreEqual(85, officer.Loyalty);
+        }
+
+        [Test]
+        public void ApplyGlobalLoyaltyShift_ChangedRecruitmentFlags_UsesTheSameFlagsAsRecruitment()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+            officer.RecruitingFactionInstanceIDs.Clear();
+            officer.RecruitingFactionInstanceIDs.Add("second");
+
+            ApplyLoyaltyShift(10, "first", "second");
+
+            Assert.AreEqual(65, officer.Loyalty);
+        }
+
+        [Test]
+        public void ApplyGlobalLoyaltyShift_ProtectedOfficer_DoesNotChangeLoyalty()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null, false);
+
+            ApplyLoyaltyShift(int.MaxValue, "first", "second");
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [Test]
+        public void ApplyGlobalLoyaltyShift_ZeroChange_DoesNotChangeLoyalty()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, null);
+
+            ApplyLoyaltyShift(0, "first", "second");
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase("first", "")]
+        [TestCase("", "second")]
+        [TestCase("first", "first")]
+        public void ApplyGlobalLoyaltyShift_InvalidCombatantPair_DoesNotChangeLoyalty(
+            string favored,
+            string opposing
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "first");
+
+            ApplyLoyaltyShift(10, favored, opposing);
+
+            Assert.AreEqual(75, officer.Loyalty);
+        }
+
+        [TestCase(75, 10, 85)]
+        [TestCase(75, -10, 65)]
+        [TestCase(75, 1000, 100)]
+        [TestCase(75, -1000, 0)]
+        [TestCase(0, -1, 0)]
+        [TestCase(100, 1, 100)]
+        [TestCase(75, int.MaxValue, 0)]
+        [TestCase(75, int.MinValue, 0)]
+        public void ApplyGlobalLoyaltyShift_SignedAdjustment_WrapsBeforeClamping(
+            int initial,
+            int adjustment,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(initial, "first");
+
+            ApplyLoyaltyShift(adjustment, "first", "second");
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        [Test]
+        public void ApplyGlobalLoyaltyShift_OpposingMinimumChange_RetainsLow32Negation()
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(75, "second");
+
+            ApplyLoyaltyShift(int.MinValue, "first", "second");
+
+            Assert.AreEqual(0, officer.Loyalty);
+        }
+
+        [TestCase(32768, 1, 0)]
+        [TestCase(65535, 2, 1)]
+        [TestCase(65536, 1, 1)]
+        [TestCase(-32769, -1, 100)]
+        public void ApplyGlobalLoyaltyShift_SerializedBase_ReadsSigned16BitsBeforeAddition(
+            int initial,
+            int adjustment,
+            int expected
+        )
+        {
+            Officer officer = CreateBattleLoyaltyOfficer(initial, "first");
+
+            ApplyLoyaltyShift(adjustment, "first", "second");
+
+            Assert.AreEqual(expected, officer.Loyalty);
+        }
+
+        /// <summary>
+        /// Creates an officer with one retained recruitment-faction flag and a saved base loyalty.
+        /// </summary>
+        /// <param name="loyalty">The saved base loyalty.</param>
+        /// <param name="faction">The flagged faction, or null for neither combatant.</param>
+        /// <param name="canBetray">Whether loyalty changes are allowed.</param>
+        /// <returns>The officer.</returns>
+        private Officer CreateBattleLoyaltyOfficer(
+            int loyalty,
+            string faction,
+            bool canBetray = true
+        )
+        {
+            Officer officer = SerializationHelper.Deserialize<Officer>(
+                new XElement(
+                    "Officer",
+                    new XElement("CanBetray", canBetray),
+                    new XElement("Loyalty", loyalty)
+                ).ToString()
+            );
+            if (faction != null)
+                officer.RecruitingFactionInstanceIDs.Add(faction);
+            officer.InstanceID = "battle-officer";
+            officer.OwnerInstanceID = _ownerId;
+            _game.AttachNode(officer, _planet);
+            return officer;
+        }
+
+        /// <summary>
+        /// Applies battle aftermath through the normal personnel command.
+        /// </summary>
+        /// <param name="adjustment">The shift relative to the favored faction.</param>
+        /// <param name="favored">The favored faction's ID.</param>
+        /// <param name="opposing">The opposing faction's ID.</param>
+        private void ApplyLoyaltyShift(int adjustment, string favored, string opposing) =>
+            _commands.ApplyGlobalLoyaltyShift(
+                new Faction { InstanceID = favored },
+                adjustment,
+                new Faction { InstanceID = opposing }
+            );
 
         /// <summary>
         /// Creates officer.

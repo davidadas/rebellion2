@@ -116,7 +116,7 @@ namespace Rebellion.Tactical
             bool targetIsFighter = false
         )
         {
-            double liveRecharge = unit.GetWeaponRecharge();
+            double liveRecharge = TacticalCombatFireControl.GetWeaponRecharge(unit);
             float recharge = (float)liveRecharge;
             if (liveRecharge == 0 || double.IsNaN(liveRecharge))
                 return 0;
@@ -142,7 +142,14 @@ namespace Rebellion.Tactical
             if (!(liveNormalized > 0))
                 return 0;
             float maneuverRatio = (float)(
-                (double)unit.GetManeuverability() / (target?.GetManeuverability() ?? 6)
+                (double)TacticalCombatMotion.GetManeuverability(unit)
+                / (
+                    (
+                        target == null
+                            ? (float?)null
+                            : TacticalCombatMotion.GetManeuverability(target)
+                    ) ?? 6
+                )
             );
             if (maneuverRatio <= 0.1f)
                 maneuverRatio = 0.1f;
@@ -162,13 +169,14 @@ namespace Rebellion.Tactical
             }
             if (target != null)
             {
-                double torpedo = unit.GetTorpedoAttack();
+                double torpedo = TacticalCombatFireControl.GetTorpedoAttack(unit);
                 if (torpedo != 0 && !double.IsNaN(torpedo) && unit.IsFighter && !target.IsFighter)
                 {
                     double shields = target.GetShieldFraction();
                     if (shields == 0 || double.IsNaN(shields))
                     {
-                        float roundedTorpedo = (float)unit.GetTorpedoAttack();
+                        float roundedTorpedo = (float)
+                            TacticalCombatFireControl.GetTorpedoAttack(unit);
                         damage = (float)(
                             (double)unit.Hull * roundedTorpedo / unit.MaximumHull + damage
                         );
@@ -201,7 +209,7 @@ namespace Rebellion.Tactical
                 float range = unit.GetWeaponRange(selected.Value, weapon);
                 float scalar = TacticalCombatFireControl.GetRangeScalar(weapon, targetIsFighter);
                 float score = (float)(
-                    unit.GetWeaponRecharge()
+                    TacticalCombatFireControl.GetWeaponRecharge(unit)
                     * scalar
                     * unit.GetWeaponStrength(selected.Value, weapon)
                 );

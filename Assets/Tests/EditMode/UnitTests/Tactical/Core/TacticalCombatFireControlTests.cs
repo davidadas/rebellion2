@@ -139,7 +139,7 @@ namespace Rebellion.Tests.Tactical
                 MaxHullStrength = 1000,
                 CurrentHullStrength = 631,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 137, 0, 0, 0, 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 137, 0, 0, 0, 100 });
             CombatUnit source = new(ship, CombatSide.Attacker, 1);
             CombatUnit target = new(
                 new Starfighter
@@ -219,7 +219,7 @@ namespace Rebellion.Tests.Tactical
                 MaxHullStrength = 1000,
                 CurrentHullStrength = 1000,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 3, 3, 3, 3, 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 3, 3, 3, 3, 100 });
             CombatUnit source = new(ship, CombatSide.Attacker, 1);
             CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
@@ -256,7 +256,7 @@ namespace Rebellion.Tests.Tactical
             fireControl.AcquireTargets(source, group, index, random);
             Assert.AreEqual(1, shots.Count);
 
-            source.RechargeBatteries(1, rechargeNeeded / 2);
+            TacticalCombatFireControl.RechargeBatteries(source, 1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(1, shots.Count);
@@ -265,7 +265,7 @@ namespace Rebellion.Tests.Tactical
                 source.GetBatteryCharge(TacticalWeaponArc.Forward)
             );
 
-            source.RechargeBatteries(1, rechargeNeeded / 2);
+            TacticalCombatFireControl.RechargeBatteries(source, 1, rechargeNeeded / 2);
             fireControl.AcquireTargets(source, group, index, random);
 
             Assert.AreEqual(2, shots.Count);
@@ -373,30 +373,18 @@ namespace Rebellion.Tests.Tactical
                 MaxShieldStrength = shieldLimit,
             };
             ship.SystemDamage.Weapons = weaponDamage;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[]
-            {
-                lasers,
-                lasers,
-                lasers,
-                lasers,
-                100,
-            };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[]
-            {
-                ions,
-                ions,
-                ions,
-                ions,
-                100,
-            };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                turbolasers,
-                turbolasers,
-                turbolasers,
-                turbolasers,
-                100,
-            };
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.LaserCannon,
+                new[] { lasers, lasers, lasers, lasers, 100 }
+            );
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.IonCannon,
+                new[] { ions, ions, ions, ions, 100 }
+            );
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { turbolasers, turbolasers, turbolasers, turbolasers, 100 }
+            );
             return new(ship, CombatSide.Attacker, 1);
         }
 

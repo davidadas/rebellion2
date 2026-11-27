@@ -249,7 +249,7 @@ namespace Rebellion.Tactical
             {
                 CombatUnit unit = _candidates[0];
                 _candidates.RemoveAt(0);
-                int maneuver = (int)unit.GetManeuverability();
+                int maneuver = (int)TacticalCombatMotion.GetManeuverability(unit);
                 if (maneuver < _random.NextInt(1, 11))
                 {
                     _candidateDecayed = true;
@@ -261,7 +261,8 @@ namespace Rebellion.Tactical
                 if (unit.Hull > 0)
                 {
                     float threshold = (float)(
-                        (double)unit.GetTorpedoDamage() + Math.Min(_commandBudget(), 9)
+                        (double)TacticalCombatFireControl.GetTorpedoDamage(unit)
+                        + Math.Min(_commandBudget(), 9)
                     );
                     int roll = _random.NextInt(1, 101);
                     if (roll <= (uint)(threshold * 0.5f))

@@ -190,9 +190,6 @@ namespace Rebellion.Game.Combat
         public BaseSceneNode Unit => _unit;
 
         [PersistableIgnore]
-        public int PresentationIndex { get; internal set; }
-
-        [PersistableIgnore]
         public new string InstanceID
         {
             get => Unit?.InstanceID ?? base.InstanceID;
@@ -226,7 +223,6 @@ namespace Rebellion.Game.Combat
             Unit is Starfighter fighter
                 ? fighter.CurrentSquadronSize * 8
                 : (Unit as CapitalShip)?.CurrentHullStrength ?? 0;
-        public string InitialCarrierID => CarrierSourceUnitInstanceID;
         public float TorpedoRange => (Unit as Starfighter)?.TorpedoRange ?? 0;
         public float TractorRange => (Unit as CapitalShip)?.TractorBeamnRange ?? 0;
         public bool HasGravityWell => Unit is CapitalShip { HasGravityWell: true };
@@ -340,8 +336,21 @@ namespace Rebellion.Game.Combat
         public bool HasHyperdrive => GetDamage(TacticalShipSystem.Hyperdrive) < _hyperdriveCount;
         public double HullFraction => (double)Hull / MaximumHull;
 
-        internal float WeaponRechargeSample => _weaponRecharge;
-        internal float ShieldRechargeSample => _shieldRecharge;
+        internal float WeaponRechargeSample
+        {
+            get => _weaponRecharge;
+            set => _weaponRecharge = value;
+        }
+
+        internal float ShieldRechargeSample
+        {
+            get => _shieldRecharge;
+            set => _shieldRecharge = value;
+        }
+
+        internal float MovementBudget => _movementBudget;
+        internal float TractorPower => _tractorBudget;
+        internal float Maneuverability => _turnBonus;
 
         internal float ShieldLimit
         {
@@ -456,7 +465,7 @@ namespace Rebellion.Game.Combat
 
             Side = side;
             Index = index;
-            CarrierID = InitialCarrierID;
+            CarrierID = CarrierSourceUnitInstanceID;
             InitializeCombatPools(
                 maximumHull,
                 initialHull,
@@ -487,64 +496,11 @@ namespace Rebellion.Game.Combat
                     geometry.HullDepth
                 );
             DesiredHeading = Heading;
-            TurnRate = GetInitialTurnRate();
             Status =
-                IsFighter && InitialCarrierID != null && !HasHyperdrive ? CombatUnitStatus.Docked
+                IsFighter && CarrierSourceUnitInstanceID != null && !HasHyperdrive
+                    ? CombatUnitStatus.Docked
                 : isUnderConstruction ? CombatUnitStatus.UnderConstruction
                 : CombatUnitStatus.Active;
-        }
-
-        /// <summary>
-        /// Calculates the squadron's torpedo attack after entry and battle losses.
-        /// </summary>
-        /// <returns>The torpedo attack strength.</returns>
-        public float GetTorpedoDamage() => (float)GetTorpedoAttack();
-
-        /// <summary>
-        /// Retains the hull-scaled torpedo contribution until its consumer chooses the stored boundary.
-        /// </summary>
-        /// <returns>The live torpedo attack strength after the per-mount scalar store.</returns>
-        internal double GetTorpedoAttack()
-        {
-            float strength = (float)(
-                (double)(
-                    Unit is Starfighter fighter ? fighter.Torpedoes * fighter.MaxSquadronSize : 0
-                ) * 0.53333336f
-            );
-            return (double)Hull * strength / MaximumHull;
-        }
-
-        /// <summary>
-        /// Calculates the current sublight speed after command support and tractor restraint.
-        /// </summary>
-        /// <returns>The available movement speed.</returns>
-        public float GetSpeed()
-        {
-            return GetMovementBudget(CommandBudget, TractorRestraint);
-        }
-
-        /// <summary>
-        /// Calculates the current maneuver rating for turning and incoming fighter attacks.
-        /// </summary>
-        /// <returns>The current maneuver rating.</returns>
-        public float GetManeuverability()
-        {
-            return GetTurnBudget(CommandBudget, TractorRestraint);
-        }
-
-        /// <summary>
-        /// Gets the angular speed selected when the unit entered tactical combat.
-        /// </summary>
-        /// <returns>The angular speed in radians per second.</returns>
-        internal float GetInitialTurnRate()
-        {
-            float budget = GetManeuverability();
-            if (budget <= 1)
-                return 0.2617994f;
-            float rate = (float)((double)1.5707964f * budget * 0.11111111f);
-            if (MaximumTurnRate > 0)
-                rate = Math.Min(rate, MaximumTurnRate);
-            return rate;
         }
 
         /// <summary>
@@ -567,17 +523,14 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Reads the ship's authored batteries or builds them from older weapon ratings.
+        /// Indexes the installed batteries in tactical arc order.
         /// </summary>
         /// <returns>The batteries that supply the live weapon state.</returns>
         private IReadOnlyList<HardpointGroup> GetBatteries()
         {
             HardpointGroup[] groups = new HardpointGroup[4];
-            if (Unit is CapitalShip ship)
+            if (Unit is CapitalShip { HardpointGroups: { } hardpoints })
             {
-                IReadOnlyList<HardpointGroup> hardpoints = ship.HardpointGroups is { Count: > 0 }
-                    ? ship.HardpointGroups
-                    : ship.CaptureLegacyHardpoints();
                 foreach (HardpointGroup group in hardpoints)
                 {
                     int index = (int)group.Arc;
@@ -635,18 +588,27 @@ namespace Rebellion.Game.Combat
             return _batteryReady[(int)arc] == 1;
         }
 
-        /// <summary>
-        /// Restores visible battery charge without admitting a local discharge or recharge.
-        /// </summary>
-        /// <param name="charge">The charge by battery.</param>
-        /// <param name="ready">Whether each battery can fire.</param>
-        internal void ApplyBatteryProjection(float[] charge, bool[] ready)
+        internal int QueuedBatteryCount => _batteryRechargeCount;
+
+        internal TacticalWeaponArc GetQueuedBattery(int index) =>
+            (TacticalWeaponArc)_batteryRechargeOrder[index];
+
+        internal void SetBatteryCharge(TacticalWeaponArc arc, float charge) =>
+            _batteryCharge[(int)arc] = charge;
+
+        internal void SetBatteryCharge(TacticalWeaponArc arc, float charge, bool ready)
         {
-            for (int arc = 0; arc < 4; arc++)
-            {
-                _batteryCharge[arc] = charge[arc];
-                _batteryReady[arc] = ready[arc] ? 1u : 0u;
-            }
+            SetBatteryCharge(arc, charge);
+            _batteryReady[(int)arc] = ready ? 1u : 0u;
+        }
+
+        internal void RemoveQueuedBattery(int index)
+        {
+            for (int shift = index; shift < 3; shift++)
+                _batteryRechargeOrder[shift] = _batteryRechargeOrder[shift + 1];
+            if (_batteryRechargeCount == 4)
+                _batteryRechargeOrder[3] = 0;
+            _batteryRechargeCount--;
         }
 
         /// <summary>
@@ -687,7 +649,7 @@ namespace Rebellion.Game.Combat
         /// <param name="weapon">The weapon type being read or translated.</param>
         /// <returns>The matching weapon range, or zero when absent.</returns>
         public float GetWeaponRange(TacticalWeaponArc arc, TacticalWeaponType weapon) =>
-            Batteries[(int)arc].GetRange(GetMountWeaponType(weapon));
+            (float)Batteries[(int)arc].GetRange(GetMountWeaponType(weapon));
 
         /// <summary>
         /// Maps a tactical discharge to its authored mount category.
@@ -732,45 +694,6 @@ namespace Rebellion.Game.Combat
         }
 
         /// <summary>
-        /// Advances queued batteries using the unit's recharge budget.
-        /// </summary>
-        /// <param name="seconds">The elapsed recharge interval in seconds.</param>
-        /// <param name="rechargeRate">The unit's available recharge per second.</param>
-        public void RechargeBatteries(float seconds, double rechargeRate)
-        {
-            double available = rechargeRate * seconds;
-            for (int order = 0; order < _batteryRechargeCount && available > 0; order++)
-            {
-                int arc = _batteryRechargeOrder[order];
-                float capacity = GetBatteryCapacity((TacticalWeaponArc)arc);
-                double remaining = (double)capacity - _batteryCharge[arc];
-                if (double.IsNaN(remaining) || available < remaining)
-                {
-                    _batteryCharge[arc] = (float)(available + _batteryCharge[arc]);
-                    // Partial fills retain the remaining budget for subsequent batteries.
-                }
-                else
-                {
-                    _batteryCharge[arc] = capacity;
-                    available -= remaining;
-                    _batteryReady[arc] = 1;
-                }
-            }
-
-            for (int order = 0; order < _batteryRechargeCount; order++)
-            {
-                if (_batteryReady[_batteryRechargeOrder[order]] != 1)
-                    continue;
-                for (int shift = order; shift < 3; shift++)
-                    _batteryRechargeOrder[shift] = _batteryRechargeOrder[shift + 1];
-                if (_batteryRechargeCount == 4)
-                    _batteryRechargeOrder[3] = 0;
-                _batteryRechargeCount--;
-                // The shifted entry is revisited during the next recharge pass.
-            }
-        }
-
-        /// <summary>
         /// Adds one battery to the recharge queue if it is not already present.
         /// </summary>
         /// <param name="arc">The zero-based clockwise battery index.</param>
@@ -780,38 +703,6 @@ namespace Rebellion.Game.Combat
                 if (_batteryRechargeOrder[index] == arc)
                     return;
             _batteryRechargeOrder[_batteryRechargeCount++] = arc;
-        }
-
-        /// <summary>
-        /// Restores authoritative visible pools and components without applying damage or requesting repairs.
-        /// </summary>
-        /// <param name="hull">The current hull pool.</param>
-        /// <param name="shields">The current shield pool.</param>
-        /// <param name="shieldLimit">The current shield capacity.</param>
-        /// <param name="attackDelay">The remaining firing delay.</param>
-        /// <param name="movementDelay">The remaining movement delay.</param>
-        /// <param name="weaponRecharge">The retained weapon recharge sample.</param>
-        /// <param name="shieldRecharge">The retained shield recharge sample.</param>
-        /// <param name="componentDamage">Damage by ship system.</param>
-        internal void ApplySystemProjection(
-            float hull,
-            float shields,
-            float shieldLimit,
-            float attackDelay,
-            float movementDelay,
-            float weaponRecharge,
-            float shieldRecharge,
-            uint[] componentDamage
-        )
-        {
-            Hull = hull;
-            Shields = shields;
-            _shieldLimit = shieldLimit;
-            AttackDelay = attackDelay;
-            MovementDelay = movementDelay;
-            _weaponRecharge = weaponRecharge;
-            _shieldRecharge = shieldRecharge;
-            RestoreComponentDamage(componentDamage);
         }
 
         /// <summary>
@@ -911,91 +802,11 @@ namespace Rebellion.Game.Combat
         public float ScaleByHull(float value) => (float)((double)Hull * value / MaximumHull);
 
         /// <summary>
-        /// Gets the weapon recharge available for one second.
-        /// </summary>
-        /// <returns>The weapon recharge budget after hull and component damage.</returns>
-        public double GetWeaponRecharge()
-        {
-            if (IsFighter)
-            {
-                double recharge = (double)Hull * 3.751f / 8.0f;
-                _weaponRecharge = (float)recharge;
-                return recharge;
-            }
-            float scaled = ScaleByHull(_weaponRecharge);
-            double remaining =
-                scaled - (double)_weaponRecharge * 0.25f * GetDamage(TacticalShipSystem.Weapons);
-            return double.IsNaN(remaining) || remaining < 0 ? 0 : remaining;
-        }
-
-        /// <summary>
-        /// Compares live weapon recharge with its stored rate after the getter updates its sample.
-        /// </summary>
-        /// <returns>The recharge ratio, or zero when the stored rate is zero or unordered.</returns>
-        public double GetWeaponRechargeRatio()
-        {
-            if (_weaponRecharge == 0 || float.IsNaN(_weaponRecharge))
-                return 0;
-            double recharge = GetWeaponRecharge();
-            return recharge / _weaponRecharge;
-        }
-
-        /// <summary>
         /// Compares the current shield pool with the current shield limit.
         /// </summary>
         /// <returns>The shield fraction, or zero when its limit is zero or unordered.</returns>
         public double GetShieldFraction() =>
             _shieldLimit == 0 || float.IsNaN(_shieldLimit) ? 0 : (double)Shields / _shieldLimit;
-
-        /// <summary>
-        /// Gets the shield recharge available for one second and updates the fighter's stored sample.
-        /// </summary>
-        /// <returns>The live recharge budget after hull and component damage.</returns>
-        public double GetShieldRecharge()
-        {
-            if (IsFighter)
-            {
-                double recharge = (double)Hull * 0.025f / 8.0f;
-                _shieldRecharge = (float)recharge;
-                return recharge;
-            }
-            float scaled = ScaleByHull(_shieldRecharge);
-            double remaining =
-                scaled - (double)_shieldRecharge * 0.25f * GetDamage(TacticalShipSystem.Shields);
-            return double.IsNaN(remaining) || remaining < 0 ? 0 : remaining;
-        }
-
-        /// <summary>
-        /// Compares live recharge with its current stored rate, retaining the getter's sample update.
-        /// </summary>
-        /// <returns>The recharge ratio, or zero when the stored rate is zero or unordered.</returns>
-        public double GetShieldRechargeRatio()
-        {
-            if (_shieldRecharge == 0 || float.IsNaN(_shieldRecharge))
-                return 0;
-            double recharge = GetShieldRecharge();
-            return recharge / _shieldRecharge;
-        }
-
-        /// <summary>
-        /// Calculates movement after command support, engine damage, and tractor restraint.
-        /// </summary>
-        /// <param name="commandBudget">The side's active command support budget.</param>
-        /// <param name="tractorRestraint">The combined opposing tractor restraint.</param>
-        /// <returns>The nonnegative available movement speed.</returns>
-        public float GetMovementBudget(float commandBudget, float tractorRestraint) =>
-            (float)GetAvailableMovement(commandBudget, tractorRestraint);
-
-        /// <summary>
-        /// Compares live supported movement with the unit's stored engine budget.
-        /// </summary>
-        /// <param name="commandBudget">The side's live command support.</param>
-        /// <param name="tractorRestraint">The ordered sum of retained tractor contributions.</param>
-        /// <returns>The movement ratio, or zero when the stored budget is zero or unordered.</returns>
-        public double GetMovementRatio(double commandBudget, float tractorRestraint) =>
-            _movementBudget == 0 || float.IsNaN(_movementBudget)
-                ? 0
-                : GetAvailableMovement(commandBudget, tractorRestraint) / _movementBudget;
 
         /// <summary>
         /// Compares remaining installed hyperdrives with the complete drive count.
@@ -1008,72 +819,6 @@ namespace Rebellion.Game.Combat
                     _hyperdriveCount
                     - Math.Min(_hyperdriveCount, GetDamage(TacticalShipSystem.Hyperdrive))
                 ) / _hyperdriveCount;
-
-        /// <summary>
-        /// Compares available tractor power with its stored complete-unit budget.
-        /// </summary>
-        /// <returns>The tractor ratio, or zero when the stored budget is zero or unordered.</returns>
-        public double GetTractorRatio() =>
-            _tractorBudget == 0 || float.IsNaN(_tractorBudget)
-                ? 0
-                : GetTractorContribution() / _tractorBudget;
-
-        /// <summary>
-        /// Checks both departure budgets before narrowing movement to a stored single-precision speed.
-        /// </summary>
-        /// <param name="commandBudget">The selected command officer's live movement support.</param>
-        /// <param name="tractorRestraint">The ordered, single-precision sum of retained tractor contributions.</param>
-        /// <returns>Whether installed hyperdrive and available movement budgets are both ordered and nonzero.</returns>
-        internal bool CanEnterHyperspace(double commandBudget, float tractorRestraint) =>
-            HasHyperdrive && GetAvailableMovement(commandBudget, tractorRestraint) > 0;
-
-        /// <summary>
-        /// Calculates available movement without a return-value store between the budget and its eligibility check.
-        /// </summary>
-        /// <param name="commandBudget">The selected command officer's live movement support.</param>
-        /// <param name="tractorRestraint">The ordered sum of retained tractor contributions.</param>
-        /// <returns>The ordered positive budget, or zero when movement is unavailable.</returns>
-        internal double GetAvailableMovement(double commandBudget, float tractorRestraint)
-        {
-            if (MovementDelay != 0 && !float.IsNaN(MovementDelay))
-                return 0;
-            double total = commandBudget + _movementBudget;
-            double consumed = total * 0.25f * GetDamage(TacticalShipSystem.Engines);
-            double remaining = total - (consumed + tractorRestraint);
-            return remaining > 0 ? remaining : 0;
-        }
-
-        /// <summary>
-        /// Calculates the maneuver rating used by turning and fighter damage.
-        /// </summary>
-        /// <param name="commandBudget">The side's active command support budget.</param>
-        /// <param name="tractorRestraint">The combined opposing tractor restraint.</param>
-        /// <returns>The unit's maneuver rating, capped at nine.</returns>
-        public float GetTurnBudget(float commandBudget, float tractorRestraint)
-        {
-            if (GetAvailableMovement(commandBudget, tractorRestraint) == 0)
-                return 1;
-            double value = IsFighter ? (double)_turnBonus + 1 : (double)commandBudget + _turnBonus;
-            return (float)Math.Min(value, 9);
-        }
-
-        /// <summary>
-        /// Calculates the restraint applied by this unit's tractor beam.
-        /// </summary>
-        /// <returns>The tractor restraint after hull and component damage.</returns>
-        public float GetTractorBudget() => (float)GetTractorContribution();
-
-        /// <summary>
-        /// Retains the hull-scaled tractor contribution until it is added to the target's ordered accumulator.
-        /// </summary>
-        /// <returns>The nonnegative contribution after hull and tractor-system damage.</returns>
-        internal double GetTractorContribution()
-        {
-            float scaled = ScaleByHull(_tractorBudget);
-            double remaining =
-                scaled - (double)_tractorBudget * 0.25f * GetDamage(TacticalShipSystem.TractorBeam);
-            return remaining < 0 || double.IsNaN(remaining) ? 0 : remaining;
-        }
 
         /// <summary>
         /// Applies a queued component hit or repair.
@@ -1156,7 +901,7 @@ namespace Rebellion.Game.Combat
         /// Restores the ordered component damage values from persisted battle state.
         /// </summary>
         /// <param name="damage">Damage in tactical system registration order.</param>
-        private void RestoreComponentDamage(uint[] damage)
+        internal void RestoreComponentDamage(uint[] damage)
         {
             for (int system = 0; system < damage.Length; system++)
                 SetDamage((TacticalShipSystem)system, damage[system]);

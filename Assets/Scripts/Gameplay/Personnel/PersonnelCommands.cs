@@ -179,7 +179,17 @@ namespace Rebellion.Gameplay
         {
             if (favoredFaction == null)
                 throw new ArgumentNullException(nameof(favoredFaction));
-            if (shift == 0)
+            string favoredFactionID = favoredFaction.InstanceID;
+            string opposingFactionID = opposingFaction?.InstanceID;
+            if (
+                shift == 0
+                || opposingFaction != null
+                    && (
+                        string.IsNullOrEmpty(favoredFactionID)
+                        || string.IsNullOrEmpty(opposingFactionID)
+                        || favoredFactionID == opposingFactionID
+                    )
+            )
                 return;
 
             foreach (
@@ -188,18 +198,23 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                if (opposingFaction != null)
+                if (!officer.CanBetray)
+                    continue;
+                if (opposingFaction == null)
                 {
-                    officer.TryAdjustBattleLoyalty(
-                        shift,
-                        favoredFaction.InstanceID,
-                        opposingFaction.InstanceID
-                    );
+                    int officerShift =
+                        officer.GetOwnerInstanceID() == favoredFactionID ? shift : -shift;
+                    officer.TryAdjustLoyalty(officerShift);
                     continue;
                 }
-                int officerShift =
-                    officer.GetOwnerInstanceID() == favoredFaction.InstanceID ? shift : -shift;
-                officer.TryAdjustLoyalty(officerShift);
+
+                bool favorsFaction =
+                    officer.RecruitingFactionInstanceIDs.Contains(favoredFactionID)
+                    && !officer.RecruitingFactionInstanceIDs.Contains(opposingFactionID);
+                // The original battle result reads signed 16-bit loyalty and wraps the change
+                // and sum as signed 32-bit integers before applying the normal loyalty bounds.
+                int adjustment = favorsFaction ? shift : unchecked(-shift);
+                officer.TrySetLoyalty(unchecked((short)officer.Loyalty + adjustment));
             }
         }
 

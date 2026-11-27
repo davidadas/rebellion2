@@ -34,7 +34,7 @@ namespace Rebellion.Gameplay
             if (planet == null)
                 return null;
 
-            bool isBlockaded = planet.IsBlockaded(_game);
+            bool isBlockaded = BlockadeQueries.IsBlockaded(_game, planet);
             if (wasBlockaded == isBlockaded)
                 return null;
 

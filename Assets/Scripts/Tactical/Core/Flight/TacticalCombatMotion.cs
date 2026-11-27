@@ -10,6 +10,160 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatMotion
     {
+        /// <summary>
+        /// Calculates the current sublight speed after command support and tractor restraint.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The available movement speed.</returns>
+        internal static float GetSpeed(CombatUnit unit)
+        {
+            return GetMovementBudget(unit, unit.CommandBudget, unit.TractorRestraint);
+        }
+
+        /// <summary>
+        /// Calculates the current maneuver rating for turning and incoming fighter attacks.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The current maneuver rating.</returns>
+        internal static float GetManeuverability(CombatUnit unit)
+        {
+            return GetTurnBudget(unit, unit.CommandBudget, unit.TractorRestraint);
+        }
+
+        /// <summary>
+        /// Gets the angular speed selected when the unit entered tactical combat.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The angular speed in radians per second.</returns>
+        internal static float GetInitialTurnRate(CombatUnit unit)
+        {
+            float budget = GetManeuverability(unit);
+            if (budget <= 1)
+                return 0.2617994f;
+            float rate = (float)((double)1.5707964f * budget * 0.11111111f);
+            if (unit.MaximumTurnRate > 0)
+                rate = Math.Min(rate, unit.MaximumTurnRate);
+            return rate;
+        }
+
+        /// <summary>
+        /// Calculates movement after command support, engine damage, and tractor restraint.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <param name="commandBudget">The side's active command support budget.</param>
+        /// <param name="tractorRestraint">The combined opposing tractor restraint.</param>
+        /// <returns>The nonnegative available movement speed.</returns>
+        internal static float GetMovementBudget(
+            CombatUnit unit,
+            float commandBudget,
+            float tractorRestraint
+        ) => (float)GetAvailableMovement(unit, commandBudget, tractorRestraint);
+
+        /// <summary>
+        /// Compares live supported movement with the unit's stored engine budget.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <param name="commandBudget">The side's live command support.</param>
+        /// <param name="tractorRestraint">The ordered sum of retained tractor contributions.</param>
+        /// <returns>The movement ratio, or zero when the stored budget is zero or unordered.</returns>
+        internal static double GetMovementRatio(
+            CombatUnit unit,
+            double commandBudget,
+            float tractorRestraint
+        ) =>
+            unit.MovementBudget == 0 || float.IsNaN(unit.MovementBudget)
+                ? 0
+                : GetAvailableMovement(unit, commandBudget, tractorRestraint) / unit.MovementBudget;
+
+        /// <summary>
+        /// Checks both departure budgets before narrowing movement to a stored single-precision speed.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <param name="commandBudget">The selected command officer's live movement support.</param>
+        /// <param name="tractorRestraint">The ordered, single-precision sum of retained tractor contributions.</param>
+        /// <returns>Whether installed hyperdrive and available movement budgets are both ordered and nonzero.</returns>
+        internal static bool CanEnterHyperspace(
+            CombatUnit unit,
+            double commandBudget,
+            float tractorRestraint
+        ) => unit.HasHyperdrive && GetAvailableMovement(unit, commandBudget, tractorRestraint) > 0;
+
+        /// <summary>
+        /// Calculates available movement without a return-value store between the budget and its eligibility check.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <param name="commandBudget">The selected command officer's live movement support.</param>
+        /// <param name="tractorRestraint">The ordered sum of retained tractor contributions.</param>
+        /// <returns>The ordered positive budget, or zero when movement is unavailable.</returns>
+        internal static double GetAvailableMovement(
+            CombatUnit unit,
+            double commandBudget,
+            float tractorRestraint
+        )
+        {
+            if (unit.MovementDelay != 0 && !float.IsNaN(unit.MovementDelay))
+                return 0;
+            double total = commandBudget + unit.MovementBudget;
+            double consumed = total * 0.25f * unit.GetDamage(TacticalShipSystem.Engines);
+            double remaining = total - (consumed + tractorRestraint);
+            return remaining > 0 ? remaining : 0;
+        }
+
+        /// <summary>
+        /// Calculates the maneuver rating used by turning and fighter damage.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <param name="commandBudget">The side's active command support budget.</param>
+        /// <param name="tractorRestraint">The combined opposing tractor restraint.</param>
+        /// <returns>The unit's maneuver rating, capped at nine.</returns>
+        internal static float GetTurnBudget(
+            CombatUnit unit,
+            float commandBudget,
+            float tractorRestraint
+        )
+        {
+            if (GetAvailableMovement(unit, commandBudget, tractorRestraint) == 0)
+                return 1;
+            double value = unit.IsFighter
+                ? (double)unit.Maneuverability + 1
+                : (double)commandBudget + unit.Maneuverability;
+            return (float)Math.Min(value, 9);
+        }
+
+        /// <summary>
+        /// Calculates the restraint applied by this unit's tractor beam.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The tractor restraint after hull and component damage.</returns>
+        internal static float GetTractorBudget(CombatUnit unit) =>
+            (float)GetTractorContribution(unit);
+
+        /// <summary>
+        /// Retains the hull-scaled tractor contribution until it is added to the target's ordered accumulator.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The nonnegative contribution after hull and tractor-system damage.</returns>
+        internal static double GetTractorContribution(CombatUnit unit)
+        {
+            float scaled = unit.ScaleByHull(unit.TractorPower);
+            double remaining =
+                scaled
+                - (double)unit.TractorPower
+                    * 0.25f
+                    * unit.GetDamage(TacticalShipSystem.TractorBeam);
+            return remaining < 0 || double.IsNaN(remaining) ? 0 : remaining;
+        }
+
+        /// <summary>
+        /// Compares available tractor power with its stored complete-unit budget.
+        /// </summary>
+        /// <param name="unit">The affected battle unit.</param>
+        /// <returns>The tractor ratio, or zero when the stored budget is zero or unordered.</returns>
+        internal static double GetTractorRatio(CombatUnit unit) =>
+            unit.TractorPower == 0 || float.IsNaN(unit.TractorPower)
+                ? 0
+                : GetTractorContribution(unit) / unit.TractorPower;
+
         private readonly List<CombatUnit> _neighbors = new();
         private readonly List<CombatUnit> _equalHeight = new();
         private float _lower;
@@ -99,7 +253,7 @@ namespace Rebellion.Tactical
         )
         {
             unit.HasCollision = false;
-            float speed = unit.GetSpeed();
+            float speed = GetSpeed(unit);
             if (speed == 0 || float.IsNaN(speed))
                 return;
             Vector3 desired = group.GetMemberMovement(unit, depth, carrier);
@@ -181,7 +335,7 @@ namespace Rebellion.Tactical
                 unit.DesiredHeading
             );
             float threshold = (float)((double)3.1415927f * 0.020833334f);
-            if (unit.GetSpeed() != 0 && elapsed != 0 && turnAngle > threshold)
+            if (GetSpeed(unit) != 0 && elapsed != 0 && turnAngle > threshold)
                 unit.Heading = TacticalCombatGeometry.TurnTowards(
                     unit.Heading,
                     unit.DesiredHeading,
@@ -238,7 +392,7 @@ namespace Rebellion.Tactical
             );
             if (dot < 0.25f || float.IsNaN(dot))
                 dot = 0.25f;
-            double speed = unit.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint);
+            double speed = GetAvailableMovement(unit, unit.CommandBudget, unit.TractorRestraint);
             float distance = (float)(speed * dot * elapsed * 0.001f);
             index.QueryCollision(unit, distance, _neighbors);
             ResolveVerticalBounds(unit);
@@ -275,7 +429,7 @@ namespace Rebellion.Tactical
         {
             float angle = TacticalCombatGeometry.GetHeadingAngle(unit.Heading, unit.DesiredHeading);
             if (
-                unit.GetAvailableMovement(unit.CommandBudget, unit.TractorRestraint) == 0
+                GetAvailableMovement(unit, unit.CommandBudget, unit.TractorRestraint) == 0
                 || angle == 0
                 || float.IsNaN(angle)
                 || elapsed == 0

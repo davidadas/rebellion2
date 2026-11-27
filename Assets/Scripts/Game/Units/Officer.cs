@@ -558,52 +558,20 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="adjustment">The signed amount to apply.</param>
         /// <returns>True when the stored loyalty changed; otherwise false.</returns>
-        public bool TryAdjustLoyalty(int adjustment)
-        {
-            if (!CanBetray || adjustment == 0)
-                return false;
-
-            int adjustedLoyalty = (int)Math.Clamp((long)_loyalty + adjustment, 0L, 100L);
-            if (adjustedLoyalty == _loyalty)
-                return false;
-
-            _loyalty = adjustedLoyalty;
-            return true;
-        }
+        public bool TryAdjustLoyalty(int adjustment) =>
+            adjustment != 0 && TrySetLoyalty((long)_loyalty + adjustment);
 
         /// <summary>
-        /// Applies a battle loyalty change using the existing faction eligibility flags.
-        /// The stored base is read as a signed 16-bit value; negation and addition retain their
-        /// low 32 bits before the result is clamped from zero through one hundred.
+        /// Stores a requested loyalty value within its allowed range when the officer can betray.
         /// </summary>
-        /// <param name="adjustment">The signed change relative to the favored allegiance.</param>
-        /// <param name="favoredFactionID">The combatant favored by the change.</param>
-        /// <param name="opposingFactionID">The other authored combatant.</param>
-        /// <returns>True when the stored loyalty changed; otherwise false.</returns>
-        public bool TryAdjustBattleLoyalty(
-            int adjustment,
-            string favoredFactionID,
-            string opposingFactionID
-        )
+        /// <param name="loyalty">The requested loyalty before clamping.</param>
+        /// <returns>Whether the stored loyalty changed.</returns>
+        internal bool TrySetLoyalty(long loyalty)
         {
-            if (
-                !CanBetray
-                || adjustment == 0
-                || string.IsNullOrEmpty(favoredFactionID)
-                || string.IsNullOrEmpty(opposingFactionID)
-                || favoredFactionID == opposingFactionID
-            )
+            if (!CanBetray)
                 return false;
 
-            bool favorsFaction =
-                RecruitingFactionInstanceIDs.Contains(favoredFactionID)
-                && !RecruitingFactionInstanceIDs.Contains(opposingFactionID);
-            int officerAdjustment = favorsFaction ? adjustment : unchecked(-adjustment);
-            int adjustedLoyalty = Math.Clamp(
-                unchecked((short)_loyalty + officerAdjustment),
-                0,
-                100
-            );
+            int adjustedLoyalty = (int)Math.Clamp(loyalty, 0L, 100L);
             if (adjustedLoyalty == _loyalty)
                 return false;
 

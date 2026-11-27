@@ -234,7 +234,9 @@ namespace Rebellion.Tactical
             float restraint = 0;
             if (_tractorSources.TryGetValue(target, out SortedDictionary<uint, CombatUnit> sources))
                 foreach (CombatUnit source in sources.Values)
-                    restraint = (float)((double)restraint + source.GetTractorContribution());
+                    restraint = (float)(
+                        (double)restraint + TacticalCombatMotion.GetTractorContribution(source)
+                    );
             return restraint;
         }
 

@@ -3003,7 +3003,7 @@ namespace Rebellion.Tests.Tactical
                 TacticalWeaponType.IonCannon => PrimaryWeaponType.IonCannon,
                 _ => PrimaryWeaponType.Turbolaser,
             };
-            ship.PrimaryWeapons[lane] = new[] { 10, 10, 10, 10, 100 };
+            ship.SetPrimaryWeapon(lane, new[] { 10, 10, 10, 10, 100 });
             return CreateSession(ship, CreateShip("b", 1000, 0));
         }
 
@@ -3204,14 +3204,10 @@ namespace Rebellion.Tests.Tactical
                 Maneuverability = 1,
                 WeaponRecharge = strength,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                strength,
-                strength,
-                strength,
-                strength,
-                100,
-            };
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { strength, strength, strength, strength, 100 }
+            );
             return ship;
         }
 
@@ -3234,12 +3230,10 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit first = new(attacker, CombatSide.Attacker, 0)
             {
-                PresentationIndex = 1,
                 Position = new Vector3(0, 0, -40),
             };
             CombatUnit second = new(defender, CombatSide.Defender, 1000000)
             {
-                PresentationIndex = 2,
                 Position = new Vector3(0, 0, 40),
                 Heading = -Vector3.UnitZ,
                 DesiredHeading = -Vector3.UnitZ,

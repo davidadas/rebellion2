@@ -854,7 +854,11 @@ namespace Rebellion.Tactical
             for (int index = 0; index < count; index++)
             {
                 CombatUnit unit = Members[index];
-                if (!unit.IsTargetable || !unit.HasHyperdrive || unit.GetSpeed() == 0)
+                if (
+                    !unit.IsTargetable
+                    || !unit.HasHyperdrive
+                    || TacticalCombatMotion.GetSpeed(unit) == 0
+                )
                     continue;
                 float separation = (float)(-((double)origin - unit.Position.Z) * SideLane.Z);
                 if (IsFighterGroup)

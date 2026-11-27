@@ -171,7 +171,7 @@ namespace Rebellion.Tests.Tactical
         {
             SequenceRandom random = new(10, 1, 1);
             TacticalCombatAttackRun run = CreateRun(1, maneuver: 0, random: random);
-            Assert.AreEqual(1, run.Group.Members[0].GetManeuverability());
+            Assert.AreEqual(1, TacticalCombatMotion.GetManeuverability(run.Group.Members[0]));
             float? hullAtSelection = null;
             random.BeforeDraw = (_, max) =>
             {

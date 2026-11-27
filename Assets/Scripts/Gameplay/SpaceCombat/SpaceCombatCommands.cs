@@ -431,7 +431,7 @@ namespace Rebellion.Gameplay
             result.Tick = _game.CurrentTick;
             result.AttackingUnits = encounter.AttackingUnits;
             result.DefendingUnits = encounter.DefendingUnits;
-            bool wasBlockaded = planet.IsBlockaded(_game);
+            bool wasBlockaded = BlockadeQueries.IsBlockaded(_game, planet.InstanceID);
             List<GameResult> events = ApplyFighterResults(result);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
             if (immediateResult)
@@ -1654,7 +1654,7 @@ namespace Rebellion.Gameplay
             SpaceCombatWithdrawalPlan defenderWithdrawalPlan
         )
         {
-            bool wasBlockaded = result.Planet.IsBlockaded(_game);
+            bool wasBlockaded = BlockadeQueries.IsBlockaded(_game, result.Planet);
             List<GameResult> events = ApplyFighterResults(result);
             CompleteFighterWithdrawal(attackerWithdrawalPlan);
             CompleteFighterWithdrawal(defenderWithdrawalPlan);

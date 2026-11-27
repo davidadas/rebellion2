@@ -246,14 +246,10 @@ namespace Rebellion.Tests.Tactical
                 HasGravityWell = gravityWell,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[]
-            {
-                strength,
-                strength,
-                strength,
-                strength,
-                100,
-            };
+            ship.SetPrimaryWeapon(
+                PrimaryWeaponType.Turbolaser,
+                new[] { strength, strength, strength, strength, 100 }
+            );
             return new CombatUnit(ship, side, index)
             {
                 Position = new Vector3(0, 0, side == CombatSide.Attacker ? -40 : 40),

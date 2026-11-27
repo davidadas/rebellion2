@@ -244,16 +244,15 @@ namespace Rebellion.Gameplay
             SpaceCombatCommandModifiers command
         )
         {
-            double attackStrength = ship.GetPrimaryWeaponTypes()
-                .Sum(weapon =>
-                    ship.GetPrimaryWeaponStrength(weapon)
-                    * GetPrimaryWeaponTargetMultiplier(
-                        weapon,
-                        targetsFighters: false,
-                        config.LaserCannonCapitalDamageMultiplier,
-                        config.TurbolaserFighterDamageMultiplier
-                    )
-                );
+            double attackStrength = CapitalShip.PrimaryWeaponTypes.Sum(weapon =>
+                ship.GetPrimaryWeaponStrength(weapon)
+                * GetPrimaryWeaponTargetMultiplier(
+                    weapon,
+                    targetsFighters: false,
+                    config.LaserCannonCapitalDamageMultiplier,
+                    config.TurbolaserFighterDamageMultiplier
+                )
+            );
             long durability = Math.Max(0L, hullStrength) + Math.Max(0L, ship.MaxShieldStrength);
             // Sustained fire scales with the Admiral's additive weapon-recharge budget.
             double rechargeBonus =

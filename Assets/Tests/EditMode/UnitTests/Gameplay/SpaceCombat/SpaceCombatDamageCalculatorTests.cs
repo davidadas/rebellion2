@@ -26,7 +26,7 @@ namespace Rebellion.Tests.Gameplay
         public void GetDamageRate_FourIdenticalArcs_UsesOneStrongestArc()
         {
             CapitalShip ship = CreateShip(100, recharge: 20);
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 100, 100, 100, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100, 100, 100, 100, 10 });
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 ship,
                 CreateConfig()
@@ -39,9 +39,9 @@ namespace Rebellion.Tests.Gameplay
         public void GetDamageRate_MixedArcs_SelectsByWeightedBankBeforeRechargeNormalization()
         {
             CapitalShip ship = CreateShip(0, recharge: 30);
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 90, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 10, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 0, 20, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 90, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 10, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 0, 20, 0, 0, 10 });
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 ship,
                 CreateConfig()
@@ -54,8 +54,8 @@ namespace Rebellion.Tests.Gameplay
         public void GetDamageRate_EqualWeightedArcs_KeepsTheFirstArc()
         {
             CapitalShip ship = CreateShip(0, recharge: 20);
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 4, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 0, 1, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 4, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 0, 1, 0, 0, 10 });
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 ship,
                 CreateConfig()
@@ -81,8 +81,8 @@ namespace Rebellion.Tests.Gameplay
         public void GetDamageRate_WeaponCategories_RoundTheRunningSumAfterEachContribution()
         {
             CapitalShip ship = CreateShip(1, recharge: 1);
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 1, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 16777216, 0, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 1, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 16777216, 0, 0, 0, 10 });
             GameConfig.SpaceCombatConfig config = CreateConfig();
             config.LaserCannonCapitalDamageMultiplier = 1;
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(ship, config);
@@ -162,8 +162,8 @@ namespace Rebellion.Tests.Gameplay
         public void GetDamageRate_IonWeaponsAgainstFighters_ConsumeBankWithoutDealingDamage()
         {
             CapitalShip ship = CreateShip(0, 20);
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 10, 0, 0, 0, 10 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 30, 0, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 10, 0, 0, 0, 10 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 30, 0, 0, 0, 10 });
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 ship,
                 CreateConfig()
@@ -181,7 +181,11 @@ namespace Rebellion.Tests.Gameplay
                 CreateConfig()
             );
             ship.WeaponRecharge = 200;
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 1000;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                1000
+            );
 
             Assert.AreEqual(20, calculator.GetDamageRate(1, false, 1, true), 1e-5);
         }
@@ -190,14 +194,14 @@ namespace Rebellion.Tests.Gameplay
         public void Constructor_ActivePrimaryCategories_DetermineMaximumRange()
         {
             CapitalShip ship = CreateShip(0, 20);
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 1, 0, 0, 0, 30 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 0, 0, 0, 0, 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 1, 0, 0, 0, 30 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 0, 0, 0, 0, 100 });
             SpaceCombatDamageCalculator calculator = new SpaceCombatDamageCalculator(
                 ship,
                 CreateConfig()
             );
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 0;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 90;
+            ship.SetPrimaryWeaponStrength(PrimaryWeaponType.LaserCannon, PrimaryWeaponArc.Fore, 0);
+            ship.SetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon, 90);
 
             Assert.IsTrue(calculator.HasLasers);
             Assert.IsTrue(calculator.HasWeapons);
@@ -437,7 +441,7 @@ namespace Rebellion.Tests.Gameplay
         private static CapitalShip CreateShip(int weapons, int recharge)
         {
             CapitalShip ship = new CapitalShip { WeaponRecharge = recharge };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { weapons, 0, 0, 0, 10 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { weapons, 0, 0, 0, 10 });
             return ship;
         }
 

@@ -24,7 +24,7 @@ namespace Rebellion.Tests.Tactical
                 SublightSpeed = 1,
                 WeaponRecharge = 1,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 6 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 1, 1, 1, 6 });
             CombatUnit member = new(ship, CombatSide.Attacker, 1);
             CombatUnit target = new(
                 new CapitalShip
@@ -65,7 +65,7 @@ namespace Rebellion.Tests.Tactical
                     CurrentHullStrength = 100,
                     WeaponRecharge = 1,
                 };
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 1, 1, 1, 1, 100 };
+                ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 1, 1, 1, 100 });
                 members[index] = new CombatUnit(ship, CombatSide.Attacker, index + 1);
             }
             CombatUnit target = new(
@@ -230,7 +230,7 @@ namespace Rebellion.Tests.Tactical
 
             group.GetAttackRate(target);
 
-            Assert.AreEqual(0, fighter.GetWeaponRechargeRatio());
+            Assert.AreEqual(0, TacticalCombatFireControl.GetWeaponRechargeRatio(fighter));
         }
 
         [Test]
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Tactical
                 MaxHullStrength = 100,
                 CurrentHullStrength = 100,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = weapons;
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, weapons);
             return new CombatUnit(ship, CombatSide.Attacker, id);
         }
 

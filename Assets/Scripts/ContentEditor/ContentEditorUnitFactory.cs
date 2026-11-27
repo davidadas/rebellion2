@@ -135,7 +135,15 @@ internal static class ContentEditorUnitFactory
                     new XElement("CanDestroyPlanets", false),
                     new XElement("Roles"),
                     new XElement("ShipNamePoolID"),
-                    Serialize("PrimaryWeapons", new CapitalShip().PrimaryWeapons)
+                    Serialize(
+                        "PrimaryWeapons",
+                        Enum.GetValues(typeof(PrimaryWeaponType))
+                            .Cast<PrimaryWeaponType>()
+                            .ToDictionary(
+                                weapon => weapon,
+                                _ => new int[CapitalShip.PrimaryWeaponRangeIndex + 1]
+                            )
+                    )
                 );
                 break;
             case "Regiment":

@@ -6,10 +6,10 @@ using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 
-namespace Rebellion.Tests.Game.SpaceCombat
+namespace Rebellion.Tests.Gameplay
 {
     [TestFixture]
-    public sealed class SpaceCombatBlockadeRulesTests
+    public sealed class BlockadeQueriesTests
     {
         private GameRoot _game;
         private GameSession _session;
@@ -60,8 +60,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
         [Test]
         public void IsBlockaded_ReadyDirectFriendlyFighter_SuppressesHostileFleet()
         {
-            Assert.IsFalse(_planet.IsBlockaded(_game));
-            Assert.IsFalse(_planet.IsBlockadedFor("alpha", _game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
+            Assert.IsFalse(BlockadeQueries.IsBlockadedFor(_game, _planet, "alpha"));
         }
 
         [Test]
@@ -70,7 +70,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.DeleteNode(_enemyFleet);
             _game.ChangeOwnership(_fighter, "beta");
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase(false)]
@@ -79,11 +79,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.ChangeOwnership(_planet, null);
             _planet.IsColonized = populated;
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
 
             _game.DeleteNode(_fighter);
 
-            Assert.AreEqual(populated, _planet.IsBlockaded(_game));
+            Assert.AreEqual(populated, BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.DeleteNode(_fighter);
             AddCapital(AddFleet("alpha"));
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase(null)]
@@ -106,7 +106,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _planet.OwnerInstanceID = owner;
             AddCapital(AddFleet(null));
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase("fleet")]
@@ -132,7 +132,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     break;
             }
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase(false, ManufacturingStatus.Complete, false)]
@@ -149,7 +149,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _fighter.ManufacturingStatus = status;
             _fighter.Movement = moving ? new MovementState() : null;
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -160,7 +160,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             ownFleet.Movement = new MovementState();
             _game.MoveNode(_fighter, carrier);
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -168,21 +168,21 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _enemyShip.CurrentHullStrength = 0;
             _fighter.CurrentSquadronSize = 0;
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
 
             _game.DeleteNode(_fighter);
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
         public void IsBlockaded_FighterDepartsAndReturns_ReadsCurrentOrbit()
         {
             _fighter.Movement = new MovementState();
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
 
             _fighter.Movement = null;
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase("add")]
@@ -215,14 +215,14 @@ namespace Rebellion.Tests.Game.SpaceCombat
                     factions[1] = null;
                     break;
             }
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
 
             factions.Clear();
             first.InstanceID = "alpha";
             second.InstanceID = "beta";
             factions.Add(first);
             factions.Add(second);
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [TestCase("alpha", "gamma")]
@@ -235,7 +235,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.ConfigureBlockadeFactions(new[] { first, second });
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -243,7 +243,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.GetFactions().Reverse();
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -251,7 +251,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _planet.OwnerInstanceID = "unknown-owner";
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -259,8 +259,8 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             Planet copy = (Planet)_planet.CreateCopy(recursive: true);
 
-            Assert.IsTrue(copy.IsBlockaded(_game));
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, copy));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -268,11 +268,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             PlanetSector parent = _planet.GetParentOfType<PlanetSector>();
             _game.DetachNode(_planet);
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
 
             _game.AttachNode(_planet, parent);
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -280,7 +280,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.Galaxy = new GalaxyMap();
 
-            Assert.IsTrue(_planet.IsBlockaded(_game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -288,7 +288,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
         {
             _game.RebuildSceneState();
 
-            Assert.IsFalse(_planet.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.Game.SpaceCombat
             _game.MoveNode(_enemyFleet, next);
             _game.MoveNode(_fighter, next);
 
-            Assert.IsFalse(next.IsBlockaded(_game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, next));
         }
 
         [Test]
@@ -314,11 +314,11 @@ namespace Rebellion.Tests.Game.SpaceCombat
                 SerializationHelper.Serialize(_game)
             );
             Planet restoredPlanet = restored.GetSceneNodeByInstanceID<Planet>(_planet.InstanceID);
-            Assert.IsTrue(restoredPlanet.IsBlockaded(restored));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(restored, restoredPlanet));
 
             using GameSession runtime = new(restored, _catalog);
 
-            Assert.IsFalse(restoredPlanet.IsBlockaded(restored));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(restored, restoredPlanet));
         }
 
         /// <summary>

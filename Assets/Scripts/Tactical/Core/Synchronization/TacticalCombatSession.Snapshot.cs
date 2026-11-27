@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical.Synchronization;
 
 namespace Rebellion.Tactical
@@ -196,17 +197,16 @@ namespace Rebellion.Tactical
             unit.DesiredMovement = state.DesiredMovement.ToVector();
             unit.Status = state.Status;
             unit.CarrierID = string.IsNullOrEmpty(state.CarrierID) ? null : state.CarrierID;
-            unit.ApplySystemProjection(
-                state.Hull,
-                state.Shields,
-                state.ShieldLimit,
-                state.AttackDelay,
-                state.MovementDelay,
-                state.WeaponRechargeSample,
-                state.ShieldRechargeSample,
-                state.ComponentDamage
-            );
-            unit.ApplyBatteryProjection(state.Charge, state.Ready);
+            unit.Hull = state.Hull;
+            unit.Shields = state.Shields;
+            unit.ShieldLimit = state.ShieldLimit;
+            unit.AttackDelay = state.AttackDelay;
+            unit.MovementDelay = state.MovementDelay;
+            unit.WeaponRechargeSample = state.WeaponRechargeSample;
+            unit.ShieldRechargeSample = state.ShieldRechargeSample;
+            unit.RestoreComponentDamage(state.ComponentDamage);
+            for (int arc = 0; arc < 4; arc++)
+                unit.SetBatteryCharge((TacticalWeaponArc)arc, state.Charge[arc], state.Ready[arc]);
             unit.HyperspaceMilliseconds = state.HyperspaceMilliseconds;
             unit.TractorRestraint = state.TractorRestraint;
             unit.HasTractorSources = state.HasTractorSources;
