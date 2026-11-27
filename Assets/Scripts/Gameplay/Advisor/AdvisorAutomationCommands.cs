@@ -93,7 +93,8 @@ namespace Rebellion.Gameplay
                 destination == null
                 || template == null
                 || producer == null
-                || template.MaintenanceCost > faction.GetProjectedMaintenanceHeadroom(_game)
+                || template.MaintenanceCost
+                    > ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, faction)
             )
                 return false;
 
@@ -142,7 +143,7 @@ namespace Rebellion.Gameplay
             {
                 if (
                     !planet.IsPopulated()
-                    || planet.IsBlockaded(_game)
+                    || BlockadeQueries.IsBlockaded(_game, planet)
                     || planet.GetParentOfType<PlanetSector>() == null
                 )
                     continue;
@@ -266,7 +267,7 @@ namespace Rebellion.Gameplay
 
             List<Planet> eligibleProducers = controlledPlanets
                 .Where(planet =>
-                    !planet.IsBlockaded(_game)
+                    !BlockadeQueries.IsBlockaded(_game, planet)
                     && !planet.IsInUprising
                     && !planet.IsManufacturingReserved(ManufacturingType.Troop)
                     && planet.GetIdleManufacturingFacilities(ManufacturingType.Troop) > 0

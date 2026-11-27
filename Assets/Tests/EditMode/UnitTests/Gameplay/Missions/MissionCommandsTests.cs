@@ -341,7 +341,7 @@ namespace Rebellion.Tests.Gameplay
                 game.AttachNode(fleet, target);
                 game.AttachNode(ship, fleet);
             }
-            Assert.AreEqual(blockaded, target.IsBlockadedFor("empire"));
+            Assert.AreEqual(blockaded, BlockadeQueries.IsBlockadedFor(null, target, "empire"));
             SetFoilTable(game, new Dictionary<int, int> { { -1000, 100 } });
             SetEvasionTable(game, new Dictionary<int, int> { { -1000, 0 } });
             List<GameResult> results = new List<GameResult>();
@@ -1414,7 +1414,7 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, blockadedPlanet));
             Assert.AreEqual(
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
@@ -1458,7 +1458,7 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, blockadedPlanet));
             Assert.AreEqual(
                 MissionOutcome.Failed,
                 results.OfType<MissionCompletedResult>().Single().Outcome
@@ -1491,7 +1491,7 @@ namespace Rebellion.Tests.Gameplay
 
             List<GameResult> results = system.ProcessMissionTick(game);
 
-            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, blockadedPlanet));
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual("rebels", officer.CaptorInstanceID);
             Assert.AreSame(missionPlanet, officer.GetParent());

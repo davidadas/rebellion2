@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Gameplay
@@ -55,7 +56,21 @@ namespace Rebellion.Gameplay
         /// <param name="capitalShips">The capital ships or their snapshots.</param>
         /// <param name="ownerInstanceId">The faction authorized to form the fleet.</param>
         /// <returns>The attached fleet, or null when the selection is invalid.</returns>
-        public Fleet CreateFleet(IReadOnlyList<CapitalShip> capitalShips, string ownerInstanceId)
+        public Fleet CreateFleet(IReadOnlyList<CapitalShip> capitalShips, string ownerInstanceId) =>
+            CreateFleet(capitalShips, ownerInstanceId, null);
+
+        /// <summary>
+        /// Forms a fleet and records the result after the selected ships have been reassigned.
+        /// </summary>
+        /// <param name="capitalShips">The capital ships or their snapshots.</param>
+        /// <param name="ownerInstanceId">The faction authorized to form the fleet.</param>
+        /// <param name="results">The gameplay operation's result collection, when supplied.</param>
+        /// <returns>The attached fleet, or null when the selection is invalid.</returns>
+        internal Fleet CreateFleet(
+            IReadOnlyList<CapitalShip> capitalShips,
+            string ownerInstanceId,
+            ICollection<GameResult> results
+        )
         {
             if (
                 capitalShips == null
@@ -108,6 +123,7 @@ namespace Rebellion.Gameplay
             foreach (Fleet sourceFleet in sourceFleets.Distinct())
                 RemoveEmptyFleet(sourceFleet);
 
+            results?.Add(new FleetFormedResult { Fleet = fleet, Tick = _game.CurrentTick });
             return fleet;
         }
 
@@ -161,5 +177,13 @@ namespace Rebellion.Gameplay
                 ? null
                 : _game.GetSceneNodeByInstanceID<Planet>(planet.InstanceID);
         }
+    }
+
+    /// <summary>
+    /// Selected ships were regrouped into a new fleet at their current planet.
+    /// </summary>
+    internal sealed class FleetFormedResult : GameResult
+    {
+        public Fleet Fleet { get; set; }
     }
 }

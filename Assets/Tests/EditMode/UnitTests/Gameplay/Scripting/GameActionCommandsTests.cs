@@ -1294,7 +1294,7 @@ namespace Rebellion.Tests.Gameplay.Scripting
 
             List<GameResult> results = action.Execute(game);
 
-            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, planet));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, blockade.Planet);
             Assert.IsNull(blockade.BlockadingFleet);

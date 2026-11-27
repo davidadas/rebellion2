@@ -235,7 +235,8 @@ namespace Rebellion.Tests.AI.Phases
 
             CollectionAssert.AreEquivalent(
                 new[] { firstOfficer, secondOfficer },
-                game.GetSceneNodesByType<ResearchMission>(mission =>
+                game.GetSceneNodesByType<ResearchMission>()
+                    .Where(mission =>
                         mission.OwnerInstanceID == faction.InstanceID
                         && mission.Discipline == discipline
                     )

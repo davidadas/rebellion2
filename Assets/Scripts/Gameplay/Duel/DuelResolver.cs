@@ -219,7 +219,14 @@ namespace Rebellion.Gameplay
             if (evadedCapture || encountered.IsKilled)
                 return false;
 
-            if (!encountered.TryCapture(opposing.OwnerInstanceID, _game, _random))
+            if (
+                !encountered.TryCapture(
+                    opposing.OwnerInstanceID,
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _random
+                )
+            )
                 return false;
 
             reactions.Add(
