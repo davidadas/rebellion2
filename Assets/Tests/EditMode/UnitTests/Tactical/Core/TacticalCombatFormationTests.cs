@@ -373,17 +373,24 @@ namespace Rebellion.Tests.Tactical
         /// Captures a mobile unit with one unit of movement budget and a deterministic recovery phase.
         /// </summary>
         /// <returns>The captured tactical unit.</returns>
-        private static CombatUnit CreateUnit() =>
-            new(
+        private static CombatUnit CreateUnit()
+        {
+            CombatUnit unit = CombatUnit.Create(
                 new CapitalShip
                 {
                     InstanceID = "ship",
                     MaxHullStrength = 100,
                     CurrentHullStrength = 100,
-                },
+                }
+            );
+            TacticalCombatDeployment.InitializeUnit(
+                unit,
+                new TacticalCombatUnitDefinition(),
                 CombatSide.Attacker,
                 1
             );
+            return unit;
+        }
 
         /// <summary>
         /// Creates a stationary formation whose unit has completed its first collision recovery request.
