@@ -13,13 +13,16 @@ namespace Rebellion.Analyzers
     {
         public const string GameRootDiagnosticId = "REB0013";
         public const string CallbackDiagnosticId = "REB0014";
+        public const string GameplayDependencyDiagnosticId = "REB0015";
 
         private const string _gameDirectory = "/Assets/Scripts/Game/";
+        private const string _gameplayDirectory = "/Assets/Scripts/Gameplay/";
+        private const string _gameplayAssemblyName = "Rebellion.Gameplay";
 
         private static readonly DiagnosticDescriptor _gameRootRule = new(
             GameRootDiagnosticId,
             "Restrict GameRoot references in the game model",
-            "Game model code may only reference GameRoot in missions or game events",
+            "Game model code may only reference GameRoot in missions or game events. Move operations that need GameRoot into a gameplay command or query.",
             "Architecture",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
@@ -27,15 +30,24 @@ namespace Rebellion.Analyzers
 
         private static readonly DiagnosticDescriptor _callbackRule = new(
             CallbackDiagnosticId,
-            "Keep native events and delegates out of the game model",
-            "Game model code must not use native C# events or delegate callbacks",
+            "Keep callbacks out of the game model",
+            "Game model code must not use native C# events, delegate callbacks, or System.IObserver<T>. Publish a GameResult from gameplay and subscribe through GameResultBus.",
+            "Architecture",
+            DiagnosticSeverity.Error,
+            isEnabledByDefault: true
+        );
+
+        private static readonly DiagnosticDescriptor _gameplayDependencyRule = new(
+            GameplayDependencyDiagnosticId,
+            "Keep Gameplay dependencies out of the game model",
+            "Game model code references Gameplay type '{0}'. Put gameplay calls in a Gameplay command or query and pass values into the model.",
             "Architecture",
             DiagnosticSeverity.Error,
             isEnabledByDefault: true
         );
 
         public override ImmutableArray<DiagnosticDescriptor> SupportedDiagnostics =>
-            ImmutableArray.Create(_gameRootRule, _callbackRule);
+            ImmutableArray.Create(_gameRootRule, _callbackRule, _gameplayDependencyRule);
 
         /// <summary>
         /// Registers analysis for game model source files.
@@ -71,6 +83,9 @@ namespace Rebellion.Analyzers
             INamedTypeSymbol gameRoot = allowsGameRoot
                 ? null
                 : model.Compilation.GetTypeByMetadataName("Rebellion.Game.GameRoot");
+            INamedTypeSymbol observer = model.Compilation.GetTypeByMetadataName(
+                "System.IObserver`1"
+            );
 
             foreach (
                 SyntaxNode node in model
@@ -114,7 +129,7 @@ namespace Rebellion.Analyzers
                             ReportCallback(context, argument.Expression.GetLocation());
                         break;
                     case SimpleNameSyntax name when name.Parent is not NameEqualsSyntax:
-                        AnalyzeName(context, name, gameRoot);
+                        AnalyzeName(context, name, gameRoot, observer);
                         break;
                 }
             }
@@ -132,15 +147,17 @@ namespace Rebellion.Analyzers
                 is { Name: "System", ContainingNamespace.IsGlobalNamespace: true };
 
         /// <summary>
-        /// Reports forbidden types and references to GameRoot members.
+        /// Reports prohibited type and member references from the game model.
         /// </summary>
         /// <param name="context">The file and semantic model being analyzed.</param>
         /// <param name="name">The source name to resolve.</param>
         /// <param name="gameRoot">The prohibited type, when the file is subject to the rule.</param>
+        /// <param name="observer">The framework observer interface definition.</param>
         private static void AnalyzeName(
             SemanticModelAnalysisContext context,
             SimpleNameSyntax name,
-            INamedTypeSymbol gameRoot
+            INamedTypeSymbol gameRoot,
+            INamedTypeSymbol observer
         )
         {
             SemanticModel model = context.SemanticModel;
@@ -148,6 +165,16 @@ namespace Rebellion.Analyzers
             ITypeSymbol type = symbol as ITypeSymbol;
             if (name is IdentifierNameSyntax { IsVar: true })
                 type ??= model.GetTypeInfo(name, context.CancellationToken).Type;
+
+            INamedTypeSymbol referencedType = type as INamedTypeSymbol ?? symbol?.ContainingType;
+            if (referencedType != null && IsGameplayType(referencedType))
+                context.ReportDiagnostic(
+                    Diagnostic.Create(
+                        _gameplayDependencyRule,
+                        name.GetLocation(),
+                        referencedType.ToDisplayString(SymbolDisplayFormat.CSharpErrorMessageFormat)
+                    )
+                );
 
             if (
                 gameRoot != null
@@ -163,6 +190,10 @@ namespace Rebellion.Analyzers
                 || type?.SpecialType
                     is SpecialType.System_Delegate
                         or SpecialType.System_MulticastDelegate
+                || (
+                    type is INamedTypeSymbol namedType
+                    && SymbolEqualityComparer.Default.Equals(namedType.OriginalDefinition, observer)
+                )
             )
             {
                 if (
@@ -172,6 +203,20 @@ namespace Rebellion.Analyzers
                     ReportCallback(context, name.GetLocation());
             }
         }
+
+        /// <summary>
+        /// Identifies Gameplay types in a source-only lint project or a referenced assembly.
+        /// </summary>
+        /// <param name="type">The referenced type or the declaring type of a referenced member.</param>
+        /// <returns>Whether the type belongs to Gameplay.</returns>
+        private static bool IsGameplayType(INamedTypeSymbol type) =>
+            type.ContainingAssembly?.Name == _gameplayAssemblyName
+            || type.DeclaringSyntaxReferences.Any(declaration =>
+                ("/" + declaration.SyntaxTree.FilePath.Replace('\\', '/')).IndexOf(
+                    _gameplayDirectory,
+                    StringComparison.OrdinalIgnoreCase
+                ) >= 0
+            );
 
         /// <summary>
         /// Identifies uses of root members even when the receiver has an inferred type.
@@ -209,7 +254,7 @@ namespace Rebellion.Analyzers
         }
 
         /// <summary>
-        /// Reports an event or delegate callback at its source location.
+        /// Reports a prohibited callback at its source location.
         /// </summary>
         /// <param name="context">The file and semantic model being analyzed.</param>
         /// <param name="location">The source location to report.</param>

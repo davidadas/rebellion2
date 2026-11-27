@@ -63,7 +63,6 @@ namespace Rebellion.Gameplay
             && (
                 GetService<MovementCommands>().HasPendingResults
                 || GetService<ManufacturingCommands>().HasPendingResults
-                || GetService<PlanetNotificationObserver>().HasPendingChanges
             );
 
         private bool HasPendingOwnershipChanges =>

@@ -482,7 +482,6 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
-            MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
             IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
             if (successfulParticipant == null)
@@ -500,7 +499,7 @@ namespace Rebellion.Game.Missions
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            results.Add(BuildCompletedResult(outcome, game));
             return results;
         }
 
@@ -1337,7 +1336,9 @@ namespace Rebellion.Game.Missions
                     ? skillProbability
                     : 0;
             GameConfig.UprisingConfig config = game.Config.Uprising;
-            Planet projection = state.GetSupportProjection(
+            IReadOnlyDictionary<string, int> projectedSupport = UprisingMissionSupport.Project(
+                game,
+                planet,
                 controller,
                 config.InciteMissionSupportShift
             );
@@ -1346,8 +1347,14 @@ namespace Rebellion.Game.Missions
             for (int losses = 0; losses < 3; losses++)
             {
                 if (
-                    GetProjectedController(game, projection, state, controller.InstanceID, losses)
-                    != opponent
+                    GetProjectedController(
+                        game,
+                        planet,
+                        state,
+                        controller.InstanceID,
+                        losses,
+                        projectedSupport
+                    ) != opponent
                 )
                     completionMask |= 1 << losses;
             }
@@ -1381,17 +1388,19 @@ namespace Rebellion.Game.Missions
         /// Resolves projected control after controller losses without rebuilding regiment collections.
         /// </summary>
         /// <param name="game">The game supplying factions and control configuration.</param>
-        /// <param name="planet">The projected planet support and colonization state.</param>
+        /// <param name="planet">The observed planet and colonization state.</param>
         /// <param name="state">The captured garrison assessment.</param>
         /// <param name="losingOwner">The owner whose regiments may be destroyed.</param>
         /// <param name="losses">The maximum regiment losses.</param>
+        /// <param name="projectedSupport">The support values after the hypothetical shift.</param>
         /// <returns>The projected controlling faction identifier.</returns>
         private static string GetProjectedController(
             GameRoot game,
             Planet planet,
             MissionEvaluationState state,
             string losingOwner,
-            int losses
+            int losses,
+            IReadOnlyDictionary<string, int> projectedSupport = null
         )
         {
             IReadOnlyList<string> owners = state.GetGarrisonOwners();
@@ -1416,7 +1425,8 @@ namespace Rebellion.Game.Missions
                     game.GetFactions(),
                     game.Config?.SupportShift,
                     ownerCount,
-                    soleOwner
+                    soleOwner,
+                    projectedSupport
                 )
                 ?.InstanceID;
         }
@@ -3214,31 +3224,39 @@ namespace Rebellion.Game.Missions
             int successes = 0;
             for (int roll = 0; roll <= config.SubdueOwnedSupportRange; roll++)
             {
-                Planet projection = state.GetSupportProjection(
+                IReadOnlyDictionary<string, int> projectedSupport = UprisingMissionSupport.Project(
+                    game,
+                    planet,
                     faction,
                     config.SubdueOwnedSupportBase + roll
                 );
-                string owner = !projection.IsColonized
+                string owner = !planet.IsColonized
                     ? (
-                        state.GetGarrisonCount(projection.OwnerInstanceID) > 0
-                            ? projection.OwnerInstanceID
+                        state.GetGarrisonCount(planet.OwnerInstanceID) > 0
+                            ? planet.OwnerInstanceID
                             : null
                     )
-                    : projection
-                        .ResolveController(game.GetFactions(), game.Config?.SupportShift, owners)
+                    : planet
+                        .ResolveController(
+                            game.GetFactions(),
+                            game.Config?.SupportShift,
+                            owners,
+                            projectedSupport
+                        )
                         ?.InstanceID;
                 if (owner != planet.OwnerInstanceID)
                 {
                     successes++;
                     continue;
                 }
-                if (string.IsNullOrEmpty(owner) || !projection.IsPopulated())
+                if (string.IsNullOrEmpty(owner) || !planet.IsPopulated())
                     continue;
                 if (
                     state.GetGarrisonCount(owner)
-                    >= projection.GetNormalGarrisonRequirement(
+                    >= planet.GetNormalGarrisonRequirement(
                         game.GetFactionByOwnerInstanceID(owner),
-                        game.Config.AI.Garrison
+                        game.Config.AI.Garrison,
+                        projectedSupport.GetValueOrDefault(owner)
                     )
                 )
                     successes++;
@@ -3246,6 +3264,38 @@ namespace Rebellion.Game.Missions
             probability = successes / (config.SubdueOwnedSupportRange + 1d);
             state.CacheOutcomeProbability(ConfigKey, OwnerInstanceID, 0, probability);
             return skillProbability * probability;
+        }
+    }
+
+    /// <summary>
+    /// Projects the popular support values used by uprising missions.
+    /// </summary>
+    internal static class UprisingMissionSupport
+    {
+        /// <summary>
+        /// Applies a hypothetical shift to a copy of the observed support percentages.
+        /// </summary>
+        /// <param name="game">The campaign supplying faction order and support rules.</param>
+        /// <param name="planet">The observed planet whose support is projected.</param>
+        /// <param name="faction">The faction whose support shifts.</param>
+        /// <param name="shift">The signed support adjustment.</param>
+        /// <returns>The projected support by faction.</returns>
+        internal static IReadOnlyDictionary<string, int> Project(
+            GameRoot game,
+            Planet planet,
+            Faction faction,
+            int shift
+        )
+        {
+            Dictionary<string, int> support = new(planet.PopularSupport);
+            planet.ApplyPopularSupportShift(
+                support,
+                faction,
+                shift,
+                game.GetFactions(),
+                game.Config?.SupportShift
+            );
+            return support;
         }
     }
 }

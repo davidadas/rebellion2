@@ -31,7 +31,26 @@ namespace Rebellion.Analyzers.Tests
                 public static Rebellion.Game.GameRoot Game => new();
                 public static event System.EventHandler Changed;
                 public static System.Action GetCallback() => () => { };
+                public static System.IObserver<int> GetObserver() => null;
                 public static void Register(System.Action callback) { }
+            }
+            """;
+
+        private const string _gameplaySource = """
+            namespace Rebellion.Gameplay
+            {
+                public sealed class PlanetQueries
+                {
+                    public static int Read() => 0;
+                }
+            }
+
+            namespace PlanetExtensions
+            {
+                public static class SupportExtensions
+                {
+                    public static int Forecast(this int support) => support;
+                }
             }
             """;
 
@@ -114,7 +133,10 @@ namespace Rebellion.Analyzers.Tests
         [TestCase(
             "void StopListening() { Runtime.Changed -= Handle; } void Handle(object sender, System.EventArgs args) { }"
         )]
-        public async Task NativeCallback_InGameDirectory_ReportsDiagnosticAsync(string member)
+        [TestCase("System.IObserver<Unit> SupportObserver { get; set; }")]
+        [TestCase("global::System.IObserver<int>[] _observers;")]
+        [TestCase("void Inspect() { var observer = Runtime.GetObserver(); }")]
+        public async Task Callback_InGameDirectory_ReportsDiagnosticAsync(string member)
         {
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
                 $"class Unit {{ {member} }}",
@@ -127,12 +149,112 @@ namespace Rebellion.Analyzers.Tests
             );
         }
 
+        [Test]
+        public async Task Observer_AliasedInGameDirectory_ReportsBothReferencesAsync()
+        {
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
+                "using Listener = System.IObserver<int>; class Unit { Listener _observer; }",
+                _modelPath
+            );
+
+            Assert.AreEqual(2, diagnostics.Length);
+            Assert.IsTrue(
+                diagnostics.All(diagnostic =>
+                    diagnostic.Id == GameModelBoundaryAnalyzer.CallbackDiagnosticId
+                )
+            );
+        }
+
+        [Test]
+        public async Task Observer_SameNamedInterface_IsAllowedAsync()
+        {
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
+                "interface IObserver<T> { } class Unit { IObserver<int> _observer; }",
+                _modelPath
+            );
+
+            Assert.IsEmpty(diagnostics);
+        }
+
+        [TestCase("Units/Unit.cs")]
+        [TestCase("Missions/Mission.cs")]
+        [TestCase("GameEvents/GameEvent.cs")]
+        [TestCase("Scripting/GameTrigger.cs")]
+        public async Task GameplayType_InGameDirectory_ReportsDependencyAsync(string file)
+        {
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
+                "class Unit { Rebellion.Gameplay.PlanetQueries _queries; }",
+                "Assets/Scripts/Game/" + file
+            );
+
+            Assert.AreEqual(
+                GameModelBoundaryAnalyzer.GameplayDependencyDiagnosticId,
+                diagnostics.Single().Id
+            );
+        }
+
+        [TestCase(
+            "using PlanetExtensions; class Unit { int Read(int support) => support.Forecast(); }",
+            "Forecast"
+        )]
+        [TestCase(
+            "using static Rebellion.Gameplay.PlanetQueries; class Unit { int Value => Read(); }",
+            "Read"
+        )]
+        [TestCase(
+            "using Queries = Rebellion.Gameplay.PlanetQueries; class Unit { int Value => Queries.Read(); }",
+            "Read"
+        )]
+        public async Task GameplayCall_InGameDirectory_ReportsMemberAsync(
+            string source,
+            string member
+        )
+        {
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(source, _modelPath);
+
+            Assert.That(
+                diagnostics.Any(diagnostic =>
+                    diagnostic.Id == GameModelBoundaryAnalyzer.GameplayDependencyDiagnosticId
+                    && source.Substring(
+                        diagnostic.Location.SourceSpan.Start,
+                        diagnostic.Location.SourceSpan.Length
+                    ) == member
+                ),
+                Is.True
+            );
+        }
+
+        [Test]
+        public async Task GameplayType_InReferencedAssembly_ReportsDependencyAsync()
+        {
+            CSharpCompilation gameplayAssembly = CSharpCompilation.Create(
+                "Rebellion.Gameplay",
+                new[]
+                {
+                    CSharpSyntaxTree.ParseText("namespace Compiled { public class Query { } }"),
+                },
+                new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) },
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+            );
+
+            ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
+                "class Unit { Compiled.Query _query; }",
+                _modelPath,
+                gameplayAssembly.ToMetadataReference()
+            );
+
+            Assert.AreEqual(
+                GameModelBoundaryAnalyzer.GameplayDependencyDiagnosticId,
+                diagnostics.Single().Id
+            );
+        }
+
         [TestCase("Assets/Scripts/Gameplay/Command.cs")]
         [TestCase("Assets/Scripts/GameTools/Unit.cs")]
         public async Task ArchitectureRules_OutsideGameDirectory_AllowsReferencesAsync(string path)
         {
             ImmutableArray<Diagnostic> diagnostics = await AnalyzeAsync(
-                "class Unit { Rebellion.Game.GameRoot _game; event System.Action Changed; }",
+                "class Unit { Rebellion.Game.GameRoot _game; event System.Action Changed; System.IObserver<int> _observer; Rebellion.Gameplay.PlanetQueries _queries; }",
                 path
             );
 
@@ -155,10 +277,12 @@ namespace Rebellion.Analyzers.Tests
         /// </summary>
         /// <param name="source">The C# source to analyze.</param>
         /// <param name="path">The file path used to scope the rules.</param>
+        /// <param name="references">Additional assemblies referenced by the source.</param>
         /// <returns>The analyzer diagnostics.</returns>
         private static async Task<ImmutableArray<Diagnostic>> AnalyzeAsync(
             string source,
-            string path
+            string path,
+            params MetadataReference[] references
         )
         {
             CSharpCompilation compilation = CSharpCompilation.Create(
@@ -172,10 +296,17 @@ namespace Rebellion.Analyzers.Tests
                     ),
                     CSharpSyntaxTree.ParseText(
                         _supportSource,
-                        path: "Assets/Scripts/Gameplay/Runtime.cs"
+                        path: "Assets/Scripts/Runtime/Runtime.cs"
+                    ),
+                    CSharpSyntaxTree.ParseText(
+                        _gameplaySource,
+                        path: @"C:\repo\Assets\Scripts\Gameplay\PlanetQueries.cs"
                     ),
                 },
-                new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) },
+                new MetadataReference[]
+                {
+                    MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+                }.Concat(references),
                 new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
             );
             Assert.IsEmpty(

@@ -51,12 +51,13 @@ namespace Rebellion.Gameplay
         /// <summary>
         /// Updates timed popular-support changes caused by blockades.
         /// </summary>
-        internal void UpdateBlockadeSupport()
+        /// <param name="results">The completed support changes.</param>
+        internal void UpdateBlockadeSupport(List<GameResult> results)
         {
             GameConfig.SupportShiftConfig config = _game.Config.SupportShift;
             foreach (Planet planet in _game.GetSceneNodesByType<Planet>())
             {
-                UpdateBlockadeSupport(planet, config);
+                UpdateBlockadeSupport(planet, config, results);
             }
         }
 
@@ -65,7 +66,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="planet">The planet.</param>
         /// <param name="config">The config.</param>
-        private void UpdateBlockadeSupport(Planet planet, GameConfig.SupportShiftConfig config)
+        /// <param name="results">The completed support changes.</param>
+        private void UpdateBlockadeSupport(
+            Planet planet,
+            GameConfig.SupportShiftConfig config,
+            List<GameResult> results
+        )
         {
             if (!BlockadeQueries.IsBlockaded(_game, planet))
             {
@@ -99,7 +105,13 @@ namespace Rebellion.Gameplay
             int shift = blockadeSupportsFavoredFaction
                 ? config.BlockadeMatchShift
                 : config.BlockadeOpposeShift;
-            ChangePopularSupport(planet, blockadingFaction, shift);
+            PlanetSupportChangedResult change = ChangePopularSupport(
+                planet,
+                blockadingFaction,
+                shift
+            );
+            if (change != null)
+                results.Add(change);
             ScheduleBlockadeSupport(planet, interval);
         }
 
@@ -342,23 +354,24 @@ namespace Rebellion.Gameplay
         /// <param name="planet">The planet whose support changes.</param>
         /// <param name="faction">The faction whose support is adjusted.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        internal void ChangePopularSupport(Planet planet, Faction faction, int shift)
+        /// <returns>The completed support change, or null when support stayed the same.</returns>
+        internal PlanetSupportChangedResult ChangePopularSupport(
+            Planet planet,
+            Faction faction,
+            int shift
+        )
         {
-            if (planet == null || faction == null || shift == 0 || !planet.IsPopulated())
-                return;
-            string opposingFactionID =
-                shift < 0
-                    ? _game
-                        .GetFactions()
-                        .Find(candidate => candidate.InstanceID != faction.InstanceID)
-                        ?.InstanceID
-                    : null;
-            planet.ChangePopularSupport(
-                faction,
-                shift,
-                opposingFactionID,
-                _game.Config?.SupportShift
-            );
+            if (
+                planet?.ApplyPopularSupportShift(
+                    planet.PopularSupport,
+                    faction,
+                    shift,
+                    _game.GetFactions(),
+                    _game.Config?.SupportShift
+                ) != true
+            )
+                return null;
+            return new PlanetSupportChangedResult { Planet = planet, Tick = _game.CurrentTick };
         }
 
         /// <summary>
@@ -583,5 +596,13 @@ namespace Rebellion.Gameplay
                 && owner.HeadquartersUnitInstanceID == building.InstanceID
                 && !owner.HasLostHeadquarters;
         }
+    }
+
+    /// <summary>
+    /// Popular support changed as part of a completed gameplay operation.
+    /// </summary>
+    internal sealed class PlanetSupportChangedResult : GameResult
+    {
+        public Planet Planet { get; set; }
     }
 }

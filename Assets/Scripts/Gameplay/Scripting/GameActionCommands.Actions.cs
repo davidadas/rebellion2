@@ -1235,14 +1235,14 @@ namespace Rebellion.Gameplay.Scripting
                     planet => planet,
                     planet => BlockadeQueries.IsBlockaded(game, planet)
                 );
-            List<ISceneNode> destroyed = new List<ISceneNode>();
+            List<(ISceneNode Unit, Planet Location)> destroyed = new();
 
             foreach (ISceneNode root in destroyedRoots)
             {
                 ((BaseSceneNode)root).TraverseIncludingDisabled(unit =>
                 {
                     if (unit is not Officer || selected.Contains(unit))
-                        destroyed.Add(unit);
+                        destroyed.Add((unit, unit as Planet ?? unit.GetParentOfType<Planet>()));
                 });
                 game.DeleteNode(root);
             }
@@ -1255,10 +1255,11 @@ namespace Rebellion.Gameplay.Scripting
                 );
 
             List<GameResult> results = destroyed.ConvertAll<GameResult>(
-                unit => new GameObjectDestroyedResult
+                loss => new GameObjectDestroyedResult
                 {
-                    DestroyedObject = unit,
+                    DestroyedObject = loss.Unit,
                     Context = planet,
+                    Location = loss.Location,
                     Tick = game.CurrentTick,
                 }
             );

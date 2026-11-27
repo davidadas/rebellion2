@@ -58,7 +58,8 @@ dotnet_diagnostic.REB0006.severity = error    # fields and enum members must not
 dotnet_diagnostic.REB0009.severity = error    # test methods must not have leading comments
 dotnet_diagnostic.REB0010.severity = error    # gameplay config numeric defaults belong in content
 dotnet_diagnostic.REB0013.severity = error    # GameRoot references in Game are restricted to missions and events
-dotnet_diagnostic.REB0014.severity = error    # Game must not use native C# events or delegates
+dotnet_diagnostic.REB0014.severity = error    # Game must not use native C# events, delegates, or IObserver
+dotnet_diagnostic.REB0015.severity = error    # Game must not use Gameplay types or members
 
 [Assets/Scripts/Game/FogOfWar/FogOfWarRecorder.cs]
 dotnet_diagnostic.REB0013.severity = none

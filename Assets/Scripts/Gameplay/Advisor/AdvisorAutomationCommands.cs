@@ -142,14 +142,15 @@ namespace Rebellion.Gameplay
             foreach (Planet planet in controlledPlanets)
             {
                 if (
-                    BlockadeQueries.IsBlockaded(_game, planet)
+                    !planet.IsPopulated()
+                    || BlockadeQueries.IsBlockaded(_game, planet)
                     || planet.GetParentOfType<PlanetSector>() == null
                 )
                     continue;
 
                 int deficit =
                     CalculateTargetRegimentCount(planet, faction)
-                    - CountStationaryRegiments(planet, faction);
+                    - CountAssignedRegiments(planet, faction);
                 if (deficit <= 0)
                     continue;
 
@@ -231,12 +232,12 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
-        /// Counts stationary regiments owned by the controlling faction, including pending orders.
+        /// Counts friendly regiments assigned directly to the planet, including construction and transit.
         /// </summary>
-        /// <param name="planet">The planet to inspect.</param>
+        /// <param name="planet">The receiving planet, which is the direct parent during transit.</param>
         /// <param name="faction">The controlling faction.</param>
         /// <returns>The regiment count.</returns>
-        private static int CountStationaryRegiments(Planet planet, Faction faction)
+        private static int CountAssignedRegiments(Planet planet, Faction faction)
         {
             return planet
                 .GetAllRegiments()
@@ -246,7 +247,6 @@ namespace Rebellion.Gameplay
                         faction.InstanceID,
                         StringComparison.Ordinal
                     )
-                    && regiment.Movement == null
                 );
         }
 

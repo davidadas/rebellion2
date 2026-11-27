@@ -1772,7 +1772,7 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="result">The combat result containing fighter losses and recovery assignments.</param>
         /// <param name="recoveryMoves">The landings already validated for a network outcome.</param>
-        /// <returns>The fighter destruction events.</returns>
+        /// <returns>The fighter destruction and placement results.</returns>
         private List<GameResult> ApplyFighterResults(
             SpaceCombatResult result,
             IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves = null
@@ -1783,7 +1783,7 @@ namespace Rebellion.Gameplay
                 result.FighterLosses,
                 result.Planet
             );
-            _movement.RecoverStarfighters(recoveryMoves);
+            events.AddRange(_movement.RecoverStarfighters(recoveryMoves));
             return events;
         }
 

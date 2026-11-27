@@ -522,6 +522,7 @@ namespace Rebellion.Game.Results
     internal sealed class UnitPlacedResult : GameResult
     {
         public IMovable Unit { get; set; }
+        public Planet PreviousPlanet { get; set; }
     }
 
     /// <summary>
@@ -538,6 +539,7 @@ namespace Rebellion.Game.Results
     public class GameObjectEnrouteResult : GameResult
     {
         public IGameEntity GameObject { get; set; }
+        internal Planet PreviousPlanet { get; set; }
     }
 
     /// <summary>
@@ -587,6 +589,11 @@ namespace Rebellion.Game.Results
         public IGameEntity DestroyedBy { get; set; }
         internal bool CountsAsMilitaryLoss { get; set; }
         public IGameEntity Context { get; set; }
+
+        /// <summary>
+        /// The object's planet before removal when the reporting context describes a different location.
+        /// </summary>
+        internal Planet Location { get; set; }
         public UnitDestructionReason Reason { get; set; }
     }
 

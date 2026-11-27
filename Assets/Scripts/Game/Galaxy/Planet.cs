@@ -47,11 +47,6 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
-        /// <summary>
-        /// Reports completed support changes to the session's notification observer.
-        /// </summary>
-        internal IObserver<Planet> SupportObserver { get; set; }
-
         private const int _maximumPopularSupport = 100;
 
         // Planet Properties.
@@ -434,18 +429,21 @@ namespace Rebellion.Game.Galaxy
         /// <param name="factions">Campaign factions in order.</param>
         /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
+        /// <param name="projectedSupport">The support values to evaluate for a mission forecast.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction ResolveController(
             IReadOnlyList<Faction> factions,
             GameConfig.SupportShiftConfig supportRules,
-            IReadOnlyList<string> regimentOwners
+            IReadOnlyList<string> regimentOwners,
+            IReadOnlyDictionary<string, int> projectedSupport = null
         )
         {
             return ResolveController(
                 factions,
                 supportRules,
                 regimentOwners.Count,
-                regimentOwners.Count == 1 ? regimentOwners[0] : null
+                regimentOwners.Count == 1 ? regimentOwners[0] : null,
+                projectedSupport
             );
         }
 
@@ -456,12 +454,14 @@ namespace Rebellion.Game.Galaxy
         /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
         /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
+        /// <param name="projectedSupport">The support values to evaluate for a mission forecast.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction ResolveController(
             IReadOnlyList<Faction> factions,
             GameConfig.SupportShiftConfig supportRules,
             int regimentOwnerCount,
-            string soleRegimentOwner
+            string soleRegimentOwner,
+            IReadOnlyDictionary<string, int> projectedSupport = null
         )
         {
             if (IsDestroyed)
@@ -479,9 +479,10 @@ namespace Rebellion.Game.Galaxy
             int threshold = supportRules.OwnershipTransferThreshold;
             Faction controller = null;
             int highestSupport = threshold;
+            IReadOnlyDictionary<string, int> supportByFaction = projectedSupport ?? PopularSupport;
             foreach (Faction faction in factions)
             {
-                int support = GetPopularSupport(faction.InstanceID);
+                int support = supportByFaction.GetValueOrDefault(faction.InstanceID);
                 if (support >= threshold && (controller == null || support > highestSupport))
                 {
                     controller = faction;
@@ -492,21 +493,24 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Applies a signed support shift, transferring lost support to the opposing faction.
+        /// Applies a signed shift to the supplied support values using this planet's suppression.
         /// </summary>
+        /// <param name="support">The live or projected support values to update.</param>
         /// <param name="faction">The faction whose support changes.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        /// <param name="opposingFactionID">The opposing faction whose support absorbs losses.</param>
+        /// <param name="factions">The campaign factions in their established order.</param>
         /// <param name="supportRules">The rules for resistance in a suppressed sector.</param>
-        internal void ChangePopularSupport(
+        /// <returns>Whether any support value changed.</returns>
+        internal bool ApplyPopularSupportShift(
+            Dictionary<string, int> support,
             Faction faction,
             int shift,
-            string opposingFactionID,
+            IReadOnlyList<Faction> factions,
             GameConfig.SupportShiftConfig supportRules
         )
         {
             if (faction == null || shift == 0 || !IsPopulated())
-                return;
+                return false;
 
             SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
             if (
@@ -516,21 +520,19 @@ namespace Rebellion.Game.Galaxy
             )
                 shift /= supportRules.WeakSupportPenaltyDivisor;
 
-            int currentSupport = GetPopularSupport(faction.InstanceID);
+            int currentSupport = support.GetValueOrDefault(faction.InstanceID);
             int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
             if (newSupport == currentSupport)
-                return;
+                return false;
             if (shift > 0)
-            {
-                SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-            if (opposingFactionID == null)
-            {
-                SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-            SetPopularSupport(opposingFactionID, 100 - newSupport);
+                return SetPopularSupport(support, faction.InstanceID, newSupport);
+
+            Faction opponent = factions.FirstOrDefault(candidate =>
+                candidate.InstanceID != faction.InstanceID
+            );
+            return opponent == null
+                ? SetPopularSupport(support, faction.InstanceID, newSupport)
+                : SetPopularSupport(support, opponent.InstanceID, 100 - newSupport);
         }
 
         /// <summary>
@@ -632,30 +634,30 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="factionInstanceId">The instance ID of the faction.</param>
         /// <param name="support">The new level of support for the faction.</param>
-        public void SetPopularSupport(string factionInstanceId, int support)
+        public void SetPopularSupport(string factionInstanceId, int support) =>
+            SetPopularSupport(PopularSupport, factionInstanceId, support);
+
+        /// <summary>
+        /// Updates support values and redistributes any excess above the total cap.
+        /// </summary>
+        /// <param name="values">The support values to update.</param>
+        /// <param name="factionInstanceId">The faction receiving the requested support.</param>
+        /// <param name="support">The requested percentage.</param>
+        /// <returns>Whether any support value changed.</returns>
+        private static bool SetPopularSupport(
+            Dictionary<string, int> values,
+            string factionInstanceId,
+            int support
+        )
         {
             int boundedSupport = Math.Clamp(support, 0, _maximumPopularSupport);
-            int currentSupport = PopularSupport.TryGetValue(
-                factionInstanceId,
-                out int existingSupport
-            )
-                ? existingSupport
-                : 0;
+            int currentSupport = values.GetValueOrDefault(factionInstanceId);
             int supportDifference = boundedSupport - currentSupport;
-            int totalSupport = PopularSupport.Values.Sum();
-
-            if (totalSupport + supportDifference <= _maximumPopularSupport)
-            {
-                PopularSupport[factionInstanceId] = boundedSupport;
-            }
-            else
-            {
-                int overage = totalSupport + supportDifference - _maximumPopularSupport;
-                ShiftFactionSupport(factionInstanceId, overage);
-                PopularSupport[factionInstanceId] = boundedSupport;
-            }
-            if (supportDifference != 0 || totalSupport + supportDifference > _maximumPopularSupport)
-                SupportObserver?.OnNext(this);
+            int overage = values.Values.Sum() + supportDifference - _maximumPopularSupport;
+            if (overage > 0)
+                ShiftFactionSupport(values, factionInstanceId, overage);
+            values[factionInstanceId] = boundedSupport;
+            return supportDifference != 0 || overage > 0;
         }
 
         /// <summary>
@@ -670,12 +672,17 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Reduces other factions' support to make room for a support increase.
         /// </summary>
+        /// <param name="values">The support percentages to rebalance.</param>
         /// <param name="excludedFactionId">The faction ID to exclude from reduction.</param>
         /// <param name="overage">The amount of support to reduce from other factions.</param>
-        private void ShiftFactionSupport(string excludedFactionId, int overage)
+        private static void ShiftFactionSupport(
+            Dictionary<string, int> values,
+            string excludedFactionId,
+            int overage
+        )
         {
             foreach (
-                KeyValuePair<string, int> supportByFaction in PopularSupport
+                KeyValuePair<string, int> supportByFaction in values
                     .Where(kvp => kvp.Key != excludedFactionId)
                     .OrderByDescending(kvp => kvp.Value)
                     .ThenBy(kvp => kvp.Key, StringComparer.Ordinal)
@@ -686,7 +693,7 @@ namespace Rebellion.Game.Galaxy
                     break;
 
                 int reduction = Math.Min(overage, supportByFaction.Value);
-                PopularSupport[supportByFaction.Key] -= reduction;
+                values[supportByFaction.Key] -= reduction;
                 overage -= reduction;
             }
         }

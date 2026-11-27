@@ -95,7 +95,8 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="battlePlanet">The landing site for squadrons without a carrier.</param>
         /// <param name="recoveries">The landing decisions from the battle result.</param>
-        internal void RecoverStarfighters(
+        /// <returns>The completed squadron placements.</returns>
+        internal List<GameResult> RecoverStarfighters(
             Planet battlePlanet,
             IReadOnlyList<FighterRecoveryResult> recoveries
         ) => RecoverStarfighters(PlanStarfighterRecovery(battlePlanet, recoveries));
@@ -210,9 +211,24 @@ namespace Rebellion.Gameplay
         /// Applies the preflighted battle landings after losses have released their berths.
         /// </summary>
         /// <param name="moves">The validated parent changes.</param>
-        internal void RecoverStarfighters(
+        /// <returns>The placements after every squadron has reached its host.</returns>
+        internal List<GameResult> RecoverStarfighters(
             IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves
-        ) => _game.ApplyNodeMoves(moves);
+        )
+        {
+            List<GameResult> placements = new(moves.Count);
+            foreach (var (node, _) in moves)
+                placements.Add(
+                    new UnitPlacedResult
+                    {
+                        Unit = (IMovable)node,
+                        PreviousPlanet = node.GetParentOfType<Planet>(),
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            _game.ApplyNodeMoves(moves);
+            return placements;
+        }
 
         /// <summary>
         /// Returns and clears results queued by immediate movement operations.
@@ -603,7 +619,12 @@ namespace Rebellion.Gameplay
             movement.RecordPreviousLocation(previousLocationID);
             RedirectTransit(unit, currentDestination, destinationPlanet);
             results.Add(
-                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                new GameObjectEnrouteResult
+                {
+                    GameObject = unit,
+                    PreviousPlanet = currentDestination,
+                    Tick = _game.CurrentTick,
+                }
             );
         }
 
@@ -1375,6 +1396,7 @@ namespace Rebellion.Gameplay
             {
                 IMovable unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
+                Planet previousPlanet = unit.GetParentOfType<Planet>();
                 bool changed = unit.GetParent() != resolvedDestination || unit.Movement != null;
                 if (unit.GetParent() == null)
                 {
@@ -1386,7 +1408,14 @@ namespace Rebellion.Gameplay
                     MoveNode(unit, resolvedDestination, results);
                 unit.Movement = null;
                 if (changed)
-                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
+                    results.Add(
+                        new UnitPlacedResult
+                        {
+                            Unit = unit,
+                            PreviousPlanet = previousPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
             }
 
             return true;
@@ -2298,6 +2327,14 @@ namespace Rebellion.Gameplay
                 if (rebasePlanet != null)
                 {
                     MoveNode(inactiveFleet, rebasePlanet, results);
+                    results.Add(
+                        new UnitPlacedResult
+                        {
+                            Unit = inactiveFleet,
+                            PreviousPlanet = currentPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     RetargetInTransitJoiners(inactiveFleet, currentPlanet, rebasePlanet);
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
@@ -2765,7 +2802,12 @@ namespace Rebellion.Gameplay
                 RetargetInTransitJoiners(unit, originPlanet, destinationPlanet);
 
             results.Add(
-                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                new GameObjectEnrouteResult
+                {
+                    GameObject = unit,
+                    PreviousPlanet = originPlanet,
+                    Tick = _game.CurrentTick,
+                }
             );
             results.Add(
                 new GameObjectEnrouteActiveResult
