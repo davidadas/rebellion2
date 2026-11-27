@@ -69,6 +69,9 @@ namespace Rebellion.Tests.ContentEditor.UI
                 artwork,
                 officer.GetFields().Where(field => field.IsMedia).Select(field => field.Value)
             );
+            Assert.IsTrue(
+                view.GetComponentInChildren<ContentEditorArtworkWorkspace>().gameObject.activeSelf
+            );
         }
 
         [Test]
@@ -175,11 +178,100 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.IsTrue(Button("SaveArtwork").interactable);
         }
 
+        [Test]
+        public void TryCancel_SavingCombinedLayers_ReturnsToTheUnitPage()
+        {
+            OpenEditor();
+            SelectLayer("Captured");
+            Button("MoveLayerBackward").onClick.Invoke();
+            ContentEditorArtworkWorkspace workspace =
+                view.GetComponentInChildren<ContentEditorArtworkWorkspace>();
+
+            Assert.IsTrue(workspace.TryCancel());
+            ConfirmArtworkSave();
+
+            Assert.IsFalse(workspace.gameObject.activeSelf);
+            CollectionAssert.AreEqual(
+                new[] { "Entity", "Travel", "Captured", "Damage" },
+                officer.GetField("ArtworkLayerOrder").Values
+            );
+        }
+
+        [Test]
+        public void ConfirmPendingArtwork_SavingCombinedLayers_CompletesTheContinuationOnce()
+        {
+            OpenEditor();
+            SelectLayer("Captured");
+            Button("MoveLayerBackward").onClick.Invoke();
+            ContentEditorArtworkWorkspace workspace =
+                view.GetComponentInChildren<ContentEditorArtworkWorkspace>();
+            int continuations = 0;
+
+            Assert.IsTrue(view.ConfirmPendingArtwork(() => continuations++));
+            ConfirmArtworkSave();
+
+            Assert.AreEqual(1, continuations);
+            Assert.IsFalse(workspace.gameObject.activeSelf);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfirmPendingArtwork_FailedSave_KeepsTheDraftAndDoesNotContinue(
+            bool reportsFailure
+        )
+        {
+            Exception reported = null;
+            OpenEditor(
+                () => throw new InvalidOperationException("Fixture save failed."),
+                reportsFailure
+                    ? action =>
+                    {
+                        try
+                        {
+                            action();
+                        }
+                        catch (InvalidOperationException exception)
+                        {
+                            reported = exception;
+                        }
+                    }
+                    : null
+            );
+            SelectLayer("Captured");
+            Button("MoveLayerBackward").onClick.Invoke();
+            ContentEditorArtworkWorkspace workspace =
+                view.GetComponentInChildren<ContentEditorArtworkWorkspace>();
+            int continuations = 0;
+            Assert.IsTrue(view.ConfirmPendingArtwork(() => continuations++));
+
+            if (reportsFailure)
+            {
+                ConfirmArtworkSave();
+                Assert.IsInstanceOf<InvalidOperationException>(reported);
+            }
+            else
+                Assert.Throws<InvalidOperationException>(ConfirmArtworkSave);
+
+            Assert.AreEqual(0, continuations);
+            Assert.IsTrue(workspace.gameObject.activeSelf);
+            Assert.IsTrue(workspace.HasUnsavedChanges);
+        }
+
+        /// <summary>
+        /// Chooses the save action in the actual pending-artwork dialog.
+        /// </summary>
+        private void ConfirmArtworkSave() =>
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Save artwork")
+                .onClick.Invoke();
+
         /// <summary>
         /// Opens the real workspace with a small isolated officer composition.
         /// </summary>
         /// <param name="persist">The fixture's pack-saving boundary.</param>
-        private void OpenEditor(Action persist = null)
+        /// <param name="execute">The optional fixture error-reporting boundary.</param>
+        private void OpenEditor(Action persist = null, Action<Action> execute = null)
         {
             var layers = new[]
             {
@@ -218,7 +310,7 @@ namespace Rebellion.Tests.ContentEditor.UI
                 officer,
                 new ArtworkEffectPreviewFrame("Combined", texture, layers),
                 persist ?? (() => { }),
-                action => action()
+                execute ?? (action => action())
             ).Show();
         }
 

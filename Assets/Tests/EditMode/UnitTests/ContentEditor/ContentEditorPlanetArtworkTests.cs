@@ -350,6 +350,39 @@ namespace Rebellion.Tests.ContentEditor
                 CollectionAssert.AreEqual(before, File.ReadAllBytes(original));
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ImportAsset_DanglingAliasDestination_KeepsSharedReferencesUnresolved(
+            bool hasOrphan
+        )
+        {
+            string original = Path.Combine(BaseRoot, "Shared/Planets/shared.png");
+            byte[] before = File.ReadAllBytes(original);
+            if (!hasOrphan)
+                File.Delete(original);
+            WriteFixtureFile(
+                ContentArtworkAliases.FileName,
+                $"<ArtworkAliases><Image From=\"{_shared}\" To=\"Pack/Shared/Planets/missing\" /></ArtworkAliases>"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            string source = WriteImage(contentRoot, "Import/missing.png", Color.green);
+
+            string address = ContentPackEditorStorage.ImportAsset(
+                project,
+                source,
+                GetPlanet(project, "ONE").GetField("PlanetIconPath")
+            );
+
+            Assert.AreEqual("Pack/Shared/Planets/missing-2", address);
+            Assert.IsNotNull(Resolve(project, address));
+            Assert.IsNull(Resolve(project, _shared));
+            Assert.IsFalse(
+                File.Exists(Path.Combine(project.PackRootPath, "Shared/Planets/missing.png"))
+            );
+            if (hasOrphan)
+                CollectionAssert.AreEqual(before, File.ReadAllBytes(original));
+        }
+
         /// <summary>
         /// Finds one nested planet through the project's public catalog view.
         /// </summary>

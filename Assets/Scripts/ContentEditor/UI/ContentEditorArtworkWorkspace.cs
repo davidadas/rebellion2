@@ -748,6 +748,8 @@ public sealed class ContentEditorArtworkWorkspace : MonoBehaviour, ICancelable
             () =>
             {
                 actions?.Save();
+                if (!HasUnsavedChanges)
+                    Dismiss();
                 if (!gameObject.activeSelf)
                     continuation?.Invoke();
             },

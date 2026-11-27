@@ -1012,7 +1012,11 @@ public static class ContentPackEditorStorage
                     )
                 )
                 .Concat(
-                    resolver.PackRootPaths.SelectMany(root => ContentArtworkAliases.Load(root).Keys)
+                    resolver.PackRootPaths.SelectMany(root =>
+                    {
+                        Dictionary<string, string> aliases = ContentArtworkAliases.Load(root);
+                        return aliases.Keys.Concat(aliases.Values);
+                    })
                 )
                 .Select(address => Path.ChangeExtension(address, null))
                 .ToHashSet(StringComparer.OrdinalIgnoreCase)
