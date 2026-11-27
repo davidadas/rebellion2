@@ -561,7 +561,7 @@ namespace Rebellion.Tests.Gameplay
                 out List<GameResult> results
             );
 
-            Assert.IsTrue(planet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, planet));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, blockade.Planet);
             Assert.AreSame(attackingFleet, blockade.BlockadingFleet);
@@ -3438,7 +3438,7 @@ namespace Rebellion.Tests.Gameplay
             new SpaceCombatTickProcessor(manager).ProcessTick(game);
             List<GameResult> results = manager.ResolvePendingRetreat("empire");
 
-            Assert.IsTrue(combatPlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, combatPlanet));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(combatPlanet, blockade.Planet);
             Assert.AreSame(blockadingFleet, blockade.BlockadingFleet);
@@ -4787,6 +4787,41 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void BeginTacticalCombat_TwoForwardGroups_ShareOneBattery()
+        {
+            (_, SpaceCombatCommands commands, CapitalShip attacker) = CreateTacticalEncounter();
+            HardpointGroup extra = new() { Arc = TacticalWeaponArc.Forward };
+            extra
+                .GetHardpoints()
+                .Add(
+                    new Hardpoint
+                    {
+                        Weapon = new WeaponData
+                        {
+                            WeaponType = HardpointWeaponType.Turbolaser,
+                            Damage = 12,
+                            Range = 20,
+                        },
+                    }
+                );
+            attacker.HardpointGroups.Add(extra);
+            int weaponStrength = attacker.GetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore
+            );
+
+            Assert.IsTrue(commands.CanTakeCommand);
+            TacticalCombatSession session = commands.BeginTacticalCombat();
+            CombatUnit unit = session.GetUnit(attacker.InstanceID);
+
+            Assert.AreEqual(
+                weaponStrength,
+                unit.GetWeaponStrength(TacticalWeaponArc.Forward, TacticalWeaponType.Turbolaser)
+            );
+            Assert.AreEqual(4, unit.Batteries.Count);
+        }
+
+        [Test]
         public void BeginTacticalCombat_ShipWithoutArtwork_DeploysItsAuthoredGeometry()
         {
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
@@ -4968,7 +5003,7 @@ namespace Rebellion.Tests.Gameplay
             CapitalShip second = (CapitalShip)first.CreateCopy();
             second.InstanceID = "second-tactical-defender";
             game.AttachNode(second, first.GetParent());
-            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, planet));
             TacticalCombatSession battle = commands.BeginTacticalCombat();
             CombatUnit casualty = battle.GetUnit(first.InstanceID);
             casualty.Destroy();
@@ -5008,7 +5043,7 @@ namespace Rebellion.Tests.Gameplay
                 combat.Events.OfType<BlockadeChangedResult>().Single(),
                 results.OfType<BlockadeChangedResult>().Single()
             );
-            Assert.IsTrue(planet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, planet));
             Assert.AreEqual(battle.PlayerSide, combat.WinningSide);
         }
 

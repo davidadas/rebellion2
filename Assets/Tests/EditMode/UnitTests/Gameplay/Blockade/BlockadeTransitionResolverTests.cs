@@ -16,7 +16,7 @@ namespace Rebellion.Tests.Gameplay
         {
             (GameRoot game, Planet planet) = BuildScene();
             BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
-            bool wasBlockaded = planet.IsBlockaded();
+            bool wasBlockaded = BlockadeQueries.IsBlockaded(null, planet);
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
 
             BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded);
@@ -56,7 +56,7 @@ namespace Rebellion.Tests.Gameplay
             (GameRoot game, Planet planet) = BuildScene();
             BlockadeTransitionResolver resolver = new BlockadeTransitionResolver(game);
             Fleet fleet = AttachOperationalFleet(game, planet, "alliance");
-            bool wasBlockaded = planet.IsBlockaded();
+            bool wasBlockaded = BlockadeQueries.IsBlockaded(null, planet);
             fleet.Movement = TestMovement.Create(transitTicks: 1);
 
             BlockadeChangedResult result = resolver.Resolve(planet, wasBlockaded);

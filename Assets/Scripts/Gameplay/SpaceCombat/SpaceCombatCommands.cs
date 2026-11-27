@@ -216,15 +216,25 @@ namespace Rebellion.Gameplay
             )
                 return false;
             SpaceCombatResult result;
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves;
             try
             {
                 result = CreateTacticalResult(outcome, validateNetwork: true);
+                recoveryMoves = PlanFighterRecovery(
+                    result,
+                    _queries.ResolveCombatPlanet(_pendingDecision)
+                );
             }
-            catch (InvalidDataException)
+            catch (Exception error)
+                when (error
+                        is InvalidDataException
+                            or ArgumentException
+                            or InvalidOperationException
+                )
             {
                 return false;
             }
-            results = ImportTacticalResult(result, immediateResult: false);
+            results = ImportTacticalResult(result, immediateResult: false, recoveryMoves);
             return true;
         }
 
@@ -418,10 +428,12 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="result">The completed encounter's result using local campaign references.</param>
         /// <param name="immediateResult">Whether surviving forces require automatic continuation.</param>
+        /// <param name="recoveryMoves">The landings already validated for a network outcome.</param>
         /// <returns>The final campaign result and its resulting domain events.</returns>
         private List<GameResult> ImportTacticalResult(
             SpaceCombatResult result,
-            bool immediateResult
+            bool immediateResult,
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves = null
         )
         {
             SpaceCombatDecision decision = _pendingDecision;
@@ -439,7 +451,7 @@ namespace Rebellion.Gameplay
             result.AttackingUnits = encounter.AttackingUnits;
             result.DefendingUnits = encounter.DefendingUnits;
             bool wasBlockaded = BlockadeQueries.IsBlockaded(_game, planet.InstanceID);
-            List<GameResult> events = ApplyFighterResults(result);
+            List<GameResult> events = ApplyFighterResults(result, recoveryMoves);
             events.AddRange(ApplyShipResults(result, attackers, defenders));
             if (immediateResult)
                 result = ResolveImmediateTacticalContinuation(
@@ -1682,16 +1694,38 @@ namespace Rebellion.Gameplay
         /// Commits fighter counts and final carrier assignments before departure destinations are applied.
         /// </summary>
         /// <param name="result">The combat result containing fighter losses and recovery assignments.</param>
+        /// <param name="recoveryMoves">The landings already validated for a network outcome.</param>
         /// <returns>The fighter destruction events.</returns>
-        private List<GameResult> ApplyFighterResults(SpaceCombatResult result)
+        private List<GameResult> ApplyFighterResults(
+            SpaceCombatResult result,
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> recoveryMoves = null
+        )
         {
+            recoveryMoves ??= PlanFighterRecovery(result, result.Planet);
             List<GameResult> events = ApplyFighterSquadronLosses(
                 result.FighterLosses,
                 result.Planet
             );
-            _movement.RecoverStarfighters(result.Planet, result.FighterRecovery);
+            _movement.RecoverStarfighters(recoveryMoves);
             return events;
         }
+
+        /// <summary>
+        /// Validates all fighter landings before either losses or parent changes are committed.
+        /// </summary>
+        /// <param name="result">The pending battle result.</param>
+        /// <param name="planet">The campaign planet holding the battle.</param>
+        /// <returns>The ordered parent changes.</returns>
+        private IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> PlanFighterRecovery(
+            SpaceCombatResult result,
+            Planet planet
+        ) =>
+            _movement.PlanStarfighterRecovery(
+                planet,
+                result.FighterRecovery,
+                result.FighterLosses,
+                result.ShipDamage
+            );
 
         /// <summary>
         /// Commits capital-ship hull and component state and removes fleets left without survivors.

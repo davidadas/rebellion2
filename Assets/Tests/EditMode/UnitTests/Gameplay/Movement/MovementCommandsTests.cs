@@ -23,6 +23,49 @@ namespace Rebellion.Tests.Gameplay
     [TestFixture]
     public class MovementCommandsTests
     {
+        [TestCase(0, false)]
+        [TestCase(1, false)]
+        [TestCase(2, true)]
+        public void TryRequestMove_OnlyMovesFleetWhenAllShipsCanTravel(
+            int workingDrives,
+            bool accepted
+        )
+        {
+            (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
+                BuildBlockadeScene(new FixedRNG(0));
+            game.DeleteNode(origin.GetChildren<Fleet>().Single());
+            Fleet fleet = EntityFactory.CreateFleet("drive-test-fleet", "empire");
+            game.AttachNode(fleet, origin);
+            for (int index = 0; index < 2; index++)
+            {
+                CapitalShip ship = new()
+                {
+                    InstanceID = $"drive-test-{index}",
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    CurrentHullStrength = 100,
+                    Hyperdrive = 80,
+                };
+                if (index >= workingDrives)
+                    ship.SystemDamage.HyperdriveDamage = new[] { 1 };
+                game.AttachNode(ship, fleet);
+            }
+
+            ISceneNode[] selection = { fleet };
+            Assert.AreEqual(
+                accepted,
+                new MovementQueries(game).TryGetSelectionTransitTicks(
+                    selection,
+                    destination,
+                    "empire",
+                    out _
+                )
+            );
+            Assert.AreEqual(accepted, movement.TryRequestMove(selection, destination, "empire"));
+            Assert.AreEqual(accepted, fleet.Movement != null);
+            Assert.AreSame(accepted ? destination : origin, fleet.GetParent());
+        }
+
         [TestCase(false, true)]
         [TestCase(true, false)]
         public void CanTravelBetweenPlanets_DamagedPrimaryDrive_UsesWorkingBackup(
@@ -4153,6 +4196,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "fleet-to-uncolonized-ship",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 100,
             };
             game.AttachNode(capitalShip, fleet);
 
@@ -5629,6 +5673,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "cs1",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 100,
             };
             game.AttachNode(fleetShip, fleet);
 
@@ -7905,6 +7950,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "hostile-ship",
                 OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 100,
             };
             game.AttachNode(hostileShip, hostile);
 
@@ -7928,7 +7974,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="game">The game containing the two factions.</param>
         private static void ConfigureBlockadeFactions(GameRoot game)
         {
-            game.ConfigureBlockadeFactions(new[] { "empire", "rebels" });
+            game.Summary.StartingFactionIDs = new[] { "empire", "rebels" };
         }
 
         /// <summary>

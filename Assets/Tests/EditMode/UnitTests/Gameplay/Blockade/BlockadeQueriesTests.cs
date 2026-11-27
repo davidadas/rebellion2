@@ -29,6 +29,7 @@ namespace Rebellion.Tests.Gameplay
             _game = TestGame.Create(TestConfig.Create());
             _game.GetFactions().Add(new Faction { InstanceID = "alpha" });
             _game.GetFactions().Add(new Faction { InstanceID = "beta" });
+            _game.Summary.StartingFactionIDs = new[] { "alpha", "beta" };
             PlanetSector sector = new() { InstanceID = "sector" };
             _game.AttachNode(sector, _game.Galaxy);
             _planet = new Planet
@@ -233,7 +234,7 @@ namespace Rebellion.Tests.Gameplay
             string second
         )
         {
-            _game.ConfigureBlockadeFactions(new[] { first, second });
+            _game.Summary.StartingFactionIDs = new[] { first, second };
 
             Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
         }
@@ -255,20 +256,20 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void IsBlockaded_DetachedRecursiveCopy_UsesStandaloneRules()
+        public void IsBlockaded_DetachedRecursiveCopy_UsesTheSameCampaignRules()
         {
             Planet copy = (Planet)_planet.CreateCopy(recursive: true);
 
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, copy));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, copy));
             Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]
-        public void IsBlockaded_DetachedThenRegisteredPlanet_UsesCampaignRulesOnlyWhenRegistered()
+        public void IsBlockaded_DetachedThenRegisteredPlanet_UsesTheSameCampaignRules()
         {
             PlanetSector parent = _planet.GetParentOfType<PlanetSector>();
             _game.DetachNode(_planet);
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
 
             _game.AttachNode(_planet, parent);
 
@@ -276,11 +277,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void IsBlockaded_ReplacedGalaxy_UsesStandaloneRulesForOldPlanet()
+        public void IsBlockaded_ReplacedGalaxy_UsesTheSameCampaignRulesForOldPlanet()
         {
             _game.Galaxy = new GalaxyMap();
 
-            Assert.IsTrue(BlockadeQueries.IsBlockaded(_game, _planet));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(_game, _planet));
         }
 
         [Test]

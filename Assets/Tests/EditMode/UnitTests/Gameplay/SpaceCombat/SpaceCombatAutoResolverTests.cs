@@ -26,6 +26,31 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(GetResolvedShipHulls(first), GetResolvedShipHulls(second));
         }
 
+        [Test]
+        public void Resolve_ExistingWeaponDamage_ReducesFireAndExportsNewSystemDamage()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 100);
+            CapitalShip target = CreatePassiveTarget("target", 1000);
+            attacker.WeaponRecharge = 20;
+            attacker.SystemDamage.Weapons = 2;
+            target.SystemDamage.TractorBeam = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(75)
+            );
+
+            ShipDamageResult damage = result.ShipDamage.Single(item => item.Ship == target);
+            Assert.That(damage.HullAfter, Is.GreaterThan(980).And.LessThan(1000));
+            Assert.AreEqual(1, damage.SystemDamage.TractorBeam);
+            Assert.AreEqual(1, damage.SystemDamage.Weapons);
+            Assert.AreEqual(0, target.SystemDamage.Weapons);
+        }
+
         [TestCase(false, 0, false)]
         [TestCase(false, 1, true)]
         [TestCase(false, 2, true)]

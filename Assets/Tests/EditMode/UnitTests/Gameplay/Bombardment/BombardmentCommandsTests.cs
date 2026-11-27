@@ -519,7 +519,7 @@ namespace Rebellion.Tests.Gameplay
                 )
                 .TryExecute(new List<Fleet> { fleet }, planet, BombardmentType.General);
 
-            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, planet));
             BlockadeChangedResult blockade = result.Events.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(planet, blockade.Planet);
             Assert.IsNull(blockade.BlockadingFleet);
@@ -1152,7 +1152,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(planet.IsPopulated());
             Assert.IsFalse(planet.IsInUprising);
             Assert.Zero(planet.NextUprisingIncidentTick);
-            Assert.IsFalse(planet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, planet));
             Assert.IsNull(result.OwnershipChange);
             Assert.IsEmpty(resolved.OfType<PlanetOwnershipChangedResult>());
             Assert.IsNull(neighbor.OwnerInstanceID);

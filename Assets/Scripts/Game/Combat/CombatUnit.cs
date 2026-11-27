@@ -438,11 +438,19 @@ namespace Rebellion.Game.Combat
                 foreach (HardpointGroup group in hardpoints)
                 {
                     int index = (int)group.Arc;
-                    if (index < 0 || index >= groups.Length || groups[index] != null)
-                        throw new ArgumentException(
-                            "A ship can have one battery in each firing arc."
-                        );
-                    groups[index] = group;
+                    if (index < 0 || index >= groups.Length)
+                        throw new ArgumentException("A ship battery requires a valid firing arc.");
+
+                    if (groups[index] == null)
+                    {
+                        groups[index] = group;
+                        continue;
+                    }
+
+                    HardpointGroup combined = new() { Arc = group.Arc };
+                    combined.GetHardpoints().AddRange(groups[index].GetHardpoints());
+                    combined.GetHardpoints().AddRange(group.GetHardpoints());
+                    groups[index] = combined;
                 }
             }
             else if (Unit is Starfighter fighter)
