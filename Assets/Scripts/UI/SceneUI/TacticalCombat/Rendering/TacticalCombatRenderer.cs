@@ -41,6 +41,7 @@ namespace Rebellion.Tactical.Rendering
         private readonly Dictionary<Texture2D, Material> _fighterMaterials = new();
         private RenderTexture _renderTarget;
         private Mesh _billboardMesh;
+        private Mesh _contactMesh;
         private Transform _planet;
         private TacticalCombatEffects _effects;
         private TacticalCombatImpactEffects _impacts;
@@ -266,6 +267,8 @@ namespace Rebellion.Tactical.Rendering
             ReleaseTarget();
             if (_billboardMesh != null)
                 Destroy(_billboardMesh);
+            if (_contactMesh != null)
+                Destroy(_contactMesh);
         }
 
         /// <summary>

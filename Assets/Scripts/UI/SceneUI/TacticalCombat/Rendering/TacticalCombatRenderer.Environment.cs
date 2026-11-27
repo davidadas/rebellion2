@@ -194,11 +194,53 @@ namespace Rebellion.Tactical.Rendering
         /// <param name="visual">The owned ship visual.</param>
         private void CreateCapitalPlaceholder(Visual visual)
         {
-            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            marker.name = "Ship contact";
-            Collider collider = marker.GetComponent<Collider>();
-            collider.enabled = false;
-            Destroy(collider);
+            if (_contactMesh == null)
+            {
+                _contactMesh = new Mesh
+                {
+                    name = "Ship contact",
+                    vertices = new[]
+                    {
+                        0.5f * Vector3.forward,
+                        0.5f * Vector3.right,
+                        0.5f * Vector3.back,
+                        0.5f * Vector3.left,
+                        0.5f * Vector3.up,
+                        0.5f * Vector3.down,
+                    },
+                    triangles = new[]
+                    {
+                        4,
+                        1,
+                        0,
+                        4,
+                        2,
+                        1,
+                        4,
+                        3,
+                        2,
+                        4,
+                        0,
+                        3,
+                        5,
+                        0,
+                        1,
+                        5,
+                        1,
+                        2,
+                        5,
+                        2,
+                        3,
+                        5,
+                        3,
+                        0,
+                    },
+                };
+                _contactMesh.RecalculateBounds();
+            }
+
+            GameObject marker = new("Ship contact", typeof(MeshFilter), typeof(MeshRenderer));
+            marker.GetComponent<MeshFilter>().sharedMesh = _contactMesh;
             marker.transform.SetParent(visual.Root.transform, false);
             Vector3 dimensions = ToUnity(visual.Unit.HullDimensions);
             if (dimensions.x <= 0 || dimensions.y <= 0 || dimensions.z <= 0)
