@@ -600,7 +600,9 @@ namespace Rebellion.Tests.Content.Packages
             Directory.CreateDirectory(root);
             File.WriteAllText(
                 Path.Combine(root, "pack.xml"),
-                $"""<ContentPackage Type="Mod"><ID>{id}</ID><DisplayName>{id}</DisplayName><Version>{version}</Version><BasePackID>base</BasePackID><BasePackVersion>1.0.0</BasePackVersion>{rules}</ContentPackage>"""
+                $"<ContentPackage Type=\"Mod\"><ID>{id}</ID><DisplayName>{id}</DisplayName>"
+                    + $"<Version>{version}</Version><BasePackID>base</BasePackID>"
+                    + $"<BasePackVersion>1.0.0</BasePackVersion>{rules}</ContentPackage>"
             );
             return root;
         }
