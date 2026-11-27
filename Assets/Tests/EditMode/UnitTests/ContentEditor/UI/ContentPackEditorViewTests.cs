@@ -198,6 +198,39 @@ namespace Rebellion.Tests.ContentEditor.UI
 
         [TestCase(true)]
         [TestCase(false)]
+        public void ShowProjects_OpenWorkingProject_MarksItsRowForEditing(bool asMod)
+        {
+            using ContentPackEditorProject working = ContentPackEditorStorage.CreateInFolder(
+                project.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                System.IO.Path.Combine(folder, "working-project"),
+                "active-project-row",
+                "Active project row",
+                "1.0.0",
+                asMod
+            );
+            view.ShowProjects();
+            view.Projects.RenderLocal(new[] { ContentEditorLocalProject.FromProject(working) });
+            view.Projects.SetCurrentProject(working);
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorProjectRowView row = view
+                .Projects.GetComponentsInChildren<ContentEditorProjectRowView>()
+                .Single(item =>
+                    item.GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == working.DisplayName)
+                );
+            TMP_Text[] captions = row.GetComponentsInChildren<TMP_Text>();
+
+            Assert.That(
+                captions.Single(label => label.name == "summary").text,
+                Does.EndWith("Open now")
+            );
+            Assert.That(captions.Select(label => label.text), Does.Contain("Edit"));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
         public void ZoomContent_ModPageIsSelected_PreservesPageAndOpenProjectDraft(bool library)
         {
             ContentEditorPage page = library ? ContentEditorPage.Library : ContentEditorPage.Browse;

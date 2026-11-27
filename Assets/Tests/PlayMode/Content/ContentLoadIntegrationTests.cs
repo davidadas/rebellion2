@@ -130,32 +130,30 @@ namespace Rebellion.Tests.Content
         }
 
         [UnityTest]
-        public IEnumerator LoadSave_DifferentContent_RestoresMenuContentOnReturn()
+        public IEnumerator LoadSave_ReorderedStackWithArchivedRelease_RestoresMenuContentOnReturn()
         {
             SceneManager.sceneLoaded += DisableSceneRendering;
             string saveName = "mod-order-" + System.Guid.NewGuid().ToString("N");
-            string modID = saveName;
-            string modDirectory = null;
+            string firstMod = saveName + "-z";
+            string lastMod = saveName + "-a";
+            string[] savedOrder = { firstMod, lastMod };
+            string[] fixtureFolders = null;
             try
             {
                 AppBootstrap previous = AppBootstrap.EnsureExists();
                 ContentPack original = previous.GetContentPack();
-                modDirectory = Path.Combine(
-                    ContentFileResolver.ResolveModsRootPath(original.ContentRootPath),
-                    modID
-                );
-                Directory.CreateDirectory(modDirectory);
-                File.WriteAllText(
-                    Path.Combine(modDirectory, "mod.xml"),
-                    $"<ContentModDefinition><ID>{modID}</ID><Version>1.0.0</Version>"
-                        + $"<DisplayName>Campaign mod</DisplayName><BasePackID>{original.Definition.ID}</BasePackID>"
-                        + $"<BasePackVersion>{original.Definition.Version}</BasePackVersion></ContentModDefinition>"
-                );
-                ContentPack saved = ContentPackLoader.OpenExact(
+                string mods = ContentFileResolver.ResolveModsRootPath(original.ContentRootPath);
+                string firstFolder = Path.Combine(mods, firstMod);
+                string lastFolder = Path.Combine(mods, lastMod);
+                string archivedFolder = Path.Combine(mods, ".versions", lastMod + "-1.0.0");
+                fixtureFolders = new[] { firstFolder, lastFolder, archivedFolder };
+                WriteSaveFixtureMod(firstFolder, original.Definition, firstMod, "1.0.0");
+                WriteSaveFixtureMod(lastFolder, original.Definition, lastMod, "1.0.0");
+                ContentPack saved = ContentPackLoader.OpenDefaultScenario(
                     original.ContentRootPath,
                     original.Definition.ID,
-                    original.Scenario.ID,
-                    previous.GetUserSettingsManager().Settings.Content.DisabledModIDs
+                    System.Array.Empty<string>(),
+                    preferredModOrder: savedOrder
                 );
                 GameSummary summary = GameLaunchContext.CreateDefaultSummary(saved);
                 summary.GalaxySize = GameSize.Small;
@@ -163,6 +161,9 @@ namespace Rebellion.Tests.Content
                     new GameBuilder(summary, saved.GameData).Build(),
                     saveName
                 );
+                Directory.CreateDirectory(Path.GetDirectoryName(archivedFolder));
+                Directory.Move(lastFolder, archivedFolder);
+                WriteSaveFixtureMod(lastFolder, original.Definition, lastMod, "2.0.0");
 
                 Assert.IsTrue(previous.LoadSave(saveName));
                 LoadingScreenController loading =
@@ -183,9 +184,11 @@ namespace Rebellion.Tests.Content
                 }
 
                 Assert.IsNotNull(continueButton, "The campaign did not finish loading.");
+                ContentFileResolver restored = AppBootstrap.Instance.GetContentPack().FileResolver;
+                CollectionAssert.AreEqual(savedOrder, restored.Mods.Select(mod => mod.ID));
                 Assert.That(
-                    AppBootstrap.Instance.GetContentPack().FileResolver.Mods.Select(mod => mod.ID),
-                    Does.Contain(modID)
+                    File.ReadAllText(restored.ResolveFile("Pack/release-check.txt")),
+                    Is.EqualTo(lastMod + "@1.0.0")
                 );
                 continueButton.onClick.Invoke();
                 while (
@@ -217,8 +220,9 @@ namespace Rebellion.Tests.Content
             {
                 SceneManager.sceneLoaded -= DisableSceneRendering;
                 SaveGameManager.Instance.DeleteSave(saveName);
-                if (modDirectory != null && Directory.Exists(modDirectory))
-                    Directory.Delete(modDirectory, true);
+                foreach (string path in fixtureFolders ?? System.Array.Empty<string>())
+                    if (Directory.Exists(path))
+                        Directory.Delete(path, true);
             }
         }
 
@@ -582,6 +586,31 @@ namespace Rebellion.Tests.Content
                 yield return null;
 
             Assert.IsTrue(preload.IsCanceled, preload.Exception?.ToString());
+        }
+
+        /// <summary>
+        /// Creates a legacy mod with a marker that identifies the release providing the file.
+        /// </summary>
+        /// <param name="folder">The fixture mod folder.</param>
+        /// <param name="baseline">The game pack the mod targets.</param>
+        /// <param name="id">The mod's saved identity.</param>
+        /// <param name="version">The installed release.</param>
+        private static void WriteSaveFixtureMod(
+            string folder,
+            ContentPackDefinition baseline,
+            string id,
+            string version
+        )
+        {
+            string pack = Path.Combine(folder, "Content", "Pack");
+            Directory.CreateDirectory(pack);
+            File.WriteAllText(
+                Path.Combine(folder, "mod.xml"),
+                $"<ContentModDefinition><ID>{id}</ID><Version>{version}</Version>"
+                    + $"<DisplayName>{id}</DisplayName><BasePackID>{baseline.ID}</BasePackID>"
+                    + $"<BasePackVersion>{baseline.Version}</BasePackVersion></ContentModDefinition>"
+            );
+            File.WriteAllText(Path.Combine(pack, "release-check.txt"), id + "@" + version);
         }
 
         /// <summary>

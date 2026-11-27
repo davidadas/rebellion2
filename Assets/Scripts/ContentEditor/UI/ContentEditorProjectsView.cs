@@ -275,7 +275,7 @@ public sealed class ContentEditorProjectsView : MonoBehaviour
             pitch,
             (row, item, index) =>
             {
-                bool active = current?.PackRootPath == item.Folder;
+                bool active = current?.ProjectRootPath == item.Folder;
                 row.Render(
                     item.Name,
                     item.Error
