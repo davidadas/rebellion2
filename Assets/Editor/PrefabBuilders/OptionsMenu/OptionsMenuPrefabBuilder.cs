@@ -736,15 +736,15 @@ public static class OptionsMenuPrefabBuilder
             18,
             16,
             356,
-            312,
+            280,
             0,
             0,
             342,
-            312,
+            280,
             344,
             0,
             12,
-            312,
+            280,
             out RectTransform controlsContent
         );
         TextMeshProUGUI primaryColumnHeader = CreateTextLabel("PrimaryColumnHeader", controlsPage);

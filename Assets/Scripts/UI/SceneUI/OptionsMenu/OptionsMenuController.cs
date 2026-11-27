@@ -136,6 +136,7 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
         _bindingSession.Changed += _settingsSession.MarkInputChanged;
         _bindingSession.PresentationChanged += MarkDirty;
         _bindingSession.ConflictRequested += HandleBindingConflictRequested;
+        _bindingSession.Failed += HandleBindingFailed;
         _bootstrap.GetCancelStack()?.Register(this);
     }
 
@@ -230,6 +231,7 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
         _bindingSession.Changed -= _settingsSession.MarkInputChanged;
         _bindingSession.PresentationChanged -= MarkDirty;
         _bindingSession.ConflictRequested -= HandleBindingConflictRequested;
+        _bindingSession.Failed -= HandleBindingFailed;
         _bindingSession.Dispose();
         _bootstrap.GetCancelStack()?.Unregister(this);
         _disposed = true;
@@ -1153,6 +1155,23 @@ public sealed class OptionsMenuController : ICancelable, IOptionsMenuPresenter
     private void HandleBindingConflictRequested(string message)
     {
         _view?.ShowConfirm(message);
+    }
+
+    /// <summary>
+    /// Dismisses a failed conflict prompt and reports the recovered edit in the settings footer.
+    /// </summary>
+    /// <param name="message">The shortcut recovery message.</param>
+    private void HandleBindingFailed(string message)
+    {
+        try
+        {
+            _view?.HideConfirm();
+            _settingsSession.MarkInputChanged();
+        }
+        finally
+        {
+            SetStatus(message, true);
+        }
     }
 
     /// <summary>

@@ -7,13 +7,6 @@ using UnityEditor;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using ArgumentNullException = global::System.ArgumentNullException;
-using BindingFlags = global::System.Reflection.BindingFlags;
-using InvalidOperationException = global::System.InvalidOperationException;
-using MissingMemberException = global::System.MissingMemberException;
-using PropertyInfo = global::System.Reflection.PropertyInfo;
-using StringComparer = global::System.StringComparer;
-using StringComparison = global::System.StringComparison;
 
 /// <summary>
 /// Authors the generated Strategy View and related window prefabs.
@@ -304,7 +297,7 @@ public static class StrategyViewPrefabBuilder
                 string.Equals(
                     theme?.FactionInstanceID,
                     _previewThemeId,
-                    StringComparison.OrdinalIgnoreCase
+                    System.StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -312,7 +305,7 @@ public static class StrategyViewPrefabBuilder
             }
         }
 
-        throw new InvalidOperationException(
+        throw new System.InvalidOperationException(
             $"Faction theme '{_previewThemeId}' is required for prefab authoring."
         );
     }
@@ -334,7 +327,7 @@ public static class StrategyViewPrefabBuilder
                 && !string.Equals(
                     theme.FactionInstanceID,
                     _fallbackPreviewThemeId,
-                    StringComparison.OrdinalIgnoreCase
+                    System.StringComparison.OrdinalIgnoreCase
                 )
             )
             {
@@ -347,7 +340,7 @@ public static class StrategyViewPrefabBuilder
                 string.Compare(
                     left.FactionInstanceID,
                     right.FactionInstanceID,
-                    StringComparison.Ordinal
+                    System.StringComparison.Ordinal
                 )
         );
         if (index < 0 || index >= themes.Count)
@@ -762,7 +755,18 @@ public static class StrategyViewPrefabBuilder
         );
         activeFilterLabel.gameObject.SetActive(false);
 
-        GameObject bookmarks = CreateLayer("Bookmarks", root.transform);
+        GameObject hud = CreateLayer(_hudName, root.transform);
+        RectTransform hudRect = hud.GetComponent<RectTransform>();
+        SetStrategySurfaceRect(hudRect);
+        StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
+
+        RectTransform hudBackground = CreateChildLayer(_hudBackgroundImageName, hud.transform);
+        RawImage hudBackgroundImage = hudBackground.gameObject.AddComponent<RawImage>();
+        hudBackgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
+        hudBackgroundImage.enabled = hudBackgroundImage.texture != null;
+        hudBackgroundImage.raycastTarget = false;
+
+        GameObject bookmarks = CreateLayer("Bookmarks", hud.transform);
         RectTransform bookmarksRect = bookmarks.GetComponent<RectTransform>();
         SetStrategySurfaceRect(bookmarksRect);
         BookmarkBarView bookmarkBarView = EnableRuntimeComponent(
@@ -776,16 +780,6 @@ public static class StrategyViewPrefabBuilder
             bookmarkLayout
         );
 
-        GameObject hud = CreateLayer(_hudName, root.transform);
-        RectTransform hudRect = hud.GetComponent<RectTransform>();
-        SetStrategySurfaceRect(hudRect);
-        StrategyHudView hudView = EnableRuntimeComponent(hud.AddComponent<StrategyHudView>());
-
-        RectTransform hudBackground = CreateChildLayer(_hudBackgroundImageName, hud.transform);
-        RawImage hudBackgroundImage = hudBackground.gameObject.AddComponent<RawImage>();
-        hudBackgroundImage.texture = LoadTexture(PreviewTheme?.TacticalHUDLayout?.ImagePath);
-        hudBackgroundImage.enabled = hudBackgroundImage.texture != null;
-        hudBackgroundImage.raycastTarget = false;
         StrategyAdvisorView advisorView = CreateStrategyAdvisorView(hud.transform);
 
         RectTransform hudTextFields = CreateChildLayer(_hudTextFieldsName, hud.transform);
@@ -4304,7 +4298,7 @@ public static class StrategyViewPrefabBuilder
         where T : MonoBehaviour
     {
         if (component == null)
-            throw new ArgumentNullException(nameof(component));
+            throw new System.ArgumentNullException(nameof(component));
 
         component.enabled = true;
         return component;
@@ -7465,7 +7459,9 @@ public static class StrategyViewPrefabBuilder
         Directory.CreateDirectory(Path.GetDirectoryName(path));
         GameObject saved = PrefabUtility.SaveAsPrefabAsset(root, path, out bool success);
         if (!success || saved == null)
-            throw new InvalidOperationException($"Failed to save generated prefab at {path}.");
+            throw new System.InvalidOperationException(
+                $"Failed to save generated prefab at {path}."
+            );
         return saved;
     }
 
@@ -8257,7 +8253,7 @@ public static class StrategyViewPrefabBuilder
     internal static void CreateArtworkWindowPreviews(Transform parent)
     {
         if (parent == null)
-            throw new ArgumentNullException(nameof(parent));
+            throw new System.ArgumentNullException(nameof(parent));
 
         CreateArtworkWindowPreview(
             _defenseWindowPrefabPath,
@@ -8351,7 +8347,7 @@ public static class StrategyViewPrefabBuilder
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(_prefabPath);
         if (prefab == null)
-            throw new InvalidOperationException(
+            throw new System.InvalidOperationException(
                 $"Artwork preview source prefab is missing: {_prefabPath}"
             );
 
@@ -8380,26 +8376,32 @@ public static class StrategyViewPrefabBuilder
         );
         StrategyHudView hud = source.GetComponentInChildren<StrategyHudView>(true);
         if (hud == null)
-            throw new InvalidOperationException("Strategy HUD preview source is missing.");
+            throw new System.InvalidOperationException("Strategy HUD preview source is missing.");
         GalaxyMapView galaxyMap = source.GetComponentInChildren<GalaxyMapView>(true);
         if (galaxyMap == null)
-            throw new InvalidOperationException("Strategy galaxy-map preview source is missing.");
+            throw new System.InvalidOperationException(
+                "Strategy galaxy-map preview source is missing."
+            );
         RawImage galaxyBackground = galaxyMap
             .GetComponentsInChildren<RawImage>(true)
             .SingleOrDefault(image => image.name == "BackgroundImage");
         if (galaxyBackground == null)
-            throw new InvalidOperationException(
+            throw new System.InvalidOperationException(
                 "Strategy view preview galaxy background is missing."
             );
         ContextMenuView contextMenu = source.GetComponentInChildren<ContextMenuView>(true);
         if (contextMenu == null)
-            throw new InvalidOperationException("Strategy view preview context menu is missing.");
+            throw new System.InvalidOperationException(
+                "Strategy view preview context menu is missing."
+            );
 
         UIRequestNoticeView sessionNotice = source.GetComponentInChildren<UIRequestNoticeView>(
             true
         );
         if (sessionNotice == null)
-            throw new InvalidOperationException("Strategy HUD preview session notice is missing.");
+            throw new System.InvalidOperationException(
+                "Strategy HUD preview session notice is missing."
+            );
         string[] resourcePanelNames =
         {
             "RawMaterialsPanel",
@@ -8426,7 +8428,7 @@ public static class StrategyViewPrefabBuilder
         Object.DestroyImmediate(source);
 
         Dictionary<string, string> themePaths = new Dictionary<string, string>(
-            StringComparer.Ordinal
+            System.StringComparer.Ordinal
         );
         CollectThemeTexturePaths(
             PreviewTheme?.TacticalHUDLayout,
@@ -8479,12 +8481,12 @@ public static class StrategyViewPrefabBuilder
     {
         GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(prefabPath);
         if (prefab == null)
-            throw new InvalidOperationException(
+            throw new System.InvalidOperationException(
                 $"Artwork preview window prefab is missing: {prefabPath}"
             );
 
         Dictionary<string, string> themePaths = new Dictionary<string, string>(
-            StringComparer.Ordinal
+            System.StringComparer.Ordinal
         );
         CollectThemeTexturePaths(PreviewTheme?.WindowTitleTheme, "WindowTitleTheme", themePaths, 0);
         CollectThemeTexturePaths(theme, themePath, themePaths, 0);
@@ -8630,7 +8632,7 @@ public static class StrategyViewPrefabBuilder
             if (image.name == name)
                 return image;
         }
-        throw new InvalidOperationException($"{root.name}/{name} is missing.");
+        throw new System.InvalidOperationException($"{root.name}/{name} is missing.");
     }
 
     /// <summary>
@@ -8651,9 +8653,11 @@ public static class StrategyViewPrefabBuilder
             return;
 
         foreach (
-            PropertyInfo property in value
+            System.Reflection.PropertyInfo property in value
                 .GetType()
-                .GetProperties(BindingFlags.Instance | BindingFlags.Public)
+                .GetProperties(
+                    System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public
+                )
         )
         {
             if (!property.CanRead || property.GetIndexParameters().Length != 0)
@@ -8666,8 +8670,8 @@ public static class StrategyViewPrefabBuilder
             {
                 if (
                     (
-                        address.StartsWith("Application/", StringComparison.Ordinal)
-                        || address.StartsWith("Pack/", StringComparison.Ordinal)
+                        address.StartsWith("Application/", System.StringComparison.Ordinal)
+                        || address.StartsWith("Pack/", System.StringComparison.Ordinal)
                     ) && !paths.ContainsKey(ToContentAddress(address))
                 )
                 {
@@ -9064,7 +9068,7 @@ public static class StrategyViewPrefabBuilder
         if (window == null)
             throw new MissingReferenceException($"{handleObject.name} has no owning UIWindow.");
         if (!handleObject.transform.IsChildOf(window.transform))
-            throw new InvalidOperationException(
+            throw new System.InvalidOperationException(
                 $"{handleObject.name} is not a child of {window.name}."
             );
 
@@ -9650,8 +9654,8 @@ public static class StrategyViewPrefabBuilder
     {
         if (
             string.IsNullOrEmpty(path)
-            || !path.StartsWith("Application/", StringComparison.Ordinal)
-                && !path.StartsWith("Pack/", StringComparison.Ordinal)
+            || !path.StartsWith("Application/", System.StringComparison.Ordinal)
+                && !path.StartsWith("Pack/", System.StringComparison.Ordinal)
         )
         {
             return null;
@@ -9954,10 +9958,12 @@ public static class StrategyViewPrefabBuilder
             throw new MissingReferenceException($"{fieldName} is missing.");
 
         if (prefab.transform is not RectTransform rect)
-            throw new InvalidOperationException($"{fieldName} does not use a RectTransform root.");
+            throw new System.InvalidOperationException(
+                $"{fieldName} does not use a RectTransform root."
+            );
 
         if (rect.sizeDelta.x <= 0 || rect.sizeDelta.y <= 0)
-            throw new InvalidOperationException($"{fieldName} has no fixed prefab size.");
+            throw new System.InvalidOperationException($"{fieldName} has no fixed prefab size.");
     }
 
     /// <summary>
@@ -10009,7 +10015,7 @@ public static class StrategyViewPrefabBuilder
     {
         SerializedProperty property = serializedObject.FindProperty(propertyName);
         if (property == null)
-            throw new MissingMemberException(target.GetType().Name, propertyName);
+            throw new System.MissingMemberException(target.GetType().Name, propertyName);
 
         return property;
     }
