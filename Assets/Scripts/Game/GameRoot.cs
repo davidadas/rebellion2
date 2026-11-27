@@ -669,8 +669,7 @@ namespace Rebellion.Game
             // Register the node and its children.
             foreach (ISceneNode child in ((BaseSceneNode)node).EnumerateSubtreeIncludingDisabled())
                 AddSceneNodeByInstanceID(child);
-            if (PresenceObserver != null)
-                PresenceObserver.OnNext((node, null, GetContainingPlanet(node)));
+            PresenceObserver?.OnNext((node, null, GetContainingPlanet(node)));
         }
 
         /// <summary>
@@ -748,8 +747,7 @@ namespace Rebellion.Game
                 node.SetParent(oldParent);
                 throw;
             }
-            if (PresenceObserver != null)
-                PresenceObserver.OnNext((node, origin, GetContainingPlanet(node)));
+            PresenceObserver?.OnNext((node, origin, GetContainingPlanet(node)));
         }
 
         /// <summary>
