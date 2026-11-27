@@ -186,6 +186,13 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        /// <summary>
+        /// Opens Browse with an isolated cached listing.
+        /// </summary>
+        /// <param name="root">The fixture content root.</param>
+        /// <param name="store">The fixture package store.</param>
+        /// <param name="contentChanged">The optional installation callback.</param>
+        /// <returns>The asynchronous fixture setup.</returns>
         private IEnumerator OpenCachedBrowse(
             string root,
             ModPackageStore store,
@@ -207,6 +214,10 @@ namespace Rebellion.Tests.ContentEditor.UI
                 yield return null;
         }
 
+        /// <summary>
+        /// Writes a cached release that conflicts with the local fixture.
+        /// </summary>
+        /// <param name="store">The fixture package store.</param>
         private static void CacheDuplicateRelease(ModPackageStore store)
         {
             string state = Path.GetDirectoryName(store.Catalog.CachePath);

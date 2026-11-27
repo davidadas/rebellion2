@@ -588,11 +588,12 @@ namespace Rebellion.Tests.Content.Packages
         }
 
         /// <summary>
-        /// Awaits an expected failure without blocking Unity's continuation queue.
+        /// Writes a local mod manifest to the fixture library.
         /// </summary>
-        /// <typeparam name="T">The expected exception type.</typeparam>
-        /// <param name="action">The asynchronous operation.</param>
-        /// <returns>The expected exception.</returns>
+        /// <param name="id">The installed mod ID.</param>
+        /// <param name="version">The installed mod version.</param>
+        /// <param name="rules">The optional manifest rules.</param>
+        /// <returns>The local mod folder.</returns>
         private string WriteLocalMod(string id, string version, string rules)
         {
             string root = Path.Combine(ContentFileResolver.ResolveModsRootPath(contentRoot), id);
@@ -604,6 +605,12 @@ namespace Rebellion.Tests.Content.Packages
             return root;
         }
 
+        /// <summary>
+        /// Awaits an expected failure without blocking Unity's continuation queue.
+        /// </summary>
+        /// <typeparam name="T">The expected exception type.</typeparam>
+        /// <param name="action">The asynchronous operation.</param>
+        /// <returns>The expected exception.</returns>
         private static async Task<T> ExpectFailureAsync<T>(Func<Task> action)
             where T : Exception
         {
@@ -619,6 +626,14 @@ namespace Rebellion.Tests.Content.Packages
             return null;
         }
 
+        /// <summary>
+        /// Installs a fixture era directly in the pack directory.
+        /// </summary>
+        /// <param name="name">The pack folder name.</param>
+        /// <param name="id">The pack ID.</param>
+        /// <param name="version">The pack version.</param>
+        /// <param name="basePackID">The optional inherited pack ID.</param>
+        /// <returns>The installed pack folder.</returns>
         private string WritePackCopy(
             string name,
             string id,

@@ -80,6 +80,10 @@ namespace Rebellion.Tests.ContentEditor.UI
             Assert.That(rows[0].Rect.anchoredPosition.y, Is.EqualTo(-_rowPitch));
         }
 
+        /// <summary>
+        /// Opens the load order dialog with three movable rows.
+        /// </summary>
+        /// <returns>The dialog and its rows in display order.</returns>
         private (ContentEditorModOrderView Dialog, SortableRowView[] Rows) OpenLoadOrder()
         {
             view.ModManager.Show();
@@ -100,6 +104,11 @@ namespace Rebellion.Tests.ContentEditor.UI
             return (dialog, rows);
         }
 
+        /// <summary>
+        /// Creates a left button press at a card's center.
+        /// </summary>
+        /// <param name="row">The card to press.</param>
+        /// <returns>The pointer event for the press.</returns>
         private static PointerEventData CreatePointer(SortableRowView row)
         {
             Vector2 start = CenterOf(row);
@@ -111,6 +120,11 @@ namespace Rebellion.Tests.ContentEditor.UI
             };
         }
 
+        /// <summary>
+        /// Computes the card's center in screen coordinates.
+        /// </summary>
+        /// <param name="row">The card to locate.</param>
+        /// <returns>The center of the card.</returns>
         private static Vector2 CenterOf(SortableRowView row) =>
             RectTransformUtility.WorldToScreenPoint(
                 null,

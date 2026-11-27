@@ -30,10 +30,14 @@ public sealed class CardReorderDrag
 
     public bool IsDragging => _held != null;
 
-    /// <summary>Called when the preview moves to another slot.</summary>
+    /// <summary>
+    /// Called when the preview moves to another slot.
+    /// </summary>
     public Func<int, int, string> CheckMove { get; set; }
 
-    /// <summary>Reports a restriction for the current preview slot.</summary>
+    /// <summary>
+    /// Reports a restriction for the current preview slot.
+    /// </summary>
     public Action<string> ShowRestriction { get; set; }
 
     public Color Accent { get; set; }

@@ -785,6 +785,12 @@ namespace Rebellion.Tests.Content
             return modID;
         }
 
+        /// <summary>
+        /// Creates a fixture mod that supplies one text asset.
+        /// </summary>
+        /// <param name="modID">The fixture mod ID.</param>
+        /// <param name="address">The mod-relative content address.</param>
+        /// <param name="text">The replacement asset.</param>
         private void WriteModText(string modID, string address, string text)
         {
             CreateMod(modID);
@@ -793,6 +799,12 @@ namespace Rebellion.Tests.Content
             File.WriteAllText(target, text);
         }
 
+        /// <summary>
+        /// Creates a fixture mod that registers a campaign.
+        /// </summary>
+        /// <param name="modID">The mod and scenario ID.</param>
+        /// <param name="displayName">The scenario name.</param>
+        /// <param name="makeDefault">Whether the mod sets the default scenario.</param>
         private void WriteCampaignMod(string modID, string displayName, bool makeDefault)
         {
             CreateMod(modID, extendsPack: true);
@@ -818,6 +830,11 @@ namespace Rebellion.Tests.Content
             );
         }
 
+        /// <summary>
+        /// Encodes a fixture icon with a distinct color.
+        /// </summary>
+        /// <param name="variant">The fixture color index.</param>
+        /// <returns>The PNG bytes.</returns>
         private static byte[] CreateStackIcon(int variant)
         {
             var icon = new Texture2D(2, 2, TextureFormat.RGBA32, false);
