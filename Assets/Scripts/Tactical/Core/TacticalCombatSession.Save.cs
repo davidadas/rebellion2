@@ -26,6 +26,11 @@ namespace Rebellion.Tactical
                 throw new InvalidOperationException("The encounter cannot be saved at this point.");
 
             Selection.ProcessPendingCommands();
+            if (!CanCaptureForSave)
+                throw new InvalidOperationException(
+                    "The battle ended before the save was captured."
+                );
+
             _scheduler?.CaptureTime();
             ActiveBattle.ResumeState state = new()
             {

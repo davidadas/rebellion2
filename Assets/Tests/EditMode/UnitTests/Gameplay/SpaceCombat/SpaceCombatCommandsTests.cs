@@ -6346,6 +6346,19 @@ namespace Rebellion.Tests.Gameplay
             return fleet;
         }
 
+        [Test]
+        public void CaptureTacticalCombat_QueuedCompletion_DoesNotSaveAnEndedBattle()
+        {
+            (GameRoot game, SpaceCombatCommands commands, _) = CreateTacticalEncounter();
+            TacticalCombatSession battle = commands.BeginTacticalCombat();
+            battle.Selection.QueueImmediateResult();
+
+            Assert.Throws<InvalidOperationException>(commands.CaptureTacticalCombat);
+
+            Assert.IsTrue(battle.IsComplete);
+            Assert.IsNull(game.ActiveBattle.Resume);
+        }
+
         [TestCase("gunnery")]
         [TestCase("carrier")]
         [TestCase("withdrawal")]
