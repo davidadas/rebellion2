@@ -477,6 +477,12 @@ public static class DragPreviewTestFactory
 /// </summary>
 public static class TestGameData
 {
+    /// <summary>
+    /// Sets a ship fixture's arc strengths and weapon range.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="ratings">The four legacy arc strengths followed by range.</param>
     internal static void SetPrimaryWeapon(
         this CapitalShip ship,
         PrimaryWeaponType weapon,
@@ -492,6 +498,13 @@ public static class TestGameData
         }
     }
 
+    /// <summary>
+    /// Sets one weapon strength in a ship fixture.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="arc">The affected direction.</param>
+    /// <param name="strength">The strength to install.</param>
     internal static void SetPrimaryWeaponStrength(
         this CapitalShip ship,
         PrimaryWeaponType weapon,
@@ -499,6 +512,12 @@ public static class TestGameData
         int strength
     ) => GetOrAddWeapon(ship, weapon, arc).Damage = strength;
 
+    /// <summary>
+    /// Sets one weapon range across all arcs in a ship fixture.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="range">The range to install.</param>
     internal static void SetPrimaryWeaponRange(
         this CapitalShip ship,
         PrimaryWeaponType weapon,
@@ -509,6 +528,10 @@ public static class TestGameData
             GetOrAddWeapon(ship, weapon, arc).Range = range;
     }
 
+    /// <summary>
+    /// Sets the damage of all mounted weapons to zero.
+    /// </summary>
+    /// <param name="ship">The ship to disarm.</param>
     internal static void ClearPrimaryWeaponDamage(this CapitalShip ship)
     {
         foreach (HardpointGroup group in ship.HardpointGroups)
@@ -517,6 +540,13 @@ public static class TestGameData
                 mount.Weapon.Damage = 0;
     }
 
+    /// <summary>
+    /// Finds or creates a fixture's weapon mount in one arc.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="arc">The affected direction.</param>
+    /// <returns>The fixture mount's weapon data.</returns>
     private static WeaponData GetOrAddWeapon(
         CapitalShip ship,
         PrimaryWeaponType weapon,
