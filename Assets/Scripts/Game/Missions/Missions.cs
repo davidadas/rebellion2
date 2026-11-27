@@ -482,7 +482,6 @@ namespace Rebellion.Game.Missions
         {
             List<GameResult> results = new List<GameResult>();
             MissionOutcome outcome = MissionOutcome.Failed;
-            MissionCompletionReason completionReason = MissionCompletionReason.Failure;
 
             IMissionParticipant successfulParticipant = RollParticipantAttempts(provider, game);
             if (successfulParticipant == null)
@@ -500,7 +499,7 @@ namespace Rebellion.Game.Missions
                 }
             }
 
-            results.Add(BuildCompletedResult(outcome, completionReason, game));
+            results.Add(BuildCompletedResult(outcome, game));
             return results;
         }
 

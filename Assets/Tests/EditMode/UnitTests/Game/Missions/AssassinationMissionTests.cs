@@ -362,10 +362,9 @@ namespace Rebellion.Tests.Game.Missions
                 killed.Assassin.InstanceID,
                 "Assassin should be the participant whose attempt succeeded"
             );
-            Assert.AreEqual(
-                MissionOutcome.Success,
-                results.OfType<MissionCompletedResult>().Single().Outcome
-            );
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Success, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.Success, completed.CompletionReason);
         }
 
         [Test]
@@ -416,10 +415,9 @@ namespace Rebellion.Tests.Game.Missions
                 results.Any(r => r is OfficerKilledResult),
                 "Should not produce OfficerKilledResult when target survives"
             );
-            Assert.AreEqual(
-                MissionOutcome.Failed,
-                results.OfType<MissionCompletedResult>().Single().Outcome
-            );
+            MissionCompletedResult completed = results.OfType<MissionCompletedResult>().Single();
+            Assert.AreEqual(MissionOutcome.Failed, completed.Outcome);
+            Assert.AreEqual(MissionCompletionReason.Failure, completed.CompletionReason);
             Assert.AreEqual(
                 originalCombat,
                 officer.GetBaseRating(SkillRating.Combat),
