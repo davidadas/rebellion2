@@ -57,6 +57,31 @@ public static class ContentXmlOverrides
         text != null && (bool?)XElement.Parse(text).Attribute(_inherit) == true;
 
     /// <summary>
+    /// Finds settings addressed by two sparse overlays to the same document.
+    /// </summary>
+    /// <param name="earlier">The lower-priority authored overlay.</param>
+    /// <param name="later">The higher-priority authored overlay.</param>
+    /// <returns>The affected setting paths and higher-priority scalar values, when present.</returns>
+    internal static IEnumerable<(string Path, string Value)> GetOverlappingSettings(
+        string earlier,
+        string later
+    )
+    {
+        string[] lower = GetEdits(XElement.Parse(earlier), string.Empty)
+            .Select(edit => edit.Path)
+            .ToArray();
+        foreach (var edit in GetEdits(XElement.Parse(later), string.Empty))
+            if (
+                lower.Any(path =>
+                    path == edit.Path
+                    || path.StartsWith(edit.Path + "/", StringComparison.Ordinal)
+                    || edit.Path.StartsWith(path + "/", StringComparison.Ordinal)
+                )
+            )
+                yield return edit;
+    }
+
+    /// <summary>
     /// Resolves either legacy sparse rules or explicit setting directives over their defaults.
     /// </summary>
     /// <param name="defaults">The applicable resolved rules defaults.</param>
@@ -113,12 +138,27 @@ public static class ContentXmlOverrides
         XElement baseline = XElement.Parse(defaults);
         XElement edited = XElement.Parse(effective);
         XElement authored = previous == null ? null : XElement.Parse(previous);
-        if (IsAtomicCollection(baseline))
+        if (
+            IsAtomicCollection(baseline)
+            || baseline.Name.LocalName == "MessageDefinitions" && IsAtomicCollection(edited)
+        )
             return XNode.DeepEquals(baseline, edited) && (previous == null || IsEmpty(previous))
                 ? Create(defaults)
                 : edited.ToString();
         XElement result = Difference(baseline, edited, authored) ?? new XElement(baseline.Name);
         result.SetAttributeValue(_inherit, true);
+        if (baseline.Name.LocalName == "MessageDefinitions")
+        {
+            AddMessageInsertionAnchors(baseline, edited, result);
+            XElement merged = XElement.Parse(Merge(defaults, result.ToString()));
+            if (
+                !merged
+                    .Elements()
+                    .Select(Identity)
+                    .SequenceEqual(edited.Elements().Select(Identity))
+            )
+                return edited.ToString();
+        }
         return result.ToString();
     }
 
@@ -293,7 +333,10 @@ public static class ContentXmlOverrides
             target.ReplaceNodes(source.Nodes().Select(CloneNode));
             return;
         }
-        if (IsAtomicCollection(target))
+        if (
+            IsAtomicCollection(target)
+            || target.Name.LocalName == "MessageDefinitions" && IsAtomicCollection(source)
+        )
         {
             target.ReplaceNodes(source.Nodes().Select(CloneNode));
             return;
@@ -319,7 +362,23 @@ public static class ContentXmlOverrides
                 continue;
             }
             if (existing == null)
+            {
+                if (target.Name.LocalName == "MessageDefinitions" && Identity(child) != null)
+                {
+                    if (HasOnlyIdentity(child))
+                        continue;
+                    XElement following = child
+                        .ElementsAfterSelf()
+                        .Select(next => FindChild(target, next))
+                        .FirstOrDefault(next => next != null);
+                    if (following != null)
+                    {
+                        following.AddBeforeSelf(new XElement(child));
+                        continue;
+                    }
+                }
                 target.Add(new XElement(child));
+            }
             else
                 MergeElement(existing, child);
         }
@@ -462,13 +521,58 @@ public static class ContentXmlOverrides
     }
 
     /// <summary>
+    /// Retains insertion positions using identity-only neighbors without copying their settings.
+    /// </summary>
+    /// <param name="baseline">The inherited message definitions.</param>
+    /// <param name="edited">The definitions in the author's requested order.</param>
+    /// <param name="result">The sparse settings and removals being saved.</param>
+    private static void AddMessageInsertionAnchors(
+        XElement baseline,
+        XElement edited,
+        XElement result
+    )
+    {
+        HashSet<string> anchors = edited
+            .Elements()
+            .Where(record => FindChild(baseline, record) == null)
+            .Select(record =>
+                record.ElementsAfterSelf().FirstOrDefault(next => FindChild(baseline, next) != null)
+            )
+            .Where(record => record != null)
+            .Select(Identity)
+            .ToHashSet(StringComparer.Ordinal);
+        if (anchors.Count == 0)
+            return;
+        Dictionary<string, XElement> changes = result
+            .Elements()
+            .ToDictionary(Identity, StringComparer.Ordinal);
+        List<XElement> ordered = new();
+        foreach (XElement record in edited.Elements())
+        {
+            string key = Identity(record);
+            if (changes.TryGetValue(key, out XElement change))
+            {
+                changes.Remove(key);
+                ordered.Add(new XElement(change));
+            }
+            else if (anchors.Contains(key))
+                ordered.Add(IdentityElement(record));
+        }
+        ordered.AddRange(changes.Values.Select(record => new XElement(record)));
+        result.ReplaceNodes(ordered);
+    }
+
+    /// <summary>
     /// Recognizes the stable identities already used by content catalogs.
     /// </summary>
     /// <param name="element">The record to inspect.</param>
     /// <returns>The identity member name, or null for an ordered item.</returns>
     private static XName IdentityName(XElement element)
     {
-        string name = IdentityMemberName(element.Name.LocalName);
+        string name =
+            element.Name == "Preload" && element.Parent?.Parent?.Name == "ContentPack"
+                ? "ID"
+                : IdentityMemberName(element.Name.LocalName);
         return name != null && (element.Element(name) != null || element.Attribute(name) != null)
             ? name
             : null;
@@ -490,7 +594,7 @@ public static class ContentXmlOverrides
             or "Building"
             or "PlanetSector"
             or "Unit" => "TypeID",
-            "Planet" or "GameEvent" or "Faction" => "InstanceID",
+            "Planet" or "GameEvent" or "Faction" or "MessageDefinition" => "InstanceID",
             "FactionTheme" => "FactionInstanceID",
             "Trait" => "ID",
             "Entry" => "Key",
@@ -504,10 +608,58 @@ public static class ContentXmlOverrides
     /// <returns>The identity, or null for an ordered item.</returns>
     private static string Identity(XElement element)
     {
+        if (IsPackRegistration(element))
+            return element.Value;
         XName name = IdentityName(element);
         return name == null
             ? null
             : (string)element.Element(name) ?? (string)element.Attribute(name);
+    }
+
+    /// <summary>
+    /// Lists the paths to explicitly authored values, removals, and whole collections.
+    /// </summary>
+    /// <param name="element">The authored branch to inspect.</param>
+    /// <param name="parent">The path of its containing branch.</param>
+    /// <returns>The setting paths and scalar values under the branch.</returns>
+    private static IEnumerable<(string Path, string Value)> GetEdits(
+        XElement element,
+        string parent
+    )
+    {
+        string key = Identity(element);
+        string path = parent + "/" + element.Name.LocalName;
+        if (key != null)
+            path += "[" + Uri.EscapeDataString(key) + "]";
+        if (
+            element.Parent != null
+            && (
+                (bool?)element.Attribute(_remove) == true
+                || !element.HasElements
+                || IsAtomicCollection(element)
+            )
+        )
+        {
+            string value =
+                !element.HasElements && (bool?)element.Attribute(_remove) != true
+                    ? element.Value
+                    : null;
+            yield return (path, value);
+            yield break;
+        }
+        foreach (
+            XAttribute attribute in element
+                .Attributes()
+                .Where(attribute =>
+                    IsValueAttribute(attribute) && attribute.Name != IdentityName(element)
+                )
+        )
+            yield return (path + "/@" + attribute.Name.LocalName, attribute.Value);
+        foreach (XName removed in RemovedAttributes(element))
+            yield return (path + "/@" + removed.LocalName, null);
+        foreach (XElement child in element.Elements().Where(child => !IsIdentity(child)))
+        foreach (var edit in GetEdits(child, path))
+            yield return edit;
     }
 
     /// <summary>
@@ -517,6 +669,8 @@ public static class ContentXmlOverrides
     /// <returns>The record selector.</returns>
     private static XElement IdentityElement(XElement element)
     {
+        if (IsPackRegistration(element))
+            return new XElement(element.Name, element.Value);
         XElement result = new XElement(element.Name);
         XName key = IdentityName(element);
         if (key != null)
@@ -526,6 +680,16 @@ public static class ContentXmlOverrides
                 result.SetAttributeValue(key, (string)element.Attribute(key));
         return result;
     }
+
+    /// <summary>
+    /// Recognizes pack manifest entries whose paths identify their registration.
+    /// </summary>
+    /// <param name="element">The list item to inspect.</param>
+    /// <returns>True for faction and scenario registrations.</returns>
+    private static bool IsPackRegistration(XElement element) =>
+        element.Name == "Path"
+        && element.Parent?.Parent?.Name == "ContentPack"
+        && element.Parent.Name.LocalName is "FactionPaths" or "ScenarioPaths" or "ThemePaths";
 
     /// <summary>
     /// Checks whether a member is its containing record's identity selector.
@@ -576,6 +740,8 @@ public static class ContentXmlOverrides
             return false;
         Type type = ElementType(element);
         Type itemType = SerializationMetadata.GetCollectionItemType(type);
+        if (itemType == typeof(MessageDefinition) && children.Length > 0)
+            return true;
         if (
             type != null && TypeHelper.IsDictionary(type)
             || itemType != null

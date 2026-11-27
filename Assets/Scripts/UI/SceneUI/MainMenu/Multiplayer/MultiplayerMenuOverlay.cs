@@ -241,9 +241,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             );
             packFilter.ClearOptions();
             packFilter.AddOptions(
-                new[] { "All content packs" }
-                    .Concat(_packs.Select(pack => pack.DisplayName))
-                    .ToList()
+                new[] { "All game packs" }.Concat(_packs.Select(pack => pack.DisplayName)).ToList()
             );
             gameNameInput.characterLimit = 64;
             lobbyChatInput.characterLimit = 512;
@@ -609,7 +607,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
                 _coordinator.IsSearchingGames && _gameRows.Count > 0 ? "Searching..."
                 : _gameRows.Count == 0 ? string.Empty
                 : _gameRows.Count + (_gameRows.Count == 1 ? " game" : " games");
-            string[] headers = { "GAME", "CONTENT PACK", "PLAYERS", "ACCESS" };
+            string[] headers = { "GAME", "GAME PACK", "PLAYERS", "ACCESS" };
             for (int index = 0; index < sortButtons.Length; index++)
                 SetButtonLabel(
                     sortButtons[index],
@@ -694,14 +692,20 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
             ContentPackDefinition definition = _packs[contentPackDropdown.value];
             AppBootstrap bootstrap = AppBootstrap.EnsureExists();
             ContentPack active = bootstrap.GetContentPack();
-            string[] disabled = bootstrap.GetUserSettingsManager().Settings.Content.DisabledModIDs;
+            UserContentSettings preferences = bootstrap.GetUserSettingsManager().Settings.Content;
+            string[] disabled = preferences.DisabledModIDs;
+            IReadOnlyList<string> order = preferences.GetModLoadOrder(definition.ID);
+            IReadOnlyList<string> versions = preferences.GetModVersions(definition.ID);
             ContentPack selected = await Task.Run(() =>
-                ContentPackLoader.OpenExact(
-                    active.ContentRootPath,
-                    definition.ID,
-                    definition.DefaultScenarioID,
-                    disabled
-                )
+                active.Definition.ID == definition.ID
+                    ? ContentPackLoader.LoadPack(active.FileResolver, active.Definition, null)
+                    : ContentPackLoader.OpenDefaultScenario(
+                        active.ContentRootPath,
+                        definition.ID,
+                        disabled,
+                        order,
+                        appliedModVersions: versions
+                    )
             );
             token.ThrowIfCancellationRequested();
             if (this == null)
@@ -1123,7 +1127,7 @@ namespace Rebellion.UI.SceneUI.MainMenu.Multiplayer
         {
             for (Exception current = exception; current != null; current = current.InnerException)
                 if (current is XmlException || current is XmlSchemaException)
-                    return "Unable to load this content pack. Check that its files are up to date.";
+                    return "Unable to load this game pack. Check that its files are up to date.";
             return exception?.Message;
         }
 

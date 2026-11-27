@@ -469,7 +469,12 @@ namespace Rebellion.Gameplay
             movement.RecordPreviousLocation(previousLocationID);
             RedirectTransit(unit, currentDestination, destinationPlanet);
             results.Add(
-                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                new GameObjectEnrouteResult
+                {
+                    GameObject = unit,
+                    PreviousPlanet = currentDestination,
+                    Tick = _game.CurrentTick,
+                }
             );
         }
 
@@ -1241,6 +1246,7 @@ namespace Rebellion.Gameplay
             {
                 IMovable unit = liveUnits[index];
                 ContainerNode resolvedDestination = destinations[index];
+                Planet previousPlanet = unit.GetParentOfType<Planet>();
                 bool changed = unit.GetParent() != resolvedDestination || unit.Movement != null;
                 if (unit.GetParent() == null)
                 {
@@ -1252,7 +1258,14 @@ namespace Rebellion.Gameplay
                     MoveNode(unit, resolvedDestination, results);
                 unit.Movement = null;
                 if (changed)
-                    results.Add(new UnitPlacedResult { Unit = unit, Tick = _game.CurrentTick });
+                    results.Add(
+                        new UnitPlacedResult
+                        {
+                            Unit = unit,
+                            PreviousPlanet = previousPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
             }
 
             return true;
@@ -1514,7 +1527,14 @@ namespace Rebellion.Gameplay
             ISceneNode capturingUnit = encounter.Commander ?? encounter.Detector;
             MovementState interruptedMovement = officer.Movement;
             officer.Movement = null;
-            if (!officer.TryCapture(capturingUnit.GetOwnerInstanceID(), _game, _movementRandom))
+            if (
+                !officer.TryCapture(
+                    capturingUnit.GetOwnerInstanceID(),
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _game.CurrentTick,
+                    _movementRandom
+                )
+            )
             {
                 officer.Movement = interruptedMovement;
                 return;
@@ -1778,7 +1798,7 @@ namespace Rebellion.Gameplay
                 return false;
 
             string movableOwner = MovementQueries.GetMovementControlOwner(movable);
-            if (!destinationPlanet.IsBlockadedFor(movableOwner, _game))
+            if (!BlockadeQueries.IsBlockadedFor(_game, destinationPlanet, movableOwner))
                 return false;
             Fleet blockadingFleet = destinationPlanet
                 .GetChildren<Fleet>()
@@ -2157,6 +2177,14 @@ namespace Rebellion.Gameplay
                 if (rebasePlanet != null)
                 {
                     MoveNode(inactiveFleet, rebasePlanet, results);
+                    results.Add(
+                        new UnitPlacedResult
+                        {
+                            Unit = inactiveFleet,
+                            PreviousPlanet = currentPlanet,
+                            Tick = _game.CurrentTick,
+                        }
+                    );
                     RetargetInTransitJoiners(inactiveFleet, currentPlanet, rebasePlanet);
                     GameLogger.Log(
                         $"{inactiveFleet.GetDisplayName()} rebased to {rebasePlanet.GetDisplayName()} because it has no operational capital ships."
@@ -2204,6 +2232,102 @@ namespace Rebellion.Gameplay
             unit.Movement = null;
             GameLogger.Warning($"{unit.GetDisplayName()} has no friendly planet to evacuate to.");
             return false;
+        }
+
+        /// <summary>
+        /// Evacuates an existing free-personnel travel party with one shared transit duration.
+        /// </summary>
+        /// <param name="participants">The travelling personnel with one owner, position, and group ID.</param>
+        /// <param name="results">The collection receiving the evacuation results.</param>
+        /// <param name="opposingBlockadeAtDeparture">The blockade state before the ownership change.</param>
+        /// <returns>The personnel successfully assigned to a common evacuation destination.</returns>
+        internal IReadOnlyList<IMovable> EvacuatePersonnelGroup(
+            IReadOnlyList<IMovable> participants,
+            ICollection<GameResult> results,
+            bool? opposingBlockadeAtDeparture
+        )
+        {
+            if (participants == null)
+                throw new ArgumentNullException(nameof(participants));
+            if (results == null)
+                throw new ArgumentNullException(nameof(results));
+            if (participants.Count < 2)
+                return Array.Empty<IMovable>();
+
+            IMovable first = participants[0];
+            Planet origin = first?.GetParentOfType<Planet>();
+            if (
+                origin == null
+                || string.IsNullOrEmpty(first.Movement?.MovementGroupID)
+                || participants.Any(unit =>
+                    unit is not IMissionParticipant
+                    || unit is Officer { IsCaptured: true } or Officer { IsKilled: true }
+                    || unit.GetOwnerInstanceID() != first.GetOwnerInstanceID()
+                    || unit.GetParentOfType<Planet>() != origin
+                    || unit.Movement?.MovementGroupID != first.Movement.MovementGroupID
+                    || unit.Movement.CurrentPosition != first.Movement.CurrentPosition
+                )
+            )
+                return Array.Empty<IMovable>();
+
+            List<IMovable> units = participants.ToList();
+            Dictionary<IMovable, MovementState> movements = units.ToDictionary(
+                unit => unit,
+                unit => unit.Movement
+            );
+            foreach (
+                ContainerNode fallback in _queries.FindSafeRelocationDestinations(
+                    first,
+                    origin,
+                    forceInterplanetaryTravel: true
+                )
+            )
+            {
+                if (!_queries.CanUseSafeRelocationDestination(units, fallback))
+                    continue;
+
+                List<ContainerNode> destinations;
+                bool accepted;
+                foreach (IMovable unit in units)
+                    unit.Movement = null;
+                try
+                {
+                    accepted = _queries.TryResolveMoveGroupDestinations(
+                        units,
+                        fallback,
+                        out destinations,
+                        out _
+                    );
+                }
+                finally
+                {
+                    RestoreMovement(movements);
+                }
+                if (!accepted)
+                    continue;
+
+                int transitTicks = CalculateGroupTransitTicks(units, destinations);
+                string groupID = _game.GenerateRuntimeIdentifier();
+                List<IMovable> evacuated = new();
+                for (int index = 0; index < units.Count; index++)
+                {
+                    if (
+                        ExecuteAcceptedMove(
+                            units[index],
+                            destinations[index],
+                            results,
+                            out _,
+                            groupID,
+                            transitTicksOverride: transitTicks,
+                            opposingBlockadeAtDeparture: opposingBlockadeAtDeparture
+                        )
+                    )
+                        evacuated.Add(units[index]);
+                }
+                return evacuated;
+            }
+
+            return Array.Empty<IMovable>();
         }
 
         /// <summary>
@@ -2528,7 +2652,12 @@ namespace Rebellion.Gameplay
                 RetargetInTransitJoiners(unit, originPlanet, destinationPlanet);
 
             results.Add(
-                new GameObjectEnrouteResult { GameObject = unit, Tick = _game.CurrentTick }
+                new GameObjectEnrouteResult
+                {
+                    GameObject = unit,
+                    PreviousPlanet = originPlanet,
+                    Tick = _game.CurrentTick,
+                }
             );
             results.Add(
                 new GameObjectEnrouteActiveResult
@@ -2554,7 +2683,9 @@ namespace Rebellion.Gameplay
         /// <returns>The current blockade state, or null when the unit cannot affect it.</returns>
         private bool? CaptureBlockadeState(IMovable unit, Planet planet)
         {
-            return unit is Fleet or CapitalShip or Starfighter ? planet?.IsBlockaded(_game) : null;
+            return unit is Fleet or CapitalShip or Starfighter
+                ? (planet == null ? (bool?)null : BlockadeQueries.IsBlockaded(_game, planet))
+                : null;
         }
 
         /// <summary>
@@ -2848,7 +2979,9 @@ namespace Rebellion.Gameplay
 
             List<string> blockadedFactionInstanceIDs = _game
                 .GetFactions()
-                .Where(candidate => destinationPlanet.IsBlockadedFor(candidate.InstanceID, _game))
+                .Where(candidate =>
+                    BlockadeQueries.IsBlockadedFor(_game, destinationPlanet, candidate.InstanceID)
+                )
                 .Select(candidate => candidate.InstanceID)
                 .ToList();
             _game.ChangeOwnership(destinationPlanet, ownerInstanceId);

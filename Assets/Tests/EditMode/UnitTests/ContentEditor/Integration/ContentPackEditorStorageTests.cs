@@ -179,6 +179,260 @@ namespace Rebellion.Tests.ContentEditor.Integration
         }
 
         [Test]
+        public void Save_LegacyThemeReferences_WritesThemePaths()
+        {
+            WriteFixtureFile(
+                "Factions/Sample/faction.xml",
+                "<Faction><ID>sample</ID><ThemePath>Data/sample.xml</ThemePath></Faction>"
+            );
+            WriteFixtureFile(
+                "Data/sample.xml",
+                "<FactionThemes><FactionTheme><FactionInstanceID>sample</FactionInstanceID></FactionTheme></FactionThemes>"
+            );
+            UpdateBasePackDefinition(pack => pack.FactionPaths.Add("Factions/Sample/faction.xml"));
+            using ContentPackEditorProject created = CreateWorkingProject();
+            string path = Path.Combine(created.PackRootPath, "pack.xml");
+            XElement legacy = XElement.Load(path);
+            legacy.Element("ThemePaths").Remove();
+            legacy.Add(new XElement("NeutralThemePath", "Data/neutral.xml"));
+            legacy.Save(path);
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                created.PackRootPath
+            );
+
+            ContentPackEditorStorage.Save(reopened);
+
+            XElement manifest = XElement.Load(path);
+            Assert.That(manifest.Element("NeutralThemePath"), Is.Null);
+            Assert.That(
+                manifest.Element("ThemePaths").Elements("Path").Select(element => element.Value),
+                Is.EqualTo(new[] { "Data/neutral.xml", "Data/sample.xml" })
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Save_InvalidNeutralThemeCount_RejectsThePack(bool duplicate)
+        {
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorDocument neutral = project.Documents.Single(document =>
+                document.Address == "Pack/Data/neutral.xml"
+            );
+            XElement xml = XElement.Parse(neutral.Text);
+            if (duplicate)
+                xml.Add(new XElement("FactionTheme", new XElement("FactionInstanceID", "default")));
+            else
+                xml.Element("FactionTheme").SetElementValue("FactionInstanceID", "other-faction");
+            project.SetDocumentText(neutral, xml.ToString());
+
+            Assert.Throws<InvalidDataException>(() => ContentPackEditorStorage.Save(project));
+        }
+
+        [Test]
+        public void SaveModRule_KeepingARequiredMod_PreservesItsVersionPin()
+        {
+            string mods = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            using ContentPackEditorProject dependency = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "colors"),
+                "colors",
+                "Colors",
+                "1.0.0",
+                asMod: true
+            );
+            using ContentPackEditorProject another = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "art"),
+                "art",
+                "Art",
+                "1.0.0",
+                asMod: true
+            );
+            using ContentPackEditorProject created = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "sample"),
+                "sample",
+                "Sample",
+                "1.0.0",
+                asMod: true
+            );
+            string manifest = Path.Combine(created.ProjectRootPath, "pack.xml");
+            XElement xml = XElement.Load(manifest);
+            xml.Add(
+                XElement.Parse(
+                    "<Requires><Mod><ID>colors</ID><Version>1.0.0</Version></Mod></Requires>"
+                )
+            );
+            xml.Save(manifest);
+            using ContentPackEditorProject project = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                created.ProjectRootPath
+            );
+
+            using ContentPackEditorProject saved = ContentPackEditorStorage.SaveModRule(
+                project,
+                ContentEditorModRule.Requires,
+                new[] { "art", "colors" }
+            );
+
+            Assert.AreEqual("1.0.0", saved.Mod.Requires.Single(mod => mod.ID == "colors").Version);
+        }
+
+        [TestCase(ContentPackageType.GamePack)]
+        [TestCase(ContentPackageType.Mod)]
+        public void SetPackageType_UntypedManifest_OpensAsChosenType(ContentPackageType type)
+        {
+            string folder = Path.Combine(contentRoot, "PackageTypeFixture");
+            using (
+                ContentPackEditorStorage.CreateInFolder(
+                    contentRoot,
+                    "base-pack",
+                    folder,
+                    "package-type-fixture",
+                    "Package type fixture",
+                    "1.0.0",
+                    asMod: type == ContentPackageType.Mod
+                )
+            ) { }
+            string path = Path.Combine(folder, ContentPackageManifest.FileName);
+            XElement manifest = XElement.Load(path);
+            Assert.That(manifest.Name.LocalName, Is.EqualTo(ContentPackageManifest.RootName));
+            Assert.That((string)manifest.Attribute("Type"), Is.EqualTo(type.ToString()));
+            manifest.Attribute("Type")?.Remove();
+            manifest.Save(path);
+
+            ContentPackEditorStorage.SetPackageType(contentRoot, folder, type);
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                folder
+            );
+            Assert.That(reopened.Mod != null, Is.EqualTo(type == ContentPackageType.Mod));
+        }
+
+        [Test]
+        public void OpenFolder_LegacyEraType_LoadsGamePack()
+        {
+            string folder = Path.Combine(contentRoot, "LegacyGamePack");
+            using (
+                ContentPackEditorStorage.CreateInFolder(
+                    contentRoot,
+                    "base-pack",
+                    folder,
+                    "legacy-game-pack",
+                    "Legacy game pack",
+                    "1.0.0"
+                )
+            ) { }
+            string path = Path.Combine(folder, ContentPackageManifest.FileName);
+            XElement manifest = XElement.Load(path);
+            manifest.SetAttributeValue("Type", "Era");
+            manifest.Save(path);
+
+            using ContentPackEditorProject reopened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                folder
+            );
+
+            Assert.That(reopened.ID, Is.EqualTo("legacy-game-pack"));
+            Assert.That(reopened.Mod, Is.Null);
+        }
+
+        [Test]
+        public void OpenFolder_ModHasRequirement_ShowsItsInheritedValues()
+        {
+            WriteFixtureFile("Data/theme.xml", ThemeXml(true));
+            UpdateBasePackDefinition(pack => pack.ThemePaths.Add("Data/theme.xml"));
+            string mods = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            ContentPackEditorProject required = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(mods, "colors"),
+                "colors",
+                "Colors",
+                "1.0.0",
+                asMod: true
+            );
+            required.SetField(ThemeField(required, "FactionPrimaryColorHex"), "blue");
+            ContentPackEditorStorage.Save(required);
+            string project = Path.Combine(contentRoot, "Projects", "layout");
+            Directory.CreateDirectory(project);
+            File.WriteAllText(
+                Path.Combine(project, "mod.xml"),
+                "<ContentModDefinition><ID>layout</ID><DisplayName>Layout</DisplayName><Version>1.0.0</Version>"
+                    + "<BasePackID>base-pack</BasePackID><BasePackVersion>1.0.0</BasePackVersion>"
+                    + "<Requires><Mod><ID>colors</ID></Mod></Requires></ContentModDefinition>"
+            );
+
+            ContentPackEditorProject opened = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                project
+            );
+
+            Assert.That(ThemeField(opened, "FactionPrimaryColorHex").Value, Is.EqualTo("blue"));
+        }
+
+        [Test]
+        public async Task WriteSnapshotAsync_TwoModsEditOneDocument_LoadsBothOverridesAsync()
+        {
+            WriteFixtureFile("Data/theme.xml", ThemeXml(true));
+            UpdateBasePackDefinition(pack => pack.ThemePaths.Add("Data/theme.xml"));
+            string projects = Path.Combine(contentRoot, "Projects");
+            string mods = ContentFileResolver.ResolveModsRootPath(contentRoot);
+            ContentPackEditorProject color = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(projects, "colors"),
+                "colors",
+                "Colors",
+                "1.0.0",
+                asMod: true
+            );
+            ContentPackEditorProject layout = ContentPackEditorStorage.CreateInFolder(
+                contentRoot,
+                "base-pack",
+                Path.Combine(projects, "layout"),
+                "layout",
+                "Layout",
+                "1.0.0",
+                asMod: true
+            );
+            color.SetField(ThemeField(color, "FactionPrimaryColorHex"), "blue");
+            layout.SetField(ThemeField(layout, "UseUpperButtonLayout"), "false");
+            await ContentPackEditorExporter.WriteSnapshotAsync(
+                color,
+                Path.Combine(mods, "colors"),
+                CancellationToken.None
+            );
+            await ContentPackEditorExporter.WriteSnapshotAsync(
+                layout,
+                Path.Combine(mods, "layout"),
+                CancellationToken.None
+            );
+
+            ContentFileResolver resolver = ContentPackLoader.DiscoverModResolver(
+                contentRoot,
+                "base-pack",
+                null
+            );
+            XElement theme = XElement
+                .Parse(ContentXmlOverrides.Load(resolver, "Pack/Data/theme.xml"))
+                .Element("FactionTheme");
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "colors", "layout" })
+            );
+            Assert.That(theme.Element("FactionPrimaryColorHex")?.Value, Is.EqualTo("blue"));
+            Assert.That(theme.Element("UseUpperButtonLayout")?.Value, Is.EqualTo("false"));
+            Assert.That(resolver.DescribeModOverrides(), Is.Empty);
+        }
+
+        [Test]
         public async Task WriteSnapshotAsync_InheritedSettingEdit_ExportsOnlyTheOverrideAsync()
         {
             ContentPackEditorProject project = CreateThemeProject();
@@ -567,7 +821,7 @@ namespace Rebellion.Tests.ContentEditor.Integration
         private ContentPackEditorProject CreateThemeProject()
         {
             WriteFixtureFile("Data/theme.xml", ThemeXml(true));
-            UpdateBasePackDefinition(pack => pack.NeutralThemePath = "Data/theme.xml");
+            UpdateBasePackDefinition(pack => pack.ThemePaths.Add("Data/theme.xml"));
             return CreateWorkingProject();
         }
 

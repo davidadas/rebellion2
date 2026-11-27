@@ -146,6 +146,14 @@ namespace Rebellion.Gameplay
         private const int _repairPulseDivisor = 10;
 
         /// <summary>
+        /// Checks whether a capital ship has hull or component damage left to repair.
+        /// </summary>
+        /// <param name="ship">The capital ship being assessed.</param>
+        /// <returns>Whether the ship has damage that can be repaired.</returns>
+        internal static bool HasRepairableDamage(CapitalShip ship) =>
+            ship.IsDamaged() || ship.SystemDamage?.Total > 0;
+
+        /// <summary>
         /// Returns the repair interval currently available to a capital ship.
         /// </summary>
         /// <param name="game">The active game state and recovery configuration.</param>
@@ -285,7 +293,7 @@ namespace Rebellion.Gameplay
                 foreach (CapitalShip ship in GetArrivingShips(result?.Unit))
                 {
                     if (
-                        ship.IsDamaged()
+                        ShipRecoveryRules.HasRepairableDamage(ship)
                         && ship.ManufacturingStatus == ManufacturingStatus.Complete
                     )
                         shipArrivals[ship] = result.Tick;
@@ -429,13 +437,7 @@ namespace Rebellion.Gameplay
         )
         {
             List<CapitalShip> ships = game.GetSceneNodesByType<CapitalShip>();
-            if (
-                !ships.Any(ship =>
-                    ship.IsDamaged()
-                    && ship.ManufacturingStatus == ManufacturingStatus.Complete
-                    && ((IMovable)ship).GetTransitMovement() == null
-                )
-            )
+            if (!ships.Exists(CanRepairShip))
             {
                 foreach (CapitalShip ship in ships)
                     ship.ClearRepairSchedule();
@@ -445,11 +447,7 @@ namespace Rebellion.Gameplay
             shipyardLocations ??= RecoveryLocationRules.BuildShipyardIndex(game);
             foreach (CapitalShip ship in ships)
             {
-                if (
-                    !ship.IsDamaged()
-                    || ship.ManufacturingStatus != ManufacturingStatus.Complete
-                    || ((IMovable)ship).GetTransitMovement() != null
-                )
+                if (!CanRepairShip(ship))
                 {
                     ship.ClearRepairSchedule();
                     continue;
@@ -466,11 +464,20 @@ namespace Rebellion.Gameplay
                     continue;
 
                 int before = ship.CurrentHullStrength;
-                ship.RepairHull(ShipRecoveryRules.GetRepairAmount(ship));
+                if (ship.IsDamaged())
+                    ship.RepairHull(ShipRecoveryRules.GetRepairAmount(ship));
 
-                if (!ship.IsDamaged())
-                {
+                CapitalShipSystemDamage damage = ship.SystemDamage;
+                if (damage?.Total > 0 && game.Random.NextInt(1, 101) <= ship.DamageControl)
+                    damage.RepairComponent(game.Random.NextInt(0, damage.Total));
+
+                if (ShipRecoveryRules.HasRepairableDamage(ship))
+                    ship.ScheduleRepair(game.CurrentTick, interval);
+                else
                     ship.ClearRepairSchedule();
+
+                if (before != ship.CurrentHullStrength && !ship.IsDamaged())
+                {
                     results.Add(
                         new ShipHullDamageResult
                         {
@@ -481,12 +488,18 @@ namespace Rebellion.Gameplay
                         }
                     );
                 }
-                else
-                {
-                    ship.ScheduleRepair(game.CurrentTick, interval);
-                }
             }
         }
+
+        /// <summary>
+        /// Determines whether a capital ship can advance its repair schedule this tick.
+        /// </summary>
+        /// <param name="ship">The capital ship being assessed.</param>
+        /// <returns>Whether the ship is damaged, complete, and stationary.</returns>
+        private static bool CanRepairShip(CapitalShip ship) =>
+            ShipRecoveryRules.HasRepairableDamage(ship)
+            && ship.ManufacturingStatus == ManufacturingStatus.Complete
+            && ((IMovable)ship).GetTransitMovement() == null;
 
         /// <summary>
         /// Replaces one lost fighter when each depleted squadron's replacement timer expires.

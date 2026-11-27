@@ -5,10 +5,81 @@ using System.Linq;
 using UnityEngine;
 
 /// <summary>
-/// Creates deterministic centered PNG cuts from one high-resolution unit image.
+/// Creates sized PNG artwork from centered or explicitly framed source images.
 /// </summary>
 internal static class ContentEditorArtworkCutGenerator
 {
+    /// <summary>
+    /// Encodes an explicitly framed source region at the requested output resolution.
+    /// </summary>
+    /// <param name="source">The readable source image.</param>
+    /// <param name="crop">The normalized source rectangle entirely inside the image.</param>
+    /// <param name="size">The exact output dimensions.</param>
+    /// <returns>The cropped PNG bytes.</returns>
+    internal static byte[] GeneratePngCrop(Texture2D source, Rect crop, Vector2Int size)
+    {
+        if (source == null)
+            throw new ArgumentNullException(nameof(source));
+        if (
+            size.x <= 0
+            || size.y <= 0
+            || crop.width <= 0
+            || crop.height <= 0
+            || crop.xMin < 0
+            || crop.yMin < 0
+            || crop.xMax > 1
+            || crop.yMax > 1
+        )
+            throw new ArgumentException("Choose a crop inside the source image.");
+        int left = Mathf.FloorToInt(crop.xMin * source.width);
+        int bottom = Mathf.FloorToInt(crop.yMin * source.height);
+        int width = Mathf.CeilToInt(crop.xMax * source.width) - left;
+        int height = Mathf.CeilToInt(crop.yMax * source.height) - bottom;
+        Color[] input = Array.ConvertAll(
+            source.GetPixels(left, bottom, width, height),
+            Premultiply
+        );
+        Color[] horizontal = new Color[size.x * height];
+        float cropLeft = crop.xMin * source.width - left;
+        float cropBottom = crop.yMin * source.height - bottom;
+        float stepX = crop.width * source.width / size.x;
+        float stepY = crop.height * source.height / size.y;
+        for (int y = 0; y < height; y++)
+        for (int x = 0; x < size.x; x++)
+            horizontal[y * size.x + x] = SampleCropLine(
+                input,
+                y * width,
+                1,
+                width,
+                cropLeft + x * stepX,
+                cropLeft + (x + 1) * stepX
+            );
+        Color[] pixels = new Color[size.x * size.y];
+        for (int y = 0; y < size.y; y++)
+        for (int x = 0; x < size.x; x++)
+            pixels[y * size.x + x] = Unpremultiply(
+                SampleCropLine(
+                    horizontal,
+                    x,
+                    size.x,
+                    height,
+                    cropBottom + y * stepY,
+                    cropBottom + (y + 1) * stepY
+                )
+            );
+        Texture2D output = new(size.x, size.y, TextureFormat.RGBA32, false);
+        try
+        {
+            output.SetPixels(pixels);
+            output.Apply(false, false);
+            return ImageConversion.EncodeToPNG(output);
+        }
+        finally
+        {
+            DestroyTexture(output);
+        }
+    }
+
     /// <summary>
     /// Checks whether the output fits within the source resolution on both axes.
     /// </summary>
@@ -373,14 +444,47 @@ internal static class ContentEditorArtworkCutGenerator
             horizontalMix
         );
         Color filtered = Color.LerpUnclamped(lower, upper, y - bottom / width);
-        return filtered.a > 0
-            ? new Color(
-                filtered.r / filtered.a,
-                filtered.g / filtered.a,
-                filtered.b / filtered.a,
-                filtered.a
-            )
-            : Color.clear;
+        return Unpremultiply(filtered);
+    }
+
+    /// <summary>
+    /// Filters a cropped pixel footprint without sampling beyond its intersecting source cells.
+    /// </summary>
+    /// <param name="pixels">The premultiplied source samples.</param>
+    /// <param name="offset">The first sample's array index.</param>
+    /// <param name="stride">The distance between adjacent samples.</param>
+    /// <param name="length">The number of samples in the cropped line.</param>
+    /// <param name="start">The footprint's first pixel edge.</param>
+    /// <param name="end">The footprint's last pixel edge.</param>
+    /// <returns>The area average when shrinking, or an interpolated sample when enlarging.</returns>
+    private static Color SampleCropLine(
+        Color[] pixels,
+        int offset,
+        int stride,
+        int length,
+        float start,
+        float end
+    )
+    {
+        if (end - start < 1)
+        {
+            float center = (start + end) * 0.5f - 0.5f;
+            int first = Mathf.FloorToInt(center);
+            return Color.Lerp(
+                pixels[offset + Mathf.Clamp(first, 0, length - 1) * stride],
+                pixels[offset + Mathf.Clamp(first + 1, 0, length - 1) * stride],
+                center - first
+            );
+        }
+        Color sum = Color.clear;
+        float total = 0;
+        for (int index = Mathf.FloorToInt(start); index < Mathf.CeilToInt(end); index++)
+        {
+            float weight = Mathf.Min(end, index + 1) - Mathf.Max(start, index);
+            sum += pixels[offset + Mathf.Clamp(index, 0, length - 1) * stride] * weight;
+            total += weight;
+        }
+        return sum / total;
     }
 
     /// <summary>
@@ -390,6 +494,16 @@ internal static class ContentEditorArtworkCutGenerator
     /// <returns>The corresponding premultiplied pixel.</returns>
     private static Color Premultiply(Color pixel) =>
         new(pixel.r * pixel.a, pixel.g * pixel.a, pixel.b * pixel.a, pixel.a);
+
+    /// <summary>
+    /// Returns straight-alpha color after filtering weighted pixel contributions.
+    /// </summary>
+    /// <param name="pixel">The filtered premultiplied pixel.</param>
+    /// <returns>The color ready for PNG encoding.</returns>
+    private static Color Unpremultiply(Color pixel) =>
+        pixel.a > 0
+            ? new Color(pixel.r / pixel.a, pixel.g / pixel.a, pixel.b / pixel.a, pixel.a)
+            : Color.clear;
 
     /// <summary>
     /// Finds the smallest source rectangle containing pixels that contribute visible alpha.

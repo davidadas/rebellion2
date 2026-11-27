@@ -60,6 +60,32 @@ namespace Rebellion.Tests.ContentEditor
         }
 
         [Test]
+        public async Task WriteArchiveAsync_TwoInheritedPacks_RecordsBothExactReleasesAsync()
+        {
+            ContentPackEditorProject parent = CreateLoadableProject();
+            ContentPackEditorProject child = ContentPackEditorStorage.Create(
+                contentRoot,
+                parent.Definition.ID,
+                "child-pack",
+                "Child pack",
+                "1.0.0"
+            );
+            string archivePath = Path.Combine(contentRoot, "child.zip");
+
+            await ContentPackEditorExporter.WriteArchiveAsync(child, archivePath);
+
+            using ZipArchive archive = ZipFile.OpenRead(archivePath);
+            using StreamReader reader = new StreamReader(archive.GetEntry("pack.xml").Open());
+            var manifest = ContentDefinitionSerializer.DeserializeText<ContentPackDefinition>(
+                reader.ReadToEnd()
+            );
+            Assert.That(
+                manifest.InheritedPacks.Select(pack => (pack.ID, pack.Version)),
+                Is.EqualTo(new[] { ("sample-pack", "1.0.0"), ("base-pack", "1.0.0") })
+            );
+        }
+
+        [Test]
         public async Task WriteSnapshotAsync_UnsavedProject_PreservesSourceAndWritesIndependentCopyAsync()
         {
             ContentPackEditorProject project = CreateWorkingProject();

@@ -39,7 +39,9 @@ namespace Rebellion.Tests.Gameplay
             scene.origin.OwnerInstanceID = null;
             AddBlockadingFleet(scene.game, scene.origin);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            Assert.IsTrue(scene.origin.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+            Assert.IsTrue(
+                BlockadeQueries.IsBlockadedFor(null, scene.origin, fighter.GetOwnerInstanceID())
+            );
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -78,7 +80,9 @@ namespace Rebellion.Tests.Gameplay
             scene.blockadedDestination.OwnerInstanceID = null;
             AddBlockadingFleet(scene.game, carrierPlanet);
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
-            Assert.IsTrue(carrierPlanet.IsBlockadedFor(fighter.GetOwnerInstanceID()));
+            Assert.IsTrue(
+                BlockadeQueries.IsBlockadedFor(null, carrierPlanet, fighter.GetOwnerInstanceID())
+            );
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -475,7 +479,7 @@ namespace Rebellion.Tests.Gameplay
             scene.blockadedDestination.OwnerInstanceID = "third-faction";
             AddBlockadingFleet(scene.game, scene.blockadedDestination);
 
-            Assert.IsTrue(scene.blockadedDestination.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, scene.blockadedDestination));
 
             ProcessBlockadeStart(scene.game, scene.blockade, scene.resultBus);
 
@@ -918,6 +922,69 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
+        public void HandleResults_DestroyedCarrierWithKilledOfficer_DoesNotRecoverPersonnel()
+        {
+            var scene = BuildRemovedCarrierScene();
+            AddFriendlyCarrier(scene.game, scene.origin, "surviving-carrier", 1);
+            Officer officer = EntityFactory.CreateOfficer("killed-officer", "empire");
+            scene.game.AttachNode(officer, scene.carrier);
+            PersonnelCommands personnel = new(scene.game, new PersonnelQueries(scene.game));
+            personnel.KillOfficer(officer);
+            scene.game.DeleteNode(scene.carrier);
+
+            scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsNull(
+                scene.game.GetSceneNodeByInstanceID<Officer>(
+                    officer.InstanceID,
+                    includeDisabled: true
+                )
+            );
+            Assert.AreSame(scene.carrier, officer.GetParent());
+            Assert.IsTrue(officer.IsKilled);
+            Assert.IsFalse(officer.IsEnabled);
+            Assert.IsNull(officer.Movement);
+        }
+
+        [Test]
+        public void HandleResults_DestroyedCarrierWithKilledOfficer_DoesNotChangeCustody()
+        {
+            var scene = BuildRemovedCarrierScene();
+            scene.fallback.OwnerInstanceID = "rebels";
+            Officer officer = EntityFactory.CreateOfficer("killed-officer", "empire");
+            officer.CanEscape = false;
+            scene.game.AttachNode(officer, scene.carrier);
+            PersonnelCommands personnel = new(scene.game, new PersonnelQueries(scene.game));
+            personnel.KillOfficer(officer);
+            scene.game.DeleteNode(scene.carrier);
+            long draws = scene.game.RandomIndex;
+            int escapeTick = officer.NextEscapeAttemptTick;
+
+            List<GameResult> results = scene.resultBus.Publish(
+                new GameObjectDestroyedResult
+                {
+                    DestroyedObject = scene.carrier,
+                    Context = scene.origin,
+                    Reason = UnitDestructionReason.Combat,
+                }
+            );
+
+            Assert.IsFalse(officer.IsCaptured);
+            Assert.IsNull(officer.CaptorInstanceID);
+            Assert.IsFalse(officer.CanEscape);
+            Assert.AreEqual(escapeTick, officer.NextEscapeAttemptTick);
+            Assert.AreEqual(draws, scene.game.RandomIndex);
+            Assert.IsEmpty(results.OfType<OfficerCaptureStateResult>());
+        }
+
+        [Test]
         public void HandleResults_DestroyedCarrierWithInactiveOfficer_RelocatesWithoutActivating()
         {
             var scene = BuildRemovedCarrierScene();
@@ -1067,7 +1134,7 @@ namespace Rebellion.Tests.Gameplay
                 }
             );
 
-            Assert.IsTrue(scene.origin.IsBlockadedFor("empire"));
+            Assert.IsTrue(BlockadeQueries.IsBlockadedFor(null, scene.origin, "empire"));
             Assert.AreSame(scene.origin, officer.GetParent());
             Assert.AreSame(
                 officer,
@@ -1614,7 +1681,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeRetargetingScene()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });

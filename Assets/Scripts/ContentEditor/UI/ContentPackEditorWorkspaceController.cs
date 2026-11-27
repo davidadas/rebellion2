@@ -42,6 +42,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested += DeleteRecord;
         view.XmlSubmitted += ApplyXml;
         view.FieldSubmitted += ApplyField;
+        view.AudioClipRemovalRequested += RemoveAudioClip;
         view.ArtworkPlacementSubmitted += ApplyArtworkPlacement;
         view.FieldValidationRequested += ValidateField;
         view.SectionInheritanceResetRequested += ResetSectionInheritance;
@@ -115,7 +116,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         if (layout == null)
             throw new ArgumentNullException(nameof(layout));
         ContentPackEditorProject current =
-            Project ?? throw new InvalidOperationException("Open a content pack first.");
+            Project ?? throw new InvalidOperationException("Open a project first.");
         Vector2Int[] positions = await Task.Run(
             () =>
                 RectangleLayout.Arrange(
@@ -185,6 +186,17 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
     }
 
     /// <summary>
+    /// Removes only the selected audio entry through the project's undoable mutation boundary.
+    /// </summary>
+    /// <param name="field">The list owning the selected audio file.</param>
+    /// <param name="index">The selected stored entry index.</param>
+    private void RemoveAudioClip(ContentPackEditorField field, int index)
+    {
+        Project.RemoveAudioClip(field, index);
+        view.StopAudioPreview();
+    }
+
+    /// <summary>
     /// Applies every coordinate changed by one artwork drag as a single reversible edit.
     /// </summary>
     /// <param name="changes">The distinct authored source-coordinate replacements.</param>
@@ -196,7 +208,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
             return;
 
         ContentPackEditorProject current =
-            Project ?? throw new InvalidOperationException("Open a content pack first.");
+            Project ?? throw new InvalidOperationException("Open a project first.");
         using (current.BeginEdit("Move interface artwork"))
         {
             foreach (ContentEditorArtworkPlacementChange change in changes)
@@ -517,6 +529,7 @@ public sealed class ContentPackEditorWorkspaceController : IDisposable
         view.DeleteRequested -= DeleteRecord;
         view.XmlSubmitted -= ApplyXml;
         view.FieldSubmitted -= ApplyField;
+        view.AudioClipRemovalRequested -= RemoveAudioClip;
         view.ArtworkPlacementSubmitted -= ApplyArtworkPlacement;
         view.FieldValidationRequested -= ValidateField;
         view.SectionInheritanceResetRequested -= ResetSectionInheritance;

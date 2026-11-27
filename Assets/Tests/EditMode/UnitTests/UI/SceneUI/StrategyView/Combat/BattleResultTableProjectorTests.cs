@@ -1,13 +1,16 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
+using Rebellion.Game.Messages;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using Rebellion.Util.Serialization;
 using GameFleet = Rebellion.Game.Units.Fleet;
 
 namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
@@ -447,6 +450,47 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Assert.AreEqual("Captured Officer", table.Operational[0].Text);
             Assert.IsNotNull(table.Operational[0].CapturedOverlayTexture);
             Assert.AreNotSame(officer, result.AttackingUnits[0].Unit);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Project_CustomArtworkOrder_PreservesLiveAndSavedBattleSnapshots(bool saved)
+        {
+            UIContext context = CreateContext();
+            Officer officer = CreateOfficer("captured", _playerFactionId, "Captured Officer");
+            GameplayArtworkLayer[] order =
+            {
+                GameplayArtworkLayer.Entity,
+                GameplayArtworkLayer.Travel,
+                GameplayArtworkLayer.Captured,
+                GameplayArtworkLayer.Damage,
+            };
+            officer.ArtworkLayerOrder = new List<GameplayArtworkLayer>(order);
+            SpaceCombatResult result = new()
+            {
+                AttackerOwnerInstanceID = _playerFactionId,
+                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackingUnits = { Capture(officer) },
+            };
+            officer.ArtworkLayerOrder.Reverse();
+            BattleResultPresentation presentation = saved
+                ? BattleResultPresentation.Create(
+                    SerializationHelper.Deserialize<CombatReport>(
+                        SerializationHelper.Serialize(
+                            CombatReport.Capture(result, _playerFactionId, "Battle", "Resolved")
+                        )
+                    )
+                )
+                : BattleResultPresentation.Create(result);
+
+            BattleResultTableRenderData table = new BattleResultTableProjector().Project(
+                context,
+                presentation,
+                _playerFactionId,
+                BattleResultCategory.Personnel
+            );
+
+            CollectionAssert.AreEqual(order, table.Operational.Single().ArtworkLayerOrder);
         }
 
         /// <summary>

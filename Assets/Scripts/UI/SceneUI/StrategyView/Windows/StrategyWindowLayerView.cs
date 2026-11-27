@@ -72,6 +72,9 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     [SerializeField]
     private int itemDragStartDistance;
 
+    private PlanetWindowHeaderLayout planetWindowHeaderLayout;
+    private IContentAssetSource planetWindowHeaderAssets;
+
     internal PlanetSectorWindowView PlanetSectorWindowPrefab => planetSectorWindowPrefab;
 
     internal FacilityWindowView FacilityWindowPrefab => facilityWindowPrefab;
@@ -105,6 +108,56 @@ public sealed class StrategyWindowLayerView : MonoBehaviour
     internal Vector2Int ConstructionWindowOffset => constructionWindowOffset;
 
     internal int ItemDragStartDistance => itemDragStartDistance;
+
+    /// <summary>
+    /// Sets the active pack's presentation for newly opened planet windows.
+    /// </summary>
+    /// <param name="layout">The pack's shared header layout.</param>
+    /// <param name="assets">The active pack's content source.</param>
+    internal void SetPlanetWindowHeader(PlanetWindowHeaderLayout layout, IContentAssetSource assets)
+    {
+        planetWindowHeaderLayout = layout;
+        planetWindowHeaderAssets = assets;
+    }
+
+    /// <summary>
+    /// Opens one modeless planet window and applies the shared header to its instance.
+    /// </summary>
+    /// <typeparam name="TView">The authored planet window's view type.</typeparam>
+    /// <param name="manager">The manager that registers the new window.</param>
+    /// <param name="prefab">The authored planet window.</param>
+    /// <param name="hierarchyName">The instance's semantic name.</param>
+    /// <param name="position">The requested source position.</param>
+    /// <param name="view">Receives the instantiated planet view.</param>
+    /// <returns>The registered window shell.</returns>
+    internal UIWindow CreatePlanetWindow<TView>(
+        UIWindowManager manager,
+        TView prefab,
+        string hierarchyName,
+        Vector2Int position,
+        out TView view
+    )
+        where TView : MonoBehaviour
+    {
+        UIWindow window = manager.CreateWindow(
+            prefab,
+            GetWindowParent(false),
+            hierarchyName,
+            position.x,
+            position.y,
+            GetWindowSize(prefab),
+            modal: false,
+            canFocus: true,
+            canMove: true,
+            behind: false,
+            out view
+        );
+        if (planetWindowHeaderLayout != null)
+            window
+                .GetComponent<PlanetWindowHeader>()
+                .Apply(planetWindowHeaderLayout, planetWindowHeaderAssets);
+        return window;
+    }
 
     /// <summary>
     /// Gets the authored parent for a window modality.

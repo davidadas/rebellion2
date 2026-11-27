@@ -53,6 +53,7 @@ internal static class ContentEditorArtworkWorkspaceBuilder
         Assign(view, "status", Label("ArtworkStatus", header, "", 14, true));
         Assign(view, "back", Secondary("ArtworkBack", header, "‹ Artwork"));
         Assign(view, "save", Button("SaveArtwork", header, "Save artwork"));
+        Assign(view, "applyToAll", Button("ApplyArtworkToAllCards", header, "Apply to all cards"));
         Assign(view, "undo", Secondary("UndoArtwork", header, "Undo"));
         Assign(view, "redo", Secondary("RedoArtwork", header, "Redo"));
 

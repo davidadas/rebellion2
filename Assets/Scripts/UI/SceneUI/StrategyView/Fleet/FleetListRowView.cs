@@ -1,4 +1,5 @@
 using System;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -119,6 +120,12 @@ public sealed class FleetListRowView : MonoBehaviour, IStrategyStatusDoubleClick
         UILayout.SetImageTexture(iconImage, data.IconTexture);
         UILayout.SetImageTexture(enrouteOverlayImage, data.EnrouteOverlayTexture);
         UILayout.SetImageTexture(damagedOverlayImage, data.DamagedOverlayTexture);
+        GameplayArtworkLayout.Apply(
+            GameplayArtworkOrder.Resolve(data.ArtworkLayerOrder),
+            iconImage.transform,
+            enrouteOverlayImage.transform,
+            damagedOverlayImage.transform
+        );
         UILayout.SetImageTexture(starfighterBadgeImage, data.StarfighterBadgeTexture);
         UILayout.SetImageTexture(troopBadgeImage, data.TroopBadgeTexture);
         UILayout.SetImageTexture(personnelBadgeImage, data.PersonnelBadgeTexture);

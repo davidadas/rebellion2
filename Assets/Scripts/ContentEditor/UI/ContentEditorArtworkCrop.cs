@@ -1,7 +1,7 @@
 using UnityEngine;
 
 /// <summary>
-/// Calculates non-destructive centered cover crops for artwork workflow previews.
+/// Calculates bounded aspect-ratio crops for artwork workflow previews.
 /// </summary>
 internal static class ContentEditorArtworkCrop
 {
@@ -50,5 +50,25 @@ internal static class ContentEditorArtworkCrop
         }
         float height = sourceAspect / targetAspect;
         return new Rect(0, (1 - height) * 0.5f, 1, height);
+    }
+
+    /// <summary>
+    /// Keeps an aspect-constrained crop inside its source while applying position and zoom.
+    /// </summary>
+    /// <param name="source">The source dimensions.</param>
+    /// <param name="target">The required output dimensions.</param>
+    /// <param name="center">The requested normalized crop center.</param>
+    /// <param name="zoom">The magnification relative to the largest fitting crop.</param>
+    /// <returns>The bounded normalized source rectangle.</returns>
+    internal static Rect GetUvRect(Vector2Int source, Vector2Int target, Vector2 center, float zoom)
+    {
+        Rect crop = GetCenteredUvRect(source, target);
+        Vector2 size = crop.size / Mathf.Max(1, zoom);
+        return new Rect(
+            Mathf.Clamp(center.x - size.x * 0.5f, 0, 1 - size.x),
+            Mathf.Clamp(center.y - size.y * 0.5f, 0, 1 - size.y),
+            size.x,
+            size.y
+        );
     }
 }

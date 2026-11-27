@@ -14,3 +14,6 @@
 - ["Star Wars Lambda Imperial Shuttle"](https://sketchfab.com/3d-models/star-wars-lambda-imperial-shuttle-4db774b7ea41489ca7bb683ed0f0b60a)
   by tegnemaskin, licensed under
   [Creative Commons Attribution](https://creativecommons.org/licenses/by/4.0/).
+
+- Thunderstore setup screenshots from [mbround18/valheim-docker](https://github.com/mbround18/valheim-docker),
+  licensed under BSD-3-Clause. See [the full notice](Assets/Art/ContentEditor/Thunderstore/NOTICE.txt).

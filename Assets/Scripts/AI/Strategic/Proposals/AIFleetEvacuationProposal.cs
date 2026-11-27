@@ -4,6 +4,7 @@ using System.Linq;
 using Rebellion.AI.Demands;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Mathematics;
 
@@ -293,7 +294,11 @@ namespace Rebellion.AI.Proposals
                 || destination.GetOwnerInstanceID() != context.Faction.InstanceID
                 || !destination.IsColonized
                 || destination.IsDestroyed
-                || destination.IsBlockadedFor(context.Faction.InstanceID, context.Game)
+                || BlockadeQueries.IsBlockadedFor(
+                    context.Game,
+                    destination,
+                    context.Faction.InstanceID
+                )
                 || !destination.CanAcceptChild(fleet)
             )
                 return false;

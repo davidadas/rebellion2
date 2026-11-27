@@ -1,7 +1,7 @@
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Threading;
+using System.Linq;
+using Rebellion.Util.IO;
 using Rebellion.Util.Logging;
 using UnityEngine;
 
@@ -10,7 +10,6 @@ using UnityEngine;
 /// </summary>
 public sealed class ContentEditorSettingsManager
 {
-    private static readonly object updateGate = new();
     private readonly string path;
     private readonly ContentEditorSettings defaults;
 
@@ -39,14 +38,7 @@ public sealed class ContentEditorSettingsManager
         {
             if (File.Exists(path))
             {
-                using FileStream input = new(
-                    path,
-                    FileMode.Open,
-                    FileAccess.Read,
-                    FileShare.Read | FileShare.Delete
-                );
-                using StreamReader reader = new(input);
-                JsonUtility.FromJsonOverwrite(reader.ReadToEnd(), settings);
+                JsonUtility.FromJsonOverwrite(AtomicTextFile.ReadAllText(path), settings);
             }
             else
                 JsonUtility.FromJsonOverwrite(JsonUtility.ToJson(defaults), settings);
@@ -100,58 +92,37 @@ public sealed class ContentEditorSettingsManager
     /// <param name="change">The preference update.</param>
     private void Update(Action<ContentEditorSettings> change)
     {
-        // File locks can be process-scoped, so threads must also share one gate.
-        lock (updateGate)
-        {
-            Directory.CreateDirectory(Path.GetDirectoryName(path));
-            // Retain this file: replacing or deleting it would split locks across different files.
-            using FileStream ownership = new(
-                path + ".lock",
-                FileMode.OpenOrCreate,
-                FileAccess.ReadWrite,
-                FileShare.ReadWrite
-            );
-            AcquireLock(ownership);
-            ContentEditorSettings settings = Load();
-            change(settings);
-            settings.Normalize();
-            string temporary = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
-            try
+        AtomicTextFile.UpdateAllText(
+            path,
+            () =>
             {
-                File.WriteAllText(temporary, JsonUtility.ToJson(settings, true));
-                if (File.Exists(path))
-                    File.Replace(temporary, path, null);
-                else
-                    File.Move(temporary, path);
+                ContentEditorSettings settings = Load();
+                change(settings);
+                settings.Normalize();
+                return JsonUtility.ToJson(settings, true);
             }
-            finally
-            {
-                if (File.Exists(temporary))
-                    File.Delete(temporary);
-            }
-        }
+        );
     }
 
     /// <summary>
-    /// Serializes updates from separate editor processes without leaving ownership after a crash.
+    /// Remembers a successfully opened working folder without storing its project contents.
     /// </summary>
-    /// <param name="ownership">The shared settings lock file, released when its handle closes.</param>
-    private static void AcquireLock(FileStream ownership)
+    /// <param name="folder">The local folder containing pack.xml.</param>
+    public void RememberProject(string folder)
     {
-        Stopwatch waiting = Stopwatch.StartNew();
-        while (true)
-        {
-            try
-            {
-                ownership.Lock(0, 1);
-                return;
-            }
-            catch (IOException exception)
-                when ((exception.HResult & 0xffff) == 33 && waiting.ElapsedMilliseconds < 5000)
-            {
-                Thread.Sleep(10);
-            }
-        }
+        string path = Path.GetFullPath(folder);
+        Update(settings =>
+            settings.ProjectFolders = new[] { path }
+                .Concat(settings.ProjectFolders)
+                .Distinct(
+                    System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+                        System.Runtime.InteropServices.OSPlatform.Windows
+                    )
+                        ? StringComparer.OrdinalIgnoreCase
+                        : StringComparer.Ordinal
+                )
+                .ToArray()
+        );
     }
 }
 
@@ -166,12 +137,17 @@ public sealed class ContentEditorSettings
     public float Split = 0.205f;
     public bool AlphaNoticeAcknowledged;
     public string ImageImportDirectory;
+    public string[] ProjectFolders = Array.Empty<string>();
 
     /// <summary>
     /// Keeps persisted values within the same limits used by the workbench.
     /// </summary>
     public void Normalize()
     {
+        ProjectFolders = (ProjectFolders ?? Array.Empty<string>())
+            .Where(folder => !string.IsNullOrWhiteSpace(folder))
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
         if (!Enum.IsDefined(typeof(ContentEditorColorMode), ColorMode))
             ColorMode = ContentEditorColorMode.Dark;
         Zoom = float.IsNaN(Zoom) || float.IsInfinity(Zoom) ? 1 : Mathf.Clamp(Zoom, 0.65f, 1.75f);

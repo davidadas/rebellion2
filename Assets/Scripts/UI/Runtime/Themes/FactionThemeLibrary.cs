@@ -9,8 +9,6 @@ using Rebellion.SceneGraph;
 /// </summary>
 public sealed class FactionThemeLibrary
 {
-    private const string _defaultThemeId = "DEFAULT";
-
     private readonly Dictionary<string, FactionTheme> themesByFactionId;
     private readonly List<FactionTheme> themesInLoadOrder;
     private readonly FactionTheme defaultTheme;
@@ -33,13 +31,7 @@ public sealed class FactionThemeLibrary
             if (theme == null)
                 throw new InvalidOperationException("FactionThemes contains a null theme entry.");
 
-            if (
-                string.IsNullOrEmpty(theme.FactionInstanceID)
-                || theme.FactionInstanceID.Equals(
-                    _defaultThemeId,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
+            if (FactionThemes.IsNeutral(theme.FactionInstanceID))
             {
                 if (configuredDefaultTheme != null)
                 {

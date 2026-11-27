@@ -539,12 +539,28 @@ public static class MenuControlPrefabBuilder
         SetSourceRect(caption.rectTransform, 7, 1, controlWidth - 25, controlHeight - 2);
         dropdown.captionText = caption;
 
-        TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform, style);
-        arrow.text = "V";
-        arrow.color = accent;
-        arrow.fontSize = 9;
-        arrow.alignment = TextAlignmentOptions.Center;
-        SetSourceRect(arrow.rectTransform, controlWidth - 19, 1, 14, controlHeight - 2);
+        Image selectedImage = new GameObject(
+            "Selected image",
+            typeof(RectTransform),
+            typeof(Image)
+        ).GetComponent<Image>();
+        selectedImage.transform.SetParent(surface.transform, false);
+        selectedImage.preserveAspect = true;
+        selectedImage.raycastTarget = false;
+        selectedImage.enabled = false;
+        dropdown.captionImage = selectedImage;
+
+        if (style == MenuControlStyle.Flat)
+            CreateDropdownArrow(surface.transform);
+        else
+        {
+            TextMeshProUGUI arrow = CreateTextLabel("Arrow", surface.transform, style);
+            arrow.text = "V";
+            arrow.color = accent;
+            arrow.fontSize = 9;
+            arrow.alignment = TextAlignmentOptions.Center;
+            SetSourceRect(arrow.rectTransform, controlWidth - 19, 1, 14, controlHeight - 2);
+        }
 
         int popupHeight = options.Count * itemHeight + 4;
         Image templateImage = CreateStyledImage(
@@ -715,6 +731,16 @@ public static class MenuControlPrefabBuilder
         scrollbarObject.SetActive(false);
         dropdown.template = template;
         dropdown.itemText = itemLabel;
+        Image optionImage = new GameObject(
+            "Item image",
+            typeof(RectTransform),
+            typeof(Image)
+        ).GetComponent<Image>();
+        optionImage.transform.SetParent(itemImage.transform, false);
+        optionImage.preserveAspect = true;
+        optionImage.raycastTarget = false;
+        optionImage.enabled = false;
+        dropdown.itemImage = optionImage;
         dropdown.options.Clear();
         foreach (string option in options)
             dropdown.options.Add(new TMP_Dropdown.OptionData(option));
@@ -722,7 +748,8 @@ public static class MenuControlPrefabBuilder
         dropdown.RefreshShownValue();
         template.gameObject.SetActive(false);
         StretchHorizontal(caption.rectTransform, 7, 25);
-        AnchorRight(arrow.rectTransform, 19);
+        if (style != MenuControlStyle.Flat)
+            AnchorRight((RectTransform)surface.transform.Find("Arrow"), 19);
         StretchHorizontal(template, 0, 0);
         StretchHorizontal(viewport, 2, 2);
         StretchHorizontal(content, 0, 0);
@@ -732,8 +759,6 @@ public static class MenuControlPrefabBuilder
         {
             SetSourceRect(caption.rectTransform, 10, 0, controlWidth - 38, controlHeight);
             StretchHorizontal(caption.rectTransform, 10, 28);
-            SetSourceRect(arrow.rectTransform, 0, 0, 20, controlHeight);
-            AnchorRight(arrow.rectTransform, 24);
             template.anchorMin = Vector2.zero;
             template.anchorMax = Vector2.right;
             template.anchoredPosition = Vector2.zero;
@@ -1206,5 +1231,41 @@ public static class MenuControlPrefabBuilder
         child.anchorMax = new Vector2(1f, 1f);
         child.offsetMin = new Vector2(6f, -2f);
         child.offsetMax = new Vector2(-6f, -2f);
+    }
+
+    /// <summary>
+    /// Authors the shared flat-selector chevron without depending on font glyph availability.
+    /// </summary>
+    /// <param name="parent">The selector field.</param>
+    /// <returns>The authored arrow root.</returns>
+    internal static RectTransform CreateDropdownArrow(Transform parent)
+    {
+        RectTransform arrow = new GameObject(
+            "Arrow",
+            typeof(RectTransform)
+        ).GetComponent<RectTransform>();
+        arrow.SetParent(parent, false);
+        arrow.anchorMin = Vector2.right;
+        arrow.anchorMax = Vector2.one;
+        arrow.offsetMin = new Vector2(-32, 0);
+        arrow.offsetMax = new Vector2(-12, 0);
+        for (int index = 0; index < 2; index++)
+        {
+            Image stroke = new GameObject(
+                "ChevronStroke",
+                typeof(RectTransform),
+                typeof(Image)
+            ).GetComponent<Image>();
+            stroke.transform.SetParent(arrow, false);
+            stroke.raycastTarget = false;
+            stroke.rectTransform.anchorMin = stroke.rectTransform.anchorMax = new Vector2(
+                0.5f,
+                0.5f
+            );
+            stroke.rectTransform.sizeDelta = new Vector2(8, 2);
+            stroke.rectTransform.anchoredPosition = new Vector2(index == 0 ? -2.5f : 2.5f, 0);
+            stroke.rectTransform.localRotation = Quaternion.Euler(0, 0, index == 0 ? -45 : 45);
+        }
+        return arrow;
     }
 }

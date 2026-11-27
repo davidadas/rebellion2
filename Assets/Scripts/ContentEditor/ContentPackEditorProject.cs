@@ -31,6 +31,18 @@ public sealed class ContentPackEditorProject : IDisposable
 
     public string PackRootPath { get; }
 
+    public string ProjectRootPath { get; }
+
+    public ContentModDefinition Mod { get; }
+
+    public string DisplayName => Mod?.DisplayName ?? Definition.DisplayName;
+
+    public string ID => Mod?.ID ?? Definition.ID;
+
+    public string Version => Mod?.Version ?? Definition.Version;
+
+    internal string BasePackID => Mod?.BasePackID ?? Definition.BasePackID;
+
     public bool IsInstalled => IsInstalledPath(ContentRootPath, PackRootPath);
 
     public ContentPackDefinition Definition { get; private set; }
@@ -238,6 +250,42 @@ public sealed class ContentPackEditorProject : IDisposable
     }
 
     /// <summary>
+    /// Shares one selected status image across every officer as one reversible document edit.
+    /// </summary>
+    /// <param name="source">The officer status image selected by the author.</param>
+    /// <returns>The number of officer definitions receiving this image.</returns>
+    public int ApplyOfficerStatusArtwork(ContentPackEditorField source)
+    {
+        RequireOwnedRecord(source.Record);
+        string artwork = ContentEditorUnitArtworkLayout.GetOfficerStatusArtworkName(source);
+        if (artwork == null)
+            throw new ArgumentException("Choose an officer status image.", nameof(source));
+        if (string.IsNullOrWhiteSpace(source.Value))
+            throw new ArgumentException("Choose an image first.", nameof(source));
+
+        string address = source.GetMediaAddress(source.Value);
+        ContentPackEditorField[] targets = GetCatalogs()
+            .SelectMany(catalog => catalog.Records)
+            .Where(record => record.Kind == "Officer")
+            .Select(record => record.GetField(source.MemberName))
+            .ToArray();
+        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
+            ContentRootPath,
+            PackRootPath,
+            Definition
+        );
+        foreach (ContentPackEditorField target in targets)
+            ValidateFieldValues(target, new[] { address }, resolver, null, null);
+        using (BeginEdit($"Apply {artwork} artwork to all officers"))
+            foreach (ContentPackEditorField target in targets)
+            {
+                target.SetValue(address);
+                LinkRulesOverride(target.Document);
+            }
+        return targets.Length;
+    }
+
+    /// <summary>
     /// Applies a scheme field edit while preserving existing link choices.
     /// </summary>
     /// <param name="field">The validated color or link field.</param>
@@ -389,7 +437,7 @@ public sealed class ContentPackEditorProject : IDisposable
                 production.Container
             );
         }
-        field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
+        field.ResetToInherited();
     }
 
     /// <summary>
@@ -429,6 +477,29 @@ public sealed class ContentPackEditorProject : IDisposable
     }
 
     /// <summary>
+    /// Removes one existing audio-list entry without requiring other stored clips to resolve.
+    /// </summary>
+    /// <param name="field">The project-owned audio list.</param>
+    /// <param name="index">The stored entry index, including any empty entries.</param>
+    internal void RemoveAudioClip(ContentPackEditorField field, int index)
+    {
+        RequireOwnedRecord(field.Record);
+        if (
+            !field.IsList
+            || field.IsMediaDirectory
+            || field.MediaType != ContentPackEditorMediaType.Audio
+        )
+            throw new ArgumentException("Choose an audio clip list.", nameof(field));
+        if (index < 0 || index >= field.Values.Count)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        using (BeginEdit("Remove audio clip"))
+        {
+            field.SetListValues(field.Values.Where((_, position) => position != index).ToArray());
+            LinkRulesOverride(field.Document);
+        }
+    }
+
+    /// <summary>
     /// Checks media address scope and containment through the production resolver before editing.
     /// </summary>
     /// <param name="field">The edited member.</param>
@@ -438,9 +509,7 @@ public sealed class ContentPackEditorProject : IDisposable
         ValidateFieldValues(
             field,
             values,
-            field.IsMedia
-                ? ContentPackLoader.CreateFolderResolver(ContentRootPath, PackRootPath, Definition)
-                : null,
+            field.IsMedia ? CreateResolver() : null,
             field.IsFactionReference ? GetFactionOptions() : null,
             field.IsTraitReference ? GetTraitOptions() : null
         );
@@ -885,11 +954,7 @@ public sealed class ContentPackEditorProject : IDisposable
     /// <returns>The matching content addresses in stable order.</returns>
     public IReadOnlyList<string> GetMediaFiles(ContentPackEditorField field)
     {
-        ContentFileResolver resolver = ContentPackLoader.CreateFolderResolver(
-            ContentRootPath,
-            PackRootPath,
-            Definition
-        );
+        ContentFileResolver resolver = CreateResolver();
         return field
             .Values.Where(value => !string.IsNullOrWhiteSpace(value))
             .SelectMany(value => resolver.EnumerateFileAddresses(field.GetMediaAddress(value)))
@@ -970,11 +1035,7 @@ public sealed class ContentPackEditorProject : IDisposable
             document.Address == _packDefinitionAddress
         );
         XDocument xml = XDocument.Parse(manifest.Text);
-        string neutralPath = xml.Root.Element("NeutralThemePath")?.Value;
-        XElement neutral = GetCatalogs()
-            .FirstOrDefault(catalog => catalog.Document.Address == "Pack/" + neutralPath)
-            ?.Records.FirstOrDefault(record => record.Kind == "FactionTheme")
-            ?.Element;
+        XElement neutral = ContentEditorPresentation.GetNeutralThemeRecord(GetCatalogs())?.Element;
         IReadOnlyDictionary<string, XElement> additions = ContentEditorFactionFactory.Create(
             id,
             folder,
@@ -1003,6 +1064,10 @@ public sealed class ContentPackEditorProject : IDisposable
             if (paths == null)
                 xml.Root.Add(paths = new XElement("FactionPaths"));
             paths.Add(new XElement("Path", folder + "/faction.xml"));
+            XElement themes = xml.Root.Element("ThemePaths");
+            if (themes == null)
+                xml.Root.Add(themes = new XElement("ThemePaths"));
+            themes.Add(new XElement("Path", folder + ContentEditorFactionFactory.ThemeFile));
             manifest.SetText(xml.ToString());
         }
         catalogs = null;
@@ -1388,6 +1453,11 @@ public sealed class ContentPackEditorProject : IDisposable
     public void RemoveRecord(ContentPackEditorRecord record)
     {
         RequireOwnedRecord(record);
+        if (
+            record.Kind == nameof(FactionTheme)
+            && FactionThemes.IsNeutral(record.Element.Element("FactionInstanceID")?.Value)
+        )
+            throw new InvalidOperationException("A game pack must have a Neutral theme.");
         if (record.Kind == "Faction")
         {
             RemoveFaction(record);
@@ -1438,15 +1508,6 @@ public sealed class ContentPackEditorProject : IDisposable
                 record.Catalog.Remove(record);
             return;
         }
-        HashSet<string> retained = declarations
-            .Except(removed)
-            .Append(manifest)
-            .SelectMany(GetReferencedDocumentAddresses)
-            .ToHashSet(StringComparer.Ordinal);
-        HashSet<string> removedAddresses = removed
-            .SelectMany(GetReferencedDocumentAddresses)
-            .Where(address => !retained.Contains(address))
-            .ToHashSet(StringComparer.Ordinal);
         XDocument xml = XDocument.Parse(manifest.Document.Text);
         HashSet<string> removedFactionIDs = removed
             .SelectMany(declaration =>
@@ -1462,6 +1523,27 @@ public sealed class ContentPackEditorProject : IDisposable
             .SelectMany(catalog => catalog.Records)
             .Where(faction => faction.Kind == "Faction")
             .Select(faction => faction.ID)
+            .Concat(removed.Select(declaration => declaration.DocumentRecord.ID))
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> removedThemeAddresses = GetCatalogs()
+            .Where(catalog =>
+                catalog.Records.Count > 0
+                && catalog.Records.All(theme =>
+                    theme.Kind == nameof(FactionTheme)
+                    && removedFactionIDs.Contains(theme.Element.Element("FactionInstanceID")?.Value)
+                )
+            )
+            .Select(catalog => catalog.Document.Address)
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> retained = declarations
+            .Except(removed)
+            .SelectMany(GetReferencedDocumentAddresses)
+            .Concat(GetReferencedDocumentAddresses(manifest).Except(removedThemeAddresses))
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> removedAddresses = removed
+            .SelectMany(GetReferencedDocumentAddresses)
+            .Concat(removedThemeAddresses)
+            .Where(address => !retained.Contains(address))
             .ToHashSet(StringComparer.Ordinal);
         ContentPackEditorRecord[] removedReports = GetCatalogs()
             .Where(catalog =>
@@ -1485,6 +1567,10 @@ public sealed class ContentPackEditorProject : IDisposable
                         catalog.Document.Address == "Pack/" + path.Value.Replace('\\', '/')
                     )
                 )
+                .Remove();
+            xml.Root.Element("ThemePaths")
+                ?.Elements("Path")
+                .Where(path => removedAddresses.Contains("Pack/" + path.Value.Replace('\\', '/')))
                 .Remove();
             if (
                 !removedAddresses.Contains(record.Catalog.Document.Address)
@@ -1654,18 +1740,39 @@ public sealed class ContentPackEditorProject : IDisposable
     /// <param name="resolver">The selected pack's layered resolver.</param>
     /// <param name="definition">The selected pack definition.</param>
     /// <param name="documents">The already resolved editable documents.</param>
+    /// <param name="modRoot">The authored project's root for a mod.</param>
+    /// <param name="mod">The mod's independent identity, when present.</param>
     internal ContentPackEditorProject(
         ContentFileResolver resolver,
         ContentPackDefinition definition,
-        IEnumerable<ContentPackEditorDocument> documents
+        IEnumerable<ContentPackEditorDocument> documents,
+        string modRoot = null,
+        ContentModDefinition mod = null
     )
     {
         ContentRootPath = resolver.ContentRootPath;
-        PackRootPath = resolver.PackRootPath;
+        ProjectRootPath = modRoot == null ? resolver.PackRootPath : Path.GetFullPath(modRoot);
+        PackRootPath =
+            mod == null ? ProjectRootPath : Path.Combine(ProjectRootPath, "Content", "Pack");
+        Mod = mod;
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         this.documents = documents.ToList();
         history = new ContentPackEditorHistory(this.documents);
     }
+
+    /// <summary>
+    /// Opens the project's own content scope and its installed baseline.
+    /// </summary>
+    /// <param name="definition">An edited pack definition to resolve while saving.</param>
+    /// <returns>The asset and document resolver.</returns>
+    internal ContentFileResolver CreateResolver(ContentPackDefinition definition = null) =>
+        Mod == null
+            ? ContentPackLoader.CreateFolderResolver(
+                ContentRootPath,
+                PackRootPath,
+                definition ?? Definition
+            )
+            : ContentPackLoader.CreateModFolderResolver(ContentRootPath, ProjectRootPath, Mod);
 
     /// <summary>
     /// Identifies managed pack and application data directories that authoring must preserve.
@@ -1706,7 +1813,7 @@ public sealed class ContentPackEditorProject : IDisposable
     {
         if (IsInstalledPath(contentRootPath, folder))
             throw new IOException(
-                "Installed content is read-only. Create a new content pack in your own folder."
+                "Installed content is read-only. Create a project in your own folder."
             );
     }
 
@@ -1728,5 +1835,21 @@ public sealed class ContentPackEditorProject : IDisposable
         documents = refreshedDocuments.ToList();
         catalogs = null;
         history = new ContentPackEditorHistory(documents);
+    }
+
+    /// <summary>
+    /// Updates the migrated manifest while retaining the editor's other live catalogs.
+    /// </summary>
+    /// <param name="manifest">The working pack manifest.</param>
+    /// <param name="text">The migrated effective XML.</param>
+    internal void SetMigratedManifestText(ContentPackEditorDocument manifest, string text)
+    {
+        manifest.SetText(text);
+        if (catalogs != null)
+            catalogs = catalogs
+                .Select(catalog =>
+                    catalog.Document == manifest ? new ContentPackEditorCatalog(manifest) : catalog
+                )
+                .ToArray();
     }
 }

@@ -481,6 +481,67 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(canAccept);
         }
 
+        [TestCase(false)]
+        [TestCase(true)]
+        public void GetProductionCycleIncrement_BlockadedPlanet_HaltsProduction(bool hasIonCannon)
+        {
+            GameRoot game = CreateOrderTestGame();
+
+            Planet planet = new()
+            {
+                IsColonized = true,
+                OwnerInstanceID = "empire",
+                EnergyCapacity = 5,
+            };
+            Fleet fleet = new() { OwnerInstanceID = "rebels" };
+            CapitalShip ship = new()
+            {
+                OwnerInstanceID = "rebels",
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                StarfighterCapacity = 3,
+            };
+            fleet.AddChild(ship);
+            fleet.AddChild(
+                new CapitalShip
+                {
+                    OwnerInstanceID = "rebels",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    Movement = TestMovement.Create(transitTicks: 10),
+                }
+            );
+            foreach (
+                ManufacturingStatus status in new[]
+                {
+                    ManufacturingStatus.Complete,
+                    ManufacturingStatus.Complete,
+                    ManufacturingStatus.Building,
+                }
+            )
+                ship.AddChild(
+                    new Starfighter { OwnerInstanceID = "rebels", ManufacturingStatus = status }
+                );
+            planet.AddChild(fleet);
+            planet.AddChild(
+                new Starfighter
+                {
+                    OwnerInstanceID = "empire",
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                }
+            );
+            if (hasIonCannon)
+                planet.AddChild(
+                    new Building
+                    {
+                        OwnerInstanceID = "empire",
+                        BuildingType = BuildingType.Weapon,
+                        DefenseWeaponEffect = DefenseWeaponEffect.ShieldDamage,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                    }
+                );
+
+            Assert.That(ManufacturingQueries.GetProductionCycleIncrement(game, planet), Is.Zero);
+        }
+
         [Test]
         public void CanStartManufacturing_ResourceFacilityWithoutMaintenanceHeadroom_ReturnsTrue()
         {

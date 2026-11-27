@@ -35,6 +35,25 @@ internal static class ContentEditorInspectorLayout
     internal static IReadOnlyList<ContentPackEditorField> GetFields(ContentPackEditorRecord record)
     {
         List<ContentPackEditorField> fields = record.GetFields().ToList();
+        if (record.Kind == nameof(Officer))
+        {
+            fields.RemoveAll(field => field.Group == nameof(Officer.VoiceSet));
+            fields.AddRange(ContentEditorUnitAudio.GetFields(record));
+        }
+        if (record.Kind == "Planet")
+            foreach (string member in ContentEditorPlanetArtwork.Members)
+                if (!fields.Any(field => field.MemberName == member))
+                    fields.Add(record.GetField(member));
+        if (record.Kind == "ContentPack")
+            foreach (
+                string member in new[]
+                {
+                    nameof(ContentPackDefinition.StartupIntroVideoPath),
+                    nameof(ContentPackDefinition.OpeningCrawlVideoPath),
+                }
+            )
+                if (!fields.Any(field => field.MemberName == member))
+                    fields.Add(record.GetField(member));
         if (record.Kind == "Building")
             fields.RemoveAll(field =>
                 field.MemberName
@@ -54,11 +73,14 @@ internal static class ContentEditorInspectorLayout
                 if (!fields.Any(field => field.MemberName == member))
                     fields.Add(record.GetField(member));
         if (record.Kind == "Starfighter")
-            foreach (string member in new[] { "Roles", "FormationPriority" })
+        {
+            fields.RemoveAll(field => field.MemberName == "Roles");
+            foreach (string member in new[] { "Role", "FormationPriority" })
             {
                 fields.RemoveAll(field => field.MemberName == member);
                 fields.Add(record.GetField(member));
             }
+        }
         if (record.Kind == "Officer")
         {
             foreach (string skill in new[] { "Diplomacy", "Espionage", "Combat", "Leadership" })

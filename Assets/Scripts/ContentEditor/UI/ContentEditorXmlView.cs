@@ -76,10 +76,19 @@ public sealed class ContentEditorXmlView : MonoBehaviour
     /// </summary>
     /// <param name="record">The selected definition.</param>
     /// <param name="fields">The fields represented by a combined inspector page.</param>
-    public void Bind(ContentPackEditorRecord record, IReadOnlyList<ContentPackEditorField> fields)
+    public void Bind(
+        ContentPackEditorRecord record,
+        IReadOnlyList<ContentPackEditorField> fields
+    ) => BindScopes(ContentEditorXmlScope.Create(record, fields));
+
+    /// <summary>
+    /// Replaces the editable blocks on the selected inspector page.
+    /// </summary>
+    /// <param name="blocks">The current authored blocks.</param>
+    internal void BindScopes(IReadOnlyList<ContentEditorXmlScope> blocks)
     {
         BindControls();
-        scopes = ContentEditorXmlScope.Create(record, fields);
+        scopes = blocks;
         ScopeIndex = 0;
         scopeDropdown.ClearOptions();
         scopeDropdown.AddOptions(scopes.Select(scope => scope.Caption).ToList());

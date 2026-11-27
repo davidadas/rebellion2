@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 namespace Rebellion.SceneGraph
@@ -31,6 +32,7 @@ namespace Rebellion.SceneGraph
         public string DamagedSmallImagePath { get; set; }
         public string CapturedOverlayImagePath { get; set; }
         public string InjuredImagePath { get; set; }
+        public List<GameplayArtworkLayer> ArtworkLayerOrder { get; set; }
         public string Description { get; set; }
 
         /// <summary>

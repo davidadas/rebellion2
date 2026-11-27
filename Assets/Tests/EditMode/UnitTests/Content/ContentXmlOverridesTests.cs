@@ -32,6 +32,324 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Merge_IndependentScenarioRegistrations_KeepsBoth()
+        {
+            string baseline =
+                "<ContentPack><ScenarioPaths><Path>standard.xml</Path></ScenarioPaths></ContentPack>";
+            string first =
+                "<ContentPack Inherit='true'><ScenarioPaths><Path>first.xml</Path></ScenarioPaths></ContentPack>";
+            string second =
+                "<ContentPack Inherit='true'><ScenarioPaths><Path>second.xml</Path></ScenarioPaths></ContentPack>";
+
+            string result = ContentXmlOverrides.Merge(
+                ContentXmlOverrides.Merge(baseline, first),
+                second
+            );
+
+            Assert.That(
+                ContentDefinitionSerializer
+                    .DeserializeText<ContentPackDefinition>(result)
+                    .ScenarioPaths,
+                Is.EqualTo(new[] { "standard.xml", "first.xml", "second.xml" })
+            );
+        }
+
+        [Test]
+        public void Update_OneMessagePicture_WritesOnlyThatSettingAndIdentity()
+        {
+            string baseline = Messages(
+                Report("arrived", "FleetArrived"),
+                Report("report", "MissionReport")
+            );
+            XElement edited = XElement.Parse(baseline);
+            edited
+                .Elements()
+                .First()
+                .Element("BackgroundImage")
+                .SetAttributeValue("Path", "custom.png");
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited.ToString(),
+                ContentXmlOverrides.Create(baseline)
+            );
+
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(authored));
+            XElement saved = XElement.Parse(authored);
+            Assert.AreEqual(1, saved.Elements().Count());
+            Assert.AreEqual(
+                "arrived",
+                saved.Element("MessageDefinition").Element("InstanceID").Value
+            );
+            Assert.IsFalse(saved.Descendants("Body").Any());
+            Assert.AreEqual(
+                "custom.png",
+                (string)saved.Descendants("BackgroundImage").Single().Attribute("Path")
+            );
+        }
+
+        [Test]
+        public void Merge_MessagePictureOverride_InheritsUpdatedTextAndNewReportTypes()
+        {
+            string baseline = Messages(
+                Report("arrived", "FleetArrived"),
+                Report("report", "MissionReport")
+            );
+            XElement edited = XElement.Parse(baseline);
+            edited
+                .Elements()
+                .First()
+                .Element("BackgroundImage")
+                .SetAttributeValue("Path", "custom.png");
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited.ToString(),
+                ContentXmlOverrides.Create(baseline)
+            );
+            string updated = Messages(
+                Report("arrived", "FleetArrived", "Updated arrival"),
+                Report("report", "MissionReport", "Updated report"),
+                Report("killed", "MissionReport", "Target killed")
+            );
+
+            XElement result = XElement.Parse(ContentXmlOverrides.Merge(updated, authored));
+
+            Assert.AreEqual(3, result.Elements().Count());
+            Assert.AreEqual("Updated arrival", result.Elements().First().Element("Body").Value);
+            Assert.AreEqual(
+                "custom.png",
+                (string)result.Elements().First().Element("BackgroundImage").Attribute("Path")
+            );
+            Assert.AreEqual("Target killed", result.Elements().Last().Element("Body").Value);
+        }
+
+        [Test]
+        public void Update_RemovedIdentifiedMessage_KeepsRemovalAndInheritsFutureAdditions()
+        {
+            string baseline = Messages(
+                Report("arrived", "FleetArrived"),
+                Report("report", "MissionReport")
+            );
+            string edited = Messages(Report("arrived", "FleetArrived"));
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited,
+                ContentXmlOverrides.Create(baseline)
+            );
+            XElement result = XElement.Parse(
+                ContentXmlOverrides.Merge(
+                    Messages(
+                        Report("arrived", "FleetArrived"),
+                        Report("report", "MissionReport"),
+                        Report("new", "BlockadeDetected")
+                    ),
+                    authored
+                )
+            );
+
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(authored));
+            CollectionAssert.AreEqual(
+                new[] { "arrived", "new" },
+                result.Elements().Select(record => record.Element("InstanceID").Value)
+            );
+            Assert.AreEqual(
+                "true",
+                (string)XElement.Parse(authored).Element("MessageDefinition").Attribute("Remove")
+            );
+        }
+
+        [Test]
+        public void Reset_MessagePicture_PrunesTheOverrideAndRestoresInheritance()
+        {
+            string baseline = Messages(Report("arrived", "FleetArrived"));
+            XElement edited = XElement.Parse(baseline);
+            XElement picture = edited.Element("MessageDefinition").Element("BackgroundImage");
+            picture.SetAttributeValue("Path", "custom.png");
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited.ToString(),
+                ContentXmlOverrides.Create(baseline)
+            );
+            Assert.IsTrue(ContentXmlOverrides.CanResetSetting(picture, "Path"));
+            Assert.IsFalse(
+                ContentXmlOverrides.CanResetSetting(
+                    edited.Element("MessageDefinition").Element("InstanceID")
+                )
+            );
+
+            string reset = ContentXmlOverrides.Reset(authored, picture, "Path");
+
+            Assert.IsTrue(ContentXmlOverrides.IsEmpty(reset));
+            Assert.AreEqual(baseline, ContentXmlOverrides.Merge(baseline, reset));
+        }
+
+        [Test]
+        public void Update_ChangedMessageOutcome_KeepsIdentityAndLookupOrder()
+        {
+            string baseline = Messages(
+                Report("first", "MissionReport"),
+                Report("second", "MissionReport")
+            );
+            XElement edited = XElement.Parse(baseline);
+            edited.Elements().First().SetElementValue("Outcome", "Failed");
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited.ToString(),
+                ContentXmlOverrides.Create(baseline)
+            );
+            XElement result = XElement.Parse(ContentXmlOverrides.Merge(baseline, authored));
+
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(authored));
+            CollectionAssert.AreEqual(
+                new[] { "first", "second" },
+                result.Elements().Select(record => record.Element("InstanceID").Value)
+            );
+            Assert.AreEqual("Failed", result.Elements().First().Element("Outcome").Value);
+        }
+
+        [Test]
+        public void Update_InsertedMessage_PreservesItsPositionWithoutCopyingNeighbors()
+        {
+            string baseline = Messages(
+                Report("first", "FleetArrived"),
+                Report("last", "MissionReport")
+            );
+            string edited = Messages(
+                Report("first", "FleetArrived"),
+                Report("inserted", "BlockadeDetected"),
+                Report("last", "MissionReport")
+            );
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited,
+                ContentXmlOverrides.Create(baseline)
+            );
+            XElement result = XElement.Parse(ContentXmlOverrides.Merge(baseline, authored));
+
+            Assert.IsTrue(ContentXmlOverrides.IsOverlay(authored));
+            CollectionAssert.AreEqual(
+                new[] { "first", "inserted", "last" },
+                result.Elements().Select(record => record.Element("InstanceID").Value)
+            );
+            XElement anchor = XElement
+                .Parse(authored)
+                .Elements()
+                .Single(record => (string)record.Element("InstanceID") == "last");
+            Assert.AreEqual(1, anchor.Elements().Count());
+        }
+
+        [Test]
+        public void Merge_RemovedInsertionAnchor_DoesNotCreateAnIncompleteReport()
+        {
+            string baseline = Messages(
+                Report("first", "FleetArrived"),
+                Report("last", "MissionReport")
+            );
+            string edited = Messages(
+                Report("first", "FleetArrived"),
+                Report("inserted", "BlockadeDetected"),
+                Report("last", "MissionReport")
+            );
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited,
+                ContentXmlOverrides.Create(baseline)
+            );
+
+            XElement result = XElement.Parse(
+                ContentXmlOverrides.Merge(Messages(Report("first", "FleetArrived")), authored)
+            );
+
+            CollectionAssert.AreEqual(
+                new[] { "first", "inserted" },
+                result.Elements().Select(record => record.Element("InstanceID").Value)
+            );
+        }
+
+        [Test]
+        public void Update_ReorderedMessages_PreservesExplicitReplacementOrder()
+        {
+            string baseline = Messages(
+                Report("first", "FleetArrived"),
+                Report("last", "MissionReport")
+            );
+            string edited = Messages(
+                Report("last", "MissionReport"),
+                Report("first", "FleetArrived")
+            );
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited,
+                ContentXmlOverrides.Create(baseline)
+            );
+
+            Assert.IsFalse(ContentXmlOverrides.IsOverlay(authored));
+            Assert.IsTrue(XNode.DeepEquals(XElement.Parse(edited), XElement.Parse(authored)));
+        }
+
+        [Test]
+        public void Merge_AnonymousOverlayAboveIdentifiedMessages_PreservesCompleteReplacement()
+        {
+            string baseline = Messages(
+                Report("first", "FleetArrived"),
+                Report("last", "MissionReport")
+            );
+            string authored =
+                "<MessageDefinitions Inherit='true'><MessageDefinition><ResultType>FleetDestroyed</ResultType><Body>Local</Body></MessageDefinition></MessageDefinitions>";
+
+            XElement result = XElement.Parse(ContentXmlOverrides.Merge(baseline, authored));
+
+            Assert.AreEqual(1, result.Elements().Count());
+            Assert.AreEqual(
+                "FleetDestroyed",
+                result.Element("MessageDefinition").Element("ResultType").Value
+            );
+            Assert.IsFalse(result.Descendants("InstanceID").Any());
+        }
+
+        [Test]
+        public void Update_MessageLosesItsIdentity_PreservesCompleteReplacement()
+        {
+            string baseline = Messages(Report("first", "FleetArrived"));
+            XElement edited = XElement.Parse(baseline);
+            edited.Element("MessageDefinition").Element("InstanceID").Remove();
+
+            string authored = ContentXmlOverrides.Update(
+                baseline,
+                edited.ToString(),
+                ContentXmlOverrides.Create(baseline)
+            );
+
+            Assert.IsFalse(ContentXmlOverrides.IsOverlay(authored));
+            Assert.IsFalse(XElement.Parse(authored).Descendants("InstanceID").Any());
+        }
+
+        [Test]
+        public void Load_LegacyMessageReplacement_DoesNotReintroduceOmittedDefinitions()
+        {
+            string baseline = WriteLayer(
+                "Base",
+                Messages(Report("first", "FleetArrived"), Report("new", "MissionReport"))
+            );
+            string authored =
+                "<MessageDefinitions><MessageDefinition><ResultType>FleetArrived</ResultType><Body>Local</Body></MessageDefinition></MessageDefinitions>";
+            string local = WriteLayer("Local", authored);
+            ContentFileResolver resolver = new(
+                folder,
+                local,
+                fallbackPackRootPaths: new[] { baseline }
+            );
+
+            string result = ContentXmlOverrides.Load(resolver, "Pack/theme.xml");
+
+            Assert.AreEqual(authored, result);
+        }
+
+        [Test]
         public void Merge_OneFactionSetting_PreservesOtherSettingsAndFactions()
         {
             string baseline =
@@ -431,6 +749,30 @@ namespace Rebellion.Tests.Content
                 ContentXmlOverrides.IsOverridden("<FactionThemes Inherit='true'/>", null)
             );
         }
+
+        /// <summary>
+        /// Builds an identified report with separate editable text and image settings.
+        /// </summary>
+        /// <param name="id">The stable message identity.</param>
+        /// <param name="result">The existing runtime result selector.</param>
+        /// <param name="body">The report text.</param>
+        /// <returns>The complete report definition.</returns>
+        private static XElement Report(string id, string result, string body = "Inherited body") =>
+            new(
+                "MessageDefinition",
+                new XElement("InstanceID", id),
+                new XElement("ResultType", result),
+                new XElement("Body", body),
+                new XElement("BackgroundImage", new XAttribute("Path", "base.png"))
+            );
+
+        /// <summary>
+        /// Wraps report definitions in their serialized collection.
+        /// </summary>
+        /// <param name="reports">The definitions in authored lookup order.</param>
+        /// <returns>The complete message document.</returns>
+        private static string Messages(params XElement[] reports) =>
+            new XElement("MessageDefinitions", reports).ToString();
 
         /// <summary>
         /// Writes one isolated layer without installing a global content selection.

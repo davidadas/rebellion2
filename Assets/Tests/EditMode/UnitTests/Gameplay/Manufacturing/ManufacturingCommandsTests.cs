@@ -948,7 +948,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildingType = BuildingType.Defense,
             };
             int reserve =
-                _empire.RefinedMaterialSupply
+                ResourceProductionQueries.GetRefinedMaterialSupply(_game, _empire)
                 * _game.Config.AI.Selection.RefinedMaterialReservePercent
                 / 100;
             _empire.RefinedMaterialStockpile = reserve;
@@ -985,7 +985,7 @@ namespace Rebellion.Tests.Gameplay
                 BuildingType = BuildingType.Defense,
             };
             int reserve =
-                _empire.RefinedMaterialSupply
+                ResourceProductionQueries.GetRefinedMaterialSupply(_game, _empire)
                 * _game.Config.AI.Selection.RefinedMaterialReservePercent
                 / 100;
             _empire.RefinedMaterialStockpile = reserve;
@@ -1925,7 +1925,7 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void ProcessTick_Blockade_AppliesGraduatedRateAndKdyRestoresFullRate()
+        public void ProcessTick_Blockade_SuspendsProductionUntilBlockadeEnds()
         {
             GameConfig config = TestConfig.Create();
             GameRoot game = TestGame.Create(config);
@@ -1989,17 +1989,7 @@ namespace Rebellion.Tests.Gameplay
 
             CreateTickProcessor(manufacturing).ProcessTick(game);
 
-            double expectedBlockadeProgress =
-                1.0
-                - (
-                    config.Blockade.CapitalShipProductionPenaltyPercent
-                    + config.Blockade.FighterProductionPenaltyPercent
-                ) / 100.0;
-            Assert.AreEqual(
-                expectedBlockadeProgress,
-                constructionYard.ProductionCycleProgress,
-                0.0001
-            );
+            Assert.AreEqual(0, constructionYard.ProductionCycleProgress);
             Assert.AreEqual(1, empire.RefinedMaterialStockpile);
             Assert.IsFalse(constructionYard.ProductionInputReserved);
 
@@ -2016,18 +2006,20 @@ namespace Rebellion.Tests.Gameplay
             );
             CreateTickProcessor(manufacturing).ProcessTick(game);
 
-            Assert.AreEqual(
-                expectedBlockadeProgress + 1,
-                constructionYard.ProductionCycleProgress,
-                0.0001
-            );
+            Assert.AreEqual(0, constructionYard.ProductionCycleProgress);
+            Assert.AreEqual(1, empire.RefinedMaterialStockpile);
+            Assert.IsFalse(constructionYard.ProductionInputReserved);
+
+            game.DeleteNode(hostileFleet);
+            CreateTickProcessor(manufacturing).ProcessTick(game);
+
+            Assert.AreEqual(1, constructionYard.ProductionCycleProgress, 0.0001);
         }
 
         [Test]
         public void ProcessTick_FullBlockade_HaltsProductionWithoutReservingInput()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.CapitalShipProductionPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
             Faction empire = new Faction { InstanceID = "empire" };
             Faction rebels = new Faction { InstanceID = "rebels" };
@@ -3355,7 +3347,10 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "MINE1",
                 OwnerInstanceID = _empire.InstanceID,
                 ConstructionCost = 100,
-                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom,
+                MaintenanceCost = ResourceProductionQueries.GetBaseMaintenanceHeadroom(
+                    _game,
+                    _empire
+                ),
                 ManufacturingStatus = ManufacturingStatus.Building,
                 BuildingType = BuildingType.Mine,
             };
@@ -3363,7 +3358,10 @@ namespace Rebellion.Tests.Gameplay
             bool enqueued = _manager.Enqueue(_coruscant, mine, _coruscant);
 
             Assert.IsTrue(enqueued);
-            Assert.AreEqual(0, _empire.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(
+                0,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _empire)
+            );
         }
 
         [Test]
@@ -3585,7 +3583,8 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "DEFENSE1",
                 OwnerInstanceID = "EMPIRE",
                 ConstructionCost = 100,
-                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom + 1,
+                MaintenanceCost =
+                    ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _empire) + 1,
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Defense,
             };
@@ -3604,7 +3603,8 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "MINE1",
                 OwnerInstanceID = "EMPIRE",
                 ConstructionCost = 100,
-                MaintenanceCost = _empire.ProjectedMaintenanceHeadroom + 1,
+                MaintenanceCost =
+                    ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _empire) + 1,
                 BaseBuildSpeed = 10,
                 BuildingType = BuildingType.Mine,
             };
@@ -3940,7 +3940,10 @@ namespace Rebellion.Tests.Gameplay
         {
             const int maintenanceCost = 12;
             _empire.Settings.ResourceProcessingPointsPerFacility = maintenanceCost;
-            int initialHeadroom = _empire.ProjectedMaintenanceHeadroom;
+            int initialHeadroom = ResourceProductionQueries.GetBaseMaintenanceHeadroom(
+                _game,
+                _empire
+            );
             Building mine = new Building
             {
                 InstanceID = "MINE1",
@@ -3953,13 +3956,16 @@ namespace Rebellion.Tests.Gameplay
             _manager.Enqueue(_coruscant, mine, _coruscant);
             Assert.AreEqual(
                 initialHeadroom - maintenanceCost,
-                _empire.ProjectedMaintenanceHeadroom
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _empire)
             );
 
             bool cancelled = _manager.CancelManufacturing(mine, _empire.InstanceID);
 
             Assert.IsTrue(cancelled);
-            Assert.AreEqual(initialHeadroom, _empire.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(
+                initialHeadroom,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _empire)
+            );
         }
 
         [Test]

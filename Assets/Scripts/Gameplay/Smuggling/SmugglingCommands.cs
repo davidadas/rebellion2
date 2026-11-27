@@ -348,9 +348,8 @@ namespace Rebellion.Gameplay
 
             int percent = _lossPercentByMinimumSupport.Lookup(support);
             int capitalShips = fleets.Sum(fleet => fleet.GetOperationalCapitalShipCount());
-            int starfighters = GetStationedStarfighters(planet, fleets, controller.InstanceID)
-                .Count();
-            int regiments = GetStationedRegiments(planet, fleets, controller.InstanceID).Count();
+            int starfighters = GetStationedStarfighters(planet, controller.InstanceID).Count();
+            int regiments = GetStationedRegiments(planet, controller.InstanceID).Count();
 
             return Math.Clamp(
                 percent
@@ -364,20 +363,17 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Returns completed, stationary starfighters owned by the controller that are stationed
-        /// directly on the planet or carried by a stationary local fleet.
+        /// directly on the planet.
         /// </summary>
         /// <param name="planet">The planet.</param>
-        /// <param name="fleets">The fleets.</param>
         /// <param name="controllerInstanceID">The controller instance id.</param>
         /// <returns>The requested stationed starfighters.</returns>
         private static IEnumerable<Starfighter> GetStationedStarfighters(
             Planet planet,
-            IEnumerable<Fleet> fleets,
             string controllerInstanceID
         ) =>
             planet
                 .GetChildren<Starfighter>()
-                .Concat(fleets.SelectMany(fleet => fleet.GetStarfighters()))
                 .Where(starfighter =>
                     starfighter.OwnerInstanceID == controllerInstanceID
                     && starfighter.ManufacturingStatus == ManufacturingStatus.Complete
@@ -386,20 +382,17 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Returns completed, stationary regiments owned by the controller that are stationed
-        /// directly on the planet or carried by a stationary local fleet.
+        /// directly on the planet.
         /// </summary>
         /// <param name="planet">The planet.</param>
-        /// <param name="fleets">The fleets.</param>
         /// <param name="controllerInstanceID">The controller instance id.</param>
         /// <returns>The requested stationed regiments.</returns>
         private static IEnumerable<Regiment> GetStationedRegiments(
             Planet planet,
-            IEnumerable<Fleet> fleets,
             string controllerInstanceID
         ) =>
             planet
                 .GetChildren<Regiment>()
-                .Concat(fleets.SelectMany(fleet => fleet.GetRegiments()))
                 .Where(regiment =>
                     regiment.OwnerInstanceID == controllerInstanceID
                     && regiment.ManufacturingStatus == ManufacturingStatus.Complete

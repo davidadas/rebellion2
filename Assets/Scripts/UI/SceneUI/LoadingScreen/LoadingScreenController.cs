@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Rebellion.Game;
 using Rebellion.Multiplayer;
@@ -108,10 +109,12 @@ internal sealed class LoadingScreenController : MonoBehaviour
     /// <param name="bootstrap">The bootstrap that owns the outgoing content.</param>
     /// <param name="packID">The installed content pack to select.</param>
     /// <param name="disabledModIDs">The complete pending disabled-mod preferences.</param>
+    /// <param name="preferredModOrder">The pending order for the selected pack.</param>
     internal static void ReloadContent(
         AppBootstrap bootstrap,
         string packID,
-        string[] disabledModIDs
+        string[] disabledModIDs,
+        IReadOnlyList<string> preferredModOrder
     )
     {
         if (bootstrap == null)
@@ -122,8 +125,20 @@ internal sealed class LoadingScreenController : MonoBehaviour
         BeginLoad(
             bootstrap,
             operation,
-            operation.PrepareContentReloadAsync(packID, disabledModIDs)
+            operation.PrepareContentReloadAsync(packID, disabledModIDs, preferredModOrder)
         );
+    }
+
+    /// <summary>
+    /// Restores the original new-game content after leaving a saved campaign.
+    /// </summary>
+    /// <param name="bootstrap">The application whose campaign is ending.</param>
+    /// <param name="menuPack">The content retained from its new-game menu.</param>
+    internal static void RestoreMenuContent(AppBootstrap bootstrap, ContentPack menuPack)
+    {
+        ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
+        operation.PrepareMenuReturn(menuPack);
+        BeginLoad(bootstrap, operation, Task.CompletedTask);
     }
 
     /// <summary>
@@ -164,7 +179,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
         if (IsLoadInProgress)
             return;
         ContentLoadOperation operation = bootstrap.CreateContentLoadOperation();
-        operation.PrepareCustomGame(contentPack, configuration.Summary);
+        operation.PrepareCustomGame(contentPack, configuration.Summary, rememberModOrder: false);
         BeginLoad(bootstrap, operation, Task.CompletedTask, configuration);
     }
 
@@ -697,6 +712,7 @@ internal sealed class LoadingScreenController : MonoBehaviour
             try
             {
                 _bootstrap = AppBootstrap.EnsureExists(_operation.Pack);
+                _bootstrap.SetMenuPack(_operation.MenuPack);
             }
             catch (Exception exception)
             {

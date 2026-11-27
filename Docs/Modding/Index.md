@@ -5,8 +5,14 @@ content can therefore be changed without rebuilding the game.
 
 ## Creating a mod
 
-A Rebellion 2 mod is a folder containing a `mod.xml` definition and a `Content` folder. It can
+A Rebellion 2 mod is a folder containing a `pack.xml` manifest and a `Content` folder. It can
 replace art, audio, video, configuration, or game-data files without rebuilding the game.
+
+In the Content Pack Editor, choose **File > New > Mod** and pick the game pack it works
+with. A mod saved in the default location appears in **Options > Mods**. Select **Apply** to
+activate it.
+Use **Export** to share a ZIP. Mods can add units, factions, or scenarios.
+**Open project** supports both mods and game packs.
 
 ### 1. Find the Mods directory
 
@@ -38,31 +44,45 @@ When developing from the Unity project, use `Assets/Mods`.
 ### 2. Create the mod definition
 
 Create a new folder directly inside `Mods`. For this example, create `ModExample`, then add a
-`mod.xml` file containing:
+`pack.xml` file containing:
 
 ```xml
-<ContentModDefinition>
+<ContentPackage Type="Mod">
   <ID>mod-example</ID>
   <Version>1.0.0</Version>
   <DisplayName>Mod Example</DisplayName>
   <BasePackID>classic-galactic-civil-war</BasePackID>
   <BasePackVersion>1.0.0</BasePackVersion>
-</ContentModDefinition>
+</ContentPackage>
 ```
 
 `ID` is the stable identifier stored in saves, `Version` identifies the installed revision, and
 `DisplayName` is shown in the game. `BasePackID` and `BasePackVersion` identify the exact content
 pack release the mod supports.
 
+Existing mods with a `mod.xml` manifest continue to load.
+
+Use `Requires` for dependencies. Give each required mod an `ID` and optionally a `Version`.
+`LoadAfter` and `LoadBefore` take mod IDs and set the order when those mods are enabled.
+`IncompatibleWith` lists mods that need to be turned off before this one can load.
+
+```xml
+<Requires>
+  <Mod><ID>ship-rebalance</ID><Version>1.2.0</Version></Mod>
+</Requires>
+<LoadAfter><ModID>fleet-art</ModID></LoadAfter>
+<IncompatibleWith><ModID>alternate-balance</ModID></IncompatibleWith>
+```
+
 ### 3. Add replacement content
 
-Create a `Content` folder beside `mod.xml`. Inside it, reproduce the path of every original file
+Create a `Content` folder beside the manifest. Inside it, reproduce the path of each file
 the mod replaces. For example:
 
 ```text
 Mods/
   ModExample/
-    mod.xml
+    pack.xml
     Content/
       Pack/
         Factions/
@@ -125,26 +145,48 @@ Launch Rebellion 2 and open **Options > Mods**. A compatible definition appears 
 
 Use the switch to enable or disable the mod, then select **Apply**. The game reloads the selected
 content and returns to the main menu without closing. If the mod does not appear, confirm that
-`mod.xml` is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
-active content pack. Invalid definitions are skipped without preventing other mods from loading; the
+the manifest is directly inside the mod folder and that its `BasePackID` and `BasePackVersion` match the
+active game pack. Invalid definitions are skipped without preventing other mods from loading; the
 game log identifies the invalid file and reason.
 
-Mods load by folder name in ordinal order. If two enabled mods replace the same file, the later
-folder wins. Custom load-order controls are not yet supported. Files not supplied by a mod fall back
-to the selected content pack and then the shared application content.
+New compatible mods appear checked in the proposed selection. The game uses the last applied
+selection until you select **Apply**. Dependency and ordering rules determine where new mods fit.
 
-## Derived content packs
+Drag a mod card or its left grip to change its position. Click the grip or press Enter on it
+to open **Move earlier** and **Move later**. **Apply** checks the combined rules and campaign
+startup before saving the selection. The Mods page
+shows blocked mods and which mod wins when two mods replace the same file or write the same
+setting. The mod that loads later wins. Files fall back to the selected pack and then shared
+application content.
 
-A selectable content pack can inherit files from another installed pack by declaring its ID in
-`pack.xml`:
+Each mod project needs its own ID. If multiple active folders declare the same ID, the Mods page
+lists the folders and blocks the copies from loading for new games. A save can still load a unique
+match for its recorded version. If that version appears in multiple folders, keep one copy and retry.
+
+Mods can also register campaigns and factions with `ExtendsPack` set to `true` in their manifest.
+Use a sparse `Content/Pack/pack.xml` to add paths under `ScenarioPaths` or `FactionPaths`.
+Keep the base pack's identity in the base manifest. Registered campaigns appear under **Scenario**
+in Custom Game when there is more than one available.
+
+## Creating a game pack
+
+Game packs are the selectable content packs from earlier releases.
+Choose **New project > Game pack** in **Projects** when players should select your project as its own
+game setup. Pick a base game pack. The editor saves your changes in the new project's folder.
+Export records every inherited release in `pack.xml`, starting with the immediate parent.
 
 ```xml
-<ContentPack>
+<ContentPackage Type="GamePack">
   <ID>example-derived-pack</ID>
   <BasePackID>example-base-pack</BasePackID>
+  <InheritedPacks>
+    <Pack ID="example-base-pack" Version="1.0.0" />
+  </InheritedPacks>
   <!-- The remaining pack definition is omitted here. -->
-</ContentPack>
+</ContentPackage>
 ```
+
+Game packs also open with the legacy `ContentPack` root or `Type="Era"`.
 
 Files present in the derived pack override files at the same `Pack/` address. Missing files fall
 back through the declared base-pack chain. Each derived pack still provides a complete `pack.xml`
@@ -209,9 +251,42 @@ sources, conversion backups, and revisions owned by other open projects. Files l
 editor versions or interrupted sessions are not automatically deleted.
 
 Existing files without `Inherit="true"` keep their full-replacement behavior. Resetting a setting
-in an existing replacement retains its other authored values. `pack.xml` and `mod.xml` remain
-complete identity and dependency manifests. Packs using setting overlays require game and editor
+in an existing replacement retains its other authored values. The package manifest carries the
+complete identity and dependency information. Packs using setting overlays require game and editor
 builds that support this format; distribution metadata must require a compatible game version.
+
+Message definitions with stable `InstanceID` values inherit per report and per setting. Changing
+one report's picture keeps the other reports and its unedited text inherited. Keep an existing
+report's ID when changing its text or outcome; give a new report its own unique ID. Removing a
+report records an explicit removal so future base updates do not bring it back.
+
+Older anonymous message lists remain complete replacements, including their omissions. They are
+not automatically converted or rewritten. Explicitly reordering existing reports also retains a
+complete replacement because their lookup order affects which report is selected.
+
+### Main menu
+
+Open **Interfaces > Main Menu** to preview the default scenario's cockpit and launch controls.
+The preview starts paused. Select **Play** to see it animate. Drag a highlighted control to move
+it, or double-click its artwork to open the image or model field. The fields below the preview
+also let you edit background artwork. Replacement images for Load Game,
+Multiplayer, and Exit display as still artwork. Medallions use the selected faction's GLB.
+Galaxy size controls have separate fields for the monitor artwork and the selection icon.
+Drag a selection frame by its visible outline to position it independently of its icon.
+The **Advanced** tab lets you edit the layout XML. Zero offsets restore the generated positions.
+
+### Shared interfaces
+
+Open **Interfaces** to edit the **Planet Sector Window**, **Planet Window Header**, and
+**Confirmation Window**. Select an element in the preview to move it by dragging or nudge it with
+the arrow keys or WASD. Click an empty area to clear the selection. The planet window preview
+shows the header and its controls, including the **Header Text** position.
+
+### Cutscenes
+
+Open **Cutscenes** to edit the startup videos or a faction's videos. Each entry shows a still
+from the assigned video. Use **Replace** to choose a new video and the preview dropdown to play
+it fullscreen at a supported resolution. Click during playback to return to the editor.
 
 ### Faction and neutral themes
 
@@ -226,7 +301,7 @@ or use the zoom buttons. Drag wherever the hand cursor appears to pan. Drag
 movable artwork directly, or hold Alt (Option on Mac) and drag to move a custom
 galaxy background. **Fit to view** restores the full scene.
 
-Open **Factions > Neutral** to preview and edit shared interface artwork.
+Open **Factions > Neutral** to preview and edit the neutral theme.
 Double-click an outlined sector icon to open its image settings. Use
 **Galaxy map icons** for neutral star markers and **Facility research icons** for
 facility research artwork. Player HUD artwork is under each faction's
@@ -242,6 +317,15 @@ For capital ships and starfighters, full-size display art can also be framed at 
 on an encyclopedia canvas with the configured unit or faction background.
 Message and encyclopedia images can also supply gameplay cuts.
 
+### Planet artwork
+
+The content editor's planet **General** page offers a thumbnail picker for the sector-map image.
+The planet's **Encyclopedia** page has a separate picker for article artwork. Each picker lists
+images already used for that purpose, including inherited images. **Add image…** copies an external
+file into `Pack/Shared/Planets/`; other planets can then select it from the same picker.
+**Replace shared image…** asks for confirmation before updating every planet using that file.
+For inherited artwork, the replacement is written into the mod, leaving the base pack untouched.
+
 ### Artwork layers
 
 In the travel or damage artwork editor, choose an output size and click **Add image…**.
@@ -254,7 +338,30 @@ also drag a PNG or JPEG onto an image slot or onto the artwork canvas to add a l
 
 ## Sharing a mod
 
-Package the mod folder containing `mod.xml` and `Content`; players install it by extracting that
+### Community mods
+
+Use **Browse** to install Thunderstore packages and their dependencies. Use **Library** to
+choose the default game pack or enable mods for the next game startup. **Install from file…**
+accepts ZIP files. Close the game before updating or uninstalling its content; local edits are protected.
+
+### Publishing a game pack or mod
+
+Open a working folder from **Projects**, then choose **Publish…**. Provide a package name,
+description, readme, and 256 × 256 icon. Choose required packages, including any downloaded
+base pack, under **Dependencies**.
+**Save draft** retains unfinished work; **Export ZIP…** creates a package for manual upload.
+
+For direct publishing, click the Thunderstore connection link. Create a service account in
+[your team's settings](https://thunderstore.io/settings/teams/) and paste its token. The token is
+stored in the operating system's credential store, never in the project or export. Linux requires
+libsecret and a running Secret Service. Click the connection link after restarting to reconnect.
+
+Select **Review release**, then **Publish release**. Every update needs a new project version.
+If submission times out, check the package's Thunderstore page before retrying.
+
+### Sharing an add-on mod
+
+Package the mod folder containing its manifest and `Content`. Players install it by extracting that
 folder directly into `Mods`. The installer, launcher, and application and content updaters do not
 overwrite `Mods`.
 
@@ -272,5 +379,13 @@ through the ownership-verifying installer.
 
 Saves require the active pack ID, version, scenario, and ordered mod IDs and versions to match.
 Increment a mod's version when publishing compatibility-breaking changes, then test both new games
-and existing saves. Use the Options menu's Mods page to select a content pack and enable or disable
+and existing saves. Use the Options menu's Mods page to select a game pack and enable or disable
 its compatible mods. Select **Apply** to reload those changes and return to the main menu.
+
+The game restores a save's recorded mod order for that campaign and keeps your new-game
+preferences. You can keep an older pack or mod
+release in its own folder under `Mods/.versions`. The game checks there for the exact saved version
+when the active installation has a different version. For exported derived packs, keep the exact
+inherited releases available there or installed. Older derived packs without these version
+declarations continue to resolve their parents by ID.
+The mod manager retains intact replaced or removed releases for exact-version loading.

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.Events;
@@ -558,6 +559,12 @@ public sealed class FleetWindowView : MonoBehaviour, IPointerClickHandler, IDrop
         UILayout.SetImageTexture(bannerImage, data.BannerTexture);
         UILayout.SetImageTexture(bannerEnrouteOverlayImage, data.BannerEnrouteOverlayTexture);
         UILayout.SetImageTexture(bannerDamagedOverlayImage, data.BannerDamagedOverlayTexture);
+        GameplayArtworkLayout.Apply(
+            GameplayArtworkOrder.Resolve(data.BannerArtworkLayerOrder),
+            bannerImage.transform,
+            bannerEnrouteOverlayImage.transform,
+            bannerDamagedOverlayImage.transform
+        );
         UILayout.SetTextContent(fleetNameTextField, data.FleetName, data.FleetNameColor);
         if (data.ShowCapacity)
         {

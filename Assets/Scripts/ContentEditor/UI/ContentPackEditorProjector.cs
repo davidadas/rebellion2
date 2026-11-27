@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -51,16 +52,64 @@ internal static class ContentPackEditorProjector
     /// <param name="field">The field being presented.</param>
     /// <returns>The field presentation and its read-only directory query.</returns>
     /// <param name="referenceLabels">An optional set of choices supplied by the editing context.</param>
+    /// <param name="assets">The optional store owning thumbnails for shared image choices.</param>
     internal static ContentPackEditorFieldRenderData BuildField(
         ContentPackEditorProject project,
         ContentPackEditorField field,
-        IReadOnlyDictionary<string, string> referenceLabels = null
-    ) =>
-        new ContentPackEditorFieldRenderData(
+        IReadOnlyDictionary<string, string> referenceLabels = null,
+        ContentAssets assets = null
+    )
+    {
+        IReadOnlyDictionary<string, string> images = ContentEditorPlanetArtwork.IsImageField(field)
+            ? ContentEditorPlanetArtwork.GetChoices(project, field)
+            : null;
+        referenceLabels ??= project.GetReferenceOptions(field);
+        if (
+            referenceLabels == null
+            && field.Record.Kind == "Starfighter"
+            && field.MemberName == "Role"
+        )
+        {
+            Dictionary<string, string> roles = new() { [string.Empty] = "Unclassified" };
+            foreach (string role in field.Choices)
+                roles[role] = ContentPackEditorField.FormatName(role);
+            referenceLabels = roles;
+        }
+        return new ContentPackEditorFieldRenderData(
             field,
-            referenceLabels ?? project.GetReferenceOptions(field),
-            () => project.GetMediaFiles(field)
+            referenceLabels,
+            () => project.GetMediaFiles(field),
+            images,
+            ContentEditorPlanetArtwork.IsImageField(field)
+                && ContentEditorPlanetArtwork.GetReplacementPath(project, field) != null,
+            images == null || assets == null
+                ? null
+                : images.Keys.ToDictionary(
+                    address => address,
+                    address => GetMediaImage(assets, address)
+                )
         );
+    }
+
+    /// <summary>
+    /// Loads an optional thumbnail while keeping an invalid existing address repairable.
+    /// </summary>
+    /// <param name="assets">The owner of loaded sprites and textures.</param>
+    /// <param name="address">The selected or available artwork address.</param>
+    /// <returns>The shared sprite, or null for an empty, missing, or invalid address.</returns>
+    private static UnityEngine.Sprite GetMediaImage(ContentAssets assets, string address)
+    {
+        if (string.IsNullOrWhiteSpace(address))
+            return null;
+        try
+        {
+            return assets.GetSprite(address);
+        }
+        catch (ArgumentException)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Finds the sector containing a planet without modifying the source catalog.

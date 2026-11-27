@@ -22,6 +22,7 @@ public sealed class ContentPackEditorField
     private readonly Action attach;
     private readonly Action detach;
     private readonly XElement parentOverride;
+    private readonly XName legacyMemberName;
 
     public string Name { get; }
     public string Caption { get; }
@@ -38,9 +39,19 @@ public sealed class ContentPackEditorField
     public bool IsNumber => numeric;
     public bool IsList => list;
     public bool CanInherit =>
-        !IsIdentity && Document.CanInherit(element, Container, attribute?.Name);
+        !IsIdentity && Document.CanInherit(InheritanceElement, Container, attribute?.Name);
     public bool IsInherited =>
-        CanInherit && Document.IsSettingInherited(element, attribute?.Name, Container);
+        CanInherit && Document.IsSettingInherited(InheritanceElement, attribute?.Name, Container);
+
+    /// <summary>
+    /// Checks canonical setting ownership before consulting its deprecated representation.
+    /// </summary>
+    private XElement InheritanceElement =>
+        element.Parent != null
+        || legacyMemberName == null
+        || !Document.IsSettingInherited(element, attribute?.Name, Container)
+            ? element
+            : record.Element.Element(legacyMemberName) ?? new XElement(legacyMemberName);
     internal bool IsFactionColor =>
         record.Kind == nameof(FactionTheme) && Group == nameof(FactionTheme.ColorScheme);
     internal bool CanResetToDefault =>
@@ -115,6 +126,46 @@ public sealed class ContentPackEditorField
     }
 
     /// <summary>
+    /// Creates a typed field whose XML is materialized only when a value is committed.
+    /// </summary>
+    /// <param name="record">The document record owning the field.</param>
+    /// <param name="owner">The element that contains the field.</param>
+    /// <param name="member">The serialized member name.</param>
+    /// <param name="type">The declared scalar value type.</param>
+    /// <param name="caption">The optional label shown in the inspector.</param>
+    /// <param name="attachOwner">The optional action that attaches the detached owner.</param>
+    /// <returns>The existing or optional field for this member.</returns>
+    internal static ContentPackEditorField CreateOptional(
+        ContentPackEditorRecord record,
+        XElement owner,
+        string member,
+        Type type,
+        string caption = null,
+        Action attachOwner = null
+    )
+    {
+        XElement element =
+            owner.Element(member) ?? new XElement(member, type == typeof(int) ? "0" : string.Empty);
+        return new ContentPackEditorField(
+            record,
+            element,
+            member,
+            attach: () =>
+            {
+                if (attachOwner != null)
+                    attachOwner();
+                else if (owner != record.Element && owner.Parent == null)
+                    record.Element.Add(owner);
+                if (element.Parent == null)
+                    owner.Add(element);
+            },
+            valueTypeOverride: type,
+            caption: caption,
+            parentOverride: owner
+        );
+    }
+
+    /// <summary>
     /// Creates a form field over an existing XML member.
     /// </summary>
     /// <param name="record">The owning record.</param>
@@ -130,6 +181,7 @@ public sealed class ContentPackEditorField
     /// <param name="detach">The optional removal of a collection entry when its value is cleared.</param>
     /// <param name="itemNameOverride">The serialized item name for a detached optional collection.</param>
     /// <param name="parentOverride">The containing object for an absent optional member.</param>
+    /// <param name="legacyMemberName">The deprecated member represented by an absent canonical field.</param>
     internal ContentPackEditorField(
         ContentPackEditorRecord record,
         XElement element,
@@ -143,7 +195,8 @@ public sealed class ContentPackEditorField
         IReadOnlyList<string> sectionPath = null,
         Action detach = null,
         XName itemNameOverride = null,
-        XElement parentOverride = null
+        XElement parentOverride = null,
+        XName legacyMemberName = null
     )
     {
         this.record = record;
@@ -152,6 +205,7 @@ public sealed class ContentPackEditorField
         this.attach = attach;
         this.detach = detach;
         this.parentOverride = parentOverride;
+        this.legacyMemberName = legacyMemberName;
         this.groupOverride = groupOverride;
         valueType =
             valueTypeOverride
@@ -348,6 +402,20 @@ public sealed class ContentPackEditorField
         else
             element.Value = value;
         record.Catalog.Commit();
+    }
+
+    /// <summary>
+    /// Restores a field's inherited value together with the deprecated member it replaces.
+    /// </summary>
+    internal void ResetToInherited()
+    {
+        if (legacyMemberName != null)
+            Document.ResetSetting(
+                record.Element.Element(legacyMemberName) ?? new XElement(legacyMemberName),
+                null,
+                record.Element
+            );
+        Document.ResetSetting(element, attribute?.Name, Container);
     }
 
     /// <summary>

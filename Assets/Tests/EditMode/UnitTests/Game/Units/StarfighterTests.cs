@@ -1,4 +1,6 @@
+using System;
 using System.Collections.Generic;
+using System.Xml.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Units;
@@ -9,92 +11,6 @@ namespace Rebellion.Tests.Game.Units
     public class StarfighterTests
     {
         private Starfighter _starfighter;
-
-        [Test]
-        public void CreateCopy_WithFormationMetadata_CopiesIndependentRolesAndPriority()
-        {
-            Starfighter source = new Starfighter
-            {
-                Roles = new List<StarfighterRole>
-                {
-                    StarfighterRole.Bomber,
-                    StarfighterRole.HeavyAssault,
-                },
-                FormationPriority = 7,
-            };
-
-            Starfighter copy = (Starfighter)source.CreateCopy();
-
-            CollectionAssert.AreEqual(source.GetRoles(), copy.GetRoles());
-            Assert.AreEqual(7, copy.FormationPriority);
-            copy.Roles.Clear();
-            copy.FormationPriority = null;
-            Assert.IsTrue(source.HasRole(StarfighterRole.HeavyAssault));
-            Assert.AreEqual(7, source.FormationPriority);
-        }
-
-        [Test]
-        public void CreateCopy_WithArtworkBackground_PreservesBackground()
-        {
-            Starfighter source = new Starfighter
-            {
-                BackgroundImagePath = "Pack/Art/starfighter-background",
-            };
-
-            Starfighter copy = (Starfighter)source.CreateCopy();
-
-            Assert.AreEqual(source.BackgroundImagePath, copy.BackgroundImagePath);
-        }
-
-        [TestCase(null)]
-        [TestCase(3)]
-        public void Serialize_FormationMetadata_RetainsRolesAndOptionalPriority(int? priority)
-        {
-            Starfighter source = new Starfighter
-            {
-                Roles = new List<StarfighterRole> { StarfighterRole.Multirole },
-                FormationPriority = priority,
-            };
-
-            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(
-                SerializationHelper.Serialize(source)
-            );
-
-            CollectionAssert.AreEqual(source.GetRoles(), loaded.GetRoles());
-            Assert.AreEqual(priority, loaded.FormationPriority);
-        }
-
-        [Test]
-        public void Deserialize_OmittedFormationMetadata_UsesAutomaticOrdering()
-        {
-            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>("<Starfighter/>");
-
-            Assert.IsEmpty(fighter.GetRoles());
-            Assert.IsNull(fighter.FormationPriority);
-            Assert.AreEqual(int.MaxValue, fighter.GetFormationPriority());
-        }
-
-        [TestCase(null, 1)]
-        [TestCase(8, 8)]
-        public void GetFormationPriority_MultipleRoles_HonorsAnExplicitOverride(
-            int? priority,
-            int expected
-        )
-        {
-            Starfighter fighter = new Starfighter
-            {
-                Roles = new List<StarfighterRole>
-                {
-                    StarfighterRole.HeavyAssault,
-                    StarfighterRole.Interceptor,
-                },
-                FormationPriority = priority,
-            };
-
-            Assert.AreEqual(expected, fighter.GetFormationPriority());
-            fighter.Roles.Reverse();
-            Assert.AreEqual(expected, fighter.GetFormationPriority());
-        }
 
         /// <summary>
         /// Sets up.
@@ -131,6 +47,216 @@ namespace Rebellion.Tests.Game.Units
                 ManufacturingProgress = 0,
                 ProducerOwnerID = "PRODUCER1",
             };
+        }
+
+        [Test]
+        public void CreateCopy_WithFormationMetadata_CopiesRoleAndPriority()
+        {
+            Starfighter source = new Starfighter
+            {
+                Role = StarfighterRole.Bomber,
+                FormationPriority = 7,
+            };
+
+            Starfighter copy = (Starfighter)source.CreateCopy();
+
+            Assert.AreEqual(source.Role, copy.Role);
+            Assert.AreEqual(7, copy.FormationPriority);
+            copy.Role = StarfighterRole.Interceptor;
+            copy.FormationPriority = null;
+            Assert.AreEqual(StarfighterRole.Bomber, source.Role);
+            Assert.AreEqual(7, source.FormationPriority);
+        }
+
+        [Test]
+        public void CreateCopy_WithArtworkBackground_PreservesBackground()
+        {
+            Starfighter source = new Starfighter
+            {
+                BackgroundImagePath = "Pack/Art/starfighter-background",
+            };
+
+            Starfighter copy = (Starfighter)source.CreateCopy();
+
+            Assert.AreEqual(source.BackgroundImagePath, copy.BackgroundImagePath);
+        }
+
+        [TestCase(null)]
+        [TestCase(3)]
+        public void Serialize_FormationMetadata_RetainsRoleAndOptionalPriority(int? priority)
+        {
+            Starfighter source = new Starfighter
+            {
+                Role = StarfighterRole.Multirole,
+                FormationPriority = priority,
+            };
+
+            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(
+                SerializationHelper.Serialize(source)
+            );
+
+            Assert.AreEqual(source.Role, loaded.Role);
+            Assert.AreEqual(priority, loaded.FormationPriority);
+        }
+
+        [Test]
+        public void Deserialize_OmittedFormationMetadata_UsesAutomaticOrdering()
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>("<Starfighter/>");
+
+            Assert.IsNull(fighter.Role);
+            Assert.IsNull(fighter.FormationPriority);
+            Assert.AreEqual(int.MaxValue, fighter.GetFormationPriority());
+        }
+
+        [TestCase(null, 1)]
+        [TestCase(8, 8)]
+        public void GetFormationPriority_SingleRole_HonorsAnExplicitOverride(
+            int? priority,
+            int expected
+        )
+        {
+            Starfighter fighter = new Starfighter
+            {
+                Role = StarfighterRole.Interceptor,
+                FormationPriority = priority,
+            };
+
+            Assert.AreEqual(expected, fighter.GetFormationPriority());
+        }
+
+        [Test]
+        public void Role_AvailableChoices_ContainsOnlyFourRoles()
+        {
+            CollectionAssert.AreEqual(
+                new[] { "Interceptor", "Multirole", "Bomber", "HeavyAssault" },
+                Enum.GetNames(typeof(StarfighterRole))
+            );
+        }
+
+        [TestCase("Fighter", StarfighterRole.Multirole)]
+        [TestCase("Interceptor", StarfighterRole.Interceptor)]
+        [TestCase("Multirole", StarfighterRole.Multirole)]
+        [TestCase("Bomber", StarfighterRole.Bomber)]
+        [TestCase("  Bomber  ", StarfighterRole.Bomber)]
+        [TestCase("HeavyAssault", StarfighterRole.HeavyAssault)]
+        [TestCase("0", StarfighterRole.Multirole)]
+        [TestCase("1", StarfighterRole.Interceptor)]
+        [TestCase("2", StarfighterRole.Multirole)]
+        [TestCase("3", StarfighterRole.Bomber)]
+        [TestCase("4", StarfighterRole.HeavyAssault)]
+        public void Deserialize_DeprecatedRoleList_ReadsTheSingleRole(
+            string legacyRole,
+            StarfighterRole expected
+        )
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter><Roles><StarfighterRole>"
+                    + legacyRole
+                    + "</StarfighterRole></Roles></Starfighter>"
+            );
+
+            Assert.AreEqual(expected, fighter.Role);
+        }
+
+        [TestCase("HeavyAssault", "Interceptor", StarfighterRole.Interceptor)]
+        [TestCase("Interceptor", "HeavyAssault", StarfighterRole.Interceptor)]
+        [TestCase("Bomber", "Multirole", StarfighterRole.Multirole)]
+        [TestCase("Fighter", "Interceptor", StarfighterRole.Multirole)]
+        public void Deserialize_MultipleDeprecatedRoles_UsesTheirEstablishedPriority(
+            string first,
+            string second,
+            StarfighterRole expected
+        )
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter><Roles><StarfighterRole>"
+                    + first
+                    + "</StarfighterRole><StarfighterRole>"
+                    + second
+                    + "</StarfighterRole></Roles></Starfighter>"
+            );
+
+            Assert.AreEqual(expected, fighter.Role);
+        }
+
+        [Test]
+        public void Serialize_DeprecatedRoleList_WritesOnlyTheSingleRole()
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter><Roles><StarfighterRole>Bomber</StarfighterRole>"
+                    + "<StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                    + "<FormationPriority>0</FormationPriority></Starfighter>"
+            );
+
+            XElement saved = XElement.Parse(SerializationHelper.Serialize(fighter));
+            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(saved.ToString());
+
+            Assert.AreEqual("Bomber", saved.Element("Role")?.Value);
+            Assert.IsNull(saved.Element("Roles"));
+            Assert.AreEqual(0, loaded.GetFormationPriority());
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void Deserialize_ExplicitRoleAndDeprecatedList_PrefersTheExplicitRole(bool roleFirst)
+        {
+            const string role = "<Role>HeavyAssault</Role>";
+            const string legacy = "<Roles><StarfighterRole>Interceptor</StarfighterRole></Roles>";
+
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter>" + (roleFirst ? role + legacy : legacy + role) + "</Starfighter>"
+            );
+
+            Assert.AreEqual(StarfighterRole.HeavyAssault, fighter.Role);
+        }
+
+        [Test]
+        public void Role_ClearedAfterReadingDeprecatedList_DoesNotRestoreTheLegacyRole()
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter><Roles><StarfighterRole>Bomber</StarfighterRole></Roles></Starfighter>"
+            );
+
+            fighter.Role = null;
+            Starfighter loaded = SerializationHelper.Deserialize<Starfighter>(
+                SerializationHelper.Serialize(fighter)
+            );
+
+            Assert.IsNull(loaded.Role);
+            Assert.AreEqual(int.MaxValue, loaded.GetFormationPriority());
+        }
+
+        [Test]
+        public void Deserialize_EmptyDeprecatedList_LeavesTheRoleUnset()
+        {
+            Starfighter fighter = SerializationHelper.Deserialize<Starfighter>(
+                "<Starfighter><Roles/></Starfighter>"
+            );
+
+            Assert.IsNull(fighter.Role);
+        }
+
+        [Test]
+        public void Deserialize_UnknownDeprecatedRole_RejectsTheDefinitionImmediately()
+        {
+            Exception error = Assert.Catch<Exception>(() =>
+                SerializationHelper.Deserialize<Starfighter>(
+                    "<Starfighter><Roles><StarfighterRole>Unknown</StarfighterRole></Roles>"
+                        + "<FormationPriority>0</FormationPriority></Starfighter>"
+                )
+            );
+
+            StringAssert.Contains("Unknown starfighter role", error.GetBaseException().Message);
+        }
+
+        [TestCase(0)]
+        [TestCase(5)]
+        public void Role_UndefinedValue_RejectsTheAssignment(int value)
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() =>
+                _starfighter.Role = (StarfighterRole)value
+            );
         }
 
         [Test]

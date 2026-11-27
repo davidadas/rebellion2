@@ -9,6 +9,8 @@ using Rebellion.Util.Serialization;
 /// </summary>
 internal static class ContentEditorFactionFactory
 {
+    internal const string ThemeFile = "/Strategy/UI/theme.xml";
+
     /// <summary>
     /// Creates blank gameplay catalogs and a neutral starting theme that reuses existing assets.
     /// </summary>
@@ -71,9 +73,7 @@ internal static class ContentEditorFactionFactory
         XElement theme =
             neutralTheme == null ? new XElement("FactionTheme") : new XElement(neutralTheme);
         theme.SetElementValue("FactionInstanceID", id);
-        string themePath = folder + "/Strategy/UI/theme.xml";
-        manifest.Add(new XElement("ThemePath", themePath));
-        files.Add(themePath, new XElement("FactionThemes", theme));
+        files.Add(folder + ThemeFile, new XElement("FactionThemes", theme));
         return files;
     }
 }

@@ -73,7 +73,11 @@ namespace Rebellion.Gameplay
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction GetPlanetController(Planet planet, List<string> regimentOwners)
         {
-            return planet.ResolveController(_game, regimentOwners);
+            return planet.ResolveController(
+                _game.GetFactions(),
+                _game.Config?.SupportShift,
+                regimentOwners
+            );
         }
     }
 }

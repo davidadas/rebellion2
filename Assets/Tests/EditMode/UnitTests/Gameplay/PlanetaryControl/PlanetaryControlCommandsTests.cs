@@ -195,11 +195,19 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
-        [Test]
-        public void ChangePopularSupport_EnemySectorSuppression_AppliesFullShift()
+        [TestCase(SupportChange.Decrease, -10, 45)]
+        [TestCase(SupportChange.Increase, 10, 55)]
+        [TestCase(SupportChange.Decrease, 10, 60)]
+        [TestCase(SupportChange.Increase, -10, 40)]
+        [TestCase(SupportChange.Decrease, -1, 50)]
+        public void ChangePopularSupport_EnemySectorSuppression_UsesConfiguredResistance(
+            SupportChange resistance,
+            int shift,
+            int expectedSupport
+        )
         {
             _game.Config.SupportShift.WeakSupportPenaltyDivisor = 2;
-            _empire.Settings.SupportResistance = SupportChange.Decrease;
+            _empire.Settings.SupportResistance = resistance;
             Fleet fleet = new Fleet { OwnerInstanceID = _rebels.InstanceID };
             _game.AttachNode(fleet, _targetPlanet);
             _game.AttachNode(
@@ -216,9 +224,9 @@ namespace Rebellion.Tests.Gameplay
             _targetPlanet.SetPopularSupport(_empire.InstanceID, 50);
             _targetPlanet.SetPopularSupport(_rebels.InstanceID, 50);
 
-            _commands.ChangePopularSupport(_targetPlanet, _empire, -10);
+            _commands.ChangePopularSupport(_targetPlanet, _empire, shift);
 
-            Assert.AreEqual(40, _targetPlanet.GetPopularSupport(_empire.InstanceID));
+            Assert.AreEqual(expectedSupport, _targetPlanet.GetPopularSupport(_empire.InstanceID));
         }
 
         [Test]
@@ -732,6 +740,138 @@ namespace Rebellion.Tests.Gameplay
                 officer.GetParentOfType<Planet>(),
                 "In-transit officer should be redirected to nearest friendly planet"
             );
+        }
+
+        [TestCase(true, false)]
+        [TestCase(false, false)]
+        [TestCase(true, true)]
+        public void TransferPlanet_TravellingOfficers_PreservesSharedTravelOnlyForTheirParty(
+            bool sharesTravel,
+            bool separateOrders
+        )
+        {
+            _game.Config.Movement.DistanceDivisor = 1;
+            _game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Officer smuggler = EntityFactory.CreateOfficer("smuggler", _empire.InstanceID);
+            Officer companion = EntityFactory.CreateOfficer("companion", _empire.InstanceID);
+            _game.AttachNode(smuggler, _empirePlanet);
+            _game.AttachNode(companion, _empirePlanet);
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = sharesTravel,
+            };
+            smuggler.Traits.Add(trait.ID);
+            smuggler.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            if (separateOrders)
+            {
+                _movementSystem.RequestMove(smuggler, _targetPlanet);
+                _movementSystem.RequestMove(companion, _targetPlanet);
+            }
+            else
+                _movementSystem.RequestMove(
+                    new List<IMovable> { smuggler, companion },
+                    _targetPlanet
+                );
+            Point position = new Point(50, 0);
+            smuggler.Movement.SetPosition(position);
+            companion.Movement.SetPosition(position);
+            MovementQueries queries = new MovementQueries(_game);
+            int normalTicks = queries.CalculateTransitTicks(
+                companion,
+                position,
+                _targetPlanet,
+                _empirePlanet
+            );
+            int reducedTicks = queries.CalculateTransitTicks(
+                smuggler,
+                position,
+                _targetPlanet,
+                _empirePlanet
+            );
+
+            TransferPlanet(_targetPlanet, _rebels);
+
+            Assert.AreSame(_empirePlanet, smuggler.GetParent());
+            Assert.AreSame(_empirePlanet, companion.GetParent());
+            Assert.AreEqual(
+                sharesTravel || separateOrders ? reducedTicks : normalTicks,
+                smuggler.Movement.TransitTicks
+            );
+            Assert.AreEqual(
+                sharesTravel && !separateOrders ? reducedTicks : normalTicks,
+                companion.Movement.TransitTicks
+            );
+            Assert.AreEqual(
+                !separateOrders,
+                smuggler.Movement.MovementGroupID == companion.Movement.MovementGroupID
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void TransferPlanet_TravellingPartyWithSpecialForces_UsesCommonSafeDestination(
+            bool nearerUncolonizedPlanet
+        )
+        {
+            _game.Config.Movement.DistanceDivisor = 1;
+            _game.Config.Movement.DefaultPersonnelHyperdrive = 100;
+            _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
+            Officer smuggler = EntityFactory.CreateOfficer("smuggler", _empire.InstanceID);
+            Officer companion = EntityFactory.CreateOfficer("companion", _empire.InstanceID);
+            SpecialForces specialForces = new SpecialForces
+            {
+                InstanceID = "special-forces",
+                OwnerInstanceID = _empire.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+            };
+            OfficerTraitDefinition trait = new OfficerTraitDefinition
+            {
+                ID = "travel",
+                PersonnelTravelTimePercent = 50,
+                SharesPersonnelTravelTimeModifier = true,
+            };
+            smuggler.Traits.Add(trait.ID);
+            smuggler.BindTraitDefinitions(
+                new Dictionary<string, OfficerTraitDefinition> { [trait.ID] = trait }
+            );
+            List<IMovable> party = new() { smuggler, companion, specialForces };
+            foreach (IMovable unit in party)
+                _game.AttachNode(unit, _empirePlanet);
+            _movementSystem.RequestMove(party, _targetPlanet);
+            Point position = new Point(50, 0);
+            foreach (IMovable unit in party)
+                unit.Movement.SetPosition(position);
+            if (nearerUncolonizedPlanet)
+            {
+                Planet uncolonized = new Planet
+                {
+                    InstanceID = "uncolonized-fallback",
+                    OwnerInstanceID = _empire.InstanceID,
+                    PositionX = 50,
+                    PositionY = 0,
+                };
+                _game.AttachNode(uncolonized, _empirePlanet.GetParent());
+            }
+            int expectedTicks = new MovementQueries(_game).CalculateTransitTicks(
+                companion,
+                position,
+                _targetPlanet,
+                _empirePlanet
+            );
+
+            TransferPlanet(_targetPlanet, _rebels);
+
+            foreach (IMovable unit in party)
+            {
+                Assert.AreSame(_empirePlanet, unit.GetParent());
+                Assert.AreEqual(expectedTicks, unit.Movement.TransitTicks);
+                Assert.AreEqual(smuggler.Movement.MovementGroupID, unit.Movement.MovementGroupID);
+            }
         }
 
         [Test]

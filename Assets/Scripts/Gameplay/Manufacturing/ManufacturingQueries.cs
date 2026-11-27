@@ -345,7 +345,7 @@ namespace Rebellion.Gameplay
                     Regiment _ => true,
                     SpecialForces _ => planet.CanHostOwnedUnits(),
                     Starfighter _ => planet.CanHostOwnedUnits()
-                        && !planet.IsBlockadedFor(ownerInstanceId, game),
+                        && !BlockadeQueries.IsBlockadedFor(game, planet, ownerInstanceId),
                     Building building => planet.GetAvailableEnergy()
                         + CountReplacedItems<Building>(
                             replacedItems,
@@ -640,20 +640,13 @@ namespace Rebellion.Gameplay
         /// <returns>The production-cycle increment per tick.</returns>
         public static double GetProductionCycleIncrement(GameRoot game, Planet producer)
         {
-            if (producer.IsInUprising)
+            if (producer.IsInUprising || BlockadeQueries.IsBlockaded(game, producer))
                 return 0;
 
-            int blockadePercent = producer.GetBlockadeProductionModifier(
-                game.Config.Blockade.CapitalShipProductionPenaltyPercent,
-                game.Config.Blockade.FighterProductionPenaltyPercent,
-                game
-            );
             int difficultyPercent = game.GetDifficultyModifier(
                 producer.GetOwnerInstanceID()
             ).ManufacturingSpeedPercent;
-            return (double)blockadePercent
-                * difficultyPercent
-                / (_percentageScale * _percentageScale);
+            return (double)difficultyPercent / _percentageScale;
         }
 
         /// <summary>

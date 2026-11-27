@@ -186,6 +186,24 @@ public sealed class ContentEditorAppearance : MonoBehaviour
             ),
         };
     }
+
+    /// <summary>
+    /// Applies the same primary or ordinary action treatment throughout the toolkit.
+    /// </summary>
+    /// <param name="button">The authored shared button.</param>
+    /// <param name="primary">Whether this is the primary action.</param>
+    internal static void SetActionStyle(UnityEngine.UI.Button button, bool primary)
+    {
+        button
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(primary ? ContentEditorColorRole.Accent : ContentEditorColorRole.Button);
+        button
+            .GetComponentInChildren<TMPro.TMP_Text>(true)
+            .GetComponent<ContentEditorColorBinding>()
+            .SetRole(
+                primary ? ContentEditorColorRole.Background : ContentEditorColorRole.ButtonText
+            );
+    }
 }
 
 public enum ContentEditorColorMode

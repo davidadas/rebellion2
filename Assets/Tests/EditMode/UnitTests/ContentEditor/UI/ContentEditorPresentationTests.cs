@@ -13,13 +13,13 @@ namespace Rebellion.Tests.ContentEditor.UI
         {
             WriteFixtureFile(
                 "Strategy/UI/theme.xml",
-                "<FactionThemes><FactionTheme><FactionInstanceID>neutral</FactionInstanceID></FactionTheme></FactionThemes>"
+                "<FactionThemes><FactionTheme><FactionInstanceID>DEFAULT</FactionInstanceID></FactionTheme></FactionThemes>"
             );
-            UpdateBasePackDefinition(pack => pack.NeutralThemePath = path);
+            UpdateBasePackDefinition(pack => pack.ThemePaths = new() { path });
             ContentPackEditorProject project = CreateWorkingProject();
 
             Assert.AreEqual(
-                "neutral",
+                "DEFAULT",
                 ContentEditorPresentation.GetNeutralTheme(project).FactionInstanceID
             );
         }

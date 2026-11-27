@@ -19,6 +19,7 @@ public sealed class ContentEditorPlanetDrag
     private Action<ContentPackEditorRecord> started;
     private Action<ContentPackEditorRecord, Vector2Int> moved;
     private Action ended;
+    private ContentEditorArtworkEditTarget selectionTarget;
     private bool dragging;
     private Vector2 grabOffset;
 
@@ -43,7 +44,10 @@ public sealed class ContentEditorPlanetDrag
     )
     {
         if (record?.Element != planet.Element)
+        {
             EndDrag();
+            ClearFocus();
+        }
         record = planet;
         sector = parent;
         window = view;
@@ -59,8 +63,54 @@ public sealed class ContentEditorPlanetDrag
     /// <param name="eventData">The pointer press.</param>
     public void OnPointerDown(PointerEventData eventData)
     {
-        if (eventData.button == PointerEventData.InputButton.Left)
-            selected?.Invoke(record);
+        if (eventData.button != PointerEventData.InputButton.Left || record == null)
+            return;
+        selected?.Invoke(record);
+        if (isActiveAndEnabled)
+            SelectPlanetArtwork();
+    }
+
+    /// <summary>
+    /// Focuses a non-interactive outline that follows the rendered planet artwork.
+    /// </summary>
+    private void SelectPlanetArtwork()
+    {
+        if (selectionTarget == null)
+        {
+            RectTransform outline = new GameObject(
+                "PlanetSelection",
+                typeof(RectTransform)
+            ).GetComponent<RectTransform>();
+            outline.SetParent(GetComponent<PlanetSectorPlanetView>().PlanetArtworkTransform, false);
+            outline.anchorMin = Vector2.zero;
+            outline.anchorMax = Vector2.one;
+            outline.offsetMin = outline.offsetMax = Vector2.zero;
+            selectionTarget = outline.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+        }
+        selectionTarget.BindSelection();
+        ContentEditorArtworkEditTarget.Select(selectionTarget);
+    }
+
+    /// <summary>
+    /// Nudges the focused planet through the same grouped edit as a pointer drag.
+    /// </summary>
+    /// <param name="planet">The currently selected inspector record.</param>
+    /// <param name="delta">The authored map-coordinate displacement.</param>
+    /// <returns>Whether the focused planet handled the movement.</returns>
+    internal bool Nudge(ContentPackEditorRecord planet, Vector2Int delta)
+    {
+        if (dragging || record == null || record.Element != planet?.Element)
+            return false;
+        started?.Invoke(record);
+        try
+        {
+            moved?.Invoke(record, new Vector2Int(record.X, record.Y) + delta);
+        }
+        finally
+        {
+            ended?.Invoke();
+        }
+        return true;
     }
 
     /// <summary>
@@ -78,6 +128,7 @@ public sealed class ContentEditorPlanetDrag
         RectInt image = GetComponent<PlanetSectorPlanetView>().GetRenderedPlanetImageSourceRect();
         grabOffset = new Vector2(image.x, image.y) - point;
         dragging = true;
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
         started?.Invoke(record);
     }
 
@@ -102,7 +153,11 @@ public sealed class ContentEditorPlanetDrag
     /// <summary>
     /// Completes interrupted gestures before their preview disappears.
     /// </summary>
-    private void OnDisable() => EndDrag();
+    private void OnDisable()
+    {
+        EndDrag();
+        ClearFocus();
+    }
 
     /// <summary>
     /// Releases a pooled planet's project and callback references.
@@ -110,11 +165,24 @@ public sealed class ContentEditorPlanetDrag
     public void Clear()
     {
         EndDrag();
+        ClearFocus();
         record = sector = null;
         window = null;
         selected = started = null;
         moved = null;
         ended = null;
+    }
+
+    /// <summary>
+    /// Clears focus when the rendered slot stops representing the selected planet.
+    /// </summary>
+    private void ClearFocus()
+    {
+        if (
+            selectionTarget != null
+            && EventSystem.current?.currentSelectedGameObject == selectionTarget.gameObject
+        )
+            ContentEditorArtworkEditTarget.Select(null);
     }
 
     /// <summary>
@@ -125,6 +193,7 @@ public sealed class ContentEditorPlanetDrag
         if (!dragging)
             return;
         dragging = false;
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
         ended?.Invoke();
     }
 

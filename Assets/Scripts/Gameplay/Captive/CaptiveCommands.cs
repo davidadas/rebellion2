@@ -122,7 +122,11 @@ namespace Rebellion.Gameplay
 
             if (officer.NextEscapeAttemptTick <= 0)
             {
-                officer.ScheduleEscapeAttempt(_game, _provider, _game.CurrentTick);
+                officer.ScheduleEscapeAttempt(
+                    _game.Config?.Captive?.EscapeAttemptInterval,
+                    _provider,
+                    _game.CurrentTick
+                );
                 return;
             }
 
@@ -143,7 +147,11 @@ namespace Rebellion.Gameplay
                 if (result != null)
                     results.Add(result);
             }
-            officer.ScheduleEscapeAttempt(_game, _provider, previousAttemptTick);
+            officer.ScheduleEscapeAttempt(
+                _game.Config?.Captive?.EscapeAttemptInterval,
+                _provider,
+                previousAttemptTick
+            );
         }
 
         /// <summary>

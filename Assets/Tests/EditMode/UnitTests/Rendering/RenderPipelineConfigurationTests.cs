@@ -64,6 +64,31 @@ public sealed class RenderPipelineConfigurationTests
     }
 
     [Test]
+    [Category("RequiresMedia")]
+    public void AuthoredPrefab_EditorMenuPlanet_UsesUniversalCamera()
+    {
+        GameObject prefab = AssetDatabase.LoadAssetAtPath<GameObject>(
+            "Assets/Prefabs/UI/ContentPackEditor/MainMenuPreview.prefab"
+        );
+        Assert.IsNotNull(prefab);
+        ContentEditorMainMenuPreview preview = prefab.GetComponent<ContentEditorMainMenuPreview>();
+        Assert.IsNotNull(preview);
+        Camera camera = preview
+            .transform.Find("MainMenuPreviewWorld/PlanetRig/Camera")
+            .GetComponent<Camera>();
+        UniversalAdditionalCameraData data = camera.GetComponent<UniversalAdditionalCameraData>();
+
+        Assert.IsNotNull(data);
+        Assert.IsTrue(data.renderPostProcessing);
+        Assert.AreNotEqual(
+            0,
+            data.volumeLayerMask.value & (1 << GraphicsManager.RuntimeVolumeLayer)
+        );
+        Assert.IsNotNull(camera.GetComponent<RenderTargetLighting>());
+        Assert.AreEqual(0f, camera.backgroundColor.a);
+    }
+
+    [Test]
     public void RenderPipeline_TransparentRenderTarget_PreservesAlpha()
     {
         if (SystemInfo.graphicsDeviceType == GraphicsDeviceType.Null)

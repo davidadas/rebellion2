@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Rebellion.SceneGraph;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -50,6 +51,7 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
     [SerializeField]
     private TextMeshProUGUI alternateNameTextTemplate;
 
+    private IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder;
     private bool canDrag;
     private RectInt entityFrameRect;
     private bool layoutCaptured;
@@ -175,6 +177,15 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             data.CapturedOverlayTexture,
             entityRenderFrameRect
         );
+        artworkLayerOrder = GameplayArtworkOrder.Resolve(data.ArtworkLayerOrder);
+        GameplayArtworkLayout.Apply(
+            artworkLayerOrder,
+            entityImage.transform,
+            enrouteOverlayImage.transform,
+            damagedOverlayImage.transform,
+            capturedOverlayImage.transform,
+            statsOverlayImage.transform
+        );
         RenderSelection(data.SelectionTexture, data.NameColor);
         SetOptionalImageTexture(starfighterBadgeImage, data.StarfighterBadgeTexture);
         SetOptionalImageTexture(troopBadgeImage, data.TroopBadgeTexture);
@@ -231,11 +242,19 @@ public sealed class StrategyUnitCardView : MonoBehaviour, IStrategyStatusDoubleC
             return false;
 
         AppendDragImage(images, backgroundImage);
-        AppendDragImage(images, entityImage);
-        AppendDragImage(images, statsOverlayImage);
-        AppendDragImage(images, enrouteOverlayImage);
-        AppendDragImage(images, damagedOverlayImage);
-        AppendDragImage(images, capturedOverlayImage);
+        foreach (GameplayArtworkLayer layer in artworkLayerOrder)
+        {
+            RawImage image = layer switch
+            {
+                GameplayArtworkLayer.Travel => enrouteOverlayImage,
+                GameplayArtworkLayer.Damage => damagedOverlayImage,
+                GameplayArtworkLayer.Captured => capturedOverlayImage,
+                _ => entityImage,
+            };
+            AppendDragImage(images, image);
+            if (layer == GameplayArtworkLayer.Entity)
+                AppendDragImage(images, statsOverlayImage);
+        }
         AppendDragImage(images, starfighterBadgeImage);
         AppendDragImage(images, troopBadgeImage);
         AppendDragImage(images, personnelBadgeImage);
@@ -547,6 +566,8 @@ public sealed class StrategyUnitCardRenderData
 
     public Texture CapturedOverlayTexture { get; }
 
+    public IReadOnlyList<GameplayArtworkLayer> ArtworkLayerOrder { get; }
+
     public Texture SelectionTexture { get; }
 
     public int EntityFrameYOffset { get; }
@@ -578,6 +599,7 @@ public sealed class StrategyUnitCardRenderData
     /// <param name="personnelBadgeTexture">The optional personnel badge.</param>
     /// <param name="canDrag">Whether the card can initiate a move drag.</param>
     /// <param name="statsOverlay">The optional source-resolution stat overlay.</param>
+    /// <param name="artworkLayerOrder">The optional unit artwork drawing order.</param>
     public StrategyUnitCardRenderData(
         string name,
         Color32 nameColor,
@@ -594,7 +616,8 @@ public sealed class StrategyUnitCardRenderData
         Texture troopBadgeTexture,
         Texture personnelBadgeTexture,
         bool canDrag,
-        StrategyUnitCardStatsOverlayData statsOverlay = null
+        StrategyUnitCardStatsOverlayData statsOverlay = null,
+        IReadOnlyList<GameplayArtworkLayer> artworkLayerOrder = null
     )
     {
         Name = name ?? string.Empty;
@@ -606,6 +629,7 @@ public sealed class StrategyUnitCardRenderData
         DamagedOverlayTexture = damagedOverlayTexture;
         EntityTexture = entityTexture;
         StatsOverlay = statsOverlay;
+        ArtworkLayerOrder = artworkLayerOrder;
         CapturedOverlayTexture = capturedOverlayTexture;
         SelectionTexture = selectionTexture;
         EntityFrameYOffset = entityFrameYOffset;

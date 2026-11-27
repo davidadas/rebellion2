@@ -47,6 +47,7 @@ public static class CommonUIPrefabBuilder
         BuildScrollAreaPrefab();
         BuildTextInputPrefab();
         BuildConfirmationDialogPrefab();
+        SortableRowPrefabBuilder.Rebuild();
         MenuPrefabBuilder.RebuildSharedPrefabs();
         AssetDatabase.SaveAssets();
         AssetDatabase.ImportAsset(
@@ -489,6 +490,27 @@ public static class CommonUIPrefabBuilder
         if (view == null)
             throw new MissingReferenceException("ConfirmationDialogView is missing.");
         return view;
+    }
+
+    /// <summary>
+    /// Instantiates the shared confirmation window at its authored source size for inspection.
+    /// </summary>
+    /// <param name="parent">The editor's existing window preview surface.</param>
+    internal static void CreateConfirmationArtworkPreview(Transform parent)
+    {
+        ConfirmationDialogView view = InstantiateConfirmationDialog(parent);
+        RectTransform dialogSurface = (RectTransform)view.BackgroundArtwork.transform.parent;
+        RectInt bounds = UILayout.GetSourceRect(view.BackgroundArtwork.rectTransform);
+        SetSourceRect((RectTransform)view.transform, 0, 0, bounds.width, bounds.height);
+        SetSourceRect(
+            dialogSurface,
+            -bounds.x,
+            -bounds.y,
+            _confirmationSurfaceWidth,
+            _confirmationSurfaceHeight
+        );
+        view.transform.Find("InputBlocker").gameObject.SetActive(false);
+        view.gameObject.SetActive(false);
     }
 
     /// <summary>

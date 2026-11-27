@@ -58,10 +58,12 @@ public sealed class ContentEditorRecordRowView : SelectableListRowView
     }
 
     /// <summary>
-    /// Releases document and image references when a pooled row is hidden.
+    /// Releases references when the row leaves the list while preserving them when its page is hidden.
     /// </summary>
     private void OnDisable()
     {
+        if (gameObject.activeSelf)
+            return;
         Node = null;
         expandRequested = null;
         if (thumbnail != null)

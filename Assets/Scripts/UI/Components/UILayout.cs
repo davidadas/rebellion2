@@ -11,6 +11,38 @@ using UnityEngine.UI;
 public static class UILayout
 {
     public const float HdPixelsPerSourceUnit = 4.5f;
+    public const float MenuContentScale = 0.719f;
+    public static readonly Vector2 MenuOverlayReferenceSize = new(853.33f, 480f);
+    public static readonly Vector2 ContentEditorReferenceSize = new(1600, 900);
+
+    /// <summary>
+    /// Resolves the screen scale of a control inside the game menu's content area.
+    /// </summary>
+    /// <param name="screenSize">The destination canvas size in screen pixels.</param>
+    /// <returns>Screen pixels per menu content unit.</returns>
+    public static float ScaleForMenuContent(Vector2 screenSize) =>
+        MenuContentScale
+        * Mathf.Min(
+            screenSize.x / MenuOverlayReferenceSize.x,
+            screenSize.y / MenuOverlayReferenceSize.y
+        );
+
+    /// <summary>
+    /// Fits a centered dialog and its controls inside the available window.
+    /// </summary>
+    /// <param name="panel">The dialog panel with its authored logical dimensions.</param>
+    /// <param name="margin">The minimum space on each side of the panel.</param>
+    public static void FitPanel(RectTransform panel, float margin = 24)
+    {
+        Rect available = ((RectTransform)panel.parent).rect;
+        panel.localScale =
+            Vector3.one
+            * Mathf.Min(
+                1,
+                Mathf.Max(1, available.width - 2 * margin) / panel.rect.width,
+                Mathf.Max(1, available.height - 2 * margin) / panel.rect.height
+            );
+    }
 
     /// <summary>
     /// Places controls at their preferred widths, wrapping complete controls onto further rows.

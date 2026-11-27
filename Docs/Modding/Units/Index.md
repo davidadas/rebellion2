@@ -96,8 +96,10 @@ pointing at the current artwork; retain this file when distributing updates.
 
 Shared images with different unit destinations stay shared and are reported instead of being
 assigned to an arbitrary unit. Use **Replace file** to update every use, or explicitly import
-separate images for those slots. Missing images and differing files already occupying a destination
-stop conversion with an error so they can be repaired without losing artwork.
+separate images for those slots. If another image or layer file already occupies a destination,
+conversion preserves it and chooses an unused numbered slot filename. The stored address remains
+stable for later replacements and regeneration. Converted legacy addresses keep resolving through
+the artwork map. Missing source images still stop conversion before any files are changed.
 
 Encyclopedia statistics preserve their authored order:
 
@@ -109,6 +111,26 @@ Encyclopedia statistics preserve their authored order:
   </EncyclopediaEntryStat>
 </EncyclopediaStats>
 ```
+
+### Gameplay layers and shared effects
+
+In a unit's **Artwork** tab, open **Edit layers** beside the combined gameplay preview to change
+the drawing order of the unit, travel, damage or injury, and capture images. This reuses the
+existing image files. Saving applies the order to gameplay cards; packs without a custom order
+retain their current appearance.
+
+In the combined editor, **Apply to all cards** applies the selected unit's drawing order to all
+of its gameplay cards and states. In a ship's damage or hyperspace editor, **Apply to all cards**
+copies the active effect layers to that ship type's small, large, and battle-report images. Layer
+positions and sizes scale with each card. Confirm the change, then save the pack to keep it.
+One Undo restores all three card images. Press Escape during preparation to cancel before files
+or assignments change.
+
+For officers, **Apply to all** beside an injury, capture, or hyperspace effect offers a confirmation
+before assigning that image to every officer in the pack. Officers share the selected file, so
+replacing it updates every officer that uses it. Individual portrait images are unchanged.
+
+### Manufacturing fields
 
 Manufacturable definitions also share these authored fields:
 

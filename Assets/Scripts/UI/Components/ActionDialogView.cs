@@ -15,6 +15,9 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
     private TextMeshProUGUI heading;
 
     [SerializeField]
+    private TextMeshProUGUI note;
+
+    [SerializeField]
     private Button primaryButton;
 
     [SerializeField]
@@ -60,6 +63,7 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
     /// <param name="allowCancel">Whether the prompt may be dismissed without choosing an action.</param>
     /// <param name="title">The optional attention banner above the message.</param>
     /// <param name="cancelText">The visible label for dismissing the prompt.</param>
+    /// <param name="noteText">Optional emphasis below the main message.</param>
     public void Show(
         string text,
         string primaryText,
@@ -68,7 +72,8 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
         Action secondary = null,
         bool allowCancel = true,
         string title = null,
-        string cancelText = "Cancel"
+        string cancelText = "Cancel",
+        string noteText = null
     )
     {
         BindControls();
@@ -82,12 +87,34 @@ public sealed class ActionDialogView : MonoBehaviour, ICancelable
         Bind(primaryButton, primaryText, primary);
         Bind(secondaryButton, secondaryText, secondary);
         RectTransform panel = (RectTransform)message.transform.parent;
+        float textWidth = panel.rect.width - 40;
         float height = Mathf.Max(
             44,
-            message.GetPreferredValues(text, panel.rect.width - 40, float.PositiveInfinity).y
+            message.GetPreferredValues(text, textWidth, float.PositiveInfinity).y
         );
-        message.rectTransform.sizeDelta = new Vector2(panel.rect.width - 40, height);
+        message.rectTransform.sizeDelta = new Vector2(textWidth, height);
         message.rectTransform.anchoredPosition = new Vector2(20, -18 - headerHeight);
+        if (note != null)
+        {
+            bool showNote = !string.IsNullOrEmpty(noteText);
+            note.gameObject.SetActive(showNote);
+            if (showNote)
+            {
+                const int noteGap = 8;
+                note.text = noteText;
+                float noteHeight = note.GetPreferredValues(
+                    noteText,
+                    textWidth,
+                    float.PositiveInfinity
+                ).y;
+                note.rectTransform.sizeDelta = new Vector2(textWidth, noteHeight);
+                note.rectTransform.anchoredPosition = new Vector2(
+                    20,
+                    -18 - headerHeight - height - noteGap
+                );
+                height += noteGap + noteHeight;
+            }
+        }
         panel.sizeDelta = new Vector2(panel.rect.width, height + headerHeight + 92);
         float right = panel.rect.width - 20;
         int buttonCount = 1 + (secondary != null ? 1 : 0) + (allowCancel ? 1 : 0);

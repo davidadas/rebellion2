@@ -422,7 +422,7 @@ namespace Rebellion.Tests.Gameplay
 
             RemoveGarrisonAndReconcile(garrison);
 
-            Assert.IsTrue(blockadedPlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, blockadedPlanet));
             Assert.IsTrue(inboundUnits.All(unit => unit.GetParent() == _empirePlanet));
         }
 
@@ -439,7 +439,7 @@ namespace Rebellion.Tests.Gameplay
 
             RemoveGarrisonAndReconcile(garrison);
 
-            Assert.IsTrue(_empirePlanet.IsBlockaded());
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(null, _empirePlanet));
             Assert.IsTrue(officer.IsCaptured);
             Assert.AreEqual(_rebels.InstanceID, officer.CaptorInstanceID);
             Assert.AreSame(_targetPlanet, officer.GetParent());
@@ -576,7 +576,7 @@ namespace Rebellion.Tests.Gameplay
 
             RemoveGarrisonAndReconcile(garrison);
 
-            Assert.IsTrue(_targetPlanet.IsBlockadedFor(_empire.InstanceID));
+            Assert.IsTrue(BlockadeQueries.IsBlockadedFor(null, _targetPlanet, _empire.InstanceID));
             Assert.AreSame(carrier, fighter.GetParent());
             Assert.IsNull(fighter.Movement);
             Assert.AreEqual(_empire.InstanceID, fighter.OwnerInstanceID);
@@ -720,7 +720,7 @@ namespace Rebellion.Tests.Gameplay
         [Test]
         public void HandleResults_BlockadedOwnershipChange_ResolvesEvacuationAgainstPriorBlockade()
         {
-            _game.Config.Blockade.EvacuationLossPercent = 100;
+            _game.Config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             _game.ChangeOwnership(_targetPlanet, _empire.InstanceID);
             AddBlockadingFleet(_targetPlanet, "capturing");
             Regiment regiment = EntityFactory.CreateRegiment("evacuating", _empire.InstanceID);
@@ -747,7 +747,7 @@ namespace Rebellion.Tests.Gameplay
             List<GameResult> reactions = observer.HandleResults(new[] { change });
 
             CollectionAssert.Contains(change.BlockadedFactionInstanceIDs, _empire.InstanceID);
-            Assert.IsFalse(_targetPlanet.IsBlockaded());
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(null, _targetPlanet));
             Assert.IsNull(_game.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID, true));
             Assert.AreSame(
                 regiment,

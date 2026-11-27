@@ -35,7 +35,8 @@ public sealed class ContentPackEditorCatalog
     public bool CanAddUnit => ContentEditorUnitFactory.CanCreate(recordName);
     public bool CanAddEvent => recordName == "GameEvent";
     public bool CanAddTrait => recordName == "Trait";
-    public bool CanAddFaction => xml.Root.Name.LocalName == "ContentPack";
+    public bool CanAddFaction =>
+        xml.Root.Name.LocalName is "ContentPack" or ContentPackageManifest.RootName;
     public bool CanDuplicate =>
         recordName != null
         && recordName != "Faction"
@@ -608,7 +609,15 @@ public sealed class ContentPackEditorCatalog
     {
         RequireAttachedRecord(shared);
         XElement report = new(shared.Element);
-        report.Element("InstanceID")?.Remove();
+        report.SetElementValue(
+            "InstanceID",
+            AllocateIdentity(
+                shared.ID + "_" + faction.ID,
+                Records
+                    .SelectMany(record => GetIdentityValues(record.Element))
+                    .ToHashSet(StringComparer.Ordinal)
+            )
+        );
         report.SetElementValue("DisplayName", shared.Name + " (" + faction.Name + ")");
         report.SetElementValue("FactionInstanceID", faction.ID);
         shared.Element.AddAfterSelf(report);
@@ -683,7 +692,7 @@ public sealed class ContentPackEditorCatalog
             "SpecialForces" => "Special forces",
             "CapitalShips" => "Capital ships",
             "Regiments" => "Troops",
-            "ContentPack" => "Pack settings",
+            "ContentPack" or ContentPackageManifest.RootName => "Pack settings",
             "GameGenerationConfig" => "Starting setup",
             "GameConfig" => "Rules",
             "FactionThemes" => "Interface",

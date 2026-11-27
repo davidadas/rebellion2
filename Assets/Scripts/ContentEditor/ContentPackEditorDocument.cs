@@ -167,6 +167,22 @@ public sealed class ContentPackEditorDocument
             : ContentXmlOverrides.FindEquivalent(record, InheritedRoot)?.Element(member)?.Value;
 
     /// <summary>
+    /// Reads inherited references even when the working records stop using them.
+    /// </summary>
+    /// <param name="kind">The record element owning the references.</param>
+    /// <param name="member">The image or other scalar member being collected.</param>
+    /// <returns>The distinct inherited values without exposing the mutable XML tree.</returns>
+    internal IReadOnlyList<string> GetInheritedRecordValues(string kind, string member) =>
+        inheritedText == null
+            ? Array.Empty<string>()
+            : InheritedRoot
+                .Descendants(kind)
+                .Select(record => record.Element(member)?.Value)
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .Distinct(StringComparer.Ordinal)
+                .ToArray();
+
+    /// <summary>
     /// Checks which layer owns one displayed field.
     /// </summary>
     /// <param name="element">The displayed member.</param>

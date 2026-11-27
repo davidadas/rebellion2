@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Rebellion.Util.Serialization;
 
 /// <summary>
@@ -20,6 +22,24 @@ public sealed class ContentModDefinition
 
     [PersistableMember(Name = nameof(BasePackVersion))]
     private string _basePackVersion;
+
+    [PersistableMember(Name = nameof(Requires))]
+    private ContentModRequirement[] _requires;
+
+    [PersistableMember(Name = nameof(LoadAfter))]
+    [PersistableCollectionItem(Name = "ModID")]
+    private string[] _loadAfter;
+
+    [PersistableMember(Name = nameof(LoadBefore))]
+    [PersistableCollectionItem(Name = "ModID")]
+    private string[] _loadBefore;
+
+    [PersistableMember(Name = nameof(IncompatibleWith))]
+    [PersistableCollectionItem(Name = "ModID")]
+    private string[] _incompatibleWith;
+
+    [PersistableMember(Name = nameof(ExtendsPack))]
+    private bool _extendsPack;
 
     /// <summary>
     /// Gets the stable mod identifier.
@@ -45,6 +65,67 @@ public sealed class ContentModDefinition
     /// Gets the exact content-pack version this mod extends.
     /// </summary>
     public string BasePackVersion => _basePackVersion;
+
+    public IReadOnlyList<ContentModRequirement> Requires =>
+        _requires ?? Array.Empty<ContentModRequirement>();
+
+    public IReadOnlyList<string> LoadAfter => _loadAfter ?? Array.Empty<string>();
+
+    public IReadOnlyList<string> LoadBefore => _loadBefore ?? Array.Empty<string>();
+
+    public IReadOnlyList<string> IncompatibleWith => _incompatibleWith ?? Array.Empty<string>();
+
+    public bool ExtendsPack => _extendsPack;
+
+    /// <summary>
+    /// Creates the manifest for a mod authored against an installed pack.
+    /// </summary>
+    /// <param name="id">The stable identifier for the new mod.</param>
+    /// <param name="version">Its initial version.</param>
+    /// <param name="displayName">Its name in the editor and game.</param>
+    /// <param name="basePack">The installed baseline.</param>
+    /// <returns>The new manifest.</returns>
+    public static ContentModDefinition Create(
+        string id,
+        string version,
+        string displayName,
+        ContentPackDefinition basePack
+    ) =>
+        new ContentModDefinition
+        {
+            _id = id,
+            _version = version,
+            _displayName = displayName,
+            _basePackId = basePack.ID,
+            _basePackVersion = basePack.Version,
+            _extendsPack = true,
+        };
+}
+
+/// <summary>
+/// Declares an installed mod that must load first, optionally at an exact version.
+/// </summary>
+[PersistableObject(Name = "Mod")]
+public sealed class ContentModRequirement
+{
+    [PersistableMember(Name = nameof(ID))]
+    private string _id;
+
+    [PersistableMember(Name = nameof(Version))]
+    private string _version;
+
+    public string ID => _id;
+
+    public string Version => _version;
+
+    /// <summary>
+    /// Checks whether a mod release satisfies this requirement.
+    /// </summary>
+    /// <param name="id">The available mod ID.</param>
+    /// <param name="version">The available mod version.</param>
+    /// <returns>Whether the mod has the requested ID and any required version.</returns>
+    internal bool MatchesRelease(string id, string version) =>
+        ID == id && (string.IsNullOrEmpty(Version) || Version == version);
 }
 
 /// <summary>
@@ -67,16 +148,30 @@ public sealed class ContentModIssue
     /// </summary>
     public string Message { get; }
 
+    internal bool BlocksSelection { get; }
+
+    internal bool IsDuplicate { get; }
+
     /// <summary>
     /// Creates a failed content-mod discovery result.
     /// </summary>
     /// <param name="id">The best available mod identifier.</param>
     /// <param name="displayName">The best available player-facing name.</param>
     /// <param name="message">The discovery failure.</param>
-    public ContentModIssue(string id, string displayName, string message)
+    /// <param name="blocksSelection">Whether the requested selection must be corrected.</param>
+    /// <param name="isDuplicate">Whether the ID refers to multiple installations.</param>
+    public ContentModIssue(
+        string id,
+        string displayName,
+        string message,
+        bool blocksSelection = false,
+        bool isDuplicate = false
+    )
     {
         ID = id ?? string.Empty;
         DisplayName = displayName ?? string.Empty;
         Message = message ?? string.Empty;
+        BlocksSelection = blocksSelection;
+        IsDuplicate = isDuplicate;
     }
 }

@@ -310,6 +310,7 @@ internal sealed class DefenseWindowProjector
             enrouteOverlayTexture: GetItemEnrouteOverlayTexture(uiContext, item),
             damagedOverlayTexture: GetItemDamagedOverlayTexture(uiContext, item),
             entityTexture: uiContext.GetEntityTexture(item, true),
+            artworkLayerOrder: item.ArtworkLayerOrder,
             capturedOverlayTexture: uiContext.GetEntityCapturedOverlayTexture(item),
             selectionTexture: selected ? GetSelectionTexture(uiContext, ownerFactionId) : null,
             entityFrameYOffset: 0,

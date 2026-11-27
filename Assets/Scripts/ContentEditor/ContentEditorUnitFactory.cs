@@ -87,7 +87,6 @@ internal static class ContentEditorUnitFactory
             case "Starfighter":
                 unit.Add(
                     new XElement(nameof(Starfighter.BackgroundImagePath)),
-                    new XElement("Roles"),
                     new XElement("MaxSquadronSize", 1),
                     new XElement("CurrentSquadronSize", 1),
                     Zeroes(

@@ -49,12 +49,15 @@ namespace Rebellion.Gameplay
             if (
                 !(
                     opposingBlockadeAtDeparture
-                    ?? origin.IsBlockadedFor(unit.GetOwnerInstanceID(), _game)
+                    ?? BlockadeQueries.IsBlockadedFor(_game, origin, unit.GetOwnerInstanceID())
                 )
                 || origin.HasOperationalIonCannon()
                 || unit is not Regiment regiment
-                || _random.NextInt(0, 100) >= _game.Config.Blockade.EvacuationLossPercent
             )
+                return null;
+
+            int survivalPercent = BlockadeQueries.GetWithdrawalChance(_game, origin);
+            if (_random.NextInt(0, 100) < survivalPercent)
                 return null;
 
             Faction faction = _game

@@ -116,6 +116,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
     public event Action<ContentPack, GameSummary> StartRequested;
     public event Action<string> ContentPackRequested;
+    public event Action<ContentPack, string> ScenarioRequested;
     public event Action CloseRequested;
 
     /// <summary>
@@ -567,13 +568,23 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
             rowIndex++,
             contentOffset,
             "content-pack",
-            "Content Pack",
-            "Selects the content used to configure and start the game.",
+            "Game pack",
+            "Selects the game setup, including its units, rules, and scenarios.",
             string.IsNullOrWhiteSpace(settingsSession.Pack.Definition.DisplayName)
                 ? settingsSession.Pack.Definition.ID
                 : settingsSession.Pack.Definition.DisplayName,
             CycleContentPack
         );
+        if (settingsSession.Pack.Scenarios.Count > 1)
+            contentOffset += ConfigureSetupRow(
+                rowIndex++,
+                contentOffset,
+                "Scenario",
+                "Scenario",
+                string.Empty,
+                settingsSession.Pack.Scenario.DisplayName ?? settingsSession.Pack.Scenario.ID,
+                CycleScenario
+            );
         contentOffset += ConfigureSetupRow(
             rowIndex++,
             contentOffset,
@@ -900,6 +911,21 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
 
         int selected = (current + Math.Sign(delta) + availablePacks.Count) % availablePacks.Count;
         ContentPackRequested?.Invoke(availablePacks[selected].ID);
+    }
+
+    /// <summary>
+    /// Requests a different scenario from the selected pack and its active mods.
+    /// </summary>
+    /// <param name="delta">The direction to move in the registered list.</param>
+    private void CycleScenario(int delta)
+    {
+        ContentPack pack = settingsSession.Pack;
+        int current = Array.FindIndex(
+            pack.Scenarios.ToArray(),
+            scenario => scenario.ID == pack.Scenario.ID
+        );
+        int next = (current + Math.Sign(delta) + pack.Scenarios.Count) % pack.Scenarios.Count;
+        ScenarioRequested?.Invoke(pack, pack.Scenarios[next].ID);
     }
 
     /// <summary>

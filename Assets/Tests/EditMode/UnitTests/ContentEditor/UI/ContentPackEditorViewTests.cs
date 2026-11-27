@@ -13,6 +13,645 @@ namespace Rebellion.Tests.ContentEditor.UI
     [Category("RequiresMedia")]
     public sealed class ContentPackEditorViewTests : ContentEditorViewTestBase
     {
+        [Test]
+        public void RenderProject_NewOfficer_OffersTheAudioTabAndEveryVoiceResponse()
+        {
+            ContentPackEditorRecord officer = project.AddUnit(
+                project.GetCatalogs().First(catalog => catalog.Name == "Officers")
+            );
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+
+            Button audio = view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio");
+            audio.onClick.Invoke();
+
+            ContentEditorFieldView[] fields =
+                view.GetComponentsInChildren<ContentEditorFieldView>();
+            Assert.AreEqual(
+                Enum.GetValues(typeof(Rebellion.Game.Units.OfficerVoiceLineType)).Length,
+                fields.Length
+            );
+            Assert.IsTrue(
+                fields.All(field =>
+                    field
+                        .GetComponentsInChildren<Button>()
+                        .Any(button =>
+                            button.GetComponentInChildren<TMP_Text>()?.text == "Add clip..."
+                        )
+                )
+            );
+        }
+
+        [Test]
+        public void RenderProject_RemovingAudioClip_CancelsPreviewAndKeepsTheOtherClip()
+        {
+            ContentPackEditorCatalog catalog = project
+                .GetCatalogs()
+                .First(item => item.Name == "Officers");
+            string source = ContentEditorUnitAudio
+                .GetFields(catalog.Records.First())
+                .SelectMany(field => field.Values)
+                .First(value => !string.IsNullOrWhiteSpace(value));
+            ContentPackEditorRecord officer = project.AddUnit(catalog);
+            ContentPackEditorField field = ContentEditorUnitAudio
+                .GetFields(officer)
+                .Single(item => item.MemberName == "Order");
+            project.SetFieldValues(field, new[] { source, source });
+            view.RenderProject(project, assets);
+            SelectRecord(officer);
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>()?.text == "Audio")
+                .onClick.Invoke();
+            int cancelled = 0;
+            view.PreviewCancelled += () => cancelled++;
+            ContentEditorFieldView control = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field.MemberName == "Order");
+
+            control
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.name == "SelectItems")
+                .onClick.Invoke();
+
+            CollectionAssert.AreEqual(new[] { source }, control.Field.Values);
+            Assert.AreEqual(1, cancelled);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void RenderConnection_PublishingDialogIsHidden_UpdatesConnectionLabel(bool connected)
+        {
+            view.Publishing.gameObject.SetActive(false);
+
+            view.Publishing.RenderConnection(connected ? new[] { "Team" } : Array.Empty<string>());
+
+            Assert.That(view.Publishing.IsOpen, Is.False);
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "ThunderstoreConnection")
+                    .GetComponentInChildren<TMP_Text>(true)
+                    .text,
+                Is.EqualTo(connected ? "Thunderstore connected" : "Connect Thunderstore…")
+            );
+        }
+
+        [Test]
+        public void SetBusy_ConnectionDialogIsHidden_KeepsCancelLabelAvailable()
+        {
+            Assert.DoesNotThrow(() => view.Connection.SetBusy(true));
+            Assert.That(
+                view.Connection.GetComponentsInChildren<Button>(true)
+                    .Single(button => button.name == "CloseConnection")
+                    .GetComponentInChildren<TMP_Text>(true)
+                    .text,
+                Is.EqualTo("Cancel")
+            );
+        }
+
+        [TestCase(true, false, false)]
+        [TestCase(false, false, true)]
+        [TestCase(true, true, true)]
+        public void ShowAfterVerification_ConnectionRequest_OpensOnlySetupOrManagement(
+            bool verified,
+            bool manageAccount,
+            bool opensDialog
+        )
+        {
+            view.Connection.ShowAfterVerification(
+                verified ? new[] { "Team" } : Array.Empty<string>(),
+                manageAccount
+            );
+
+            Assert.That(view.Connection.IsOpen, Is.EqualTo(opensDialog));
+        }
+
+        [Test]
+        public void ShowProjects_ShortWindowAtHighZoom_KeepsRowsUsableInScrollablePage()
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(2000, 636);
+            view.ApplySettings(new ContentEditorSettings { Zoom = 1.75f });
+            view.ShowProjects();
+            ScrollAreaLayout[] lists = view.Projects.GetComponentsInChildren<ScrollAreaLayout>(
+                true
+            );
+            Assert.That(
+                lists.Min(list => list.ScrollArea.ViewportHeight),
+                Is.GreaterThanOrEqualTo(ContentEditorProjectRowView.Height)
+            );
+            ScrollAreaLayout page = view.GetComponentsInChildren<ScrollAreaLayout>(true)
+                .Single(list => list.name == "ProjectsPage");
+            Assert.That(
+                page.ScrollArea.ContentRoot.rect.height,
+                Is.GreaterThan(page.ScrollArea.ViewportHeight)
+            );
+        }
+
+        [Test]
+        public void HandleKeyboardShortcut_CropIsOpen_MovesSelectionWithArrowKeys()
+        {
+            string path = System.IO.Path.Combine(folder, "crop.png");
+            Texture2D source = new(128, 64);
+            try
+            {
+                System.IO.File.WriteAllBytes(path, source.EncodeToPNG());
+            }
+            finally
+            {
+                UnityEngine.Object.DestroyImmediate(source);
+            }
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
+            view.Publishing.ShowIconCrop(path, _ => { });
+            RectTransform selection = view
+                .Publishing.ImageCrop.GetComponentsInChildren<RectTransform>()
+                .Single(rect => rect.name == "Selection");
+            float previous = selection.anchorMin.x;
+            Assert.That(
+                view.HandleKeyboardShortcut(
+                    new Event { type = EventType.KeyDown, keyCode = KeyCode.RightArrow }
+                ),
+                Is.True
+            );
+            Assert.That(selection.anchorMin.x, Is.GreaterThan(previous));
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Show_ShortWindow_KeepsDialogActionsInsideWindow(bool crop)
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(2000, 636);
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
+            if (crop)
+            {
+                string path = System.IO.Path.Combine(folder, "crop.png");
+                Texture2D image = new(128, 64);
+                try
+                {
+                    System.IO.File.WriteAllBytes(path, image.EncodeToPNG());
+                }
+                finally
+                {
+                    UnityEngine.Object.DestroyImmediate(image);
+                }
+                view.Publishing.ShowIconCrop(path, _ => { });
+            }
+            view.Connection.Show();
+            view.Connection.RenderConnection(Array.Empty<string>());
+            Canvas.ForceUpdateCanvases();
+            foreach (
+                Button button in view.GetComponentsInChildren<Button>()
+                    .Where(button =>
+                        button.name == "ClosePublishing"
+                        || button.name == "ContinuePublishing"
+                        || button.name == "ConnectThunderstore"
+                        || button.name == "CloseConnection"
+                        || button.name == "CancelCrop"
+                        || button.name == "ApplyCrop"
+                    )
+            )
+            {
+                var corners = new Vector3[4];
+                ((RectTransform)button.transform).GetWorldCorners(corners);
+                Assert.That(
+                    corners.All(corner =>
+                        ((RectTransform)view.transform).rect.Contains(
+                            view.transform.InverseTransformPoint(corner)
+                        )
+                    ),
+                    Is.True,
+                    button.name
+                );
+            }
+        }
+
+        [Test]
+        public void ReadPackageID_IncompleteConnectedDraft_KeepsProjectAvailableWithoutLink()
+        {
+            ContentEditorPublishingStorage.Save(
+                project,
+                new ContentEditorPublishingSettings { TeamName = "Team", PackageName = "My Pack" }
+            );
+            ContentEditorLocalProject local = ContentEditorLocalProject.Read(project.PackRootPath);
+            Assert.That(local.Error, Is.Null);
+            Assert.That(local.PackageID, Is.Null);
+        }
+
+        [Test]
+        public void ShowProjects_LocalProjectRow_FillsItsColumnAndShowsVersion()
+        {
+            view.ShowProjects();
+            view.Projects.RenderLocal(new[] { ContentEditorLocalProject.FromProject(project) });
+            Canvas.ForceUpdateCanvases();
+            ScrollAreaLayout scroll = view
+                .Projects.GetComponentsInChildren<ScrollAreaLayout>()
+                .Single(item => item.name == "LocalProjects");
+            ContentEditorProjectRowView row =
+                scroll.GetComponentInChildren<ContentEditorProjectRowView>();
+
+            Assert.That(((RectTransform)row.transform).rect.width, Is.GreaterThan(480));
+            Assert.That(
+                ((RectTransform)row.transform).rect.width,
+                Is.EqualTo(scroll.ScrollArea.ViewportWidth).Within(1)
+            );
+            Assert.That(
+                row.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "summary")
+                    .isTextOverflowing,
+                Is.False
+            );
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ShowProjects_OpenWorkingProject_MarksItsRowForEditing(bool asMod)
+        {
+            using ContentPackEditorProject working = ContentPackEditorStorage.CreateInFolder(
+                project.ContentRootPath,
+                TestContent.Pack.Definition.ID,
+                System.IO.Path.Combine(folder, "working-project"),
+                "active-project-row",
+                "Active project row",
+                "1.0.0",
+                asMod
+            );
+            view.ShowProjects();
+            view.Projects.RenderLocal(new[] { ContentEditorLocalProject.FromProject(working) });
+            view.Projects.SetCurrentProject(working);
+            Canvas.ForceUpdateCanvases();
+
+            ContentEditorProjectRowView row = view
+                .Projects.GetComponentsInChildren<ContentEditorProjectRowView>()
+                .Single(item =>
+                    item.GetComponentsInChildren<TMP_Text>()
+                        .Any(label => label.text == working.DisplayName)
+                );
+            TMP_Text[] captions = row.GetComponentsInChildren<TMP_Text>();
+
+            Assert.That(
+                captions.Single(label => label.name == "summary").text,
+                Does.EndWith("Open now")
+            );
+            Assert.That(captions.Select(label => label.text), Does.Contain("Edit"));
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void ZoomContent_ModPageIsSelected_PreservesPageAndOpenProjectDraft(bool library)
+        {
+            ContentEditorPage page = library ? ContentEditorPage.Library : ContentEditorPage.Browse;
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            view.ShowField(officer.GetField("EncyclopediaDescription"), null);
+            ContentEditorFieldView field = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(item => item.Field?.MemberName == "EncyclopediaDescription");
+            TMP_InputField input = field.GetComponentInChildren<TMP_InputField>();
+            input.SetTextWithoutNotify("Uncommitted project draft");
+            view.SetWorkspaceNavigation(page);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), library, 0, true);
+
+            view.ZoomContent(-0.1f);
+
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.True);
+            Assert.That(
+                view.GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text == page.ToString()),
+                Is.True
+            );
+            view.ShowProjects();
+            view.EditCurrentProject();
+            Assert.That(view.ModManager.gameObject.activeSelf, Is.False);
+            Assert.That(input.gameObject.activeInHierarchy, Is.True);
+            Assert.That(input.text, Is.EqualTo("Uncommitted project draft"));
+        }
+
+        [Test]
+        public void Render_ManyCategories_SelectsMultipleKeysWithoutClosingDropdown()
+        {
+            view.SetWorkspaceNavigation(ContentEditorPage.Browse);
+            view.ModManager.Show();
+            view.ModManager.RenderRows(Array.Empty<ContentEditorModEntry>(), false, 0, true);
+            view.ModManager.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "filterButton")
+                .onClick.Invoke();
+            MultiSelectDropdown picker = view
+                .ModManager.GetComponentsInChildren<MultiSelectDropdown>()
+                .Single(item => item.name == "IncludeCategories");
+            var choices = Enumerable
+                .Range(0, 40)
+                .ToDictionary(index => "key-" + index, index => "Category " + index.ToString("D2"));
+            string[] selected = null;
+            picker.Changed += () => selected = picker.SelectedValues.ToArray();
+            picker.SetOptions(choices, "Any category");
+            picker.GetComponent<Button>().onClick.Invoke();
+            Toggle[] options = picker.GetComponentsInChildren<Toggle>();
+
+            options[1].isOn = true;
+            options[35].isOn = true;
+
+            CollectionAssert.AreEquivalent(new[] { "key-1", "key-35" }, selected);
+            Assert.That(picker.IsExpanded, Is.True);
+        }
+
+        [TestCase("ContinuePublishing")]
+        [TestCase("ReleaseStep")]
+        [TestCase("ReviewStep")]
+        public void Show_PublishingDraftHasMissingRequirements_PreventsForwardNavigation(
+            string buttonName
+        )
+        {
+            view.Publishing.Show(project, new ContentEditorPublishingSettings());
+            Button advance = view
+                .Publishing.GetComponentsInChildren<Button>()
+                .Single(button => button.name == buttonName);
+
+            advance.onClick.Invoke();
+
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_InputField>()
+                    .Any(input => input.name == "PublishingPackageName"),
+                Is.True
+            );
+            Assert.That(
+                view.Publishing.GetComponentsInChildren<TMP_Text>()
+                    .Single(label => label.name == "PublishingStatus")
+                    .text,
+                Does.Contain("Package name")
+            );
+        }
+
+        [Test]
+        public void Show_UnfinishedPublishingDraft_ReopensSavedFieldsWithoutRequiringReleaseValidity()
+        {
+            var settings = new ContentEditorPublishingSettings
+            {
+                PackageName = "",
+                Description = "An unfinished listing",
+                Readme = "Notes in progress",
+                Dependencies = "Example-Required-1.2.3",
+                TeamName = "ExampleTeam",
+            };
+            ContentEditorPublishingStorage.Save(project, settings);
+            view.Publishing.Show(project, ContentEditorPublishingStorage.Load(project));
+            view
+                .Publishing.GetComponentsInChildren<TMP_InputField>()
+                .Single(input => input.name == "PublishingDescription")
+                .text = "Edited unfinished listing";
+            ContentEditorPublishingStorage.Save(project, view.Publishing.ReadSettings());
+            view.Publishing.Hide();
+
+            view.Publishing.Show(project, ContentEditorPublishingStorage.Load(project));
+
+            ContentEditorPublishingSettings reopened = view.Publishing.ReadSettings();
+            Assert.That(reopened.PackageName, Is.Empty);
+            Assert.That(reopened.Description, Is.EqualTo("Edited unfinished listing"));
+            Assert.That(reopened.Readme, Is.EqualTo("Notes in progress"));
+            CollectionAssert.AreEqual(
+                new[] { "Example-Required-1.2.3" },
+                reopened.GetDependencies()
+            );
+            Assert.That(reopened.TeamName, Is.EqualTo("ExampleTeam"));
+        }
+
+        [Test]
+        public void Render_ChangingSearch_ReusesTheCurrentNavigationTree()
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            TMP_InputField search = view.GetComponentsInChildren<TMP_InputField>(true)
+                .Single(field => field.name == "Search");
+            search.SetTextWithoutNotify(officer.ID[..^1]);
+            search.onValueChanged.Invoke(search.text);
+            ContentEditorTreeNode entry = view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                .Single(row => row.Node?.Record?.Element == officer.Element)
+                .Node;
+
+            search.SetTextWithoutNotify(officer.ID);
+            search.onValueChanged.Invoke(search.text);
+
+            Assert.AreSame(
+                entry,
+                view.GetComponentsInChildren<ContentEditorRecordRowView>()
+                    .Single(row => row.Node?.Record?.Element == officer.Element)
+                    .Node
+            );
+        }
+
+        [Test]
+        public void Render_CutscenesTabOnPackSettings_ShowsBothStartupVideoSlots()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Pack settings"));
+            Button tab = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab");
+            tab.onClick.Invoke();
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(ContentPackDefinition.StartupIntroVideoPath),
+                    nameof(ContentPackDefinition.OpeningCrawlVideoPath),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Select(row => row.Field.MemberName)
+            );
+        }
+
+        [TestCase("Alliance")]
+        [TestCase("Empire")]
+        public void Render_CutscenesTabOnFaction_ShowsItsFourCampaignVideoSlots(string faction)
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            ContentEditorTreeNode page = navigation.Find("factions/" + faction);
+            ContentPackEditorRecord theme = page.RelatedRecords.Single(record =>
+                record.Kind == nameof(FactionTheme)
+            );
+            SelectPage(page);
+            Button tab = view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab");
+            tab.onClick.Invoke();
+
+            CollectionAssert.AreEquivalent(
+                new[]
+                {
+                    nameof(FactionTheme.IntroCutscenePath),
+                    nameof(FactionTheme.VictoryCutscenePath),
+                    nameof(FactionTheme.DefeatCutscenePath),
+                    nameof(FactionTheme.HeadquartersDestroyedCutscenePath),
+                },
+                view.GetComponentsInChildren<ContentEditorFieldView>()
+                    .Where(row =>
+                        row.Field.Record.Key == theme.Key
+                        && row.Field.MediaType == ContentPackEditorMediaType.Video
+                    )
+                    .Select(row => row.Field.MemberName)
+            );
+        }
+
+        [TestCase(900, 1)]
+        [TestCase(1200, 2)]
+        [TestCase(1600, 3)]
+        [TestCase(2200, 4)]
+        public void Render_FactionCutscenes_FitsMorePreviewsAcrossWiderWindows(
+            int width,
+            int expectedColumns
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab")
+                .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+
+            RawImage[] previews = view.GetComponentsInChildren<RawImage>()
+                .Where(image => image.name.StartsWith("ArticleImageTemplate-VideoStill-"))
+                .ToArray();
+            Assert.AreEqual(4, previews.Length);
+            Assert.AreEqual(
+                expectedColumns,
+                previews
+                    .Select(image => UILayout.GetSourceRect(image.rectTransform).x)
+                    .Distinct()
+                    .Count()
+            );
+            foreach (RawImage preview in previews)
+            {
+                RectInt bounds = UILayout.GetSourceRect(preview.rectTransform);
+                RectTransform content = (RectTransform)preview.transform.parent;
+                Assert.GreaterOrEqual(bounds.xMin, 0);
+                Assert.LessOrEqual(bounds.xMax, content.rect.width);
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
+        [Test]
+        public void Render_SelectingStartupPreviewResolution_RequestsTheBuiltInVideoAtThatSize()
+        {
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("category/Pack settings"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab")
+                .onClick.Invoke();
+            ContentEditorFieldView slot = view.GetComponentsInChildren<ContentEditorFieldView>()
+                .Single(row =>
+                    row.Field.MemberName == nameof(ContentPackDefinition.StartupIntroVideoPath)
+                );
+            (string Address, Vector2Int? Size) requested = default;
+            view.PreviewRequested += (_, address, size) => requested = (address, size);
+
+            TMP_Dropdown preview = slot.GetComponentInChildren<TMP_Dropdown>();
+            string chosen = preview.options[1].text;
+            preview.value = 1;
+
+            Assert.AreEqual(ContentPackDefinition.DefaultStartupIntroVideoPath, requested.Address);
+            Assert.IsTrue(requested.Size.HasValue);
+            Assert.AreEqual(chosen, $"{requested.Size.Value.x} × {requested.Size.Value.y}");
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void ConfirmShipArtworkCards_RespondingToConfirmation_AppliesOnlyWhenAccepted(
+            bool accept
+        )
+        {
+            var ship = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .First(record => record.Kind == "CapitalShip");
+            int applications = 0;
+            view.ConfirmShipArtworkCards(ship, "damage", () => applications++);
+            var dialog = view.GetComponentInChildren<ActionDialogView>();
+            Assert.IsTrue(
+                dialog
+                    .GetComponentsInChildren<TMP_Text>()
+                    .Any(label => label.text.Contains("every card for " + ship.Name))
+            );
+            dialog
+                .GetComponentsInChildren<Button>()
+                .Single(button =>
+                    button.GetComponentInChildren<TMP_Text>().text
+                    == (accept ? "Apply to all cards" : "Cancel")
+                )
+                .onClick.Invoke();
+            Assert.AreEqual(accept ? 1 : 0, applications);
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Declined_KeepsTheImportedImageAndOtherAssignments(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            string imported = source.Value;
+            string[] assignments = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .Select(record => record.GetField(member).Value)
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                assignments.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Cancel")
+                .onClick.Invoke();
+
+            Assert.AreEqual(imported, source.Value);
+            CollectionAssert.AreEqual(
+                assignments,
+                project
+                    .GetCatalogs()
+                    .SelectMany(catalog => catalog.Records)
+                    .Where(record => record.Kind == "Officer")
+                    .Select(record => record.GetField(member).Value)
+            );
+        }
+
+        [TestCase("InjuredImagePath")]
+        [TestCase("CapturedOverlayImagePath")]
+        [TestCase("InTransitImagePath")]
+        [TestCase("InTransitSmallImagePath")]
+        public void ConfirmOfficerStatusArtwork_Accepted_AppliesTheImportedImageToAllOfficers(
+            string member
+        )
+        {
+            ContentPackEditorField source = ChangeOfficerStatusImage(member);
+            ContentPackEditorRecord[] officers = project
+                .GetCatalogs()
+                .SelectMany(catalog => catalog.Records)
+                .Where(record => record.Kind == "Officer")
+                .ToArray();
+            view.ConfirmOfficerStatusArtwork(
+                source,
+                officers.Length,
+                () => project.ApplyOfficerStatusArtwork(source)
+            );
+
+            view.GetComponentInChildren<ActionDialogView>()
+                .GetComponentsInChildren<Button>()
+                .Single(button => button.GetComponentInChildren<TMP_Text>().text == "Apply to all")
+                .onClick.Invoke();
+
+            Assert.IsTrue(officers.All(record => record.GetField(member).Value == source.Value));
+        }
+
         [TestCase(EventModifiers.Control)]
         [TestCase(EventModifiers.Command)]
         public void HandleKeyboardShortcut_ValidatePackShortcut_RaisesValidateRequested(
@@ -516,6 +1155,22 @@ namespace Rebellion.Tests.ContentEditor.UI
                     .Single(text => text.name == "Error")
                     .text
             );
+        }
+
+        /// <summary>
+        /// Applies a different installed image before presenting the optional all-officer action.
+        /// </summary>
+        /// <param name="member">The status slot being changed.</param>
+        /// <returns>The status field retaining its newly selected image.</returns>
+        private ContentPackEditorField ChangeOfficerStatusImage(string member)
+        {
+            ContentPackEditorRecord officer = project
+                .GetCatalogs()
+                .First(catalog => catalog.Name == "Officers")
+                .Records.First();
+            ContentPackEditorField field = officer.GetField(member);
+            project.SetField(field, officer.GetField("DisplayImagePath").Value);
+            return field;
         }
 
         /// <summary>

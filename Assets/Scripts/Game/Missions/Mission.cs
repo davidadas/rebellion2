@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
@@ -83,7 +82,6 @@ namespace Rebellion.Game.Missions
             private Dictionary<string, int> _garrisonCounts;
             private string[] _garrisonOwners;
             private int _uprisingSuppression;
-            private Dictionary<(string OwnerId, int Shift), Planet> _supportProjections;
             private IReadOnlyList<Mission> _activeMissions;
             private Dictionary<Mission, int> _leadership;
             private Dictionary<(string TypeId, string OwnerId, int Adjustment), double> _outcomes;
@@ -130,26 +128,6 @@ namespace Rebellion.Game.Missions
             {
                 EnsureGarrisonCounts();
                 return _uprisingSuppression;
-            }
-
-            /// <summary>
-            /// Returns a reusable support projection without modifying the observed planet.
-            /// </summary>
-            /// <param name="faction">The faction whose support changes.</param>
-            /// <param name="shift">The signed support adjustment.</param>
-            /// <returns>The projection, which callers must treat as read-only.</returns>
-            public Planet GetSupportProjection(Faction faction, int shift)
-            {
-                _supportProjections ??= new Dictionary<(string OwnerId, int Shift), Planet>();
-                var key = (faction.InstanceID, shift);
-                if (!_supportProjections.TryGetValue(key, out Planet projection))
-                {
-                    projection = (Planet)_planet.CreateCopy();
-                    projection.SetParent(_planet.GetParent());
-                    projection.ChangePopularSupport(faction, shift, _game);
-                    _supportProjections.Add(key, projection);
-                }
-                return projection;
             }
 
             /// <summary>
@@ -864,15 +842,10 @@ namespace Rebellion.Game.Missions
         /// </summary>
         /// <param name="provider">RNG provider for rolling against the success probability.</param>
         /// <param name="game">The current game state.</param>
-        /// <param name="resolveSuccessfulAttempt">
-        /// Optional mission-specific resolution applied immediately after each successful roll.
-        /// Return true when that attempt earned the mission's normal participant improvement.
-        /// </param>
         /// <returns>The first participant whose attempt succeeds, or null if every attempt fails.</returns>
         protected internal IMissionParticipant RollParticipantAttempts(
             IRandomNumberProvider provider,
-            GameRoot game,
-            Func<IMissionParticipant, bool> resolveSuccessfulAttempt = null
+            GameRoot game
         )
         {
             SuccessfulParticipantInstanceID = null;
@@ -896,8 +869,6 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 SuccessfulParticipantInstanceID = participant.InstanceID;
-                if (resolveSuccessfulAttempt?.Invoke(participant) == true)
-                    ImproveMissionParticipantRating(participant);
                 return participant;
             }
 
@@ -911,8 +882,6 @@ namespace Rebellion.Game.Missions
                     continue;
 
                 SuccessfulParticipantInstanceID = specialForces.InstanceID;
-                if (resolveSuccessfulAttempt?.Invoke(specialForces) == true)
-                    ImproveMissionParticipantRating(specialForces);
                 return specialForces;
             }
 

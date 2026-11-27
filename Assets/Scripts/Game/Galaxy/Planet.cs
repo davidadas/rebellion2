@@ -47,13 +47,7 @@ namespace Rebellion.Game.Galaxy
     /// </summary>
     public class Planet : ContainerNode, IEncyclopediaSource
     {
-        /// <summary>
-        /// Reports completed support changes to the session's notification observer.
-        /// </summary>
-        internal event Action<Planet> PopularSupportChanged;
-
         private const int _maximumPopularSupport = 100;
-        private const int _maximumProductionModifier = 100;
 
         // Planet Properties.
         public bool IsColonized { get; set; }
@@ -242,62 +236,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Checks if the planet is blockaded.
-        /// In a configured two-faction campaign, ready orbital presence from both factions
-        /// prevents a blockade. Other faction domains retain fleet-based ownership rules.
-        /// A neutral planet can be blockaded only while it has a civilian population.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>True if the planet is blockaded, false otherwise.</returns>
-        public bool IsBlockaded(GameRoot game = null)
-        {
-            if (IsDestroyed || (!IsColonized && string.IsNullOrEmpty(OwnerInstanceID)))
-                return false;
-            if (game?.TryCalculateSpaceCombatBlockade(this, out bool blockaded) == true)
-                return blockaded;
-            IReadOnlyList<Fleet> fleets = GetChildren<Fleet>();
-            bool hasHostile = fleets.Any(f =>
-                f.Movement == null
-                && (string.IsNullOrEmpty(OwnerInstanceID) || f.OwnerInstanceID != OwnerInstanceID)
-                && f.HasOperationalCapitalShips()
-            );
-            bool hasDefender = fleets.Any(f =>
-                f.Movement == null
-                && f.OwnerInstanceID == OwnerInstanceID
-                && f.HasOperationalCapitalShips()
-            );
-
-            return hasHostile && !hasDefender;
-        }
-
-        /// <summary>
-        /// Returns whether the active blockade opposes a faction.
-        /// </summary>
-        /// <param name="factionInstanceID">The faction whose access is being evaluated.</param>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>True when the planet is blockaded by another faction.</returns>
-        public bool IsBlockadedFor(string factionInstanceID, GameRoot game = null)
-        {
-            return !string.IsNullOrEmpty(factionInstanceID)
-                && IsBlockaded(game)
-                && _fleets.Any(fleet =>
-                    fleet.Movement == null
-                    && fleet.GetOwnerInstanceID() != factionInstanceID
-                    && fleet.HasOperationalCapitalShips()
-                );
-        }
-
-        /// <summary>
-        /// Returns whether resource collection is suspended at this planet.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>True when destroyed, blockaded, or in uprising.</returns>
-        public bool IsResourceProductionSuspended(GameRoot game = null)
-        {
-            return IsDestroyed || IsBlockaded(game) || IsInUprising;
-        }
-
-        /// <summary>
         /// Returns whether the planet has a living civilian population.
         /// </summary>
         /// <returns>True when the planet is colonized and intact.</returns>
@@ -411,16 +349,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of resource nodes available while production is active.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The number of accessible resource nodes, or 0 while production is suspended.</returns>
-        public int GetAvailableResourceNodes(GameRoot game = null)
-        {
-            return IsResourceProductionSuspended(game) ? 0 : GetRawResourceNodes();
-        }
-
-        /// <summary>
         /// Gets the number of raw resource nodes without any mine assigned.
         /// </summary>
         /// <returns>The number of unmined raw resource nodes, or zero when destroyed.</returns>
@@ -457,16 +385,6 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Gets the number of mined resources available while production is active.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The number of available mined resources, or 0 while production is suspended.</returns>
-        public int GetAvailableMinedResources(GameRoot game = null)
-        {
-            return IsResourceProductionSuspended(game) ? 0 : GetActiveMinedResources();
-        }
-
-        /// <summary>
         /// Gets the total refinement capacity based on available refinery buildings.
         /// This represents the maximum number of resources that can be refined.
         /// </summary>
@@ -483,16 +401,6 @@ namespace Rebellion.Game.Galaxy
         public int GetActiveRefinementCapacity()
         {
             return GetBuildingTypeCount(BuildingType.Refinery);
-        }
-
-        /// <summary>
-        /// Gets the completed refinement capacity available while production is active.
-        /// </summary>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The available refinement capacity, or 0 while production is suspended.</returns>
-        public int GetAvailableRefinementCapacity(GameRoot game = null)
-        {
-            return IsResourceProductionSuspended(game) ? 0 : GetActiveRefinementCapacity();
         }
 
         /// <summary>
@@ -518,48 +426,63 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Resolves control from stationary regiment owners before falling back to popular support.
         /// </summary>
-        /// <param name="game">The game supplying faction identities and the control threshold.</param>
+        /// <param name="factions">Campaign factions in order.</param>
+        /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwners">The distinct owners of completed stationary regiments.</param>
+        /// <param name="projectedSupport">The support values to evaluate for a mission forecast.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
-        internal Faction ResolveController(GameRoot game, IReadOnlyList<string> regimentOwners)
+        internal Faction ResolveController(
+            IReadOnlyList<Faction> factions,
+            GameConfig.SupportShiftConfig supportRules,
+            IReadOnlyList<string> regimentOwners,
+            IReadOnlyDictionary<string, int> projectedSupport = null
+        )
         {
             return ResolveController(
-                game,
+                factions,
+                supportRules,
                 regimentOwners.Count,
-                regimentOwners.Count == 1 ? regimentOwners[0] : null
+                regimentOwners.Count == 1 ? regimentOwners[0] : null,
+                projectedSupport
             );
         }
 
         /// <summary>
         /// Resolves control from an assessed regiment-owner count without allocating owner lists.
         /// </summary>
-        /// <param name="game">The game supplying factions and the control threshold.</param>
+        /// <param name="factions">Campaign factions in order.</param>
+        /// <param name="supportRules">The configured control threshold.</param>
         /// <param name="regimentOwnerCount">The number of distinct active regiment owners.</param>
         /// <param name="soleRegimentOwner">The regiment owner when exactly one is present.</param>
+        /// <param name="projectedSupport">The support values to evaluate for a mission forecast.</param>
         /// <returns>The controlling faction, or null when control is contested or unsupported.</returns>
         internal Faction ResolveController(
-            GameRoot game,
+            IReadOnlyList<Faction> factions,
+            GameConfig.SupportShiftConfig supportRules,
             int regimentOwnerCount,
-            string soleRegimentOwner
+            string soleRegimentOwner,
+            IReadOnlyDictionary<string, int> projectedSupport = null
         )
         {
             if (IsDestroyed)
                 return null;
 
             if (regimentOwnerCount == 1)
-                return game.GetFactionByOwnerInstanceID(soleRegimentOwner);
+                return factions.FirstOrDefault(faction => faction.InstanceID == soleRegimentOwner)
+                    ?? throw new SceneNodeNotFoundException(soleRegimentOwner);
             if (regimentOwnerCount > 1)
                 return null;
 
             if (!IsPopulated())
                 return null;
 
-            int threshold = game.Config.SupportShift.OwnershipTransferThreshold;
+            int threshold = supportRules.OwnershipTransferThreshold;
             Faction controller = null;
             int highestSupport = threshold;
-            foreach (Faction faction in game.GetFactions())
+            IReadOnlyDictionary<string, int> supportByFaction = projectedSupport ?? PopularSupport;
+            foreach (Faction faction in factions)
             {
-                int support = GetPopularSupport(faction.InstanceID);
+                int support = supportByFaction.GetValueOrDefault(faction.InstanceID);
                 if (support >= threshold && (controller == null || support > highestSupport))
                 {
                     controller = faction;
@@ -570,42 +493,46 @@ namespace Rebellion.Game.Galaxy
         }
 
         /// <summary>
-        /// Applies a signed support shift, transferring lost support to the opposing faction.
+        /// Applies a signed shift to the supplied support values using this planet's suppression.
         /// </summary>
+        /// <param name="support">The live or projected support values to update.</param>
         /// <param name="faction">The faction whose support changes.</param>
         /// <param name="shift">The signed support adjustment.</param>
-        /// <param name="game">The game supplying factions in their established order.</param>
-        internal void ChangePopularSupport(Faction faction, int shift, GameRoot game)
+        /// <param name="factions">The campaign factions in their established order.</param>
+        /// <param name="supportRules">The rules for resistance in a suppressed sector.</param>
+        /// <returns>Whether any support value changed.</returns>
+        internal bool ApplyPopularSupportShift(
+            Dictionary<string, int> support,
+            Faction faction,
+            int shift,
+            IReadOnlyList<Faction> factions,
+            GameConfig.SupportShiftConfig supportRules
+        )
         {
             if (faction == null || shift == 0 || !IsPopulated())
-                return;
+                return false;
 
             SupportChange direction = shift > 0 ? SupportChange.Increase : SupportChange.Decrease;
             if (
                 faction.Settings.SupportResistance == direction
-                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor(faction.InstanceID)
-                    > 1
-                && game.Config.SupportShift.WeakSupportPenaltyDivisor > 1
+                && GetParentOfType<PlanetSector>()?.GetSectorSuppressionDivisor() > 1
+                && supportRules.WeakSupportPenaltyDivisor > 1
             )
-                shift /= game.Config.SupportShift.WeakSupportPenaltyDivisor;
+                shift /= supportRules.WeakSupportPenaltyDivisor;
 
-            int currentSupport = GetPopularSupport(faction.InstanceID);
+            int currentSupport = support.GetValueOrDefault(faction.InstanceID);
             int newSupport = Math.Clamp(IntegerMath.SaturatingAdd(currentSupport, shift), 0, 100);
             if (newSupport == currentSupport)
-                return;
+                return false;
             if (shift > 0)
-            {
-                SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-            Faction opposingFaction = game.GetFactions()
-                .FirstOrDefault(candidate => candidate.InstanceID != faction.InstanceID);
-            if (opposingFaction == null)
-            {
-                SetPopularSupport(faction.InstanceID, newSupport);
-                return;
-            }
-            SetPopularSupport(opposingFaction.InstanceID, 100 - newSupport);
+                return SetPopularSupport(support, faction.InstanceID, newSupport);
+
+            Faction opponent = factions.FirstOrDefault(candidate =>
+                candidate.InstanceID != faction.InstanceID
+            );
+            return opponent == null
+                ? SetPopularSupport(support, faction.InstanceID, newSupport)
+                : SetPopularSupport(support, opponent.InstanceID, 100 - newSupport);
         }
 
         /// <summary>
@@ -707,30 +634,30 @@ namespace Rebellion.Game.Galaxy
         /// </summary>
         /// <param name="factionInstanceId">The instance ID of the faction.</param>
         /// <param name="support">The new level of support for the faction.</param>
-        public void SetPopularSupport(string factionInstanceId, int support)
+        public void SetPopularSupport(string factionInstanceId, int support) =>
+            SetPopularSupport(PopularSupport, factionInstanceId, support);
+
+        /// <summary>
+        /// Updates support values and redistributes any excess above the total cap.
+        /// </summary>
+        /// <param name="values">The support values to update.</param>
+        /// <param name="factionInstanceId">The faction receiving the requested support.</param>
+        /// <param name="support">The requested percentage.</param>
+        /// <returns>Whether any support value changed.</returns>
+        private static bool SetPopularSupport(
+            Dictionary<string, int> values,
+            string factionInstanceId,
+            int support
+        )
         {
             int boundedSupport = Math.Clamp(support, 0, _maximumPopularSupport);
-            int currentSupport = PopularSupport.TryGetValue(
-                factionInstanceId,
-                out int existingSupport
-            )
-                ? existingSupport
-                : 0;
+            int currentSupport = values.GetValueOrDefault(factionInstanceId);
             int supportDifference = boundedSupport - currentSupport;
-            int totalSupport = PopularSupport.Values.Sum();
-
-            if (totalSupport + supportDifference <= _maximumPopularSupport)
-            {
-                PopularSupport[factionInstanceId] = boundedSupport;
-            }
-            else
-            {
-                int overage = totalSupport + supportDifference - _maximumPopularSupport;
-                ShiftFactionSupport(factionInstanceId, overage);
-                PopularSupport[factionInstanceId] = boundedSupport;
-            }
-            if (supportDifference != 0 || totalSupport + supportDifference > _maximumPopularSupport)
-                PopularSupportChanged?.Invoke(this);
+            int overage = values.Values.Sum() + supportDifference - _maximumPopularSupport;
+            if (overage > 0)
+                ShiftFactionSupport(values, factionInstanceId, overage);
+            values[factionInstanceId] = boundedSupport;
+            return supportDifference != 0 || overage > 0;
         }
 
         /// <summary>
@@ -745,12 +672,17 @@ namespace Rebellion.Game.Galaxy
         /// <summary>
         /// Reduces other factions' support to make room for a support increase.
         /// </summary>
+        /// <param name="values">The support percentages to rebalance.</param>
         /// <param name="excludedFactionId">The faction ID to exclude from reduction.</param>
         /// <param name="overage">The amount of support to reduce from other factions.</param>
-        private void ShiftFactionSupport(string excludedFactionId, int overage)
+        private static void ShiftFactionSupport(
+            Dictionary<string, int> values,
+            string excludedFactionId,
+            int overage
+        )
         {
             foreach (
-                KeyValuePair<string, int> supportByFaction in PopularSupport
+                KeyValuePair<string, int> supportByFaction in values
                     .Where(kvp => kvp.Key != excludedFactionId)
                     .OrderByDescending(kvp => kvp.Value)
                     .ThenBy(kvp => kvp.Key, StringComparer.Ordinal)
@@ -761,7 +693,7 @@ namespace Rebellion.Game.Galaxy
                     break;
 
                 int reduction = Math.Min(overage, supportByFaction.Value);
-                PopularSupport[supportByFaction.Key] -= reduction;
+                values[supportByFaction.Key] -= reduction;
                 overage -= reduction;
             }
         }
@@ -1073,42 +1005,6 @@ namespace Rebellion.Game.Galaxy
             return _buildings
                 .Where(building => building.GetProductionType() == productionType)
                 .ToList();
-        }
-
-        /// <summary>
-        /// Gets the manufacturing output percentage available during a blockade.
-        /// An operational KDY-150 ion cannon prevents the blockade penalty.
-        /// </summary>
-        /// <param name="capitalShipPenalty">The percentage removed per capital ship.</param>
-        /// <param name="fighterPenalty">The percentage removed per fighter squadron.</param>
-        /// <param name="game">The campaign supplying faction and orbital state, if available.</param>
-        /// <returns>The available manufacturing percentage from zero through one hundred.</returns>
-        public int GetBlockadeProductionModifier(
-            int capitalShipPenalty,
-            int fighterPenalty,
-            GameRoot game = null
-        )
-        {
-            if (!IsBlockaded(game) || HasOperationalIonCannon())
-                return _maximumProductionModifier;
-
-            List<CapitalShip> capitalShips = _fleets
-                .Where(fleet => fleet.Movement == null)
-                .SelectMany(fleet => fleet.GetChildren<CapitalShip>())
-                .Where(IsEntityActive)
-                .ToList();
-            int fighterCount = capitalShips.Sum(capitalShip =>
-                capitalShip.GetChildren<Starfighter>().Count(IsEntityActive)
-            );
-            fighterCount += GetChildren<Starfighter>().Count(IsEntityActive);
-
-            return Math.Clamp(
-                _maximumProductionModifier
-                    - capitalShips.Count * capitalShipPenalty
-                    - fighterCount * fighterPenalty,
-                0,
-                _maximumProductionModifier
-            );
         }
 
         /// <summary>

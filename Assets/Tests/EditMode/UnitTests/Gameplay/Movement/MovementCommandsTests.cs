@@ -2915,11 +2915,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_DestroysRegiment()
+        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_DestroysRegiment()
         {
-            // FixedRNG returns 0 -> 0 < 50 -> loss
+            // The blockade leaves a 50% survival chance; a roll of 99 fails.
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new MaximumRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2934,11 +2934,11 @@ namespace Rebellion.Tests.Gameplay
         }
 
         [Test]
-        public void RequestMove_RegimentFromBlockadedPlanet_HighRoll_RegimentSurvives()
+        public void RequestMove_RegimentFromBlockadedPlanet_LowRoll_RegimentSurvives()
         {
-            // MaximumRNG returns 99 -> 99 >= 50 -> survives
+            // The blockade leaves a 50% survival chance; a roll of 0 succeeds.
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new MaximumRNG());
+                BuildBlockadeScene(new FixedRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2957,7 +2957,7 @@ namespace Rebellion.Tests.Gameplay
         public void RequestMove_RegimentFromBlockadedPlanet_EmitsEvacuationResult()
         {
             (GameRoot game, Planet origin, Planet destination, MovementCommands movement) =
-                BuildBlockadeScene(new FixedRNG());
+                BuildBlockadeScene(new MaximumRNG());
 
             Regiment regiment = EntityFactory.CreateRegiment("r1", "empire");
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
@@ -2990,7 +2990,7 @@ namespace Rebellion.Tests.Gameplay
                 game
             );
 
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
             BlockadeChangedResult blockade = results
                 .OfType<BlockadeChangedResult>()
                 .Single(result => ReferenceEquals(result.Planet, origin) && !result.Blockaded);
@@ -3013,12 +3013,12 @@ namespace Rebellion.Tests.Gameplay
                 Hyperdrive = 1,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
 
             movement.RequestMove(fighter, destination);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
             Assert.IsNotNull(fighter.Movement);
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
@@ -3040,13 +3040,13 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, origin);
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
 
             movement.RequestMove(fighter, origin, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsNull(blockade.BlockadingFleet);
@@ -3077,16 +3077,16 @@ namespace Rebellion.Tests.Gameplay
                 ManufacturingStatus = ManufacturingStatus.Delivering,
             };
             game.AttachNode(fighter, destination);
-            Assert.IsTrue(origin.IsBlockaded(game));
-            Assert.IsTrue(destination.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, destination));
 
             movement.RequestMove(fighter, destination, origin);
             IReadOnlyList<GameResult> results = movement.TakePendingResults();
 
             Assert.AreSame(origin, fighter.GetParent());
             Assert.AreEqual(ManufacturingStatus.Complete, fighter.ManufacturingStatus);
-            Assert.IsFalse(origin.IsBlockaded(game));
-            Assert.IsTrue(destination.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, destination));
             BlockadeChangedResult blockade = results.OfType<BlockadeChangedResult>().Single();
             Assert.AreSame(origin, blockade.Planet);
             Assert.IsFalse(blockade.Blockaded);
@@ -3097,7 +3097,7 @@ namespace Rebellion.Tests.Gameplay
         {
             // FixedRNG would cause loss, but planet isn't blockaded
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -3131,7 +3131,7 @@ namespace Rebellion.Tests.Gameplay
             regiment.ManufacturingStatus = ManufacturingStatus.Complete;
             game.AttachNode(regiment, origin);
 
-            Assert.IsFalse(origin.IsBlockaded(game));
+            Assert.IsFalse(BlockadeQueries.IsBlockaded(game, origin));
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -4613,7 +4613,14 @@ namespace Rebellion.Tests.Gameplay
             game.Config.Jedi.ForceGrowthPerMission = 1;
             game.AttachNode(officer, missionPlanet);
             Officer captive = EntityFactory.CreateOfficer("returning-captive", "rebels");
-            Assert.IsTrue(captive.TryCapture("empire", game, game.Random));
+            Assert.IsTrue(
+                captive.TryCapture(
+                    "empire",
+                    game.Config.Captive.EscapeAttemptInterval,
+                    game.CurrentTick,
+                    game.Random
+                )
+            );
             game.AttachNode(captive, missionPlanet);
             movement.ReturnFromMission(
                 new IMissionParticipant[] { officer },
@@ -7305,7 +7312,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeRetargetingScene()
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 100;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 100;
             GameRoot game = TestGame.Create(config);
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
             game.GetFactions().Add(new Faction { InstanceID = "rebels" });
@@ -7497,7 +7504,7 @@ namespace Rebellion.Tests.Gameplay
         ) BuildBlockadeScene(IRandomNumberProvider rng)
         {
             GameConfig config = TestConfig.Create();
-            config.Blockade.EvacuationLossPercent = 50;
+            config.Blockade.CapitalShipWithdrawalPenaltyPercent = 50;
             GameRoot game = TestGame.Create(config);
 
             game.GetFactions().Add(new Faction { InstanceID = "empire" });
@@ -7539,10 +7546,11 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "hostile-ship",
                 OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 100,
             };
             game.AttachNode(hostileShip, hostile);
 
-            Assert.IsTrue(origin.IsBlockaded(game));
+            Assert.IsTrue(BlockadeQueries.IsBlockaded(game, origin));
 
             MovementCommands movement = new MovementCommands(
                 game,
@@ -7562,7 +7570,7 @@ namespace Rebellion.Tests.Gameplay
         /// <param name="game">The game containing the two factions.</param>
         private static void ConfigureBlockadeFactions(GameRoot game)
         {
-            game.ConfigureBlockadeFactions(new[] { "empire", "rebels" });
+            game.Summary.StartingFactionIDs = new[] { "empire", "rebels" };
         }
 
         /// <summary>

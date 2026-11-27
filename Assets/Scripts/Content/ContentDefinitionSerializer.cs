@@ -1,14 +1,56 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Xml;
+using System.Xml.Linq;
 using System.Xml.Serialization;
+using PersistableReadAliasAttribute = Rebellion.Util.Serialization.PersistableReadAliasAttribute;
 
 /// <summary>
 /// Reads and writes the plain XML definitions that describe content packs.
 /// </summary>
 public static class ContentDefinitionSerializer
 {
+    private static readonly string _legacyThemePathElement = typeof(ContentPackDefinition)
+        .GetProperty(nameof(ContentPackDefinition.ThemePaths))
+        .GetCustomAttribute<PersistableReadAliasAttribute>()
+        .Name;
+
+    /// <summary>
+    /// Checks whether an authored manifest still stores its Neutral theme in the legacy field.
+    /// </summary>
+    /// <param name="root">The authored manifest or sparse overlay.</param>
+    /// <returns>Whether the deprecated reference is present.</returns>
+    public static bool HasLegacyThemePath(XElement root) =>
+        root.Element(_legacyThemePathElement) != null;
+
+    /// <summary>
+    /// Writes the shared theme list and removes the deprecated scalar from an authored manifest.
+    /// </summary>
+    /// <param name="root">The authored pack manifest.</param>
+    /// <param name="paths">The effective theme paths to preserve.</param>
+    /// <returns>Whether the manifest changed.</returns>
+    public static bool SetThemePaths(XElement root, IEnumerable<string> paths)
+    {
+        XElement updated = new(
+            nameof(ContentPackDefinition.ThemePaths),
+            paths.Select(path => new XElement("Path", path))
+        );
+        XElement current = root.Element(updated.Name);
+        XElement legacy = root.Element(_legacyThemePathElement);
+        if (legacy == null && XNode.DeepEquals(current, updated))
+            return false;
+        legacy?.Remove();
+        if (current == null)
+            root.Add(updated);
+        else
+            current.ReplaceWith(updated);
+        return true;
+    }
+
     /// <summary>
     /// Reads an edited definition before committing it to disk.
     /// </summary>
@@ -19,10 +61,8 @@ public static class ContentDefinitionSerializer
         where T : class
     {
         using StringReader reader = new StringReader(text);
-        return new XmlSerializer(typeof(T)).Deserialize(reader) as T
-            ?? throw new InvalidDataException(
-                "Failed to deserialize the edited content definition."
-            );
+        using XmlReader xml = XmlReader.Create(reader);
+        return Read<T>(xml);
     }
 
     /// <summary>
@@ -37,17 +77,57 @@ public static class ContentDefinitionSerializer
         if (!File.Exists(filePath))
             throw new FileNotFoundException($"Content definition not found: {filePath}");
 
-        XmlSerializer serializer = new XmlSerializer(typeof(T));
         using FileStream stream = new FileStream(
             filePath,
             FileMode.Open,
             FileAccess.Read,
             FileShare.Read
         );
-        return serializer.Deserialize(stream) as T
-            ?? throw new InvalidDataException(
-                $"Failed to deserialize content definition: {filePath}"
-            );
+        using XmlReader reader = XmlReader.Create(stream);
+        return Read<T>(reader);
+    }
+
+    /// <summary>
+    /// Reads a definition using its existing model and remembers the shared game pack manifest format.
+    /// </summary>
+    /// <typeparam name="T">The expected definition type.</typeparam>
+    /// <param name="reader">The XML source.</param>
+    /// <returns>The parsed definition.</returns>
+    private static T Read<T>(XmlReader reader)
+        where T : class
+    {
+        var serializer = new XmlSerializer(typeof(T));
+        reader.MoveToContent();
+        object result;
+        if (typeof(T) == typeof(ContentPackDefinition))
+        {
+            bool usesPackageManifest = reader.Name == ContentPackageManifest.RootName;
+            XElement root;
+            try
+            {
+                root = (XElement)XNode.ReadFrom(reader);
+            }
+            catch (XmlException exception)
+            {
+                throw new InvalidOperationException(
+                    "Failed to deserialize the content definition.",
+                    exception
+                );
+            }
+            root = ContentPackageManifest.AsCampaignRoot(root);
+            var legacyThemePath = (string)root.Element(_legacyThemePathElement);
+            using XmlReader normalized = root.CreateReader();
+            result = serializer.Deserialize(normalized);
+            if (result is ContentPackDefinition gamePack)
+            {
+                gamePack.UsesPackageManifest = usesPackageManifest;
+                gamePack.LegacyNeutralThemePath = legacyThemePath;
+            }
+        }
+        else
+            result = serializer.Deserialize(reader);
+        return result as T
+            ?? throw new InvalidDataException("Failed to deserialize the content definition.");
     }
 
     /// <summary>
@@ -56,7 +136,8 @@ public static class ContentDefinitionSerializer
     /// <typeparam name="T">The definition type.</typeparam>
     /// <param name="filePath">The absolute destination path.</param>
     /// <param name="definition">The definition to write.</param>
-    public static void Serialize<T>(string filePath, T definition)
+    /// <param name="usePackageManifest">Whether a new game pack should use the shared package manifest.</param>
+    public static void Serialize<T>(string filePath, T definition, bool usePackageManifest = false)
         where T : class
     {
         if (string.IsNullOrWhiteSpace(filePath))
@@ -83,7 +164,33 @@ public static class ContentDefinitionSerializer
         try
         {
             using (XmlWriter writer = XmlWriter.Create(temporaryPath, settings))
-                serializer.Serialize(writer, definition, namespaces);
+            {
+                if (
+                    definition is ContentPackDefinition gamePack
+                    && (
+                        usePackageManifest
+                        || gamePack.UsesPackageManifest
+                        || gamePack.LegacyNeutralThemePath != null
+                    )
+                )
+                {
+                    XDocument document = new();
+                    using (XmlWriter buffer = document.CreateWriter())
+                        serializer.Serialize(buffer, definition, namespaces);
+                    if (usePackageManifest || gamePack.UsesPackageManifest)
+                        ContentPackageManifest.SetType(document.Root, ContentPackageType.GamePack);
+                    if (!string.IsNullOrWhiteSpace(gamePack.LegacyNeutralThemePath))
+                        SetThemePaths(
+                            document.Root,
+                            gamePack
+                                .ThemePaths.Append(gamePack.LegacyNeutralThemePath)
+                                .Distinct(StringComparer.Ordinal)
+                        );
+                    document.Save(writer);
+                }
+                else
+                    serializer.Serialize(writer, definition, namespaces);
+            }
             ReplaceFile(temporaryPath, filePath);
         }
         finally

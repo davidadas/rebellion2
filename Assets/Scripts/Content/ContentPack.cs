@@ -37,6 +37,11 @@ public sealed class ContentPack
     public ContentScenarioDefinition Scenario { get; }
 
     /// <summary>
+    /// Gets all campaigns registered by the selected pack and its mods.
+    /// </summary>
+    public IReadOnlyList<ContentScenarioDefinition> Scenarios { get; }
+
+    /// <summary>
     /// Gets the factions declared by this pack.
     /// </summary>
     public IReadOnlyList<ContentFactionDefinition> Factions { get; }
@@ -57,6 +62,7 @@ public sealed class ContentPack
     /// <param name="factions">The pack's faction definitions.</param>
     /// <param name="gameData">The composed typed game data.</param>
     /// <param name="preloadManifests">The pack's preload manifests by identifier.</param>
+    /// <param name="scenarios">The registered scenarios, including the selected scenario.</param>
     internal ContentPack(
         string contentRootPath,
         string packRootPath,
@@ -65,7 +71,8 @@ public sealed class ContentPack
         ContentScenarioDefinition scenario,
         IReadOnlyList<ContentFactionDefinition> factions,
         GameDataCatalog gameData,
-        IReadOnlyDictionary<string, ContentPreloadManifest> preloadManifests
+        IReadOnlyDictionary<string, ContentPreloadManifest> preloadManifests,
+        IReadOnlyList<ContentScenarioDefinition> scenarios = null
     )
     {
         ContentRootPath =
@@ -74,6 +81,7 @@ public sealed class ContentPack
         FileResolver = fileResolver ?? throw new ArgumentNullException(nameof(fileResolver));
         Definition = definition ?? throw new ArgumentNullException(nameof(definition));
         Scenario = scenario ?? throw new ArgumentNullException(nameof(scenario));
+        Scenarios = scenarios ?? new[] { Scenario };
         Factions = factions ?? throw new ArgumentNullException(nameof(factions));
         GameData = gameData ?? throw new ArgumentNullException(nameof(gameData));
         this.preloadManifests = new Dictionary<string, ContentPreloadManifest>(

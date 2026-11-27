@@ -33,25 +33,23 @@ internal static class ContentPackEditorExporter
         string temporaryFile = destination + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await WriteSnapshotAsync(project, staging, cancellationToken);
-            using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
-                project.ContentRootPath,
-                staging
-            );
-            ContentPackEditorStorage.Save(snapshot);
-            IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
-                snapshot,
+            IReadOnlyList<string> warnings = await WriteValidatedSnapshotAsync(
+                project,
+                staging,
                 progress,
                 cancellationToken
             );
             cancellationToken.ThrowIfCancellationRequested();
             Directory.CreateDirectory(Path.GetDirectoryName(destination));
-            await WriteArchiveContentsAsync(staging, temporaryFile, cancellationToken);
+            await WriteArchiveContentsAsync(
+                staging,
+                GetSnapshotPackRoot(project, staging),
+                temporaryFile,
+                cancellationToken
+            );
             cancellationToken.ThrowIfCancellationRequested();
             CommitArchive(temporaryFile, destination);
-            return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
-                ? warnings
-                : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
+            return warnings;
         }
         finally
         {
@@ -62,14 +60,72 @@ internal static class ContentPackEditorExporter
     }
 
     /// <summary>
+    /// Freezes and validates a project for archive formats that share the same content checks.
+    /// </summary>
+    /// <param name="project">The editable source project.</param>
+    /// <param name="staging">The owned, empty staging directory.</param>
+    /// <param name="progress">The validation progress callback.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>The non-blocking authoring warnings.</returns>
+    internal static async Task<IReadOnlyList<string>> WriteValidatedSnapshotAsync(
+        ContentPackEditorProject project,
+        string staging,
+        Action<string> progress,
+        CancellationToken cancellationToken
+    )
+    {
+        await WriteSnapshotAsync(project, staging, cancellationToken);
+        using ContentPackEditorProject snapshot = ContentPackEditorStorage.OpenFolder(
+            project.ContentRootPath,
+            staging
+        );
+        ContentPackEditorStorage.Save(snapshot);
+        if (snapshot.Mod == null && !string.IsNullOrWhiteSpace(snapshot.Definition.BasePackID))
+            PinInheritedPacks(snapshot);
+        IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
+            snapshot,
+            progress,
+            cancellationToken
+        );
+        return string.IsNullOrEmpty(snapshot.ArtworkConversionReport)
+            ? warnings
+            : warnings.Append(snapshot.ArtworkConversionReport).ToArray();
+    }
+
+    /// <summary>
+    /// Records the exact parent releases used by the archive before validating its contents.
+    /// </summary>
+    /// <param name="snapshot">The staged derived pack whose manifest will be published.</param>
+    private static void PinInheritedPacks(ContentPackEditorProject snapshot)
+    {
+        snapshot.Definition.InheritedPacks = snapshot
+            .CreateResolver()
+            .PackRootPaths.Skip(1)
+            .Select(root =>
+            {
+                var parent = ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(
+                    Path.Combine(root, "pack.xml")
+                );
+                return new ContentPackDependency { ID = parent.ID, Version = parent.Version };
+            })
+            .ToList();
+        ContentDefinitionSerializer.Serialize(
+            Path.Combine(snapshot.ProjectRootPath, "pack.xml"),
+            snapshot.Definition
+        );
+    }
+
+    /// <summary>
     /// Copies staged files into an archive without blocking the UI for whole media files.
     /// </summary>
     /// <param name="staging">The validated staging directory.</param>
+    /// <param name="packRoot">The staged pack layer that may contain editor history.</param>
     /// <param name="filePath">The temporary archive path.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
     /// <returns>The completion of archive creation.</returns>
     private static async Task WriteArchiveContentsAsync(
         string staging,
+        string packRoot,
         string filePath,
         CancellationToken cancellationToken
     )
@@ -86,14 +142,7 @@ internal static class ContentPackEditorExporter
         foreach (
             string source in Directory
                 .EnumerateFiles(staging, "*", SearchOption.AllDirectories)
-                .Where(source =>
-                    !Path.GetRelativePath(staging, source)
-                        .Replace('\\', '/')
-                        .StartsWith(
-                            ContentEditorAssetChange.EditorDirectory + "/",
-                            StringComparison.Ordinal
-                        )
-                )
+                .Where(source => !IsEditorFile(packRoot, source))
         )
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -114,6 +163,26 @@ internal static class ContentPackEditorExporter
             await Task.Yield();
         }
     }
+
+    /// <summary>
+    /// Identifies internal artwork history relative to the writable pack layer.
+    /// </summary>
+    /// <param name="packRoot">The writable pack layer inside the project or staged archive.</param>
+    /// <param name="path">The path being considered for publication.</param>
+    /// <returns>True for an editor history or backup file.</returns>
+    internal static bool IsEditorFile(string packRoot, string path) =>
+        Path.GetRelativePath(packRoot, path)
+            .Replace('\\', '/')
+            .StartsWith(ContentEditorAssetChange.EditorDirectory + "/", StringComparison.Ordinal);
+
+    /// <summary>
+    /// Locates the writable content layer inside the staged project.
+    /// </summary>
+    /// <param name="project">The source project that determines the package format.</param>
+    /// <param name="staging">The staging directory containing its manifest.</param>
+    /// <returns>The staging directory's pack-layer path.</returns>
+    internal static string GetSnapshotPackRoot(ContentPackEditorProject project, string staging) =>
+        project.Mod == null ? staging : Path.Combine(staging, "Content", "Pack");
 
     /// <summary>
     /// Replaces an archive only after all validation and compression have completed.
@@ -139,7 +208,7 @@ internal static class ContentPackEditorExporter
     )
     {
         ContentEditorPaths.VerifyWritableLocation(project.ContentRootPath, destination);
-        if (ContentEditorPaths.Contains(project.PackRootPath, destination))
+        if (ContentEditorPaths.Contains(project.ProjectRootPath, destination))
             throw new IOException("Choose an output outside the working content-pack folder.");
     }
 
@@ -169,14 +238,25 @@ internal static class ContentPackEditorExporter
     )
     {
         foreach (ContentPackEditorDocument document in project.Documents)
+        {
             document.Validate();
+            if (project.Mod != null && document.Address == "Pack/pack.xml" && !document.InheritsAll)
+            {
+                if (!project.Mod.ExtendsPack)
+                    throw new InvalidDataException(
+                        "Set ExtendsPack in the package manifest to edit campaign settings."
+                    );
+                ContentPackLoader.ValidateModPackOverlay(document.AuthoredText);
+            }
+        }
         var documents = project
             .Documents.Where(document =>
                 (!document.IsInherited || document.IsDirty) && !document.InheritsAll
             )
             .Select(document => (Path: document.Address[5..], Text: document.AuthoredText))
             .ToArray();
-        string root = project.PackRootPath;
+        string root = project.ProjectRootPath;
+        string packStaging = GetSnapshotPackRoot(project, staging);
         var removed = project
             .RemovedDocumentPaths.Concat(
                 project
@@ -190,11 +270,12 @@ internal static class ContentPackEditorExporter
                 !source.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
                 && !source.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)
                 && !Path.GetRelativePath(root, source)
-                    .Replace('\\', '/')
-                    .StartsWith(
-                        ContentEditorAssetChange.EditorDirectory + "/",
-                        StringComparison.Ordinal
+                    .Split(Path.DirectorySeparatorChar)[0]
+                    .Equals(
+                        ContentEditorPublishingStorage.DirectoryName,
+                        StringComparison.OrdinalIgnoreCase
                     )
+                && !IsEditorFile(project.PackRootPath, source)
                 && !removed.Contains(source)
             )
             .ToArray();
@@ -225,7 +306,7 @@ internal static class ContentPackEditorExporter
         foreach (var document in documents)
         {
             cancellationToken.ThrowIfCancellationRequested();
-            string target = Path.Combine(staging, document.Path);
+            string target = Path.Combine(packStaging, document.Path);
             Directory.CreateDirectory(Path.GetDirectoryName(target));
             File.WriteAllText(target, document.Text);
             await Task.Yield();

@@ -11,9 +11,19 @@ using UnityEngine.UI;
 /// Presents authored sectors through the gameplay sector window with neutral preview statistics.
 /// </summary>
 [ExecuteAlways]
-public sealed class ContentEditorSectorPreview : UIBehaviour
+public sealed class ContentEditorSectorPreview
+    : UIBehaviour,
+        IContentEditorArtworkDragPreview,
+        IPointerMoveHandler,
+        IPointerExitHandler,
+        IPointerClickHandler
 {
     private readonly List<ContentPackEditorField> renderedFields = new();
+    private RawImagePressVisual[] windowControls;
+    private ContentEditorArtworkEditTarget draggedControl;
+    private ContentEditorArtworkEditTarget hoveredControl;
+    private Vector2 dragOrigin;
+    private Rect draggedControlBounds;
 
     [SerializeField]
     private PlanetSectorWindowView window;
@@ -26,11 +36,283 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     public event Action<ContentPackEditorRecord> DragStarted;
     public event Action<ContentPackEditorRecord, Vector2Int> Moved;
     public event Action<ContentPackEditorField> ArtworkOpened;
+    internal event Action<IReadOnlyList<ContentEditorArtworkPlacementChange>> ArtworkMoved;
+
+    internal Color DefaultBackgroundColor => window.DefaultBackgroundColor;
 
     /// <summary>
     /// Gets the faction-theme fields currently represented by literal editable images.
     /// </summary>
     internal IReadOnlyList<ContentPackEditorField> RenderedFields => renderedFields;
+
+    /// <summary>
+    /// Applies the pack's presentation to the same sector view used by the game.
+    /// </summary>
+    /// <param name="layout">The optional sector-window overrides.</param>
+    internal void ApplyWindowLayout(PlanetSectorWindowLayout layout) => window.ApplyLayout(layout);
+
+    /// <summary>
+    /// Gets the shared press visuals attached directly to the sector window.
+    /// </summary>
+    /// <returns>The authored window header controls.</returns>
+    internal IReadOnlyList<RawImagePressVisual> GetWindowControls() =>
+        windowControls ??= window
+            .GetComponentsInChildren<RawImagePressVisual>(true)
+            .Where(control => control.transform.parent == window.transform)
+            .ToArray();
+
+    /// <summary>
+    /// Shows the shared header buttons when the sector is used to preview window controls.
+    /// </summary>
+    /// <param name="visible">Whether the window header buttons should be shown.</param>
+    internal void SetWindowControlsVisible(bool visible)
+    {
+        foreach (RawImagePressVisual control in GetWindowControls())
+            control.gameObject.SetActive(visible);
+    }
+
+    /// <summary>
+    /// Enables dragging the displayed header art using the shared artwork gesture target.
+    /// </summary>
+    /// <param name="control">The authored press visual used in the sector window.</param>
+    /// <param name="placement">The two pack values updated on release.</param>
+    internal void BindWindowControl(
+        RawImagePressVisual control,
+        ContentEditorArtworkPlacement placement
+    )
+    {
+        ContentEditorArtworkEditTarget target =
+            control.GetComponent<ContentEditorArtworkEditTarget>()
+            ?? control.gameObject.AddComponent<ContentEditorArtworkEditTarget>();
+        target.BindPlacement(placement);
+    }
+
+    /// <summary>
+    /// Starts a header-control drag in the window's unscaled coordinates.
+    /// </summary>
+    /// <param name="eventData">The initial pointer event.</param>
+    void IBeginDragHandler.OnBeginDrag(PointerEventData eventData)
+    {
+        ContentEditorArtworkEditTarget target =
+            eventData.button == PointerEventData.InputButton.Left
+                ? GetWindowControlAt(eventData.pressPosition, eventData.pressEventCamera)
+                : null;
+        if (
+            target == null
+            || !TryGetWindowPoint(eventData.pressPosition, eventData, out dragOrigin)
+            || !target.BeginMove()
+        )
+        {
+            ExecuteEvents.ExecuteHierarchy(
+                transform.parent.gameObject,
+                eventData,
+                ExecuteEvents.beginDragHandler
+            );
+            return;
+        }
+        draggedControl = target;
+        draggedControlBounds = GetControlBounds(target);
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, true);
+        ClearControlHover();
+        ContentEditorArtworkEditTarget.Select(target);
+        eventData.Use();
+    }
+
+    /// <summary>
+    /// Selects a header button or clears focus on an empty portion of the sector preview.
+    /// </summary>
+    /// <param name="eventData">The completed pointer click.</param>
+    void IPointerClickHandler.OnPointerClick(PointerEventData eventData)
+    {
+        if (
+            eventData.button == PointerEventData.InputButton.Left
+            && !ContentEditorArtworkEditTarget.IsPreviewDragging
+        )
+            ContentEditorArtworkEditTarget.Select(
+                GetWindowControlAt(eventData.position, eventData.pressEventCamera)
+            );
+    }
+
+    /// <summary>
+    /// Nudges a selected sector control within the window bounds.
+    /// </summary>
+    /// <param name="target">The selected control.</param>
+    /// <param name="delta">The source-pixel movement, with positive Y down.</param>
+    /// <returns>True when the control supports placement.</returns>
+    bool IContentEditorArtworkDragPreview.NudgeArtwork(
+        ContentEditorArtworkEditTarget target,
+        Vector2Int delta
+    )
+    {
+        if (draggedControl != null || !target.BeginMove())
+            return false;
+        var changes = target.CompleteMove(
+            ConstrainControlMovement(GetControlBounds(target), new Vector2(delta.x, -delta.y))
+        );
+        if (changes.Count > 0)
+            ArtworkMoved?.Invoke(changes);
+        return true;
+    }
+
+    /// <summary>
+    /// Outlines the movable header button under the pointer in the sector preview.
+    /// </summary>
+    /// <param name="eventData">The current pointer position and camera.</param>
+    void IPointerMoveHandler.OnPointerMove(PointerEventData eventData)
+    {
+        if (ContentEditorArtworkEditTarget.IsPreviewDragging)
+            return;
+        ContentEditorArtworkEditTarget control = GetWindowControlAt(
+            eventData.position,
+            eventData.enterEventCamera
+        );
+        if (hoveredControl == control)
+            return;
+        hoveredControl?.SetHovered(false);
+        hoveredControl = control;
+        hoveredControl?.SetHovered(true);
+    }
+
+    /// <summary>
+    /// Clears the movable header outline after the pointer leaves the preview.
+    /// </summary>
+    /// <param name="eventData">The pointer exit event.</param>
+    void IPointerExitHandler.OnPointerExit(PointerEventData eventData) => ClearControlHover();
+
+    /// <summary>
+    /// Removes the sector's transient header hover while preserving selection.
+    /// </summary>
+    private void ClearControlHover()
+    {
+        hoveredControl?.SetHovered(false);
+        hoveredControl = null;
+    }
+
+    /// <summary>
+    /// Finds the actionable header image at a pointer position within the rendered window.
+    /// </summary>
+    /// <param name="position">The screen-space pointer position.</param>
+    /// <param name="camera">The event camera for the canvas.</param>
+    /// <returns>The corresponding movable edit target, when present.</returns>
+    private ContentEditorArtworkEditTarget GetWindowControlAt(Vector2 position, Camera camera) =>
+        GetWindowControls()
+            .Where(control => control.isActiveAndEnabled)
+            .Select(control => control.GetComponent<ContentEditorArtworkEditTarget>())
+            .LastOrDefault(target =>
+                target?.CanMove == true && target.ContainsScreenPoint(position, camera)
+            );
+
+    /// <summary>
+    /// Moves the grabbed control within the window preview.
+    /// </summary>
+    /// <param name="eventData">The current pointer event.</param>
+    void IDragHandler.OnDrag(PointerEventData eventData)
+    {
+        if (draggedControl == null)
+        {
+            ExecuteEvents.ExecuteHierarchy(
+                transform.parent.gameObject,
+                eventData,
+                ExecuteEvents.dragHandler
+            );
+            return;
+        }
+        draggedControl.PreviewMove(GetControlDragDelta(eventData));
+        eventData.Use();
+    }
+
+    /// <summary>
+    /// Submits the finished control drag through the workspace's artwork edit history.
+    /// </summary>
+    /// <param name="eventData">The released pointer event.</param>
+    void IEndDragHandler.OnEndDrag(PointerEventData eventData)
+    {
+        if (draggedControl == null)
+        {
+            ExecuteEvents.ExecuteHierarchy(
+                transform.parent.gameObject,
+                eventData,
+                ExecuteEvents.endDragHandler
+            );
+            return;
+        }
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
+        var changes = draggedControl.CompleteMove(GetControlDragDelta(eventData));
+        draggedControl = null;
+        eventData.Use();
+        ArtworkMoved?.Invoke(changes);
+    }
+
+    /// <summary>
+    /// Translates movement into source pixels and keeps the complete button within the frame.
+    /// </summary>
+    /// <param name="eventData">The current pointer event.</param>
+    /// <returns>The source-coordinate displacement from the start of the drag.</returns>
+    private Vector2Int GetControlDragDelta(PointerEventData eventData)
+    {
+        if (!TryGetWindowPoint(eventData.position, eventData, out Vector2 point))
+            return Vector2Int.zero;
+        return ConstrainControlMovement(draggedControlBounds, point - dragOrigin);
+    }
+
+    /// <summary>
+    /// Keeps the entire button inside the sector window during a drag or keyboard nudge.
+    /// </summary>
+    /// <param name="buttonBounds">The button rectangle before movement.</param>
+    /// <param name="delta">The proposed displacement from the start of the move.</param>
+    /// <returns>The constrained source-pixel displacement.</returns>
+    private Vector2Int ConstrainControlMovement(Rect buttonBounds, Vector2 delta)
+    {
+        Rect bounds = ((RectTransform)window.transform).rect;
+        return new Vector2Int(
+            Mathf.RoundToInt(
+                Mathf.Clamp(
+                    delta.x,
+                    bounds.xMin - buttonBounds.xMin,
+                    bounds.xMax - buttonBounds.xMax
+                )
+            ),
+            -Mathf.RoundToInt(
+                Mathf.Clamp(
+                    delta.y,
+                    bounds.yMin - buttonBounds.yMin,
+                    bounds.yMax - buttonBounds.yMax
+                )
+            )
+        );
+    }
+
+    /// <summary>
+    /// Measures one header button in the window's local coordinate space.
+    /// </summary>
+    /// <param name="target">The moving button.</param>
+    /// <returns>The dimensions and position before a move.</returns>
+    private static Rect GetControlBounds(ContentEditorArtworkEditTarget target)
+    {
+        RectTransform button = (RectTransform)target.transform;
+        Rect bounds = button.rect;
+        bounds.position += (Vector2)button.localPosition;
+        return bounds;
+    }
+
+    /// <summary>
+    /// Resolves a pointer position in the unscaled sector window.
+    /// </summary>
+    /// <param name="position">The screen-space pointer position.</param>
+    /// <param name="eventData">The event that supplies the UI camera.</param>
+    /// <param name="point">The corresponding window coordinates.</param>
+    /// <returns>True when the position intersects the window plane.</returns>
+    private bool TryGetWindowPoint(
+        Vector2 position,
+        PointerEventData eventData,
+        out Vector2 point
+    ) =>
+        RectTransformUtility.ScreenPointToLocalPointInRectangle(
+            (RectTransform)window.transform,
+            position,
+            eventData.pressEventCamera,
+            out point
+        );
 
     /// <summary>
     /// Renders exact authored planet positions using the default resource profile.
@@ -40,12 +322,14 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     /// <param name="assets">The working pack's resolved artwork.</param>
     /// <param name="theme">The optional faction whose overlay icons and colors are previewed.</param>
     /// <param name="editableFields">The optional faction-interface fields rendered in the preview.</param>
+    /// <param name="enablePlanetPlacement">Whether this preview edits the map's planet positions.</param>
     public void Render(
         ContentPackEditorProject project,
         ContentPackEditorRecord sector,
         ContentAssets assets,
         FactionTheme theme = null,
-        IReadOnlyList<ContentPackEditorField> editableFields = null
+        IReadOnlyList<ContentPackEditorField> editableFields = null,
+        bool enablePlanetPlacement = false
     )
     {
         ContentPackEditorRecord[] planets = sector.Planets.ToArray();
@@ -89,6 +373,29 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
             )
         );
         PlanetSectorPlanetView[] views = window.GetComponentsInChildren<PlanetSectorPlanetView>();
+        if (enablePlanetPlacement)
+            BindPlanetPlacement(sector, planets, views);
+        else
+            AttachEditCommands(
+                editableFields ?? Array.Empty<ContentPackEditorField>(),
+                assets,
+                neutralIndex >= 0 ? views[neutralIndex].transform : null
+            );
+        Fit();
+    }
+
+    /// <summary>
+    /// Connects the planet views to coordinate editing in the map workspace.
+    /// </summary>
+    /// <param name="sector">The open sector definition.</param>
+    /// <param name="planets">The planet definitions in rendering order.</param>
+    /// <param name="views">The corresponding gameplay views.</param>
+    private void BindPlanetPlacement(
+        ContentPackEditorRecord sector,
+        ContentPackEditorRecord[] planets,
+        PlanetSectorPlanetView[] views
+    )
+    {
         for (int i = 0; i < planets.Length; i++)
         {
             ContentEditorPlanetDrag drag =
@@ -104,18 +411,36 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
                 () => DragEnded?.Invoke()
             );
         }
-        AttachEditCommands(
-            editableFields ?? Array.Empty<ContentPackEditorField>(),
-            assets,
-            neutralIndex >= 0 ? views[neutralIndex].transform : null
-        );
-        Fit();
     }
 
     /// <summary>
     /// Hides the sector window while the galaxy overview is displayed.
     /// </summary>
-    public void Hide() => window.gameObject.SetActive(false);
+    public void Hide()
+    {
+        CancelControlDrag();
+        window.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Releases pointer state if the sector preview is closed mid-gesture.
+    /// </summary>
+    protected override void OnDisable()
+    {
+        CancelControlDrag();
+        base.OnDisable();
+    }
+
+    /// <summary>
+    /// Restores an interrupted header edit and releases hover suppression.
+    /// </summary>
+    private void CancelControlDrag()
+    {
+        ContentEditorArtworkEditTarget.SetPreviewDragging(this, false);
+        draggedControl?.CancelMove();
+        draggedControl = null;
+        ClearControlHover();
+    }
 
     /// <summary>
     /// Releases project references held by the reused gameplay planet views.
@@ -123,6 +448,7 @@ public sealed class ContentEditorSectorPreview : UIBehaviour
     public void Clear()
     {
         renderedFields.Clear();
+        CancelControlDrag();
         foreach (
             ContentEditorPlanetDrag drag in window.GetComponentsInChildren<ContentEditorPlanetDrag>(
                 true
