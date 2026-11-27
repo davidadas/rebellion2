@@ -73,11 +73,14 @@ internal static class ContentEditorInspectorLayout
                 if (!fields.Any(field => field.MemberName == member))
                     fields.Add(record.GetField(member));
         if (record.Kind == "Starfighter")
-            foreach (string member in new[] { "Roles", "FormationPriority" })
+        {
+            fields.RemoveAll(field => field.MemberName == "Roles");
+            foreach (string member in new[] { "Role", "FormationPriority" })
             {
                 fields.RemoveAll(field => field.MemberName == member);
                 fields.Add(record.GetField(member));
             }
+        }
         if (record.Kind == "Officer")
         {
             foreach (string skill in new[] { "Diplomacy", "Espionage", "Combat", "Leadership" })

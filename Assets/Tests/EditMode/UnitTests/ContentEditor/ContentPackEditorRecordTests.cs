@@ -16,17 +16,71 @@ namespace Rebellion.Tests.ContentEditor
                 "<Starfighters><Starfighter><TypeID>TEST</TypeID></Starfighter></Starfighters>"
             ).Records[0];
             var fields = ContentEditorInspectorLayout.GetFields(record);
-            var roles = fields.Single(field => field.MemberName == "Roles");
+            var role = fields.Single(field => field.MemberName == "Role");
             var priority = fields.Single(field => field.MemberName == "FormationPriority");
 
-            Assert.IsTrue(roles.IsList);
-            CollectionAssert.Contains(roles.Choices, "HeavyAssault");
-            CollectionAssert.Contains(roles.Choices, "Multirole");
+            Assert.IsFalse(role.IsList);
+            CollectionAssert.AreEqual(
+                new[] { "Interceptor", "Multirole", "Bomber", "HeavyAssault" },
+                role.Choices
+            );
+            Assert.AreEqual(string.Empty, role.Value);
             Assert.IsTrue(priority.IsNumber);
             Assert.AreEqual(string.Empty, priority.Value);
             Assert.IsNull(record.Element.Element("FormationPriority"));
             Assert.IsNull(record.Element.Element("Roles"));
+            Assert.IsNull(record.Element.Element("Role"));
             Assert.IsFalse(record.Catalog.Document.IsDirty);
+        }
+
+        [Test]
+        public void GetFields_DeprecatedStarfighterRoles_ShowsOneChoiceWithoutChangingTheDocument()
+        {
+            var record = Create(
+                "<Starfighters><Starfighter><TypeID>TEST</TypeID><Roles>"
+                    + "<StarfighterRole>HeavyAssault</StarfighterRole>"
+                    + "<StarfighterRole>Bomber</StarfighterRole></Roles></Starfighter></Starfighters>"
+            ).Records[0];
+
+            var fields = ContentEditorInspectorLayout.GetFields(record);
+
+            Assert.IsFalse(fields.Any(field => field.MemberName == "Roles"));
+            Assert.AreEqual("Bomber", fields.Single(field => field.MemberName == "Role").Value);
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.IsFalse(record.Catalog.Document.IsDirty);
+        }
+
+        [Test]
+        public void GetField_DeprecatedStarfighterRoleEdit_ReplacesTheListWithOneRole()
+        {
+            var record = Create(
+                "<Starfighters><Starfighter><TypeID>TEST</TypeID>"
+                    + "<Roles><StarfighterRole>Fighter</StarfighterRole></Roles>"
+                    + "<FormationPriority>0</FormationPriority></Starfighter></Starfighters>"
+            ).Records[0];
+            var field = record.GetField("Role");
+
+            Assert.AreEqual("Multirole", field.Value);
+            field.SetValue("Interceptor");
+
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.AreEqual("0", record.Element.Element("FormationPriority").Value);
+        }
+
+        [Test]
+        public void GetField_ClearingStarfighterRole_RemovesTheDeprecatedList()
+        {
+            var record = Create(
+                "<Starfighters><Starfighter><TypeID>TEST</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            ).Records[0];
+
+            record.GetField("Role").SetValue(string.Empty);
+
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.IsNull(record.Element.Element("Roles"));
         }
 
         [TestCase(false)]

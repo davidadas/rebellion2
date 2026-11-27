@@ -264,8 +264,9 @@ internal static class ContentPackEditorFieldMetadata
         ["HyperdriveCount"] =
             "The number of hyperdrive systems on each craft. Combat damage can disable them; losing all systems prevents independent retreat. This does not change travel speed.",
         ["Roles"] = "The combat tasks this unit design is intended to perform.",
+        ["Role"] = "The combat role assigned to this starfighter design. Choose one role.",
         ["FormationPriority"] =
-            "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by roles, then type ID.",
+            "Sets a fixed place in the faction's formation order, including when this design is absent. Lower values come first. Leave blank to order present fighter types by role, then type ID.",
         ["DistanceDivisor"] =
             "Divides travel distance when calculating transit duration. Larger values shorten trips.",
         ["MinTransitTicks"] = "The minimum number of turns for a trip between different sectors.",
@@ -719,7 +720,7 @@ internal static class ContentPackEditorFieldMetadata
                 && member != "RequiredSpecialForces"
         )
             return "Force";
-        if (member is "Traits" or "Roles")
+        if (member is "Traits" or "Role" or "Roles")
             return "Identity";
         if (member.StartsWith("Allowed", StringComparison.Ordinal))
             return "Command and missions";

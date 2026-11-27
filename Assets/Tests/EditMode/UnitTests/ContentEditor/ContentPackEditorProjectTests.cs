@@ -28,6 +28,106 @@ namespace Rebellion.Tests.ContentEditor
         };
 
         [Test]
+        public void SetField_DeprecatedStarfighterRole_ReplacesTheListAndSupportsUndoAndRedo()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole>"
+                    + "<StarfighterRole>HeavyAssault</StarfighterRole></Roles>"
+                    + "<FormationPriority>2</FormationPriority></Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+
+            project.SetField(record.GetField("Role"), "Interceptor");
+
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.IsTrue(project.Undo());
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.IsNull(record.Element.Element("Role"));
+            Assert.AreEqual(2, record.Element.Element("Roles").Elements().Count());
+            Assert.AreEqual("Bomber", record.GetField("Role").Value);
+            Assert.IsTrue(project.Redo());
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+            Assert.AreEqual("2", record.Element.Element("FormationPriority").Value);
+        }
+
+        [Test]
+        public void ResetFieldToInherited_ConvertedStarfighterRole_RestoresTheInheritedRoleList()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            project.SetField(record.GetField("Role"), "Interceptor");
+
+            project.ResetFieldToInherited(record.GetField("Role"));
+
+            record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            Assert.AreEqual("Bomber", record.GetField("Role").Value);
+            Assert.IsTrue(record.GetField("Role").IsInherited);
+        }
+
+        [TestCase(true)]
+        [TestCase(false)]
+        public void GetField_DeprecatedStarfighterRoleOverride_RemainsAnOverride(bool cleared)
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject project = CreateWorkingProject();
+            ContentPackEditorRecord record = project
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+
+            if (cleared)
+                project.SetField(record.GetField("Role"), string.Empty);
+            else
+                project.SetFieldValues(record.GetField("Roles"), new[] { "HeavyAssault" });
+            ContentPackEditorField field = record.GetField("Role");
+
+            Assert.AreEqual(cleared ? string.Empty : "HeavyAssault", field.Value);
+            Assert.IsFalse(field.IsInherited);
+            Assert.IsTrue(field.CanResetToDefault);
+        }
+
+        [Test]
         public void RemoveAudioClip_MultipleMissingFiles_RemovesOnlyTheSelectedEntryAndSupportsUndo()
         {
             using ContentPackEditorProject project = CreateAudioProject(

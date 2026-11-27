@@ -425,7 +425,7 @@ public sealed class ContentPackEditorProject : IDisposable
                 production.Container
             );
         }
-        field.Document.ResetSetting(field.XmlElement, field.XmlAttributeName, field.Container);
+        field.ResetToInherited();
     }
 
     /// <summary>

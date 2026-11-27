@@ -11,11 +11,10 @@ namespace Rebellion.Game.Units
     /// </summary>
     public enum StarfighterRole
     {
-        Fighter,
-        Interceptor,
-        Multirole,
-        Bomber,
-        HeavyAssault,
+        Interceptor = 1,
+        Multirole = 2,
+        Bomber = 3,
+        HeavyAssault = 4,
     }
 
     /// <summary>
@@ -63,22 +62,52 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(ShieldStrength))]
         private int _shieldStrength;
 
-        [PersistableMember(Name = nameof(Roles))]
-        private List<StarfighterRole> _roles = new List<StarfighterRole>();
+        private StarfighterRole? _role;
+        private bool _hasRole;
+        private List<string> _legacyRoles = new List<string>();
 
         [PersistableMember(Name = nameof(FormationPriority))]
         private int? _formationPriority;
 
-        [PersistableIgnore]
-        public List<StarfighterRole> Roles
+        /// <summary>
+        /// Gets or sets the single combat role assigned to this design.
+        /// </summary>
+        public StarfighterRole? Role
         {
-            get => _roles;
-            set => _roles = value ?? new List<StarfighterRole>();
+            get => _hasRole ? _role : ReadLegacyRole(_legacyRoles);
+            set
+            {
+                if (value.HasValue && !Enum.IsDefined(typeof(StarfighterRole), value.Value))
+                    throw new ArgumentOutOfRangeException(
+                        nameof(value),
+                        value,
+                        "Choose a listed starfighter role."
+                    );
+                _role = value;
+                _hasRole = true;
+            }
+        }
+
+        /// <summary>
+        /// Accepts deprecated role lists without writing them to new content or saved games.
+        /// </summary>
+        [Obsolete("Use Role instead.")]
+        [PersistableMember(Name = nameof(Roles))]
+        [PersistableIgnore]
+        private List<string> Roles
+        {
+            get => _legacyRoles;
+            set
+            {
+                List<string> roles = value ?? new List<string>();
+                _ = ReadLegacyRole(roles);
+                _legacyRoles = roles;
+            }
         }
 
         /// <summary>
         /// Gets or sets a fixed design slot in its faction's formation order, or null to order
-        /// the design by its roles when present in battle.
+        /// the design by its role when present in battle.
         /// </summary>
         [PersistableIgnore]
         public int? FormationPriority
@@ -287,7 +316,7 @@ namespace Rebellion.Game.Units
             copy.ResearchOrder = ResearchOrder;
             copy.ResearchDifficulty = ResearchDifficulty;
             copy.UprisingDefense = UprisingDefense;
-            copy.Roles = new List<StarfighterRole>(Roles);
+            copy.Role = Role;
             copy.FormationPriority = FormationPriority;
             copy.MaxSquadronSize = MaxSquadronSize;
             copy.CurrentSquadronSize = CurrentSquadronSize;
@@ -321,30 +350,42 @@ namespace Rebellion.Game.Units
         public bool HasLosses() => CurrentSquadronSize < MaxSquadronSize;
 
         /// <summary>
-        /// Returns the combat roles assigned to this starfighter design.
+        /// Reads deprecated role lists using their established ordering, combining generic
+        /// fighters with multirole designs.
         /// </summary>
-        /// <returns>The design's authored roles.</returns>
-        public IReadOnlyList<StarfighterRole> GetRoles() => Roles;
+        /// <param name="roles">The role names or numeric values from an older definition.</param>
+        /// <returns>The highest-priority role, or null for an empty list.</returns>
+        public static StarfighterRole? ReadLegacyRole(IEnumerable<string> roles)
+        {
+            int priority = int.MaxValue;
+            foreach (string role in roles)
+            {
+                int candidate = role?.Trim() switch
+                {
+                    "Fighter" or "0" => 0,
+                    "Interceptor" or "1" => 1,
+                    "Multirole" or "2" => 2,
+                    "Bomber" or "3" => 3,
+                    "HeavyAssault" or "4" => 4,
+                    _ => throw new ArgumentException($"Unknown starfighter role '{role}'."),
+                };
+                priority = Math.Min(priority, candidate);
+            }
+            return priority == int.MaxValue ? null
+                : priority == 0 ? StarfighterRole.Multirole
+                : (StarfighterRole)priority;
+        }
 
         /// <summary>
-        /// Checks whether this design is assigned a combat role.
-        /// </summary>
-        /// <param name="role">The role to inspect.</param>
-        /// <returns>True when the design has that role.</returns>
-        public bool HasRole(StarfighterRole role) => Roles.Contains(role);
-
-        /// <summary>
-        /// Orders the design by an explicit priority or its earliest assigned combat role.
+        /// Orders the design by an explicit priority or its assigned combat role.
         /// </summary>
         /// <returns>The formation priority, with unclassified designs ordered last.</returns>
         public int GetFormationPriority()
         {
             if (FormationPriority.HasValue)
                 return FormationPriority.Value;
-            int priority = int.MaxValue;
-            foreach (StarfighterRole role in Roles)
-                priority = Math.Min(priority, (int)role);
-            return priority;
+            StarfighterRole? role = Role;
+            return role.HasValue ? (int)role.Value : int.MaxValue;
         }
 
         /// <summary>

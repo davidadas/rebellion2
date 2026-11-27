@@ -59,6 +59,8 @@ namespace Rebellion.Tests.ContentEditor
             Assert.IsNotNull(definition.Element(nameof(Starfighter.HyperdriveCount)));
             Assert.AreEqual(0, unit.HyperdriveCount);
             Assert.IsNotNull(definition.Element(nameof(Starfighter.ConstructionCost)));
+            Assert.IsNull(definition.Element("Roles"));
+            Assert.IsNull(unit.Role);
         }
 
         [Test]

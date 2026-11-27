@@ -54,6 +54,57 @@ namespace Rebellion.Tests.ContentEditor.UI
         }
 
         [Test]
+        public void Render_StarfighterRole_ShowsOneDropdownWithFourChoices()
+        {
+            WriteFixtureFile(
+                "Data/starfighters.xml",
+                "<Starfighters><Starfighter><TypeID>FIGHTER</TypeID>"
+                    + "<Roles><StarfighterRole>Bomber</StarfighterRole></Roles>"
+                    + "</Starfighter></Starfighters>"
+            );
+            UpdateBaseFactionDefinition(faction =>
+                faction.StarfightersPath = "Data/starfighters.xml"
+            );
+            using ContentPackEditorProject fighters = ContentPackEditorStorage.Create(
+                contentRoot,
+                "base-pack",
+                "fighters",
+                "Fighters",
+                "1.0.0"
+            );
+            ContentPackEditorRecord record = fighters
+                .GetCatalogs()
+                .Single(catalog => catalog.Name == "Starfighters")
+                .Records.Single();
+            ContentPackEditorField field = record.GetField("Role");
+            string before = field.Document.Text;
+            control.Submitted += (selected, values) => fighters.SetField(selected, values.Single());
+
+            control.Render(
+                ContentPackEditorProjector.BuildField(fighters, field),
+                null,
+                null,
+                null
+            );
+            control.SetLayout(new Rect(0, 0, 1000, 0), 220);
+
+            TMP_Dropdown dropdown = control.GetComponentInChildren<TMP_Dropdown>();
+            Assert.IsNotNull(dropdown);
+            CollectionAssert.AreEqual(
+                new[] { "Interceptor", "Multirole", "Bomber", "Heavy assault" },
+                dropdown.options.Select(option => option.text)
+            );
+            Assert.AreEqual("Bomber", dropdown.options[dropdown.value].text);
+            Assert.IsEmpty(control.GetComponentsInChildren<UICheckboxView>());
+            Assert.AreEqual(before, field.Document.Text);
+
+            dropdown.value = 0;
+
+            Assert.AreEqual("Interceptor", record.Element.Element("Role")?.Value);
+            Assert.IsNull(record.Element.Element("Roles"));
+        }
+
+        [Test]
         public void Render_EmptyAudioList_OffersAddingAClipWithoutAnEditablePath()
         {
             ContentPackEditorField field = ContentEditorUnitAudio

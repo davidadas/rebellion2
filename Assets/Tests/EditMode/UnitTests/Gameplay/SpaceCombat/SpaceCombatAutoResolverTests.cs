@@ -511,7 +511,7 @@ namespace Rebellion.Tests.Gameplay
             foreach (Starfighter fighter in new[] { first, second })
             {
                 fighter.CurrentSquadronSize = 1;
-                fighter.Roles.Add(StarfighterRole.Bomber);
+                fighter.Role = StarfighterRole.Bomber;
             }
             CapitalShip target = CreatePassiveTarget("target", 100);
 
@@ -573,7 +573,7 @@ namespace Rebellion.Tests.Gameplay
                 {
                     TypeID = "unused-design-" + index,
                     ManufacturingFactionInstanceIDs = new List<string> { "owner" },
-                    Roles = new List<StarfighterRole> { StarfighterRole.Bomber },
+                    Role = StarfighterRole.Bomber,
                 })
                 .ToArray();
             CapitalShip firstTarget = CreatePassiveTarget("target", 100);

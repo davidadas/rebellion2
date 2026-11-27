@@ -244,6 +244,8 @@ public sealed class ContentPackEditorRecord
     /// <returns>The editable member, which is attached only when its value changes.</returns>
     public ContentPackEditorField GetField(string memberName)
     {
+        if (Kind == nameof(Starfighter) && memberName == nameof(Starfighter.Role))
+            return GetStarfighterRoleField();
         XElement element = Element.Element(memberName);
         Type type = ContentPackEditorFieldSchema.GetValueType(
             Element,
@@ -275,6 +277,42 @@ public sealed class ContentPackEditorRecord
             element,
             ContentPackEditorField.FormatName(memberName),
             detach: optional ? () => element.Remove() : null
+        );
+    }
+
+    /// <summary>
+    /// Shows a deprecated role list as one optional choice and replaces it only after an edit.
+    /// </summary>
+    /// <returns>The single-role field with reversible legacy-list removal.</returns>
+    private ContentPackEditorField GetStarfighterRoleField()
+    {
+        XElement element = Element.Element(nameof(Starfighter.Role));
+        if (element == null)
+        {
+            StarfighterRole? role = Starfighter.ReadLegacyRole(
+                Element.Elements("Roles").Elements().Select(item => item.Value)
+            );
+            element = new XElement(nameof(Starfighter.Role), role?.ToString() ?? string.Empty);
+        }
+        return new ContentPackEditorField(
+            this,
+            element,
+            "Role",
+            parentOverride: Element,
+            valueTypeOverride: typeof(StarfighterRole),
+            legacyMemberName: "Roles",
+            attach: () =>
+            {
+                Element.Elements("Roles").Remove();
+                if (element.Parent == null)
+                    Element.Add(element);
+            },
+            detach: () =>
+            {
+                if (element.Parent != null)
+                    element.Remove();
+                Element.Elements("Roles").Remove();
+            }
         );
     }
 
