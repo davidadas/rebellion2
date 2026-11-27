@@ -257,7 +257,7 @@ namespace Rebellion.Tests.Gameplay
 
         [TestCase(false)]
         [TestCase(true)]
-        public void TryCompleteNetworkTacticalCombat_RejectsInvalidLandingBeforeApplyingSquadronLoss(
+        public void TryCompleteNetworkTacticalCombat_UnavailableCarrier_RejectsBeforeApplyingSquadronLoss(
             bool carrierDestroyed
         )
         {
