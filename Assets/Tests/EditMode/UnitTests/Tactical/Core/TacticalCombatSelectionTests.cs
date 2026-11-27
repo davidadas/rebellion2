@@ -77,7 +77,7 @@ namespace Rebellion.Tests.Tactical
         }
 
         [Test]
-        public void QueueObject_SingleTrackedMember_DoesNotPromoteHighlightsIntoPrimaryMembership()
+        public void QueueObject_SingleTrackedMember_RetainsTheRequestedGroupAndPrimary()
         {
             Encounter encounter = Create();
             TacticalCombatGroup group = encounter.Session.CreateGroup(encounter.Friendly);
@@ -87,7 +87,7 @@ namespace Rebellion.Tests.Tactical
             encounter.Selection.ProcessPendingCommands();
 
             CollectionAssert.AreEqual(new[] { encounter.Friendly[1] }, encounter.Selection.Members);
-            CollectionAssert.AreEquivalent(encounter.Friendly, encounter.Selection.Highlights);
+            CollectionAssert.AreEqual(new[] { group }, encounter.Selection.Groups);
         }
 
         [Test]

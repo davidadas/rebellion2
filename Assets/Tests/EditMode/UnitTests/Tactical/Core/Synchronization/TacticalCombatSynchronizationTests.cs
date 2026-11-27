@@ -230,7 +230,7 @@ namespace Rebellion.Tests.Tactical
 
         [TestCase(false)]
         [TestCase(true)]
-        public void ApplySnapshot_SelectionHighlights_FollowVisibleRequestedMembers(
+        public void ApplySnapshot_SelectionAndGroupOwnership_RetainRequestedMembers(
             bool selectCategory
         )
         {
@@ -248,27 +248,24 @@ namespace Rebellion.Tests.Tactical
                 : Object(primary.InstanceID);
             Assert.IsTrue(authority.ApplySynchronizedCommand(CombatSide.Defender, selection));
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(1));
+            TacticalCombatGroup requested = replica.GetObjectGroup(CombatSide.Defender, 0);
             CollectionAssert.AreEqual(
                 new[] { "alliance", "alliance-wing" },
-                replica.Selection.Highlights.Select(unit => unit.InstanceID)
+                requested.RequestedMembers.Select(unit => unit.InstanceID)
             );
             Assert.AreEqual(selectCategory ? 2 : 1, replica.Selection.Members.Count);
+            Assert.AreEqual(0, replica.Selection.FindObjectCategory(requested));
 
             joining.Status = CombatUnitStatus.EnteringHyperspace;
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(2));
-            CollectionAssert.AreEqual(
-                new[] { "alliance" },
-                replica.Selection.Highlights.Select(unit => unit.InstanceID)
-            );
+            Assert.IsFalse(replica.Selection.IsDisplayObject(replica.GetUnit("alliance-wing")));
             Assert.AreEqual(selectCategory ? 2 : 1, replica.Selection.Members.Count);
 
             joining.Status = CombatUnitStatus.Active;
             authority.SetObjectGroup(CombatSide.Defender, 0, null);
             ApplyCapturedProjection(replica, authority.CaptureSnapshot(3));
-            CollectionAssert.AreEqual(
-                selectCategory ? new[] { "alliance", "alliance-wing" } : new[] { "alliance" },
-                replica.Selection.Highlights.Select(unit => unit.InstanceID)
-            );
+            Assert.AreEqual(-1, replica.Selection.FindObjectCategory(requested));
+            Assert.AreEqual(selectCategory ? 2 : 1, replica.Selection.Members.Count);
         }
 
         [Test]

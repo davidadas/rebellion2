@@ -129,7 +129,6 @@ namespace Rebellion.Tactical
             _inspected = null;
             PrimaryWaypoint = null;
             _members.Clear();
-            _highlights.Clear();
             _targets.Clear();
             _waypoints.Clear();
             _groups.Clear();
@@ -146,7 +145,6 @@ namespace Rebellion.Tactical
         /// </summary>
         private void Refresh()
         {
-            _highlights.Clear();
             _groups.Clear();
             if (
                 Kind
@@ -222,35 +220,7 @@ namespace Rebellion.Tactical
                 )
             )
                 Clear();
-            BuildHighlights();
             RefreshNotification();
-        }
-
-        /// <summary>
-        /// Builds the display highlights from the refreshed command context and current unit visibility.
-        /// </summary>
-        private void BuildHighlights()
-        {
-            switch (Kind)
-            {
-                case TacticalCombatSelectionKind.ObjectGroup:
-                case TacticalCombatSelectionKind.FighterGroup:
-                    _highlights.AddRange(_members.Where(IsDisplayObject));
-                    break;
-                case TacticalCombatSelectionKind.SingleObject when IsDisplayObject(_primary):
-                    _highlights.Add(_primary);
-                    if (_groups.Count != 0 && FindObjectCategory(_groups[0]) >= 0)
-                        foreach (CombatUnit unit in _groups[0].RequestedMembers)
-                            if (IsDisplayObject(unit))
-                                AddUnique(_highlights, unit);
-                    break;
-                case TacticalCombatSelectionKind.MultipleObjects:
-                    _highlights.AddRange(_members);
-                    break;
-                case TacticalCombatSelectionKind.EnemyInspection when IsDisplayObject(_primary):
-                    _highlights.Add(_primary);
-                    break;
-            }
         }
 
         /// <summary>
