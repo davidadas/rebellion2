@@ -20,7 +20,8 @@ public sealed partial class ContentEditorFormView
         videoResolutions ??= new DisplayManager().GetSupportedResolutions();
         float width = fieldScroll.ScrollArea.ViewportWidth;
         const int gap = 24;
-        int columns = width >= 640 ? 2 : 1;
+        const int minimumStillWidth = 304;
+        int columns = Mathf.Max(1, Mathf.FloorToInt((width - 8 + gap) / (minimumStillWidth + gap)));
         int stillWidth = Mathf.Clamp(
             Mathf.FloorToInt((width - 8 - gap * (columns - 1)) / columns),
             1,

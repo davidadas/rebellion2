@@ -1244,7 +1244,7 @@ public sealed partial class ContentEditorFormView : MonoBehaviour
                         fieldIndex++,
                         0,
                         y,
-                        width,
+                        group.Key == "Image" ? Mathf.Min(448, width) : width,
                         stacked ? 0 : Mathf.Min(244, width * 0.45f)
                     );
                 }

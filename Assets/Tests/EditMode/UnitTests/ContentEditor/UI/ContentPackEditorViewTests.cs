@@ -443,6 +443,46 @@ namespace Rebellion.Tests.ContentEditor.UI
             );
         }
 
+        [TestCase(900, 1)]
+        [TestCase(1200, 2)]
+        [TestCase(1600, 3)]
+        [TestCase(2200, 4)]
+        public void Render_FactionCutscenes_FitsMorePreviewsAcrossWiderWindows(
+            int width,
+            int expectedColumns
+        )
+        {
+            ((RectTransform)view.transform).sizeDelta = new Vector2(width, 900);
+            Canvas.ForceUpdateCanvases();
+            ContentEditorNavigation navigation = new();
+            navigation.Render(project.GetCatalogs());
+            SelectPage(navigation.Find("factions/Alliance"));
+            view.GetComponentsInChildren<Button>()
+                .Single(button => button.name == "CutscenesTab")
+                .onClick.Invoke();
+            Canvas.ForceUpdateCanvases();
+
+            RawImage[] previews = view.GetComponentsInChildren<RawImage>()
+                .Where(image => image.name.StartsWith("ArticleImageTemplate-VideoStill-"))
+                .ToArray();
+            Assert.AreEqual(4, previews.Length);
+            Assert.AreEqual(
+                expectedColumns,
+                previews
+                    .Select(image => UILayout.GetSourceRect(image.rectTransform).x)
+                    .Distinct()
+                    .Count()
+            );
+            foreach (RawImage preview in previews)
+            {
+                RectInt bounds = UILayout.GetSourceRect(preview.rectTransform);
+                RectTransform content = (RectTransform)preview.transform.parent;
+                Assert.GreaterOrEqual(bounds.xMin, 0);
+                Assert.LessOrEqual(bounds.xMax, content.rect.width);
+            }
+            Assert.IsFalse(project.IsDirty);
+        }
+
         [Test]
         public void Render_SelectingStartupPreviewResolution_RequestsTheBuiltInVideoAtThatSize()
         {
