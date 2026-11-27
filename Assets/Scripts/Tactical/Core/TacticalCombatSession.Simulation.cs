@@ -4,6 +4,7 @@ using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
+using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
 {
@@ -320,7 +321,7 @@ namespace Rebellion.Tactical
         /// <param name="side">The side identified by the encounter.</param>
         private void AdvanceWithdrawalMembers(TacticalCombatSide side)
         {
-            if (side.WithdrawalPhase != TacticalCombatSide.DeparturePhase.Departing)
+            if (side.WithdrawalPhase != CombatWithdrawalPhase.Departing)
                 return;
 
             // Capital ships are checked before fighters on both passes.

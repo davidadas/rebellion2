@@ -1,4 +1,5 @@
 using System;
+using Rebellion.Game.Combat;
 
 namespace Rebellion.Tactical
 {
@@ -47,16 +48,13 @@ namespace Rebellion.Tactical
     public sealed class TacticalCombatScheduler
     {
         private const uint _periodMilliseconds = 1000;
-        private const uint _initialProgress = 3;
         private readonly Func<uint> _clock;
         private readonly ITacticalCombatSchedulerSteps _steps;
-        private bool _initialized;
-        private uint _coarseBase;
-        private uint _movementBase;
-        private uint _phase;
+        private readonly ActiveBattle.ClockState _state;
+        private uint _clockOffset;
 
-        public uint Progress { get; private set; }
-        public uint SystemTime { get; private set; } = _initialProgress;
+        public uint Progress => _state.Progress;
+        public uint SystemTime => _state.SystemTime;
 
         /// <summary>
         /// Borrows an explicit clock and the encounter operations whose ordering this scheduler owns.
@@ -65,9 +63,52 @@ namespace Rebellion.Tactical
         /// <param name="clock">The wrapping unsigned monotonic millisecond provider.</param>
         /// <param name="steps">The concrete encounter operations.</param>
         public TacticalCombatScheduler(Func<uint> clock, ITacticalCombatSchedulerSteps steps)
+            : this(clock, steps, new ActiveBattle.ClockState()) { }
+
+        /// <summary>
+        /// Advances the saved clock in place, aligning a new provider with its previous sample.
+        /// </summary>
+        /// <param name="clock">The wrapping unsigned monotonic millisecond provider.</param>
+        /// <param name="steps">The concrete encounter operations.</param>
+        /// <param name="state">The battle's clock and dispatch state.</param>
+        internal TacticalCombatScheduler(
+            Func<uint> clock,
+            ITacticalCombatSchedulerSteps steps,
+            ActiveBattle.ClockState state
+        )
         {
             _clock = clock ?? throw new ArgumentNullException(nameof(clock));
             _steps = steps ?? throw new ArgumentNullException(nameof(steps));
+            _state = state ?? throw new ArgumentNullException(nameof(state));
+            RebaseClock();
+        }
+
+        /// <summary>
+        /// Aligns a restored platform clock with the battle's last saved timestamp.
+        /// </summary>
+        internal void RebaseClock()
+        {
+            if (_state.Initialized)
+                _clockOffset = unchecked(_state.LastSample - _clock());
+        }
+
+        /// <summary>
+        /// Stores the save boundary's timestamp without dispatching any work.
+        /// </summary>
+        internal void CaptureTime()
+        {
+            if (_state.Initialized)
+                SampleClock();
+        }
+
+        /// <summary>
+        /// Samples the clock in the encounter's original time coordinates.
+        /// </summary>
+        /// <returns>The clock time stored for later continuation.</returns>
+        private uint SampleClock()
+        {
+            _state.LastSample = unchecked(_clock() + _clockOffset);
+            return _state.LastSample;
         }
 
         /// <summary>
@@ -78,18 +119,18 @@ namespace Rebellion.Tactical
         /// <returns>Whether a completed ending interval or immediate terminal result finishes the encounter.</returns>
         public bool Advance(float scaledFrameMilliseconds)
         {
-            uint now = _clock();
-            if (!_initialized)
+            uint now = SampleClock();
+            if (!_state.Initialized)
             {
-                _initialized = true;
-                _coarseBase = now;
-                _movementBase = now;
-                Progress = 0;
-                SystemTime = _initialProgress;
-                _phase = 0;
+                _state.Initialized = true;
+                _state.CoarseBase = now;
+                _state.MovementBase = now;
+                _state.Progress = 0;
+                _state.SystemTime = ActiveBattle.ClockState.InitialSystemTime;
+                _state.Phase = ActiveBattle.ClockPhase.Commands;
             }
 
-            uint elapsed = unchecked(now - _coarseBase);
+            uint elapsed = unchecked(now - _state.CoarseBase);
             if (elapsed >= _periodMilliseconds)
                 elapsed = elapsed % _periodMilliseconds + _periodMilliseconds;
 
@@ -97,7 +138,7 @@ namespace Rebellion.Tactical
 
             if (elapsed >= _periodMilliseconds)
             {
-                if (_phase == 5)
+                if (_state.Phase == ActiveBattle.ClockPhase.Movement)
                 {
                     if (_steps.HasTerminalResult)
                         return true;
@@ -107,38 +148,41 @@ namespace Rebellion.Tactical
                 else
                     scaledFrameMilliseconds = 0;
 
-                _phase = 0;
+                _state.Phase = ActiveBattle.ClockPhase.Commands;
                 elapsed -= _periodMilliseconds;
-                Progress = unchecked(Progress + 1);
+                _state.Progress = unchecked(Progress + 1);
             }
 
-            if (_phase == 0)
+            if (_state.Phase == ActiveBattle.ClockPhase.Commands)
             {
-                _coarseBase = unchecked(now - elapsed);
-                if (Progress >= _initialProgress)
+                _state.CoarseBase = unchecked(now - elapsed);
+                if (Progress >= ActiveBattle.ClockState.InitialSystemTime)
                     _steps.DispatchCommands(unchecked(Progress - 1));
-                _phase = 1;
+                _state.Phase = ActiveBattle.ClockPhase.Systems;
             }
-            else if (_phase == 1)
+            else if (_state.Phase == ActiveBattle.ClockPhase.Systems)
             {
                 if (_steps.IsRunning)
                     _steps.AdvanceSystems();
-                SystemTime = unchecked(SystemTime + 1);
-                _phase = 5;
+                _state.SystemTime = unchecked(SystemTime + 1);
+                _state.Phase = ActiveBattle.ClockPhase.Movement;
             }
 
             if (!float.IsNaN(scaledFrameMilliseconds) && scaledFrameMilliseconds != 0)
-                scaledFrameMilliseconds = unchecked(_clock() - _movementBase) % _periodMilliseconds;
+                scaledFrameMilliseconds =
+                    unchecked(SampleClock() - _state.MovementBase) % _periodMilliseconds;
             if (
                 !float.IsNaN(scaledFrameMilliseconds)
                 && scaledFrameMilliseconds != 0
-                && Progress >= _initialProgress
+                && Progress >= ActiveBattle.ClockState.InitialSystemTime
                 && _steps.IsRunning
             )
             {
-                _movementBase = unchecked(_movementBase + (uint)scaledFrameMilliseconds);
+                _state.MovementBase = unchecked(
+                    _state.MovementBase + (uint)scaledFrameMilliseconds
+                );
                 _steps.AdvanceMovement(
-                    (float)_movementBase - scaledFrameMilliseconds,
+                    (float)_state.MovementBase - scaledFrameMilliseconds,
                     scaledFrameMilliseconds
                 );
             }

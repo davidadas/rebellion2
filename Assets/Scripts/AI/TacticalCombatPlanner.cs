@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
@@ -21,14 +22,7 @@ namespace Rebellion.AI.Tactical
         private readonly List<TacticalCombatGroup> _laserGroups = new();
         private readonly List<TargetCandidate> _capitalFirst = new();
         private readonly List<TargetCandidate> _fighterFirst = new();
-        private readonly List<TacticalCombatDeployment.CapitalShipRank>[] _deployments =
-        {
-            new(),
-            new(),
-        };
         private readonly List<CombatUnit>[] _buckets = { new(), new(), new() };
-        private readonly bool[] _partitioned = new bool[2];
-        private readonly int[] _countdown = new int[2];
 
         /// <summary>
         /// Captures the shared assessment and indexes capital deployment once at encounter entry.
@@ -42,12 +36,8 @@ namespace Rebellion.AI.Tactical
         {
             _session = session ?? throw new ArgumentNullException(nameof(session));
             _targeting = targeting ?? throw new ArgumentNullException(nameof(targeting));
-            foreach (CombatUnit unit in session.Units)
-                if (!unit.IsFighter && !unit.IsBattleStation)
-                    _deployments[(int)unit.Side]
-                        .Add(new TacticalCombatDeployment.CapitalShipRank(unit));
-            foreach (List<TacticalCombatDeployment.CapitalShipRank> deployments in _deployments)
-                deployments.Sort(TacticalCombatDeployment.CapitalShipRank.Compare);
+            CaptureInitialDeployment(session.GetSide(CombatSide.Attacker));
+            CaptureInitialDeployment(session.GetSide(CombatSide.Defender));
             session.AutomationRequested += Plan;
         }
 
@@ -68,13 +58,14 @@ namespace Rebellion.AI.Tactical
         /// <param name="side">The side whose candidates were prepared for the current tick.</param>
         public void Plan(TacticalCombatSide side)
         {
-            if (!side.IsAutomated || side.IsWithdrawing || --_countdown[(int)side.Side] > 0)
+            if (!side.IsAutomated || side.IsWithdrawing || --side.AutomationCountdown > 0)
                 return;
-            _countdown[(int)side.Side] = 6;
-            if (!_partitioned[(int)side.Side])
+            side.AutomationCountdown = 6;
+            if (!side.CapitalGroupsPartitioned)
             {
-                _partitioned[(int)side.Side] = true;
-                Partition(side.Side);
+                side.CapitalGroupsPartitioned = true;
+                Partition(side);
+                side.InitialCapitalDeployment = null;
             }
             Replan(side);
             CombatSide opposing =
@@ -129,17 +120,36 @@ namespace Rebellion.AI.Tactical
         }
 
         /// <summary>
+        /// Records the original capital ship grouping order before combat damage can affect it.
+        /// </summary>
+        /// <param name="side">The side that may later be automated.</param>
+        private void CaptureInitialDeployment(TacticalCombatSide side)
+        {
+            if (side.InitialCapitalDeployment != null)
+                return;
+
+            List<TacticalCombatDeployment.CapitalShipRank> deployments = new();
+            foreach (CombatUnit unit in _session.Units)
+                if (unit.Side == side.Side && !unit.IsFighter && !unit.IsBattleStation)
+                    deployments.Add(new(unit));
+            deployments.Sort(TacticalCombatDeployment.CapitalShipRank.Compare);
+            side.InitialCapitalDeployment = deployments
+                .Select(rank => (rank.Unit, rank.Category))
+                .ToArray();
+        }
+
+        /// <summary>
         /// Partitions capital ships into range-ordered weapon categories before initial automatic targeting.
         /// </summary>
         /// <param name="side">The automated side.</param>
-        private void Partition(CombatSide side)
+        private void Partition(TacticalCombatSide side)
         {
             foreach (TacticalCombatGroup group in _session.Groups)
-                if (group.Side == side && !group.IsFighterGroup)
+                if (group.Side == side.Side && !group.IsFighterGroup)
                     _session.DeleteGroup(group);
             foreach (List<CombatUnit> bucket in _buckets)
                 bucket.Clear();
-            foreach (TacticalCombatDeployment.CapitalShipRank deployment in _deployments[(int)side])
+            foreach (var deployment in side.InitialCapitalDeployment)
                 if (deployment.Unit.IsTargetable)
                     _buckets[deployment.Category].Add(deployment.Unit);
             int first = PartitionBucket(_buckets[0], 0, 3);

@@ -219,6 +219,44 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Rebuilds tactical execution around the saved participant objects and pending work.
+        /// </summary>
+        /// <param name="battle">The saved encounter.</param>
+        /// <param name="planet">The system where the encounter is taking place.</param>
+        /// <returns>The encounter ready to present in its paused state.</returns>
+        internal TacticalCombatSession Resume(ActiveBattle battle, Planet planet)
+        {
+            ActiveBattle.ResumeState state = battle.Resume;
+            Dictionary<string, CombatUnit> byID = battle.Combatants.ToDictionary(
+                unit => unit.InstanceID,
+                StringComparer.Ordinal
+            );
+            CombatUnit GetUnit(string id) => id == null ? null : byID[id];
+
+            LinearCongruentialRandomProvider random = new(state.RandomState);
+            return new TacticalCombatSession(
+                battle,
+                Array.Empty<TacticalCombatGroup>(),
+                TacticalCombatSide.RestoreState(state.Sides[(int)CombatSide.Attacker], GetUnit),
+                TacticalCombatSide.RestoreState(state.Sides[(int)CombatSide.Defender], GetUnit),
+                state.PlayerSide,
+                state.BattleDepth,
+                random,
+                _attachAutomation,
+                _definition,
+                _definition.Environments.FirstOrDefault(environment =>
+                    environment.PlanetIconPath == planet.PlanetIconPath
+                ),
+                new TacticalCombatSceneryRandom(
+                    random,
+                    () => TacticalCombatSeed.FromClock(_localClock()),
+                    state.ScenerySeed
+                ),
+                personnelHostInstanceIDs: state.PersonnelHostIDs
+            );
+        }
+
+        /// <summary>
         /// Resolves campaign participants in the order used for tactical registration.
         /// </summary>
         /// <param name="decision">The pending campaign encounter to prepare.</param>

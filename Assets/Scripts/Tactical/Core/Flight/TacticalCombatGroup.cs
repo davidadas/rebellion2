@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
@@ -7,34 +8,6 @@ using Rebellion.Game.ShipComponents;
 
 namespace Rebellion.Tactical
 {
-    /// <summary>
-    /// Identifies the behavior assigned to a tactical group.
-    /// </summary>
-    public enum TacticalCombatOrder
-    {
-        None,
-        HoldFire,
-        Recover,
-        Withdraw,
-        AttackFighters,
-        AttackCapitalShips,
-        AttackBattleStation,
-        LeftHook,
-        RightHook,
-        Hammer,
-        Anvil,
-        Stop,
-    }
-
-    /// <summary>
-    /// Distinguishes general command groups from deployed fighter categories.
-    /// </summary>
-    public enum TacticalCombatGroupKind
-    {
-        Command,
-        Fighter,
-    }
-
     /// <summary>
     /// Owns the orders, navigation points, target lists, and formation of a tactical group.
     /// </summary>
@@ -156,6 +129,84 @@ namespace Rebellion.Tactical
             RequestedTargets = _requestedTargets.AsReadOnly();
             RequestedWaypoints = _requestedWaypoints.AsReadOnly();
             AddRequestedMember(first);
+        }
+
+        /// <summary>
+        /// Captures the registered group, including requested orders due in later command intervals.
+        /// </summary>
+        /// <param name="deployed">Whether creation has applied to the active group's roster.</param>
+        /// <returns>The stored group state.</returns>
+        internal ActiveBattle.GroupState CaptureState(bool deployed) =>
+            new()
+            {
+                ID = ID,
+                Side = Side,
+                Kind = Kind,
+                Deployed = deployed,
+                FighterCategory = FighterCategory,
+                PrimaryMemberID = PrimaryMember?.InstanceID,
+                RequestedLeaderID = RequestedLeader?.InstanceID,
+                Order = Order,
+                ActiveOrder = ActiveOrder,
+                CloseAttack = CloseAttack,
+                ActiveCloseAttack = ActiveCloseAttack,
+                RequestedFormation = RequestedFormation,
+                OrbitPhase = _orbitPhase,
+                MinimumRange = Engagement.MinimumRange,
+                MaximumRange = Engagement.MaximumRange,
+                MovementDistance = Engagement.MovementDistance,
+                Formation = Formation.CaptureState(),
+                Members = _members.ConvertAll(unit => unit.InstanceID),
+                RequestedMembers = _requestedMembers.ConvertAll(unit => unit.InstanceID),
+                Targets = _targets.ConvertAll(unit => unit.InstanceID),
+                RequestedTargets = _requestedTargets.ConvertAll(unit => unit.InstanceID),
+                FiringTargets = _firingTargets.ConvertAll(unit => unit.InstanceID),
+                Waypoints = new(_waypoints),
+                RequestedWaypoints = new(_requestedWaypoints),
+            };
+
+        /// <summary>
+        /// Restores applied and requested group state, including groups awaiting creation.
+        /// </summary>
+        /// <param name="state">The saved group state.</param>
+        /// <param name="session">The session supplying the roster and side's heading.</param>
+        /// <returns>The restored group, ready to register with the session.</returns>
+        internal static TacticalCombatGroup RestoreState(
+            ActiveBattle.GroupState state,
+            TacticalCombatSession session
+        )
+        {
+            CombatUnit first =
+                session.GetUnit(state.PrimaryMemberID ?? state.RequestedLeaderID)
+                ?? session.Units.First(unit => unit.Side == state.Side);
+            TacticalCombatGroup group = new(
+                state.ID,
+                first,
+                session.GetSide(state.Side).Forward,
+                state.Kind
+            )
+            {
+                PrimaryMember = session.GetUnit(state.PrimaryMemberID),
+                RequestedLeader = session.GetUnit(state.RequestedLeaderID),
+                FighterCategory = state.FighterCategory,
+                Order = state.Order,
+                ActiveOrder = state.ActiveOrder,
+                CloseAttack = state.CloseAttack,
+                ActiveCloseAttack = state.ActiveCloseAttack,
+                RequestedFormation = state.RequestedFormation,
+                _orbitPhase = state.OrbitPhase,
+            };
+            group._members.AddRange(state.Members.Select(session.GetUnit));
+            group._requestedMembers.Clear();
+            group._requestedMembers.AddRange(state.RequestedMembers.Select(session.GetUnit));
+            group._targets.AddRange(state.Targets.Select(session.GetUnit));
+            group._requestedTargets.AddRange(state.RequestedTargets.Select(session.GetUnit));
+            group._firingTargets.AddRange(state.FiringTargets.Select(session.GetUnit));
+            group._waypoints.AddRange(state.Waypoints);
+            group._requestedWaypoints.AddRange(state.RequestedWaypoints);
+            group.Engagement.RestoreState(state);
+            group.Formation.RestoreState(state.Formation, session.GetUnit);
+            return group;
         }
 
         /// <summary>

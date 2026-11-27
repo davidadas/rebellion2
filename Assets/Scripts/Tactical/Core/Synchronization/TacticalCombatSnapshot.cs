@@ -121,7 +121,7 @@ namespace Rebellion.Tactical.Synchronization
         public bool Withdrawing;
         public float WithdrawalMilliseconds;
         public bool HasWithdrawalPhase;
-        public TacticalCombatSide.DeparturePhase WithdrawalPhase;
+        public CombatWithdrawalPhase WithdrawalPhase;
         public float AttackBudget;
     }
 

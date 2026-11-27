@@ -49,11 +49,13 @@ namespace Rebellion.Gameplay
         /// Gets whether settled state can be saved, including the completed-tick callback before
         /// its iterator releases the execution guard. Executing commands remain excluded.
         /// </summary>
-        public bool CanCaptureSettledState =>
-            IsOperationBoundaryClear
-            && !HasPendingGameplayResults
-            && !HasPendingOwnershipChanges
-            && Tick.IsSettled;
+        public bool CanCaptureSettledState => IsCaptureBoundaryClear && Tick.IsSettled;
+
+        internal bool CanCaptureSaveState =>
+            IsCaptureBoundaryClear && (Tick.IsSettled || Tick.CanCaptureTacticalCombat);
+
+        private bool IsCaptureBoundaryClear =>
+            IsOperationBoundaryClear && !HasPendingGameplayResults && !HasPendingOwnershipChanges;
 
         private bool HasPendingGameplayResults =>
             !_disposed
@@ -80,6 +82,15 @@ namespace Rebellion.Gameplay
         internal GameResultBus Results { get; private set; }
 
         /// <summary>
+        /// Captures work that is suspended while a local tactical battle is open.
+        /// </summary>
+        internal void PrepareSave()
+        {
+            if (Tick.CanCaptureTacticalCombat)
+                Tick.CaptureTacticalCombat();
+        }
+
+        /// <summary>
         /// Prepares a game graph and constructs its connected runtime components.
         /// </summary>
         /// <param name="game">The active game graph.</param>
@@ -98,10 +109,7 @@ namespace Rebellion.Gameplay
                 () => MessageObserver,
                 results => GetService<SpaceCombatAftermath>().HandleResults(results)
             );
-            Tick = new GameTickProcessor(
-                Pipeline.ProcessResults,
-                results => Pipeline.ProcessMessageReactions(results)
-            );
+            Tick = new GameTickProcessor(Pipeline);
             _commands = new SimulationCommandQueue(() =>
                 Tick.CanAcceptPlayerActions
                 && _canExecuteCommands?.Invoke() != false

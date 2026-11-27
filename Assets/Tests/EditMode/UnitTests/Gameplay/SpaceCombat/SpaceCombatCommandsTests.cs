@@ -5713,14 +5713,27 @@ namespace Rebellion.Tests.Gameplay
             attacker.SystemDamage.Weapons = 1;
             attacker.SublightSpeed = 4;
             enemy.GetChildren<CapitalShip>()[0].TypeID = "ALCS008";
+            SpaceCombatCommands commands = CreateTacticalCommands(game);
+            Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));
+            return (game, commands, attacker);
+        }
+
+        /// <summary>
+        /// Connects tactical commands to the campaign before or after a save.
+        /// </summary>
+        /// <param name="game">The campaign owning the forces.</param>
+        /// <returns>The combat commands that own the tactical encounter.</returns>
+        private static SpaceCombatCommands CreateTacticalCommands(GameRoot game)
+        {
+            MovementQueries movementQueries = new(game);
             MovementCommands movement = new(
                 game,
                 new FogOfWarCommands(game),
                 new FleetCommands(game),
                 new FogOfWarQueries(game),
-                new MovementQueries(game)
+                movementQueries
             );
-            SpaceCombatQueries queries = new(game, new MovementQueries(game));
+            SpaceCombatQueries queries = new(game, movementQueries);
             TacticalCombatFactory factory = new(
                 game,
                 TacticalTestData.CreateDefinition(),
@@ -5728,9 +5741,7 @@ namespace Rebellion.Tests.Gameplay
                 TacticalCombatPlanner.Attach,
                 () => new LinearCongruentialRandomProvider(42)
             );
-            SpaceCombatCommands commands = new(game, movement, queries, tacticalFactory: factory);
-            Assert.IsNotEmpty(new SpaceCombatTickProcessor(commands).ProcessTick(game));
-            return (game, commands, attacker);
+            return new(game, movement, queries, tacticalFactory: factory);
         }
 
         /// <summary>
@@ -6343,12 +6354,58 @@ namespace Rebellion.Tests.Gameplay
         [TestCase("repair")]
         public void ResolveCombat_SeededScenario_RecordsComparisonTrace(string scenario)
         {
+            (List<string> trace, List<string> cues) = RunSeededCombat(scenario);
+            string outputDirectory = Environment.GetEnvironmentVariable(
+                "REBELLION_BATTLE_COMPARISON"
+            );
+            if (!string.IsNullOrEmpty(outputDirectory))
+            {
+                Directory.CreateDirectory(outputDirectory);
+                File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".txt"), trace);
+                File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".cues.txt"), cues);
+            }
+        }
+
+        [TestCase("gunnery", 0)]
+        [TestCase("gunnery", 137)]
+        [TestCase("carrier", 212)]
+        [TestCase("carrier", 531)]
+        [TestCase("recovery", 382)]
+        [TestCase("withdrawal", 253)]
+        [TestCase("station", 409)]
+        [TestCase("repair", 863)]
+        public void CompleteTacticalCombat_Reloaded_MatchesUninterruptedBattle(
+            string scenario,
+            int reloadFrame
+        )
+        {
+            (List<string> battle, List<string> cues) = RunSeededCombat(scenario);
+            (List<string> restoredBattle, List<string> restoredCues) = RunSeededCombat(
+                scenario,
+                reloadFrame
+            );
+
+            CollectionAssert.AreEqual(battle, restoredBattle);
+            CollectionAssert.AreEqual(cues, restoredCues);
+        }
+
+        /// <summary>
+        /// Records tactical effects and campaign aftermath for a seeded encounter.
+        /// </summary>
+        /// <param name="scenario">The forces and commands to exercise.</param>
+        /// <param name="reloadFrame">The optional frame at which battle XML is round-tripped.</param>
+        /// <returns>The mechanics and authored audio cues in execution order.</returns>
+        private (List<string> Trace, List<string> Cues) RunSeededCombat(
+            string scenario,
+            int? reloadFrame = null
+        )
+        {
             (GameRoot game, SpaceCombatCommands commands, CapitalShip attacker) =
                 CreateTacticalEncounter();
             game.UseDeterministicRuntimeIdentifiers = true;
             Fleet fleet = attacker.GetParentOfType<Fleet>();
             Planet planet = fleet.GetParentOfType<Planet>();
-            if (scenario == "carrier")
+            if (scenario is "carrier" or "recovery")
             {
                 Starfighter fighter = TacticalTestData.CreateFighter();
                 fighter.InstanceID = "launch-squadron";
@@ -6420,23 +6477,46 @@ namespace Rebellion.Tests.Gameplay
             {
                 TacticalCombatSession battle = commands.BeginTacticalCombat();
                 int frame = 0;
-                battle.Audio.NotificationRequested += (messageID, loop) =>
-                    cues.Add($"cue {frame} {battle.SystemTime} {messageID} {loop}");
-                battle.ShotFired += shot =>
-                    trace.Add(
-                        FormattableString.Invariant(
-                            $"shot {frame} {battle.SystemTime} {shot.Source.InstanceID} {shot.Target.InstanceID} {GetTraceWeapon(shot.Weapon)} {shot.Strength:R} {shot.ImpactDelay}"
-                        )
-                    );
-                battle.ImpactApplied += (unit, weapon, kind) =>
-                    trace.Add(
-                        $"impact {frame} {battle.SystemTime} {unit.InstanceID} {GetTraceWeapon(weapon)} {kind}"
-                    );
-                battle.UnitDestroyed += unit => trace.Add($"destroyed {frame} {unit.InstanceID}");
-                battle.UnitWithdrawn += unit => trace.Add($"withdrawn {frame} {unit.InstanceID}");
-                battle.FighterRecovered += unit =>
-                    trace.Add($"recovered {frame} {unit.InstanceID} {unit.CarrierID}");
-                if (scenario is "gunnery" or "carrier")
+                CombatUnit repairShip = null;
+                bool attackRunFinished = false;
+                bool reloaded = false;
+
+                void AttachTrace()
+                {
+                    battle.Audio.NotificationRequested += (messageID, loop) =>
+                        cues.Add($"cue {frame} {battle.SystemTime} {messageID} {loop}");
+                    battle.ShotFired += shot =>
+                        trace.Add(
+                            FormattableString.Invariant(
+                                $"shot {frame} {battle.SystemTime} {shot.Source.InstanceID} {shot.Target.InstanceID} {GetTraceWeapon(shot.Weapon)} {shot.Strength:R} {shot.ImpactDelay}"
+                            )
+                        );
+                    battle.ImpactApplied += (unit, weapon, kind) =>
+                        trace.Add(
+                            $"impact {frame} {battle.SystemTime} {unit.InstanceID} {GetTraceWeapon(weapon)} {kind}"
+                        );
+                    battle.UnitDestroyed += unit =>
+                        trace.Add($"destroyed {frame} {unit.InstanceID}");
+                    battle.UnitWithdrawn += unit =>
+                        trace.Add($"withdrawn {frame} {unit.InstanceID}");
+                    battle.FighterRecovered += unit =>
+                        trace.Add($"recovered {frame} {unit.InstanceID} {unit.CarrierID}");
+                    if (scenario != "station")
+                        return;
+                    battle.AttackRunMovieRequested += request =>
+                    {
+                        trace.Add(
+                            $"attack-run {frame} {battle.SystemTime} {request.AttackRun.State}"
+                        );
+                        attackRunFinished = true;
+                    };
+                    battle.SuperlaserFired += (source, target) =>
+                        trace.Add(
+                            $"superlaser {frame} {battle.SystemTime} {source.InstanceID} {target.InstanceID}"
+                        );
+                }
+                AttachTrace();
+                if (scenario is "gunnery" or "carrier" or "recovery")
                     battle.SetTarget(
                         battle.GetGroup(battle.GetUnit(attacker.InstanceID)),
                         battle.Units.Single(unit => unit.Side != battle.PlayerSide)
@@ -6444,8 +6524,6 @@ namespace Rebellion.Tests.Gameplay
                 if (scenario == "withdrawal")
                     Assert.IsTrue(battle.BeginWithdrawal(battle.PlayerSide));
 
-                CombatUnit repairShip = null;
-                bool attackRunFinished = false;
                 if (scenario == "repair")
                 {
                     repairShip = battle.GetUnit(attacker.InstanceID);
@@ -6458,17 +6536,6 @@ namespace Rebellion.Tests.Gameplay
                     CombatUnit fighter = battle.GetUnit(attackRunFighterID);
                     Assert.AreEqual(stationID, battle.BattleStation.Unit.InstanceID);
                     Assert.IsTrue(battle.CanAttackBattleStation(fighter.Side));
-                    battle.AttackRunMovieRequested += request =>
-                    {
-                        trace.Add(
-                            $"attack-run {frame} {battle.SystemTime} {request.AttackRun.State}"
-                        );
-                        attackRunFinished = true;
-                    };
-                    battle.SuperlaserFired += (source, target) =>
-                        trace.Add(
-                            $"superlaser {frame} {battle.SystemTime} {source.InstanceID} {target.InstanceID}"
-                        );
                     CombatUnit target = battle.Units.Single(unit =>
                         unit.Side == fighter.Side && !unit.IsFighter
                     );
@@ -6480,7 +6547,42 @@ namespace Rebellion.Tests.Gameplay
                 }
                 for (; frame < 6000 && !battle.IsComplete; frame++)
                 {
-                    if (frame == 1800 && scenario is "carrier" or "gunnery" or "repair")
+                    if (scenario == "recovery" && frame == 300)
+                        battle.SetOrder(
+                            battle.GetGroup(battle.GetUnit("launch-squadron")),
+                            TacticalCombatOrder.Recover
+                        );
+                    if (frame == reloadFrame)
+                    {
+                        commands.CaptureTacticalCombat();
+                        if (scenario == "carrier" && frame == 212)
+                            Assert.IsTrue(
+                                game.ActiveBattle.Resume.Commands.Any(command =>
+                                    command.Kind == ActiveBattle.CommandKind.Launch
+                                )
+                            );
+                        if (scenario == "recovery")
+                            Assert.IsTrue(
+                                game.ActiveBattle.Resume.Carriers.Any(carrier =>
+                                    carrier.Recoveries.Any(recovery => recovery.HoldsReservation)
+                                )
+                            );
+                        string xml = SerializationHelper.Serialize(game.ActiveBattle);
+                        game.ActiveBattle = SerializationHelper.Deserialize<ActiveBattle>(xml);
+                        commands = CreateTacticalCommands(game);
+                        Assert.IsTrue(commands.RestoreSavedTacticalCombat());
+                        battle = commands.ActiveTacticalCombat;
+                        Assert.IsTrue(battle.IsPaused);
+                        battle.IsPaused = false;
+                        if (repairShip != null)
+                            repairShip = battle.GetUnit(attacker.InstanceID);
+                        AttachTrace();
+                        reloaded = true;
+                    }
+                    if (
+                        frame == 1800
+                        && scenario is "carrier" or "gunnery" or "recovery" or "repair"
+                    )
                         battle.RequestImmediateResult();
                     battle.Advance(50);
                     if (battle.PendingAttackRunMovie is TacticalCombatMovieRequest movie)
@@ -6503,6 +6605,15 @@ namespace Rebellion.Tests.Gameplay
                     }
                 }
                 Assert.IsTrue(battle.IsComplete, scenario);
+                if (scenario == "recovery")
+                    Assert.IsTrue(
+                        trace.Any(item => item.StartsWith("recovered ", StringComparison.Ordinal))
+                    );
+                Assert.AreEqual(
+                    reloadFrame.HasValue,
+                    reloaded,
+                    "The test must reach the save frame."
+                );
                 if (scenario == "station")
                 {
                     Assert.IsTrue(attackRunFinished, "The station attack should reach its movie.");
@@ -6563,15 +6674,7 @@ namespace Rebellion.Tests.Gameplay
                     $"fleet {remaining.InstanceID} {remaining.ParentInstanceID} {remaining.Movement?.TicksRemaining()}"
                 );
             trace.Add($"campaign-random-index {game.RandomIndex}");
-            string outputDirectory = Environment.GetEnvironmentVariable(
-                "REBELLION_BATTLE_COMPARISON"
-            );
-            if (!string.IsNullOrEmpty(outputDirectory))
-            {
-                Directory.CreateDirectory(outputDirectory);
-                File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".txt"), trace);
-                File.WriteAllLines(Path.Combine(outputDirectory, scenario + ".cues.txt"), cues);
-            }
+            return (trace, cues);
         }
 
         /// <summary>

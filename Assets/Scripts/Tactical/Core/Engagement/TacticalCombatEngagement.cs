@@ -29,6 +29,17 @@ namespace Rebellion.Tactical
         public float MovementDistance { get; private set; } = 5;
 
         /// <summary>
+        /// Restores the engagement window that was last calculated during a system update.
+        /// </summary>
+        /// <param name="state">The saved group supplying the engagement distances.</param>
+        internal void RestoreState(ActiveBattle.GroupState state)
+        {
+            MinimumRange = state.MinimumRange;
+            MaximumRange = state.MaximumRange;
+            MovementDistance = state.MovementDistance;
+        }
+
+        /// <summary>
         /// Recomputes the group's engagement window for its current primary target.
         /// </summary>
         /// <param name="members">The group's ordered member roster.</param>

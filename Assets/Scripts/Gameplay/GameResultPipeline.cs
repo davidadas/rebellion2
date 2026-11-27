@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
@@ -125,12 +126,23 @@ namespace Rebellion.Gameplay
         /// Delivers messages and drains any result reactions that request additional messages.
         /// </summary>
         /// <param name="resolvedResults">The already-processed results to extend in place.</param>
-        public void ProcessMessageReactions(List<GameResult> resolvedResults)
+        public void ProcessMessageReactions(List<GameResult> resolvedResults) =>
+            ProcessMessageReactions(resolvedResults, null);
+
+        /// <summary>
+        /// Releases the messages restored with a battle and the newly settled consequences.
+        /// </summary>
+        /// <param name="resolvedResults">The settled facts to extend with delivery reactions.</param>
+        /// <param name="deferred">The deliveries that were waiting when the battle was saved.</param>
+        internal void ProcessMessageReactions(
+            List<GameResult> resolvedResults,
+            IReadOnlyList<ActiveBattle.DeferredMessage> deferred
+        )
         {
             _processingDepth++;
             try
             {
-                ProcessMessageReactionsCore(resolvedResults);
+                ProcessMessageReactionsCore(resolvedResults, deferred);
             }
             finally
             {
@@ -142,15 +154,20 @@ namespace Rebellion.Gameplay
         /// Delivers callbacks inside the active publication boundary.
         /// </summary>
         /// <param name="resolvedResults">The completed facts to deliver.</param>
-        private void ProcessMessageReactionsCore(List<GameResult> resolvedResults)
+        /// <param name="deferred">The deliveries that were waiting when the battle was saved.</param>
+        private void ProcessMessageReactionsCore(
+            List<GameResult> resolvedResults,
+            IReadOnlyList<ActiveBattle.DeferredMessage> deferred
+        )
         {
             HashSet<MessageDeliveredResult> notifiedDeliveries = new();
             List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
-            while (pendingMessageResults.Count > 0)
+            while (pendingMessageResults.Count > 0 || deferred?.Count > 0)
             {
                 NotifyMessageDeliveries(pendingMessageResults, notifiedDeliveries);
                 List<GameResult> deliveredResults = _getMessageObserver()
-                    .ProcessResults(pendingMessageResults);
+                    .ProcessResults(pendingMessageResults, deferred);
+                deferred = null;
                 if (deliveredResults.Count == 0)
                     return;
                 List<GameResult> deliveryReactions = _getResults()

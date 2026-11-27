@@ -9,21 +9,6 @@ using Rebellion.Tactical.Synchronization;
 namespace Rebellion.Tactical
 {
     /// <summary>
-    /// Identifies the command context represented by the tactical selection.
-    /// </summary>
-    public enum TacticalCombatSelectionKind
-    {
-        Empty,
-        SingleObject,
-        EnemyInspection,
-        WaypointInspection,
-        MultipleObjects,
-        ObjectGroup,
-        FighterGroup,
-        StationTarget,
-    }
-
-    /// <summary>
     /// Owns ordered tactical selection, contextual requests, category commands, and selection playback.
     /// </summary>
     public sealed partial class TacticalCombatSelection : IDisposable

@@ -2637,10 +2637,7 @@ namespace Rebellion.Tests.Tactical
 
             Assert.IsTrue(session.BeginWithdrawal(side));
             CollectionAssert.AreEqual(new[] { messageID.ToString() }, output);
-            Assert.AreEqual(
-                TacticalCombatSide.DeparturePhase.Waiting,
-                session.GetSide(side).WithdrawalPhase
-            );
+            Assert.AreEqual(CombatWithdrawalPhase.Waiting, session.GetSide(side).WithdrawalPhase);
         }
 
         [Test]
@@ -2958,7 +2955,7 @@ namespace Rebellion.Tests.Tactical
 
             for (
                 int frame = 0;
-                frame < 100 && side.WithdrawalPhase == TacticalCombatSide.DeparturePhase.Waiting;
+                frame < 100 && side.WithdrawalPhase == CombatWithdrawalPhase.Waiting;
                 frame++
             )
                 session.Advance(50);

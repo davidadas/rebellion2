@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
@@ -183,20 +184,64 @@ namespace Rebellion.Tactical
             _reserved = 0;
         }
 
+        /// <summary>
+        /// Captures launch order and berth counters without consuming random draws.
+        /// </summary>
+        /// <returns>The carrier's saved state.</returns>
+        internal ActiveBattle.CarrierState CaptureState() =>
+            new()
+            {
+                UnitID = Unit.InstanceID,
+                Occupied = _occupied,
+                Reserved = _reserved,
+                NextLaunch = _nextLaunch,
+                LaunchQueue = _launchQueue.ConvertAll(unit => unit.InstanceID),
+                Recovered = _recovered.ConvertAll(unit => unit.InstanceID),
+                Recoveries = _approaching
+                    .Select(pair => new ActiveBattle.RecoveryState
+                    {
+                        FighterID = pair.Key.InstanceID,
+                        Phase = pair.Value.Phase,
+                        HoldsReservation = true,
+                    })
+                    .ToList(),
+            };
+
+        /// <summary>
+        /// Restores current berths and the session's index of assigned recovery carriers.
+        /// </summary>
+        /// <param name="state">The saved carrier state.</param>
+        /// <param name="getUnit">Resolves identities into the loaded battle roster.</param>
+        /// <param name="recoveries">The session's index by approaching or recovered fighter.</param>
+        internal void RestoreState(
+            ActiveBattle.CarrierState state,
+            Func<string, CombatUnit> getUnit,
+            Dictionary<CombatUnit, Recovery> recoveries
+        )
+        {
+            _occupied = state.Occupied;
+            _reserved = state.Reserved;
+            _nextLaunch = state.NextLaunch;
+            _launchQueue.AddRange(state.LaunchQueue.Select(getUnit));
+            _recovered.AddRange(state.Recovered.Select(getUnit));
+            foreach (ActiveBattle.RecoveryState assignment in state.Recoveries)
+            {
+                CombatUnit fighter = getUnit(assignment.FighterID);
+                Recovery recovery = new(this, fighter) { Phase = assignment.Phase };
+                if (assignment.HoldsReservation)
+                    _approaching.Add(fighter, recovery);
+                recoveries.Add(fighter, recovery);
+            }
+        }
+
         internal sealed class Recovery
         {
-            private enum Phase
-            {
-                Reserved,
-                Approaching,
-                LandingQueued,
-            }
-
             private readonly CombatUnit _fighter;
-            private Phase _phase;
+
+            internal ActiveBattle.RecoveryPhase Phase { get; set; }
 
             public TacticalCombatCarrier Carrier { get; }
-            public bool IsAssigned => _phase != Phase.Reserved;
+            public bool IsAssigned => Phase != ActiveBattle.RecoveryPhase.Reserved;
 
             /// <summary>
             /// Records the fighter and carrier associated with one reserved berth.
@@ -214,7 +259,7 @@ namespace Rebellion.Tactical
             /// </summary>
             public void BeginApproach()
             {
-                _phase = Phase.Approaching;
+                Phase = ActiveBattle.RecoveryPhase.Approaching;
                 _fighter.CarrierID = Carrier.Unit.InstanceID;
             }
 
@@ -224,7 +269,7 @@ namespace Rebellion.Tactical
             /// <returns>Whether the landing command should be queued.</returns>
             public bool TryQueueLanding()
             {
-                if (_phase != Phase.Approaching)
+                if (Phase != ActiveBattle.RecoveryPhase.Approaching)
                     return false;
 
                 float distance = TacticalCombatGeometry.GetRecoveryDistance(
@@ -235,7 +280,7 @@ namespace Rebellion.Tactical
                 if (distance >= 2)
                     return false;
 
-                _phase = Phase.LandingQueued;
+                Phase = ActiveBattle.RecoveryPhase.LandingQueued;
                 return true;
             }
         }

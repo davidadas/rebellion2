@@ -68,11 +68,87 @@ namespace Rebellion.Gameplay
         /// </summary>
         public string ActiveTacticalBattleID => _tacticalEncounter?.BattleID;
 
+        internal bool CanCaptureTacticalCombat =>
+            _pendingDecision != null && ActiveTacticalCombat?.CanCaptureForSave == true;
+
         /// <summary>
         /// Gets whether the waiting encounter has complete tactical deployment definitions.
         /// </summary>
         public bool CanTakeCommand =>
             _pendingDecision != null && _tacticalFactory?.Supports(_pendingDecision) == true;
+
+        /// <summary>
+        /// Captures the active encounter and the campaign forces awaiting its result.
+        /// </summary>
+        internal void CaptureTacticalCombat()
+        {
+            if (!CanCaptureTacticalCombat)
+                throw new InvalidOperationException("There is no local battle ready to save.");
+
+            ActiveTacticalCombat.CaptureForSave();
+            _game.ActiveBattle.Resume.AttackerFleetIDs.AddRange(
+                _pendingDecision.AttackerFleetInstanceIDs
+            );
+            _game.ActiveBattle.Resume.DefenderFleetIDs.AddRange(
+                _pendingDecision.DefenderFleetInstanceIDs
+            );
+        }
+
+        /// <summary>
+        /// Restores the saved tactical battle and the campaign decision it will resolve.
+        /// </summary>
+        /// <returns>Whether the campaign contained a resumable tactical encounter.</returns>
+        internal bool RestoreSavedTacticalCombat()
+        {
+            ActiveBattle battle = _game.ActiveBattle;
+            if (battle == null)
+                return false;
+            if (battle.Resume == null)
+            {
+                if (battle.Kind == BattleKind.Space)
+                {
+                    Planet planet = _game.GetSceneNodeByInstanceID<Planet>(battle.PlanetInstanceID);
+                    if (planet != null)
+                        foreach (Fleet fleet in planet.GetChildren<Fleet>())
+                            if (
+                                battle.AttackingFactionIDs.Contains(fleet.OwnerInstanceID)
+                                || battle.DefendingFactionIDs.Contains(fleet.OwnerInstanceID)
+                            )
+                                fleet.SetCombatState(false);
+                    _game.ActiveBattle = null;
+                }
+                return false;
+            }
+            if (
+                battle.Kind != BattleKind.Space
+                || battle.AttackingFactionIDs.Count != 1
+                || battle.DefendingFactionIDs.Count != 1
+                || _tacticalEncounter.HasValue
+                || _pendingDecision != null
+            )
+                throw new InvalidDataException(
+                    "The saved battle cannot be restored to this campaign."
+                );
+
+            SpaceCombatDecision decision = new()
+            {
+                PlanetInstanceID = battle.PlanetInstanceID,
+                AttackerOwnerInstanceID = battle.AttackingFactionIDs[0],
+                DefenderOwnerInstanceID = battle.DefendingFactionIDs[0],
+                AttackerFleetInstanceIDs = new(battle.Resume.AttackerFleetIDs),
+                DefenderFleetInstanceIDs = new(battle.Resume.DefenderFleetIDs),
+            };
+            if (_tacticalFactory == null || !_tacticalFactory.TryPrepare(decision, out var roster))
+                throw new InvalidDataException(
+                    "The saved battle's forces or tactical content are unavailable."
+                );
+
+            _aftermath?.ValidateBattle(roster.Planet);
+            TacticalCombatSession session = _tacticalFactory.Resume(battle, roster.Planet);
+            PublishTacticalEncounter(roster, battle, session);
+            _pendingDecision = decision;
+            return true;
+        }
 
         /// <summary>
         /// Captures an interactive battle while keeping campaign time and its pending decision suspended.
@@ -146,6 +222,7 @@ namespace Rebellion.Gameplay
             if (
                 session == null
                 || !ReferenceEquals(session, ActiveTacticalCombat)
+                || session.WasRestored
                 || session.SystemTime != 3
             )
                 throw new InvalidOperationException(

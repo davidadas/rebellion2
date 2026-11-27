@@ -1,25 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Util.Random;
 
 namespace Rebellion.Tactical
 {
-    /// <summary>
-    /// Identifies a fighter group's progress through a battle-station attack.
-    /// </summary>
-    public enum TacticalCombatAttackRunState
-    {
-        Approaching,
-        Starting,
-        Succeeding,
-        Failing,
-        Succeeded,
-        Failed,
-        Cancelled,
-    }
-
     /// <summary>
     /// Owns the staged approach, survivor selection, and two-minute attack sequence for one fighter group.
     /// </summary>
@@ -96,6 +83,49 @@ namespace Rebellion.Tactical
         {
             State = state;
             RemainingMilliseconds = remainingMilliseconds;
+        }
+
+        /// <summary>
+        /// Captures the phase and retained entry pools without advancing the run.
+        /// </summary>
+        /// <returns>The saved attack run.</returns>
+        internal ActiveBattle.AttackRunState CaptureState() =>
+            new()
+            {
+                Phase = State,
+                RemainingMilliseconds = RemainingMilliseconds,
+                TransitionPending = _transitionPending,
+                ApproachAnnounced = _approachAnnounced,
+                CandidateDecayed = _candidateDecayed,
+                ProgressNotice = _progressNotice,
+                EntryPools = _entryPools
+                    .Select(pair => new ActiveBattle.AttackRunState.FighterPools
+                    {
+                        UnitID = pair.Key.InstanceID,
+                        Hull = pair.Value.Hull,
+                        Shields = pair.Value.Shields,
+                    })
+                    .ToList(),
+            };
+
+        /// <summary>
+        /// Restores an attack run without applying its entry or next transition again.
+        /// </summary>
+        /// <param name="state">The saved attack run.</param>
+        /// <param name="getUnit">Resolves entry pool owners in the loaded encounter.</param>
+        internal void RestoreState(
+            ActiveBattle.AttackRunState state,
+            Func<string, CombatUnit> getUnit
+        )
+        {
+            State = state.Phase;
+            RemainingMilliseconds = state.RemainingMilliseconds;
+            _transitionPending = state.TransitionPending;
+            _approachAnnounced = state.ApproachAnnounced;
+            _candidateDecayed = state.CandidateDecayed;
+            _progressNotice = state.ProgressNotice;
+            foreach (ActiveBattle.AttackRunState.FighterPools pools in state.EntryPools)
+                _entryPools.Add(getUnit(pools.UnitID), new Pools(pools.Hull, pools.Shields));
         }
 
         /// <summary>

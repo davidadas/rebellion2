@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using Rebellion.Content;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
+using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
 {

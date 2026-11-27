@@ -14,6 +14,8 @@ namespace Rebellion.Tactical
         private readonly Func<int> _calendarSeed;
         private int _seed = -1;
 
+        internal int? InitialSeed { get; private set; }
+
         /// <summary>
         /// Captures the shared battle stream and the platform's calendar-seed boundary.
         /// </summary>
@@ -23,9 +25,23 @@ namespace Rebellion.Tactical
             LinearCongruentialRandomProvider sharedRandom,
             Func<int> calendarSeed
         )
+            : this(sharedRandom, calendarSeed, null) { }
+
+        /// <summary>
+        /// Reproduces authored scenery from its original seed on resume.
+        /// </summary>
+        /// <param name="sharedRandom">The current battle stream.</param>
+        /// <param name="calendarSeed">The deferred seed if scenery has not been generated yet.</param>
+        /// <param name="initialSeed">The previous scenery seed when one has been chosen.</param>
+        internal TacticalCombatSceneryRandom(
+            LinearCongruentialRandomProvider sharedRandom,
+            Func<int> calendarSeed,
+            int? initialSeed
+        )
         {
             _sharedRandom = sharedRandom ?? throw new ArgumentNullException(nameof(sharedRandom));
             _calendarSeed = calendarSeed ?? throw new ArgumentNullException(nameof(calendarSeed));
+            InitialSeed = initialSeed;
         }
 
         /// <summary>
@@ -39,7 +55,7 @@ namespace Rebellion.Tactical
                 return 0;
             if (_seed == -1)
             {
-                int selectedSeed = SelectSeed();
+                int selectedSeed = InitialSeed ??= SelectSeed();
                 _seed = selectedSeed;
                 for (int index = 0; index < 16; index++)
                     _seed = Advance(_seed);

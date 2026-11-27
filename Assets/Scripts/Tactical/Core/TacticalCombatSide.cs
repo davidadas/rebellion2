@@ -1,4 +1,6 @@
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Numerics;
 using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
@@ -11,13 +13,6 @@ namespace Rebellion.Tactical
     /// </summary>
     public sealed class TacticalCombatSide
     {
-        public enum DeparturePhase
-        {
-            Waiting = 2,
-            Departing = 3,
-            Scuttling = 4,
-        }
-
         public CombatSide Side { get; }
         public int FactionIndex { get; }
         public Vector3 Forward { get; }
@@ -29,10 +24,16 @@ namespace Rebellion.Tactical
         public float AdmiralLeadership { get; }
         public float CommanderCombat { get; }
         public bool IsAutomated { get; internal set; }
+        internal bool CapitalGroupsPartitioned { get; set; }
+        internal int AutomationCountdown { get; set; }
+        internal IReadOnlyList<(
+            CombatUnit Unit,
+            int Category
+        )> InitialCapitalDeployment { get; set; }
         public bool IsWithdrawing { get; private set; }
         public float AttackBudget { get; internal set; }
         public float WithdrawalMilliseconds { get; private set; }
-        public DeparturePhase? WithdrawalPhase { get; private set; }
+        public CombatWithdrawalPhase? WithdrawalPhase { get; private set; }
 
         /// <summary>
         /// Projects the authoritative side and withdrawal state into the local view.
@@ -48,6 +49,77 @@ namespace Rebellion.Tactical
         }
 
         /// <summary>
+        /// Captures the support and withdrawal state independently of the campaign roster.
+        /// </summary>
+        /// <returns>The side's saved state.</returns>
+        internal ActiveBattle.SideState CaptureState() =>
+            new()
+            {
+                Side = Side,
+                FactionIndex = FactionIndex,
+                Forward = Forward,
+                HasWithdrawalDestination = HasWithdrawalDestination,
+                InitialWithdrawalMilliseconds = InitialWithdrawalMilliseconds,
+                RetreatStrengthRatio = RetreatStrengthRatio,
+                CapitalCommandCarrierID = CapitalCommandCarrier?.InstanceID,
+                FighterCommandCarrierID = FighterCommandCarrier?.InstanceID,
+                AdmiralLeadership = AdmiralLeadership,
+                CommanderCombat = CommanderCombat,
+                Automated = IsAutomated,
+                CapitalGroupsPartitioned = CapitalGroupsPartitioned,
+                AutomationCountdown = AutomationCountdown,
+                InitialCapitalDeployment =
+                    InitialCapitalDeployment
+                        ?.Select(entry => new ActiveBattle.SideState.CapitalDeployment
+                        {
+                            UnitID = entry.Unit.InstanceID,
+                            Category = entry.Category,
+                        })
+                        .ToList()
+                    ?? new(),
+                AttackBudget = AttackBudget,
+                WithdrawalPhase = WithdrawalPhase,
+                WithdrawalMilliseconds = WithdrawalMilliseconds,
+            };
+
+        /// <summary>
+        /// Restores the side's support and departure progress from the saved encounter.
+        /// </summary>
+        /// <param name="state">The saved side state.</param>
+        /// <param name="getUnit">Resolves identities into the loaded battle roster.</param>
+        /// <returns>The side ready to resume its existing orders.</returns>
+        internal static TacticalCombatSide RestoreState(
+            ActiveBattle.SideState state,
+            Func<string, CombatUnit> getUnit
+        ) =>
+            new(
+                state.Side,
+                state.FactionIndex,
+                state.Forward,
+                state.HasWithdrawalDestination,
+                state.InitialWithdrawalMilliseconds,
+                state.RetreatStrengthRatio,
+                getUnit(state.CapitalCommandCarrierID),
+                getUnit(state.FighterCommandCarrierID),
+                state.AdmiralLeadership,
+                state.CommanderCombat,
+                state.Automated
+            )
+            {
+                CapitalGroupsPartitioned = state.CapitalGroupsPartitioned,
+                AutomationCountdown = state.AutomationCountdown,
+                InitialCapitalDeployment = state
+                    .InitialCapitalDeployment.Select(entry =>
+                        (getUnit(entry.UnitID), entry.Category)
+                    )
+                    .ToArray(),
+                IsWithdrawing = state.WithdrawalPhase != null,
+                AttackBudget = state.AttackBudget,
+                WithdrawalPhase = state.WithdrawalPhase,
+                WithdrawalMilliseconds = state.WithdrawalMilliseconds,
+            };
+
+        /// <summary>
         /// Starts the side's withdrawal countdown once.
         /// </summary>
         internal void BeginWithdrawal()
@@ -56,7 +128,7 @@ namespace Rebellion.Tactical
                 throw new ArgumentOutOfRangeException(nameof(FactionIndex));
 
             IsWithdrawing = true;
-            WithdrawalPhase = DeparturePhase.Waiting;
+            WithdrawalPhase = CombatWithdrawalPhase.Waiting;
             WithdrawalMilliseconds = InitialWithdrawalMilliseconds;
         }
 
@@ -79,7 +151,7 @@ namespace Rebellion.Tactical
         /// <returns>Whether this interval opened the departure phase.</returns>
         internal bool AdvanceWithdrawal(float elapsedMilliseconds)
         {
-            if (WithdrawalPhase != DeparturePhase.Waiting)
+            if (WithdrawalPhase != CombatWithdrawalPhase.Waiting)
                 return false;
 
             double remaining = (double)WithdrawalMilliseconds - elapsedMilliseconds;
@@ -87,14 +159,14 @@ namespace Rebellion.Tactical
             if (remaining > 0)
                 return false;
 
-            WithdrawalPhase = DeparturePhase.Departing;
+            WithdrawalPhase = CombatWithdrawalPhase.Departing;
             return true;
         }
 
         /// <summary>
         /// Records that this side may now scuttle fighters that cannot recover.
         /// </summary>
-        internal void StartScuttling() => WithdrawalPhase = DeparturePhase.Scuttling;
+        internal void StartScuttling() => WithdrawalPhase = CombatWithdrawalPhase.Scuttling;
 
         /// <summary>
         /// Captures the command officers and campaign withdrawal route at battle entry.

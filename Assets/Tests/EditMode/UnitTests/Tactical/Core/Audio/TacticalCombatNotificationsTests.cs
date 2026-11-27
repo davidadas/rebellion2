@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Rebellion.Content;
+using Rebellion.Game.Combat;
 using Rebellion.Gameplay;
 using Rebellion.Tactical;
 using Rebellion.Util.Random;
@@ -291,6 +292,48 @@ namespace Rebellion.Tests.Tactical.Audio
             StringAssert.StartsWith("33-", _played[1].Path);
         }
 
+        [Test]
+        public void Update_ReloadedQueue_PreservesActiveVariantsAndPendingDraws()
+        {
+            _clock = 500;
+            uint first = _notifications.Enqueue(0);
+            for (int index = 1; index < 5; index++)
+                _notifications.Enqueue(0);
+            uint pending = _notifications.Enqueue(0);
+            _played[0].PositionSamples = 1234;
+            string variant = _played[0].Path;
+            ActiveBattle.NotificationQueue saved =
+                SerializationHelper.Deserialize<ActiveBattle.NotificationQueue>(
+                    SerializationHelper.Serialize(_notifications.CaptureState())
+                );
+            _notifications.Dispose();
+            _played.Clear();
+
+            _clock = 35000;
+            _notifications = new TacticalCombatNotifications(
+                new[] { Message(0, 4) },
+                _random,
+                () => _clock,
+                () => _paused,
+                Play
+            );
+            _notifications.RestoreState(saved);
+            _notifications.Update();
+
+            Assert.AreEqual(6, _random.CallCount);
+            Assert.AreEqual(5, _played.Count);
+            Assert.AreEqual(variant, _played[0].Path);
+            Assert.AreEqual(1234, _played[0].PositionSamples);
+            Assert.IsTrue(_notifications.IsActive(first));
+            Assert.IsFalse(_notifications.IsActive(pending));
+            _played[0].IsPlaying = false;
+
+            _notifications.Update();
+
+            Assert.AreEqual(7, _random.CallCount);
+            Assert.IsTrue(_notifications.IsActive(pending));
+        }
+
         /// <summary>
         /// Starts and records an owned playback through the scheduler's public playback boundary.
         /// </summary>
@@ -323,12 +366,15 @@ namespace Rebellion.Tests.Tactical.Audio
             return result;
         }
 
-        private sealed class Playback : ITacticalCombatNotificationPlayback
+        private sealed class Playback
+            : ITacticalCombatNotificationPlayback,
+                ITacticalCombatNotificationPosition
         {
             public string Path { get; }
             public bool Loop { get; }
             public bool IsPlaying { get; set; } = true;
             public int StopCount { get; private set; }
+            public int PositionSamples { get; set; }
 
             /// <summary>
             /// Captures the playback request independently of the scheduler's active queue.

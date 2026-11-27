@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.ShipComponents;
 using Rebellion.Tactical.Synchronization;
 using Rebellion.Util.Random;
+using CommandKind = Rebellion.Game.Combat.ActiveBattle.CommandKind;
 
 namespace Rebellion.Tactical
 {
@@ -56,6 +57,9 @@ namespace Rebellion.Tactical
         internal TacticalCombatDamage Damage { get; } = new();
         private readonly int[] _nextGroupID = new int[2];
         private readonly IRandomNumberProvider _random;
+        private readonly ActiveBattle _battle;
+        private readonly ActiveBattle.ClockState _clockState;
+        private bool _resumePaused;
         private TacticalCombatScheduler _scheduler;
         private double _elapsedFrameClock;
         private bool _usesFrameClock;
@@ -84,9 +88,10 @@ namespace Rebellion.Tactical
         public int SystemTime =>
             _synchronizationReplica
                 ? _synchronizedSystemTime
-                : unchecked((int)(_scheduler?.SystemTime ?? 3));
+                : unchecked((int)_clockState.SystemTime);
         public bool IsComplete { get; private set; }
         public bool IsArriving => _arrival?.IsComplete == false;
+        public bool WasRestored { get; }
         public SpaceCombatResult.BattleOutcome Winner { get; private set; } =
             SpaceCombatResult.BattleOutcome.Draw;
         public bool IsPaused
@@ -99,7 +104,14 @@ namespace Rebellion.Tactical
                         new() { Kind = TacticalCombatCommandKind.Pause, Paused = value }
                     )
                 )
+                {
+                    if (!value && _resumePaused)
+                    {
+                        _resumePaused = false;
+                        _scheduler?.RebaseClock();
+                    }
                     _userPaused = value;
+                }
             }
         }
         public TacticalCombatMovieRequest PendingAttackRunMovie { get; private set; }
@@ -202,7 +214,8 @@ namespace Rebellion.Tactical
                 definition,
                 environment,
                 sceneryRandom,
-                personnelHostInstanceIDs: personnelHostInstanceIDs
+                personnelHostInstanceIDs: personnelHostInstanceIDs,
+                battle: battle
             )
         {
             if (battleClock != null)
@@ -225,6 +238,7 @@ namespace Rebellion.Tactical
         /// <param name="sceneryRandom">The encounter-owned scenery stream, when presentation is available.</param>
         /// <param name="presentationClock">An optional unscaled millisecond clock for encounter replay.</param>
         /// <param name="personnelHostInstanceIDs">The captured host identity for each available embarked officer.</param>
+        /// <param name="battle">The battle owning the persistent roster, when supplied.</param>
         internal TacticalCombatSession(
             IReadOnlyList<CombatUnit> units,
             IReadOnlyList<TacticalCombatGroup> groups,
@@ -238,9 +252,16 @@ namespace Rebellion.Tactical
             TacticalCombatEnvironmentDefinition environment = null,
             ITacticalCombatSceneryRandom sceneryRandom = null,
             Func<uint> presentationClock = null,
-            IReadOnlyList<string> personnelHostInstanceIDs = null
+            IReadOnlyList<string> personnelHostInstanceIDs = null,
+            ActiveBattle battle = null
         )
         {
+            _battle = battle;
+            _clockState =
+                battle == null
+                    ? new ActiveBattle.ClockState()
+                    : battle.Clock ??= new ActiveBattle.ClockState();
+            WasRestored = battle?.Resume != null;
             this._units = new(units ?? throw new ArgumentNullException(nameof(units)));
             this._groups = new(groups ?? throw new ArgumentNullException(nameof(groups)));
             this._random = random ?? throw new ArgumentNullException(nameof(random));
@@ -301,15 +322,21 @@ namespace Rebellion.Tactical
                         unit.HasPlanetaryProtection
                     );
                     BattleStation.ChargeCompleted += NotifyStationCharged;
-                    Vector3 lane = GetSide(unit.Side).Forward;
-                    unit.Position = new Vector3(
-                        lane.Z * battleDepth * 0.5f,
-                        0,
-                        -lane.X * battleDepth * 0.5f
-                    );
+                    if (!WasRestored)
+                    {
+                        Vector3 lane = GetSide(unit.Side).Forward;
+                        unit.Position = new Vector3(
+                            lane.Z * battleDepth * 0.5f,
+                            0,
+                            -lane.X * battleDepth * 0.5f
+                        );
+                    }
                 }
-                unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
-                unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
+                if (!WasRestored)
+                {
+                    unit.CommandBudget = GetSide(unit.Side).GetCommandBudget(unit.IsFighter);
+                    unit.TurnRate = TacticalCombatMotion.GetInitialTurnRate(unit);
+                }
                 if (!unit.IsFighter)
                 {
                     TacticalCombatCarrier carrier = new TacticalCombatCarrier(unit);
@@ -326,7 +353,8 @@ namespace Rebellion.Tactical
                     );
             foreach (CombatUnit unit in this._units)
                 if (
-                    unit.Status == CombatUnitStatus.Docked
+                    !WasRestored
+                    && unit.Status == CombatUnitStatus.Docked
                     && unit.CarrierID != null
                     && _carriers.TryGetValue(unit.CarrierID, out TacticalCombatCarrier carrier)
                 )
@@ -368,6 +396,8 @@ namespace Rebellion.Tactical
             );
             _fireControl.ShotRequested += RequestShot;
             _fireControl.TractorTargetRequested += RequestTractorTarget;
+            if (WasRestored)
+                RestoreSavedState(battle.Resume);
             attachAutomation(this);
         }
 
@@ -423,38 +453,6 @@ namespace Rebellion.Tactical
             /// <param name="elapsedMilliseconds">The admitted continuous duration.</param>
             public void AdvanceMovement(float _, float elapsedMilliseconds) =>
                 _session.AdvanceMovement(elapsedMilliseconds);
-        }
-
-        /// <summary>
-        /// Identifies a queued mutation without exposing renderer or campaign implementation details.
-        /// </summary>
-        private enum CommandKind
-        {
-            DeleteGroup,
-            CreateGroup,
-            AddGroupMember,
-            RemoveGroupMember,
-            Order,
-            AttackMode,
-            Formation,
-            Waypoint,
-            RemoveWaypoint,
-            RemoveTarget,
-            Superlaser,
-            AttackRun,
-            Target,
-            Fire,
-            Hit,
-            System,
-            Launch,
-            SetRecovery,
-            Recover,
-            TractorLock,
-            TractorUnlock,
-            Hyperspace,
-            Withdraw,
-            Destroy,
-            Scuttle,
         }
 
         /// <summary>
