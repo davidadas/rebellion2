@@ -204,7 +204,7 @@ namespace Rebellion.Tactical
             unit.MovementDelay = state.MovementDelay;
             unit.WeaponRechargeSample = state.WeaponRechargeSample;
             unit.ShieldRechargeSample = state.ShieldRechargeSample;
-            unit.RestoreComponentDamage(state.ComponentDamage);
+            unit.RestoreComponentDamage(state.ComponentDamage, state.HyperdriveDamage);
             for (int arc = 0; arc < 4; arc++)
                 unit.SetBatteryCharge((TacticalWeaponArc)arc, state.Charge[arc], state.Ready[arc]);
             unit.HyperspaceMilliseconds = state.HyperspaceMilliseconds;
@@ -358,6 +358,12 @@ namespace Rebellion.Tactical
                     || !participants.Add(state.UnitID)
                     || GetUnit(state.UnitID) == null
                     || state.ComponentDamage?.Length != 5
+                    || state.HyperdriveDamage != null
+                        && (
+                            state.HyperdriveDamage.Any(damage => damage < 0)
+                            || state.HyperdriveDamage.Sum(damage => (long)damage)
+                                != state.ComponentDamage[(int)TacticalShipSystem.Hyperdrive]
+                        )
                     || state.Charge?.Length != 4
                     || state.Ready?.Length != 4
                     || !Enum.IsDefined(typeof(CombatUnitStatus), state.Status)

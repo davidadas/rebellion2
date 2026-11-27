@@ -10,6 +10,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Logging;
 
@@ -809,7 +810,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
 
-            int total = _faction.GetTotalAvailableResourceNodes();
+            int total = ResourceProductionQueries.GetAvailableResourceNodes(null, _faction);
 
             Assert.AreEqual(10, total, "Should only count non-blockaded planets");
         }
@@ -1097,7 +1098,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
 
-            int total = _faction.GetTotalAvailableMinedResources();
+            int total = ResourceProductionQueries.GetAvailableMinedResources(null, _faction);
 
             Assert.AreEqual(20, total, "Should only count non-blockaded planets");
         }
@@ -1173,7 +1174,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
 
-            int total = _faction.GetTotalAvailableRefinementCapacity();
+            int total = ResourceProductionQueries.GetAvailableRefinementCapacity(null, _faction);
 
             Assert.AreEqual(5, total, "Should only count non-blockaded planets");
         }
@@ -1207,7 +1208,7 @@ namespace Rebellion.Tests.Game.Factions
 
             _faction.AddOwnedUnit(_planet1);
 
-            int total = _faction.GetTotalAvailableMaterialsRaw();
+            int total = ResourceProductionQueries.GetAvailableMaterialsRaw(null, _faction);
 
             // Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
             Assert.AreEqual(5, total, "Should calculate available materials correctly");
@@ -1269,7 +1270,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
 
-            int total = _faction.GetTotalAvailableMaterialsRaw();
+            int total = ResourceProductionQueries.GetAvailableMaterialsRaw(null, _faction);
 
             // Only planet1 should count: Min(8, 10) = 8, Min(8, 5) = 5 (raw count before multiplier)
             Assert.AreEqual(5, total, "Should exclude blockaded planets from calculation");
@@ -1306,7 +1307,7 @@ namespace Rebellion.Tests.Game.Factions
             _faction.AddOwnedUnit(_planet1);
             _faction.AddOwnedUnit(_planet2);
 
-            Assert.AreEqual(1, _faction.GetTotalAvailableMaterialsRaw());
+            Assert.AreEqual(1, ResourceProductionQueries.GetAvailableMaterialsRaw(null, _faction));
         }
 
         /// <summary>
@@ -1328,11 +1329,11 @@ namespace Rebellion.Tests.Game.Factions
                     }
                 );
             _faction.AddOwnedUnit(_planet1);
-            Assert.AreEqual(1, _faction.GetTotalAvailableMaterialsRaw());
+            Assert.AreEqual(1, ResourceProductionQueries.GetAvailableMaterialsRaw(null, _faction));
 
             _planet1.IsInUprising = true;
 
-            Assert.AreEqual(0, _faction.GetTotalAvailableMaterialsRaw());
+            Assert.AreEqual(0, ResourceProductionQueries.GetAvailableMaterialsRaw(null, _faction));
         }
 
         [Test]
@@ -1519,7 +1520,7 @@ namespace Rebellion.Tests.Game.Factions
             game.AttachNode(CreateMine("mine2", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
-            int capacity = empire.MaintenanceCapacity;
+            int capacity = ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire);
 
             Assert.AreEqual(50, capacity);
         }
@@ -1540,7 +1541,7 @@ namespace Rebellion.Tests.Game.Factions
             game.AttachNode(CreateMine("mine1", "empire"), planet);
             game.AttachNode(CreateRefinery("ref1", "empire"), planet);
 
-            Assert.AreEqual(50, empire.MaintenanceCapacity);
+            Assert.AreEqual(50, ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire));
         }
 
         [Test]
@@ -1559,7 +1560,7 @@ namespace Rebellion.Tests.Game.Factions
             game.AttachNode(CreateMine("mine1", empire.InstanceID), minePlanet);
             game.AttachNode(CreateRefinery("ref1", empire.InstanceID), refineryPlanet);
 
-            int capacity = empire.MaintenanceCapacity;
+            int capacity = ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire);
 
             Assert.AreEqual(50, capacity);
         }
@@ -1581,27 +1582,10 @@ namespace Rebellion.Tests.Game.Factions
             game.AttachNode(CreateRefinery("ref1", empire.InstanceID), planet);
             game.AttachNode(CreateRefinery("ref2", empire.InstanceID), planet);
 
-            Assert.AreEqual(int.MaxValue, empire.MaintenanceCapacity);
-        }
-
-        [Test]
-        [Category("RequiresMedia")]
-        public void RefinedMaterialSupply_MaximumRefinementMultiplier_SaturatesAtIntegerMaximum()
-        {
-            GameRoot game = CreateGame();
-            Faction empire = CreateFaction("empire", "Empire");
-            empire.Settings.RefinementMultiplier = int.MaxValue;
-            game.GetFactions().Add(empire);
-            PlanetSector sector = new PlanetSector { InstanceID = "s1", DisplayName = "Sector" };
-            Planet planet = CreatePlanet("p1", "Coruscant", empire.InstanceID);
-            game.AttachNode(sector, game.GetGalaxyMap());
-            game.AttachNode(planet, sector);
-            game.AttachNode(CreateMine("mine1", empire.InstanceID), planet);
-            game.AttachNode(CreateMine("mine2", empire.InstanceID), planet);
-            game.AttachNode(CreateRefinery("ref1", empire.InstanceID), planet);
-            game.AttachNode(CreateRefinery("ref2", empire.InstanceID), planet);
-
-            Assert.AreEqual(int.MaxValue, empire.RefinedMaterialSupply);
+            Assert.AreEqual(
+                int.MaxValue,
+                ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire)
+            );
         }
 
         /// <summary>

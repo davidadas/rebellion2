@@ -6,6 +6,7 @@ using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Results;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 
 public static partial class HeadlessSimulationRunner
@@ -203,7 +204,13 @@ public static partial class HeadlessSimulationRunner
                                 FactionId = factionId,
                                 InstanceId = instanceId,
                                 PlanetId = building.GetParentOfType<Planet>()?.InstanceID,
-                                MaintenanceHeadroom = faction?.MaintenanceHeadroom ?? 0,
+                                MaintenanceHeadroom =
+                                    faction == null
+                                        ? 0
+                                        : ResourceProductionQueries.GetBaseMaintenanceHeadroom(
+                                            game,
+                                            faction
+                                        ),
                             }
                         );
                     }

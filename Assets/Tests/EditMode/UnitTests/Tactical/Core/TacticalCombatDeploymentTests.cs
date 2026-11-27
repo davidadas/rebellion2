@@ -27,7 +27,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = CreateUnit(1, 12);
             CapitalShipRank deployment = new(unit);
             for (int damage = 0; damage < 4; damage++)
-                unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                TacticalCombatDamage.ApplyComponentEvent(unit, TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(0, TacticalCombatMotion.GetSpeed(unit));
             Assert.AreEqual(-120001.96f, deployment.Score);
@@ -61,7 +61,7 @@ namespace Rebellion.Tests.Tactical
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 5, 0, 0, 0, range });
-            return new CombatUnit(ship, CombatSide.Attacker, index);
+            return TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, index);
         }
     }
 }

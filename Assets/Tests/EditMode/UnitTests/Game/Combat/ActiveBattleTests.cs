@@ -238,10 +238,14 @@ namespace Rebellion.Tests.Game.Combat
                     CurrentHullStrength = 1000,
                 }
             );
-            unit.InitializeTacticalState(CombatSide.Attacker, 1);
+            TacticalCombatDeployment.InitializeUnit(unit, null, CombatSide.Attacker, 1);
             unit.Position = new Vector3(12, 0, -48);
             unit.ApplyHullLoss(99.5f);
-            unit.ApplyComponentEvent(TacticalShipSystem.Engines, isRepair: false);
+            TacticalCombatDamage.ApplyComponentEvent(
+                unit,
+                TacticalShipSystem.Engines,
+                isRepair: false
+            );
 
             string xml = SerializationHelper.Serialize(game);
             Assert.That(
@@ -301,7 +305,7 @@ namespace Rebellion.Tests.Game.Combat
             );
             Assert.AreEqual(200, source.GetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon));
             CombatUnit unit = game.ActiveBattle.AddCombatant(source);
-            unit.InitializeTacticalState(CombatSide.Attacker, 1);
+            TacticalCombatDeployment.InitializeUnit(unit, null, CombatSide.Attacker, 1);
             unit.DischargeBattery(TacticalWeaponArc.Starboard, TacticalWeaponType.LaserCannon);
             TacticalCombatFireControl.RechargeBatteries(unit, 1, 6);
 

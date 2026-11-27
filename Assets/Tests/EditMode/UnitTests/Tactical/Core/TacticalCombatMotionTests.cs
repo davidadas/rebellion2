@@ -15,7 +15,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_UnorderedPosition_UsesLowerBattleBoundary()
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "ship",
@@ -25,10 +25,8 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Attacker,
                 1
-            )
-            {
-                Position = new Vector3(float.NaN, float.NaN, float.NaN),
-            };
+            );
+            unit.Position = new Vector3(float.NaN, float.NaN, float.NaN);
             TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitZ);
             TacticalCombatSpatialIndex spatial = new(new[] { unit });
             TacticalCombatMotion motion = new();
@@ -44,7 +42,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = CreateFighter();
             unit.CommandBudget = float.Epsilon;
             for (int index = 0; index < 3; index++)
-                unit.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                TacticalCombatDamage.ApplyComponentEvent(unit, TacticalShipSystem.Engines, false);
             TacticalCombatGroup group = new(2, new[] { unit }, Vector3.UnitX);
             TacticalCombatSpatialIndex spatial = new(new[] { unit });
             TacticalCombatMotion motion = new();
@@ -96,7 +94,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The battle registration key.</param>
         /// <returns>The complete tactical ship.</returns>
         private static CombatUnit CreateCapital(int index) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = $"ship-{index}",

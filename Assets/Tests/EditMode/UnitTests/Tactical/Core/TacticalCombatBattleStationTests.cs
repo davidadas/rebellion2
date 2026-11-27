@@ -147,7 +147,7 @@ namespace Rebellion.Tests.Tactical
                     : ManufacturingStatus.Complete,
             };
             return new TacticalCombatBattleStation(
-                new CombatUnit(ship, CombatSide.Defender, 1000001),
+                TacticalCombatDeployment.CreateUnit(ship, CombatSide.Defender, 1000001),
                 protectedByPlanet
             );
         }

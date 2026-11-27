@@ -41,10 +41,15 @@ namespace Rebellion.Tests.Tactical
             };
             carrier.AddStarfighter(sourceFighter);
             sourceFighter.SetParent(carrier);
-            fighter = new CombatUnit(sourceFighter, CombatSide.Attacker, 2);
+            fighter = TacticalCombatDeployment.CreateUnit(sourceFighter, CombatSide.Attacker, 2);
             CombatUnit opposing = CreateUnit("opposing", CombatSide.Defender, 1000001, 0, false);
             return CreateAssessmentSession(
-                new[] { new CombatUnit(carrier, CombatSide.Attacker, 1), fighter, opposing }
+                new[]
+                {
+                    TacticalCombatDeployment.CreateUnit(carrier, CombatSide.Attacker, 1),
+                    fighter,
+                    opposing,
+                }
             );
         }
 
@@ -201,7 +206,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The active squadron with its initial recharge sample intact.</returns>
         internal static CombatUnit CreateUnarmedFighter(string id, int index, float loss)
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = id,
@@ -250,11 +255,10 @@ namespace Rebellion.Tests.Tactical
                 PrimaryWeaponType.Turbolaser,
                 new[] { strength, strength, strength, strength, 100 }
             );
-            return new CombatUnit(ship, side, index)
-            {
-                Position = new Vector3(0, 0, side == CombatSide.Attacker ? -40 : 40),
-                Heading = side == CombatSide.Attacker ? Vector3.UnitZ : -Vector3.UnitZ,
-            };
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(ship, side, index);
+            unit.Position = new Vector3(0, 0, side == CombatSide.Attacker ? -40 : 40);
+            unit.Heading = side == CombatSide.Attacker ? Vector3.UnitZ : -Vector3.UnitZ;
+            return unit;
         }
 
         /// <summary>

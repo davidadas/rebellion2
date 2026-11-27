@@ -104,7 +104,7 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <returns>The captured host used by both command-officer lanes.</returns>
         private static CombatUnit CreateHost() =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "host",

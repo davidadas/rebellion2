@@ -176,6 +176,8 @@ namespace Rebellion.Game.Units
         public CapitalShipSystemDamage SystemDamage { get; set; } = new CapitalShipSystemDamage();
         public CapitalShipGeometry PhysicalGeometry { get; set; }
         public Engine Engine { get; set; }
+
+        [PersistableIgnore]
         public Hyperdrive[] Hyperdrives
         {
             get => _hyperdrives;
@@ -184,6 +186,17 @@ namespace Rebellion.Game.Units
                 _hyperdrives = value ?? Array.Empty<Hyperdrive>();
                 _hasAuthoredHyperdrives = true;
             }
+        }
+
+        [PersistableMember(Name = nameof(Hyperdrives))]
+        [SuppressMessage("Roslynator", "RCS1213", Justification = "Used by the game serializer.")]
+        private Hyperdrive[] SavedHyperdrives
+        {
+            get =>
+                Array.Exists(_hyperdrives, drive => drive == null)
+                    ? Array.ConvertAll(_hyperdrives, drive => drive ?? new Hyperdrive())
+                    : _hyperdrives;
+            set => Hyperdrives = value;
         }
 
         internal bool HasAuthoredHyperdrives => _hasAuthoredHyperdrives || _hyperdrives.Length > 1;
@@ -446,12 +459,12 @@ namespace Rebellion.Game.Units
 
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
-        /// An omitted count provides one system when the travel rating is positive.
+        /// An omitted legacy count uses the installed drives.
         /// </summary>
         [PersistableIgnore]
         public int HyperdriveCount
         {
-            get => _hyperdriveCount ?? (Hyperdrive > 0 ? 1 : 0);
+            get => _hyperdriveCount ?? _hyperdrives.Count(drive => drive is { Rating: > 0 });
             set => _hyperdriveCount = value;
         }
 
@@ -713,10 +726,26 @@ namespace Rebellion.Game.Units
             for (int index = 0; index < _hyperdrives.Length; index++)
             {
                 int rating = GetHyperdriveRating(index);
-                if (rating > 0 && SystemDamage.GetHyperdriveDamage(index) == 0)
+                if (rating > 0 && (SystemDamage?.GetHyperdriveDamage(index) ?? 0) == 0)
                     return rating;
             }
             return 0;
+        }
+
+        /// <summary>
+        /// Counts the drives that can still support automatic combat withdrawal.
+        /// </summary>
+        /// <returns>The number of functioning drives up to the legacy auto-resolve limit.</returns>
+        internal int GetOperationalHyperdriveCount()
+        {
+            int disabled = 0;
+            for (int index = 0; index < _hyperdrives.Length; index++)
+                if (
+                    GetHyperdriveRating(index) > 0
+                    && (SystemDamage?.GetHyperdriveDamage(index) ?? 0) != 0
+                )
+                    disabled++;
+            return Math.Max(0, HyperdriveCount - disabled);
         }
 
         /// <summary>

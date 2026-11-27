@@ -882,9 +882,9 @@ namespace Rebellion.AI
                 (long)ProjectedMaterialCapacity * MaintenanceCapacityPerResourcePair
                     - (faction?.GetTotalProjectedMaintenanceCost() ?? 0)
             );
-            RefinedMaterialSupply = IntegerMath.SaturatingMultiply(
-                AvailableMaterialCapacity,
-                faction?.Settings?.RefinementMultiplier ?? 0
+            RefinedMaterialSupply = ResourceProductionQueries.GetRefinedMaterialSupply(
+                game,
+                faction
             );
             RefinedMaterialStockpile = faction?.RefinedMaterialStockpile ?? 0;
             PendingRawMaterialRequestCount = faction?.PendingRawMaterialFacilityIDs?.Count ?? 0;

@@ -819,10 +819,31 @@ namespace Rebellion.Gameplay
         /// <param name="faction">The faction whose available maintenance is counted.</param>
         /// <returns>The remaining maintenance capacity after committed and ordered units.</returns>
         internal static int GetBaseMaintenanceHeadroom(GameRoot game, Faction faction) =>
+            GetBaseMaintenanceCapacity(game, faction) - faction.GetTotalProjectedMaintenanceCost();
+
+        /// <summary>
+        /// Calculates maintenance capacity before campaign difficulty modifiers.
+        /// </summary>
+        /// <param name="game">The campaign used to check blockades.</param>
+        /// <param name="faction">The faction whose resource pairs support maintenance.</param>
+        /// <returns>The faction's operating base capacity.</returns>
+        internal static int GetBaseMaintenanceCapacity(GameRoot game, Faction faction) =>
             IntegerMath.SaturatingMultiply(
                 GetAvailableMaterialsRaw(game, faction),
                 faction.Settings.ResourceProcessingPointsPerFacility
-            ) - faction.GetTotalProjectedMaintenanceCost();
+            );
+
+        /// <summary>
+        /// Calculates the refined material supply supported by the faction's active production.
+        /// </summary>
+        /// <param name="game">The campaign used to check blockades.</param>
+        /// <param name="faction">The faction whose resource pairs are refined.</param>
+        /// <returns>The multiplier-adjusted material supply.</returns>
+        internal static int GetRefinedMaterialSupply(GameRoot game, Faction faction) =>
+            IntegerMath.SaturatingMultiply(
+                GetAvailableMaterialsRaw(game, faction),
+                faction?.Settings?.RefinementMultiplier ?? 0
+            );
 
         /// <summary>
         /// Totals the limiting material capacity after live production checks.
@@ -830,8 +851,31 @@ namespace Rebellion.Gameplay
         /// <param name="game">The campaign used to check blockades.</param>
         /// <param name="faction">The owning faction.</param>
         /// <returns>The available material capacity before faction multipliers.</returns>
-        private static int GetAvailableMaterialsRaw(GameRoot game, Faction faction) =>
-            Faction.CalculateMaterialCapacity(GetProducingPlanets(game, faction));
+        internal static int GetAvailableMaterialsRaw(GameRoot game, Faction faction) =>
+            CalculateMaterialCapacity(GetProducingPlanets(game, faction));
+
+        /// <summary>
+        /// Totals the usable inputs at producing planets and returns the limiting capacity.
+        /// </summary>
+        /// <param name="producingPlanets">The planets with active production.</param>
+        /// <returns>The total material capacity before faction multipliers.</returns>
+        private static int CalculateMaterialCapacity(IEnumerable<Planet> producingPlanets)
+        {
+            int resourceNodes = 0;
+            int minedResources = 0;
+            int refinementCapacity = 0;
+            foreach (Planet planet in producingPlanets)
+            {
+                checked
+                {
+                    resourceNodes += planet.GetRawResourceNodes();
+                    minedResources += planet.GetActiveMinedResources();
+                    refinementCapacity += planet.GetActiveRefinementCapacity();
+                }
+            }
+
+            return Math.Min(resourceNodes, Math.Min(minedResources, refinementCapacity));
+        }
 
         /// <summary>
         /// Selects the owned planets whose resource production is active.

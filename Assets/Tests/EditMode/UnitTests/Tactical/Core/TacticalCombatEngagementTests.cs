@@ -91,7 +91,7 @@ namespace Rebellion.Tests.Tactical
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { lasers, 0, 0, 0, 10 });
             ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { ions, 0, 0, 0, 10 });
             ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { turbolasers, 0, 0, 0, 10 });
-            return new CombatUnit(ship, CombatSide.Defender, 1000001);
+            return TacticalCombatDeployment.CreateUnit(ship, CombatSide.Defender, 1000001);
         }
 
         /// <summary>
@@ -100,7 +100,7 @@ namespace Rebellion.Tests.Tactical
         /// <returns>The squadron with active laser, ion, and torpedo payloads.</returns>
         private static CombatUnit CreateFighter()
         {
-            CombatUnit unit = new(
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",

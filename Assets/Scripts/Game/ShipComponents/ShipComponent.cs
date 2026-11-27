@@ -11,7 +11,6 @@ namespace Rebellion.Game.ShipComponents
     {
         public int Health { get; set; }
         public bool Targetable { get; set; }
-        public string ModelNodePath { get; set; }
 
         /// <summary>
         /// Copies state shared by every ship component.
@@ -21,7 +20,6 @@ namespace Rebellion.Game.ShipComponents
         {
             copy.Health = Health;
             copy.Targetable = Targetable;
-            copy.ModelNodePath = ModelNodePath;
             CopyStateTo(copy);
         }
 

@@ -8,6 +8,7 @@ using Rebellion.Game;
 using Rebellion.Game.Factions;
 using Rebellion.Game.Galaxy;
 using Rebellion.Game.Units;
+using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
 namespace Rebellion.Tests.AI.Proposals
@@ -65,7 +66,10 @@ namespace Rebellion.Tests.AI.Proposals
             AIMaintenanceRecoveryProposal proposal = CreateProposal();
             _game.DeleteNode(_planet.GetChildren<Regiment>().First());
 
-            Assert.AreEqual(-10, _faction.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(
+                -10,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(_game, _faction)
+            );
             Assert.IsFalse(proposal.CanSelect(_context));
         }
 

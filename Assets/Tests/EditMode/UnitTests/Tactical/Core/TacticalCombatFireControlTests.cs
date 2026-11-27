@@ -140,8 +140,8 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 631,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 137, 0, 0, 0, 100 });
-            CombatUnit source = new(ship, CombatSide.Attacker, 1);
-            CombatUnit target = new(
+            CombatUnit source = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "target",
@@ -150,10 +150,8 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 1000001
-            )
-            {
-                Position = new Vector3(0, 0, 10),
-            };
+            );
+            target.Position = new Vector3(0, 0, 10);
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             TacticalCombatSpatialIndex index = new(new[] { source, target });
             TacticalCombatFireControl fireControl = new();
@@ -220,7 +218,7 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 1000,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 3, 3, 3, 3, 100 });
-            CombatUnit source = new(ship, CombatSide.Attacker, 1);
+            CombatUnit source = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
             CombatUnit target = CreateFighter(1000001, new Vector3(0, 0, 10));
             TacticalCombatGroup group = new(10, new[] { source }, Vector3.UnitZ);
             group.SetTarget(target);
@@ -315,7 +313,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="range">The torpedo range in tactical distance units.</param>
         /// <returns>The armed tactical squadron.</returns>
         private static CombatUnit CreateTorpedoFighter(int range) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "source",
@@ -335,7 +333,7 @@ namespace Rebellion.Tests.Tactical
         /// </summary>
         /// <returns>The firing squadron.</returns>
         private static CombatUnit CreateFiringFighter() =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "source",
@@ -385,7 +383,7 @@ namespace Rebellion.Tests.Tactical
                 PrimaryWeaponType.Turbolaser,
                 new[] { turbolasers, turbolasers, turbolasers, turbolasers, 100 }
             );
-            return new(ship, CombatSide.Attacker, 1);
+            return TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
         }
 
         /// <summary>
@@ -394,8 +392,9 @@ namespace Rebellion.Tests.Tactical
         /// <param name="index">The unique battle identifier.</param>
         /// <param name="position">The squadron's tactical position.</param>
         /// <returns>The campaign-backed tactical squadron.</returns>
-        private static CombatUnit CreateFighter(int index, Vector3 position) =>
-            new(
+        private static CombatUnit CreateFighter(int index, Vector3 position)
+        {
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "target-" + index,
@@ -404,9 +403,9 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 index
-            )
-            {
-                Position = position,
-            };
+            );
+            unit.Position = position;
+            return unit;
+        }
     }
 }

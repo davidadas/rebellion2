@@ -1578,7 +1578,10 @@ namespace Rebellion.Tests.AI.Planners
                 .OfType<AIManufactureProposal>()
                 .Single(item => item.Demand.Kind == AIProductionDemandKind.Shipyard);
 
-            Assert.AreEqual(100, empire.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(
+                100,
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(game, empire)
+            );
             Assert.AreSame(shipyard, proposal.Product.GetReference());
         }
 
@@ -1695,7 +1698,7 @@ namespace Rebellion.Tests.AI.Planners
 
             List<AIProposal> proposals = PlanProduction(context);
 
-            Assert.AreEqual(2, empire.ProjectedMaintenanceHeadroom);
+            Assert.AreEqual(2, ResourceProductionQueries.GetBaseMaintenanceHeadroom(game, empire));
             Assert.IsTrue(
                 proposals
                     .OfType<AIManufactureProposal>()
@@ -4374,11 +4377,12 @@ namespace Rebellion.Tests.AI.Planners
 
             int reserve =
                 (
-                    empire.MaintenanceCapacity
+                    ResourceProductionQueries.GetBaseMaintenanceCapacity(game, empire)
                         * game.Config.AI.Infrastructure.PlanetaryDefenseMaintenanceReservePercent
                     + 99
                 ) / 100;
-            int maintenanceBudget = empire.ProjectedMaintenanceHeadroom - reserve;
+            int maintenanceBudget =
+                ResourceProductionQueries.GetBaseMaintenanceHeadroom(game, empire) - reserve;
             Building advancedShipyard = AITestSceneBuilder.CreateBuildingTemplate(
                 "advanced-shipyard",
                 BuildingType.Shipyard,

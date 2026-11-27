@@ -142,6 +142,27 @@ namespace Rebellion.Tests.Game.Units
         }
 
         [Test]
+        public void Serialize_EmptyDriveSlot_PreservesTheLaterDriveAndItsDamage()
+        {
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+                new Hyperdrive { Rating = 10 },
+            };
+            _capitalShip.Hyperdrives[1] = null;
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(
+                SerializationHelper.Serialize(_capitalShip)
+            );
+
+            Assert.AreEqual(3, restored.Hyperdrives.Length);
+            Assert.AreEqual(0, restored.GetHyperdriveRating(1));
+            Assert.AreEqual(10, restored.GetOperationalHyperdrive());
+        }
+
+        [Test]
         public void GetOperationalHyperdrive_WithThreeDrives_UsesFirstWorkingDrive()
         {
             _capitalShip.Hyperdrives = new[]

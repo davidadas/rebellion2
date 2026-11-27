@@ -565,7 +565,7 @@ namespace Rebellion.Tests.Tactical
             victim.DamageControl = 100;
             TacticalCombatSession session = CreateSession(CreateShip("a", 1000, 0), victim);
             CombatUnit target = session.GetUnit("b");
-            target.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(target, TacticalShipSystem.Engines, false);
             session.Damage.AdvanceSystems(target, 1, new FixedRandom(0));
             target.Status = status;
             target.Destroy();
@@ -586,7 +586,7 @@ namespace Rebellion.Tests.Tactical
             CombatUnit unit = session.GetUnit("a");
             AdvanceSeconds(session, 20);
             Assert.AreEqual("b", unit.TractorTargetID);
-            unit.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+            TacticalCombatDamage.ApplyComponentEvent(unit, TacticalShipSystem.TractorBeam, false);
             session.Damage.AdvanceSystems(unit, 1, new FixedRandom(0));
             unit.Destroy();
 
@@ -661,7 +661,11 @@ namespace Rebellion.Tests.Tactical
             AdvanceSeconds(session, 20);
             Assert.IsTrue(target.HasTractorSources);
             for (int damage = 0; damage < 4; damage++)
-                contributor.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+                TacticalCombatDamage.ApplyComponentEvent(
+                    contributor,
+                    TacticalShipSystem.TractorBeam,
+                    false
+                );
 
             AdvanceSeconds(session, 12);
 
@@ -1105,9 +1109,17 @@ namespace Rebellion.Tests.Tactical
         {
             CombatSide factionZeroSide =
                 factionOneSide == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-            CombatUnit first = new(CreateShip("first", 100, 0), factionZeroSide, 1);
-            CombatUnit selected = new(CreateShip("selected", 100, 0), factionOneSide, 2);
-            CombatUnit fighter = new(
+            CombatUnit first = TacticalCombatDeployment.CreateUnit(
+                CreateShip("first", 100, 0),
+                factionZeroSide,
+                1
+            );
+            CombatUnit selected = TacticalCombatDeployment.CreateUnit(
+                CreateShip("selected", 100, 0),
+                factionOneSide,
+                2
+            );
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -1978,7 +1990,7 @@ namespace Rebellion.Tests.Tactical
             );
             CombatUnit target = session.GetUnit("target");
             Assert.IsTrue(session.BeginWithdrawal(CombatSide.Attacker));
-            target.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            TacticalCombatDamage.ApplyComponentEvent(target, TacticalShipSystem.Hyperdrive, false);
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -2120,7 +2132,7 @@ namespace Rebellion.Tests.Tactical
         [Test]
         public void Advance_EnteringHyperspaceFighter_UsesFighterAnimationSound()
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -2130,7 +2142,11 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 0
             );
-            CombatUnit enemy = new(CreateShip("enemy", 1000, 0), CombatSide.Defender, 1000000);
+            CombatUnit enemy = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 1000, 0),
+                CombatSide.Defender,
+                1000000
+            );
             TacticalCombatSession session = CreateEncounter(
                 fighter,
                 enemy,
@@ -2502,7 +2518,7 @@ namespace Rebellion.Tests.Tactical
         public void CaptureOutcome_RetainedZeroHullDeparture_ExportsDeparture(bool fighter)
         {
             CombatUnit departed = fighter
-                ? new CombatUnit(
+                ? TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "departed",
@@ -2513,8 +2529,16 @@ namespace Rebellion.Tests.Tactical
                     CombatSide.Attacker,
                     1
                 )
-                : new CombatUnit(CreateShip("departed", 100, 0), CombatSide.Attacker, 1);
-            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001);
+                : TacticalCombatDeployment.CreateUnit(
+                    CreateShip("departed", 100, 0),
+                    CombatSide.Attacker,
+                    1
+                );
+            CombatUnit enemy = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 100, 0),
+                CombatSide.Defender,
+                1000001
+            );
             TacticalCombatSession session = CreateEncounter(
                 departed,
                 enemy,
@@ -2662,7 +2686,11 @@ namespace Rebellion.Tests.Tactical
         public void PreparePlayerWithdrawal_UnreadyCapital_QueuesWarningWithoutStartingDeparture()
         {
             TacticalCombatSession session = CreateMembershipSession(NotificationBank(149));
-            session.GetUnit("first").ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            TacticalCombatDamage.ApplyComponentEvent(
+                session.GetUnit("first"),
+                TacticalShipSystem.Hyperdrive,
+                false
+            );
             List<string> output = new();
             session.Audio.Playback = (clip, _) =>
             {
@@ -2966,7 +2994,7 @@ namespace Rebellion.Tests.Tactical
         {
             if (weapon == TacticalWeaponType.Torpedo)
             {
-                CombatUnit source = new(
+                CombatUnit source = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "a",
@@ -2983,16 +3011,16 @@ namespace Rebellion.Tests.Tactical
                     },
                     CombatSide.Attacker,
                     0
-                )
-                {
-                    Position = new Vector3(0, 0, -40),
-                };
-                CombatUnit target = new(CreateShip("b", 1000, 0), CombatSide.Defender, 1000000)
-                {
-                    Position = new Vector3(0, 0, 40),
-                    Heading = -Vector3.UnitZ,
-                    DesiredHeading = -Vector3.UnitZ,
-                };
+                );
+                source.Position = new Vector3(0, 0, -40);
+                CombatUnit target = TacticalCombatDeployment.CreateUnit(
+                    CreateShip("b", 1000, 0),
+                    CombatSide.Defender,
+                    1000000
+                );
+                target.Position = new Vector3(0, 0, 40);
+                target.Heading = -Vector3.UnitZ;
+                target.DesiredHeading = -Vector3.UnitZ;
                 return CreateEncounter(source, target, null, CombatSide.Attacker);
             }
             CapitalShip ship = CreateShip("a", 1000, 0);
@@ -3043,11 +3071,19 @@ namespace Rebellion.Tests.Tactical
             CapitalShip stationSource = CreateShip("station", 1000, 0);
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
-            CombatUnit station = new(stationSource, CombatSide.Defender, 1000000);
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
+                stationSource,
+                CombatSide.Defender,
+                1000000
+            );
             CapitalShip carrierSource = CreateShip("carrier", 1000, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
-            CombatUnit carrier = new(carrierSource, CombatSide.Defender, 1000001);
-            CombatUnit fighter = new(
+            CombatUnit carrier = TacticalCombatDeployment.CreateUnit(
+                carrierSource,
+                CombatSide.Defender,
+                1000001
+            );
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -3058,15 +3094,15 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 1000002
-            )
-            {
-                Position = new Vector3(10, 0, 0),
-                CarrierID = preferredStation ? station.InstanceID : null,
-            };
-            CombatUnit enemy = new(CreateShip("enemy", 1000, 0), CombatSide.Attacker, 1)
-            {
-                Position = new Vector3(0, 0, 40),
-            };
+            );
+            fighter.Position = new Vector3(10, 0, 0);
+            fighter.CarrierID = preferredStation ? station.InstanceID : null;
+            CombatUnit enemy = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 1000, 0),
+                CombatSide.Attacker,
+                1
+            );
+            enemy.Position = new Vector3(0, 0, 40);
             return new TacticalCombatSession(
                 new[] { enemy, station, carrier, fighter },
                 new[]
@@ -3100,11 +3136,19 @@ namespace Rebellion.Tests.Tactical
             CapitalShip stationSource = CreateShip("station", 100, 0);
             stationSource.CanDestroyPlanets = true;
             stationSource.StarfighterCapacity = 2;
-            CombatUnit station = new(stationSource, CombatSide.Defender, 1000000);
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
+                stationSource,
+                CombatSide.Defender,
+                1000000
+            );
             CapitalShip carrierSource = CreateShip("carrier", 100, 0);
             carrierSource.StarfighterCapacity = carrierCapacity;
-            CombatUnit carrier = new(carrierSource, CombatSide.Defender, 1000002);
-            CombatUnit fighter = new(
+            CombatUnit carrier = TacticalCombatDeployment.CreateUnit(
+                carrierSource,
+                CombatSide.Defender,
+                1000002
+            );
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -3115,16 +3159,20 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Defender,
                 1000003
             );
-            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Attacker, 0)
-            {
-                Status = CombatUnitStatus.Destroyed,
-            };
+            CombatUnit enemy = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 100, 0),
+                CombatSide.Attacker,
+                0
+            );
+            enemy.Status = CombatUnitStatus.Destroyed;
             List<CombatUnit> units = new() { station, carrier, fighter, enemy };
             if (secondCarrier)
             {
                 CapitalShip secondSource = CreateShip("second-carrier", 100, 0);
                 secondSource.StarfighterCapacity = 1;
-                units.Add(new CombatUnit(secondSource, CombatSide.Defender, 1000001));
+                units.Add(
+                    TacticalCombatDeployment.CreateUnit(secondSource, CombatSide.Defender, 1000001)
+                );
             }
             return new TacticalCombatSession(
                 units,
@@ -3152,7 +3200,7 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit first;
             if (fighter)
-                first = new CombatUnit(
+                first = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "exported",
@@ -3166,13 +3214,15 @@ namespace Rebellion.Tests.Tactical
             {
                 CapitalShip ship = CreateShip("exported", 100, 0);
                 ship.CanDestroyPlanets = station;
-                first = new CombatUnit(ship, CombatSide.Attacker, 1);
+                first = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
             }
             first.Status = CombatUnitStatus.Withdrawn;
-            CombatUnit second = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001)
-            {
-                Status = CombatUnitStatus.Destroyed,
-            };
+            CombatUnit second = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 100, 0),
+                CombatSide.Defender,
+                1000001
+            );
+            second.Status = CombatUnitStatus.Destroyed;
             TacticalCombatSession session = CreateEncounter(
                 first,
                 second,
@@ -3228,16 +3278,20 @@ namespace Rebellion.Tests.Tactical
             IReadOnlyList<string> personnelHostInstanceIDs = null
         )
         {
-            CombatUnit first = new(attacker, CombatSide.Attacker, 0)
-            {
-                Position = new Vector3(0, 0, -40),
-            };
-            CombatUnit second = new(defender, CombatSide.Defender, 1000000)
-            {
-                Position = new Vector3(0, 0, 40),
-                Heading = -Vector3.UnitZ,
-                DesiredHeading = -Vector3.UnitZ,
-            };
+            CombatUnit first = TacticalCombatDeployment.CreateUnit(
+                attacker,
+                CombatSide.Attacker,
+                0
+            );
+            first.Position = new Vector3(0, 0, -40);
+            CombatUnit second = TacticalCombatDeployment.CreateUnit(
+                defender,
+                CombatSide.Defender,
+                1000000
+            );
+            second.Position = new Vector3(0, 0, 40);
+            second.Heading = -Vector3.UnitZ;
+            second.DesiredHeading = -Vector3.UnitZ;
             return CreateEncounter(first, second, definition, player, personnelHostInstanceIDs);
         }
 
@@ -3319,9 +3373,17 @@ namespace Rebellion.Tests.Tactical
             CombatSide player = CombatSide.Attacker
         )
         {
-            CombatUnit first = new(CreateShip("first", 100, 0), CombatSide.Attacker, 8);
-            CombatUnit second = new(CreateShip("second", 100, 0), CombatSide.Attacker, 2);
-            CombatUnit fighter = new(
+            CombatUnit first = TacticalCombatDeployment.CreateUnit(
+                CreateShip("first", 100, 0),
+                CombatSide.Attacker,
+                8
+            );
+            CombatUnit second = TacticalCombatDeployment.CreateUnit(
+                CreateShip("second", 100, 0),
+                CombatSide.Attacker,
+                2
+            );
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -3332,7 +3394,11 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 5
             );
-            CombatUnit enemy = new(CreateShip("enemy", 100, 0), CombatSide.Defender, 1000001);
+            CombatUnit enemy = TacticalCombatDeployment.CreateUnit(
+                CreateShip("enemy", 100, 0),
+                CombatSide.Defender,
+                1000001
+            );
             return new TacticalCombatSession(
                 new[] { first, second, fighter, enemy },
                 new[]
@@ -3484,7 +3550,7 @@ namespace Rebellion.Tests.Tactical
             bool enterAttackSequence = true
         )
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -3496,7 +3562,7 @@ namespace Rebellion.Tests.Tactical
                 CombatSide.Attacker,
                 1
             );
-            CombatUnit station = new(
+            CombatUnit station = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "station",
@@ -3516,7 +3582,7 @@ namespace Rebellion.Tests.Tactical
             List<TacticalCombatGroup> groups = new() { group };
             if (reserveFighter)
             {
-                CombatUnit reserve = new(
+                CombatUnit reserve = TacticalCombatDeployment.CreateUnit(
                     new Starfighter
                     {
                         InstanceID = "reserve",

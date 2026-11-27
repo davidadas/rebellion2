@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 using Rebellion.Game.Combat;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
@@ -296,7 +298,7 @@ namespace Rebellion.Tests.Tactical
         public void GetWeaponRecharge_HullAndWeaponDamage_ReducesBaseRecharge()
         {
             CombatUnit systems = CreateSystems(currentHull: 500);
-            systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Weapons, false);
 
             Assert.AreEqual(18.75f, TacticalCombatFireControl.GetWeaponRecharge(systems));
         }
@@ -361,7 +363,11 @@ namespace Rebellion.Tests.Tactical
         public void GetTractorRatio_HullAndSystemDamage_UsesCompleteTractorBudget()
         {
             CombatUnit systems = CreateUnitWithPools(false, 1000, 500, 0, 0, 0, 0, 0, 8, 1, 0);
-            systems.ApplyComponentEvent(TacticalShipSystem.TractorBeam, false);
+            TacticalCombatDamage.ApplyComponentEvent(
+                systems,
+                TacticalShipSystem.TractorBeam,
+                false
+            );
 
             Assert.AreEqual(0.25d, TacticalCombatMotion.GetTractorRatio(systems));
         }
@@ -370,7 +376,7 @@ namespace Rebellion.Tests.Tactical
         public void GetMovementRatio_LiveSupportDamageAndRestraint_UsesStoredEngineDenominator()
         {
             CombatUnit systems = CreateUnitWithPools(true, 96, 96, 0, 0, 0, 20, 0, 0, 1, 0);
-            systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Engines, false);
 
             Assert.AreEqual(1d, TacticalCombatMotion.GetMovementRatio(systems, 8, 4));
             systems.ApplyDisruption(0, 1);
@@ -395,7 +401,11 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateUnitWithPools(isFighter, 100, 100, 0, 0, 0, 0, 5, 0, 1, 0);
             for (int index = 0; index < 3; index++)
-                systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                TacticalCombatDamage.ApplyComponentEvent(
+                    systems,
+                    TacticalShipSystem.Engines,
+                    false
+                );
 
             float turnBudget = TacticalCombatMotion.GetTurnBudget(systems, float.Epsilon, 0);
 
@@ -407,10 +417,10 @@ namespace Rebellion.Tests.Tactical
         public void GetHyperdriveRatio_DamagedPrimaryAndBackup_TracksRemainingInstalledDriveCount()
         {
             CombatUnit systems = CreateUnitWithPools(false, 100, 100, 0, 0, 0, 0, 0, 0, 2, 0);
-            systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Hyperdrive, false);
 
             Assert.AreEqual(0.5d, systems.GetHyperdriveRatio());
-            systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Hyperdrive, false);
             Assert.AreEqual(0d, systems.GetHyperdriveRatio());
         }
 
@@ -513,7 +523,7 @@ namespace Rebellion.Tests.Tactical
             );
             Assert.AreEqual(0, TacticalCombatDamage.GetShieldRechargeRatio(systems));
 
-            systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Shields, true);
 
             Assert.AreEqual(0.25d, TacticalCombatDamage.GetShieldRechargeRatio(systems));
             Assert.AreEqual(2d, TacticalCombatDamage.GetShieldRecharge(systems));
@@ -575,7 +585,11 @@ namespace Rebellion.Tests.Tactical
         {
             CombatUnit systems = CreateSystems();
             for (int hit = 0; hit < 4; hit++)
-                systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+                TacticalCombatDamage.ApplyComponentEvent(
+                    systems,
+                    TacticalShipSystem.Engines,
+                    false
+                );
 
             Assert.AreEqual(0, TacticalCombatMotion.GetMovementBudget(systems, 1, 0));
         }
@@ -584,7 +598,7 @@ namespace Rebellion.Tests.Tactical
         public void ApplyComponentEvent_LastHyperdriveHit_PreventsHyperspace()
         {
             CombatUnit systems = CreateSystems();
-            systems.ApplyComponentEvent(TacticalShipSystem.Hyperdrive, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Hyperdrive, false);
 
             Assert.IsFalse(systems.HasHyperdrive);
         }
@@ -772,7 +786,7 @@ namespace Rebellion.Tests.Tactical
                 1,
                 float.NaN
             );
-            systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Engines, false);
 
             _damage.AdvanceSystems(systems, 1000, new SequenceRandom());
 
@@ -803,7 +817,7 @@ namespace Rebellion.Tests.Tactical
         public void Advance_DamagedSystem_RequestsRepairWithoutApplyingItEarly()
         {
             CombatUnit systems = CreateSystems();
-            systems.ApplyComponentEvent(TacticalShipSystem.Engines, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Engines, false);
             List<TacticalSystemEvent> events = new();
             _damage.SystemChangeRequested += (_, change) => events.Add(change);
             _damage.AdvanceSystems(systems, 1000, new SequenceRandom(1));
@@ -859,7 +873,7 @@ namespace Rebellion.Tests.Tactical
             _damage.SystemChangeRequested += (_, change) =>
             {
                 events.Add(change);
-                systems.ApplyComponentEvent(change.System, change.IsRepair);
+                TacticalCombatDamage.ApplyComponentEvent(systems, change.System, change.IsRepair);
             };
             SequenceRandom random = new(1, 1, 1, 1);
 
@@ -883,9 +897,9 @@ namespace Rebellion.Tests.Tactical
             _damage.SystemChangeRequested += (_, change) =>
             {
                 events.Add(change);
-                systems.ApplyComponentEvent(change.System, change.IsRepair);
+                TacticalCombatDamage.ApplyComponentEvent(systems, change.System, change.IsRepair);
             };
-            systems.ApplyComponentEvent(TacticalShipSystem.Weapons, false);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Weapons, false);
             SequenceRandom random = new(1, 1, 1, 1);
 
             _damage.AdvanceSystems(systems, 50, random);
@@ -896,6 +910,31 @@ namespace Rebellion.Tests.Tactical
             Assert.AreEqual(TacticalShipSystem.Weapons, events[0].System);
             Assert.AreEqual(3, systems.GetDamage(TacticalShipSystem.Weapons));
             CollectionAssert.AreEqual(new[] { (1, 101) }, random.Requests);
+        }
+
+        [Test]
+        public void CaptureDamage_PreDamagedSecondDrive_PreservesTheDriveIndex()
+        {
+            CombatUnit unit = CreateUnitWithPools(
+                false,
+                100,
+                100,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                3,
+                0,
+                new CapitalShipSystemDamage { HyperdriveDamage = new[] { 0, 1, 0 } }
+            );
+
+            CollectionAssert.AreEqual(new[] { 0, 1, 0 }, unit.CaptureDamage().HyperdriveDamage);
+            TacticalCombatDamage.ApplyComponentEvent(unit, TacticalShipSystem.Hyperdrive, false);
+            CollectionAssert.AreEqual(new[] { 1, 1, 0 }, unit.CaptureDamage().HyperdriveDamage);
+            TacticalCombatDamage.ApplyComponentEvent(unit, TacticalShipSystem.Hyperdrive, true);
+            CollectionAssert.AreEqual(new[] { 1, 0, 0 }, unit.CaptureDamage().HyperdriveDamage);
         }
 
         [Test]
@@ -916,7 +955,7 @@ namespace Rebellion.Tests.Tactical
                 new CapitalShipSystemDamage { Shields = 1 }
             );
             Assert.AreEqual(1, systems.CaptureDamage().Shields);
-            systems.ApplyComponentEvent(TacticalShipSystem.Shields, true);
+            TacticalCombatDamage.ApplyComponentEvent(systems, TacticalShipSystem.Shields, true);
             Assert.AreEqual(0, systems.CaptureDamage().Total);
         }
 
@@ -1075,21 +1114,36 @@ namespace Rebellion.Tests.Tactical
         )
         {
             BaseSceneNode ship = isFighter
-                ? new Starfighter()
-                : new CapitalShip { SystemDamage = initialDamage };
+                ? new Starfighter
+                {
+                    Hyperdrive = hyperdrives > 0 ? 1 : 0,
+                    BackupHyperdrive = hyperdrives > 1 ? 1 : 0,
+                }
+                : new CapitalShip
+                {
+                    Hyperdrives = Enumerable
+                        .Range(0, (int)hyperdrives)
+                        .Select(_ => new Hyperdrive { Rating = 1 })
+                        .ToArray(),
+                    SystemDamage = initialDamage,
+                };
             CombatUnit unit = CombatUnit.Create(ship);
             unit.InitializeCombatPools(
                 maximumHull,
                 currentHull,
                 maximumShields,
-                weaponRechargeRate,
-                shieldRechargeRate,
-                sublightSpeed,
+                isFighter ? 0.25f : (float)((double)weaponRechargeRate * 3.75f),
+                isFighter ? 1 : shieldRechargeRate,
+                isFighter
+                    ? (float)((double)sublightSpeed * 0.4f)
+                    : (float)((double)sublightSpeed * 0.4f * 0.6f),
                 maneuverability,
                 tractorPower,
                 hyperdrives,
                 damageControlRating
             );
+            if (initialDamage != null && !isFighter)
+                unit.DamageEventCount = (uint)(initialDamage.Total - initialDamage.Weapons);
             return unit;
         }
 

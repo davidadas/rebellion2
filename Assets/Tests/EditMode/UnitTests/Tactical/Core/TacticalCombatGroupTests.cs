@@ -25,8 +25,8 @@ namespace Rebellion.Tests.Tactical
                 WeaponRecharge = 1,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 1, 1, 1, 6 });
-            CombatUnit member = new(ship, CombatSide.Attacker, 1);
-            CombatUnit target = new(
+            CombatUnit member = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "target",
@@ -35,10 +35,8 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 1000001
-            )
-            {
-                Position = new Vector3(3.999999761581421f, 0.001953125f, 3.725290298461914e-9f),
-            };
+            );
+            target.Position = new Vector3(3.999999761581421f, 0.001953125f, 3.725290298461914e-9f);
             TacticalCombatGroup group = new(10, new[] { member }, Vector3.UnitZ);
             group.SetTarget(target);
             group.Refresh(new[] { member, target }, 0);
@@ -66,9 +64,13 @@ namespace Rebellion.Tests.Tactical
                     WeaponRecharge = 1,
                 };
                 ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 1, 1, 1, 1, 100 });
-                members[index] = new CombatUnit(ship, CombatSide.Attacker, index + 1);
+                members[index] = TacticalCombatDeployment.CreateUnit(
+                    ship,
+                    CombatSide.Attacker,
+                    index + 1
+                );
             }
-            CombatUnit target = new(
+            CombatUnit target = TacticalCombatDeployment.CreateUnit(
                 new CapitalShip
                 {
                     InstanceID = "target",
@@ -77,10 +79,8 @@ namespace Rebellion.Tests.Tactical
                 },
                 CombatSide.Defender,
                 1000001
-            )
-            {
-                Position = new Vector3(300, 400, 500),
-            };
+            );
+            target.Position = new Vector3(300, 400, 500);
             TacticalCombatGroup group = new(10, members, Vector3.UnitZ);
             group.SetTarget(target);
             group.Refresh(members, 0);
@@ -99,7 +99,7 @@ namespace Rebellion.Tests.Tactical
             int expectedX
         )
         {
-            CombatUnit fighter = new(
+            CombatUnit fighter = TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = "fighter",
@@ -289,7 +289,7 @@ namespace Rebellion.Tests.Tactical
                 CurrentHullStrength = 100,
             };
             ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, weapons);
-            return new CombatUnit(ship, CombatSide.Attacker, id);
+            return TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, id);
         }
 
         /// <summary>
@@ -319,7 +319,7 @@ namespace Rebellion.Tests.Tactical
         /// <param name="side">The owning combat side.</param>
         /// <returns>The captured tactical squadron.</returns>
         private static CombatUnit CreateFighter(string id, CombatSide side) =>
-            new(
+            TacticalCombatDeployment.CreateUnit(
                 new Starfighter
                 {
                     InstanceID = id,
