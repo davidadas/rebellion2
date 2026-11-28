@@ -97,7 +97,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     private readonly List<GameObject> generationTableHeaderRows = new();
     private readonly List<GameObject> generationTableRows = new();
     private readonly Dictionary<string, OptionsChoiceFieldView> setupChoiceFields = new();
-    private readonly Dictionary<GameEventCategory, OptionsToggleRowView> eventToggleRows = new();
+    private readonly Dictionary<string, OptionsToggleRowView> toggleRows = new();
     private readonly List<OptionsSaveSlot> presetSlots = new();
     private readonly List<CustomGamePresetEntry> presetEntries = new();
     private IReadOnlyList<ContentPackDefinition> availablePacks =
@@ -252,7 +252,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         Vector4 border = new Vector4(7f, 7f, 7f, 7f);
         rowIdleSprite = ContentBindings.RequireSprite(contentAssets, _rowIdleAddress, border);
         rowActiveSprite = ContentBindings.RequireSprite(contentAssets, _rowActiveAddress, border);
-        foreach (OptionsToggleRowView row in eventToggleRows.Values)
+        foreach (OptionsToggleRowView row in toggleRows.Values)
             row.InitializeContent(contentAssets);
         if (presetSaveList != null)
             ContentBindings.Apply(presetSaveList.gameObject, contentAssets);
@@ -359,7 +359,7 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
         if (!saveLoadSelected)
             ConfigureSettingsScrollLayout(difficultySelected);
         HideSetupChoiceButtons();
-        HideEventToggleRows();
+        HideToggleRows();
 
         if (saveLoadSelected)
         {
@@ -644,11 +644,44 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
                 );
                 SetAllValueControlsVisible(row.transform, false);
 
-                OptionsToggleRowView toggle = GetEventToggleRow(category, row.transform);
+                OptionsToggleRowView toggle = GetToggleRow(
+                    "EventToggle-" + category,
+                    (int)category,
+                    row.transform,
+                    ToggleEventCategory
+                );
                 toggle.gameObject.SetActive(true);
                 bool enabled = settingsSession.IsEventCategoryEnabled(category);
                 toggle.Render(enabled, string.Empty);
             }
+        }
+
+        contentOffset += _sectionSpacing - _rowSpacing;
+        GameObject intelligenceSection = GetGenerationSectionRow(sectionIndex++);
+        ConfigureGenerationSectionRow(intelligenceSection, "STARTING INTELLIGENCE", contentOffset);
+        contentOffset += _sectionStride;
+        for (int index = 0; index < settingsSession.StartingIntelligenceEntries.Count; index++)
+        {
+            var entry = settingsSession.StartingIntelligenceEntries[index];
+            GameObject row = GetRow(rowIndex++);
+            row.name = "Setup-" + entry.Key;
+            row.SetActive(true);
+            contentOffset += ConfigureTextRow(
+                row,
+                contentOffset,
+                entry.Label,
+                entry.Description,
+                _defaultLabelWidth
+            );
+            SetAllValueControlsVisible(row.transform, false);
+            OptionsToggleRowView toggle = GetToggleRow(
+                "IntelligenceToggle-" + entry.Key,
+                index,
+                row.transform,
+                ToggleStartingIntelligence
+            );
+            toggle.gameObject.SetActive(true);
+            toggle.Render(entry.Read(), string.Empty);
         }
 
         HideRowsAfter(rowIndex);
@@ -785,34 +818,41 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Returns or creates the themed toggle for one classified event category.
+    /// Returns or creates a shared themed toggle for a settings row.
     /// </summary>
-    /// <param name="category">The event category represented by the toggle.</param>
+    /// <param name="key">The stable control identity.</param>
+    /// <param name="option">The value identifying this option in its callback.</param>
     /// <param name="parent">The reusable settings row hosting the toggle.</param>
+    /// <param name="onToggle">The action handling a requested toggle.</param>
     /// <returns>The configured toggle row.</returns>
-    private OptionsToggleRowView GetEventToggleRow(GameEventCategory category, Transform parent)
+    private OptionsToggleRowView GetToggleRow(
+        string key,
+        int option,
+        Transform parent,
+        Action<int> onToggle
+    )
     {
         const int controlLeft = 171;
         int width = Mathf.RoundToInt(scrollArea.ViewportWidth) - controlLeft;
-        if (!eventToggleRows.TryGetValue(category, out OptionsToggleRowView toggle))
+        if (!toggleRows.TryGetValue(key, out OptionsToggleRowView toggle))
         {
             if (optionsMenuPrefab == null)
                 throw new MissingReferenceException(
-                    "The shared Options toggle is required for event settings."
+                    "The shared Options toggle is required for game settings."
                 );
 
             toggle = optionsMenuPrefab.CloneToggleRow(
                 parent,
-                "EventToggle-" + category,
-                (int)category,
+                key,
+                option,
                 controlLeft,
                 _controlTop,
                 width
             );
-            toggle.ToggleRequested += ToggleEventCategory;
+            toggle.ToggleRequested += onToggle;
             if (contentAssets != null)
                 toggle.InitializeContent(contentAssets);
-            eventToggleRows.Add(category, toggle);
+            toggleRows.Add(key, toggle);
         }
         else
         {
@@ -830,12 +870,25 @@ public sealed class NewGameSettingsView : MonoBehaviour, IContentInitializable
     }
 
     /// <summary>
-    /// Hides event toggles retained on reusable rows while another page is visible.
+    /// Hides toggles retained on reusable rows while another page is visible.
     /// </summary>
-    private void HideEventToggleRows()
+    private void HideToggleRows()
     {
-        foreach (OptionsToggleRowView toggle in eventToggleRows.Values)
+        foreach (OptionsToggleRowView toggle in toggleRows.Values)
             toggle.gameObject.SetActive(false);
+    }
+
+    /// <summary>
+    /// Toggles a starting-intelligence rule for the selected difficulty.
+    /// </summary>
+    /// <param name="option">The selected rule's index.</param>
+    private void ToggleStartingIntelligence(int option)
+    {
+        var entry = settingsSession.StartingIntelligenceEntries[option];
+        entry.Write(!entry.Read());
+        float position = scrollArea.VerticalNormalizedPosition;
+        SelectCategory(NewGameSettingsCategory.GameSetup);
+        scrollArea.VerticalNormalizedPosition = position;
     }
 
     /// <summary>

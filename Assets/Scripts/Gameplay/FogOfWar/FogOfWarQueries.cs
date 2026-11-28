@@ -40,7 +40,7 @@ namespace Rebellion.Gameplay
 
         /// <summary>
         /// Determines whether a faction can observe current political changes on a planet.
-        /// Core politics are public; Outer Rim politics require current ownership or fleet visibility.
+        /// Explored Core politics are public; other planets require current ownership or fleet visibility.
         /// </summary>
         /// <param name="planet">The planet whose political state changed.</param>
         /// <param name="faction">The faction receiving the political information.</param>
@@ -48,6 +48,7 @@ namespace Rebellion.Gameplay
         public bool IsPlanetControlVisible(Planet planet, Faction faction)
         {
             return planet.GetParentOfType<PlanetSector>()?.SectorType == PlanetSectorType.Core
+                    && planet.WasVisitedBy(faction.InstanceID)
                 || IsPlanetVisible(planet, faction);
         }
 

@@ -32,6 +32,15 @@ internal sealed class CustomGameSettingsSession
         internal Func<int, bool> IsValid;
     }
 
+    internal sealed class ToggleEntry
+    {
+        internal string Key;
+        internal string Label;
+        internal string Description;
+        internal Func<bool> Read;
+        internal Action<bool> Write;
+    }
+
     private readonly List<(
         string Key,
         string Section,
@@ -48,6 +57,7 @@ internal sealed class CustomGameSettingsSession
     private readonly Dictionary<string, double> aiDraft = new();
     private readonly HashSet<string> aiCustomized = new();
     private readonly List<GenerationEntry> generationEntries = new();
+    private readonly List<ToggleEntry> startingIntelligenceEntries = new();
     private readonly GameEventCategory[] eventCategories;
     private readonly GameSummary summaryDefaults;
     private readonly GameSummary summaryDraft;
@@ -77,6 +87,8 @@ internal sealed class CustomGameSettingsSession
     )> DifficultyEntries => difficultyEntries;
 
     internal IReadOnlyList<GenerationEntry> GenerationEntries => generationEntries;
+
+    internal IReadOnlyList<ToggleEntry> StartingIntelligenceEntries => startingIntelligenceEntries;
 
     internal IReadOnlyList<GameEventCategory> EventCategories => eventCategories;
 
@@ -122,6 +134,8 @@ internal sealed class CustomGameSettingsSession
         aiDecisionTickInterval = summaryDraft.CustomSettings?.AIDecisionTickInterval;
         ReconcileFactionModifiers(generationDefaults, pack.GameData.Factions);
         ReconcileFactionModifiers(generationDraft, pack.GameData.Factions);
+        ReconcileStartingIntelligence(generationDefaults);
+        ReconcileStartingIntelligence(generationDraft);
         eventCategories = pack
             .GameData.GameEvents.Where(gameEvent =>
                 gameEvent != null && gameEvent.Category != GameEventCategory.None
@@ -372,6 +386,8 @@ internal sealed class CustomGameSettingsSession
             generationDraft.DisabledEventCategories =
                 generationDefaults.DisabledEventCategories?.ToList()
                 ?? new List<GameEventCategory>();
+            generationDraft.StartingIntelligence =
+                generationDefaults.StartingIntelligence.ConvertAll(profile => profile.CreateCopy());
             summaryDraft.Seed = summaryDefaults.Seed;
             UpdateAIDifficultyDefaults(summaryDraft.Difficulty);
             BuildGenerationEntries(activePack, summaryDraft);
@@ -638,6 +654,23 @@ internal sealed class CustomGameSettingsSession
     }
 
     /// <summary>
+    /// Supplies the current visibility defaults for difficulties omitted by older scenarios.
+    /// </summary>
+    /// <param name="config">The independent generation settings being edited.</param>
+    private static void ReconcileStartingIntelligence(GameGenerationConfig config)
+    {
+        IReadOnlyList<StartingIntelligenceProfile> profiles =
+            config.StartingIntelligence ?? new List<StartingIntelligenceProfile>();
+        config.StartingIntelligence = Enum.GetValues(typeof(GameDifficulty))
+            .Cast<GameDifficulty>()
+            .Select(difficulty =>
+                profiles.SingleOrDefault(profile => profile.Difficulty == difficulty)
+                ?? new StartingIntelligenceProfile { Difficulty = difficulty }
+            )
+            .ToList();
+    }
+
+    /// <summary>
     /// Builds numeric launch settings from the selected scenario and faction configuration.
     /// </summary>
     /// <param name="pack">The active content and scenario.</param>
@@ -645,6 +678,7 @@ internal sealed class CustomGameSettingsSession
     private void BuildGenerationEntries(ContentPack pack, GameSummary summary)
     {
         generationEntries.Clear();
+        BuildStartingIntelligenceEntries(summary.Difficulty);
         currentGenerationSection = "FACTION STARTING CONDITIONS";
         AddStartingResearchEntries(pack.GameData.Factions);
         AddOfficerEntries(pack.GameData.Factions, summary.GalaxySize);
@@ -665,6 +699,60 @@ internal sealed class CustomGameSettingsSession
         currentGenerationSection = "AI behavior";
         AddAIDecisionIntervalEntry();
         AddFactionModifierEntries(pack.GameData.Factions);
+    }
+
+    /// <summary>
+    /// Builds starting exploration and category toggles for the selected difficulty.
+    /// </summary>
+    /// <param name="difficulty">The difficulty whose profile is being edited.</param>
+    private void BuildStartingIntelligenceEntries(GameDifficulty difficulty)
+    {
+        StartingIntelligenceProfile profile = generationDraft.GetStartingIntelligence(difficulty);
+        startingIntelligenceEntries.Clear();
+        startingIntelligenceEntries.Add(
+            new ToggleEntry
+            {
+                Key = "unexplored-planets",
+                Label = "Start with unexplored planets",
+                Description =
+                    "Starts neutral and enemy planets unexplored, including Core worlds. Owned planets and scenario visibility exceptions remain known. Applies to every faction.",
+                Read = () => profile.StartWithUnexploredPlanets,
+                Write = value => profile.StartWithUnexploredPlanets = value,
+            }
+        );
+        startingIntelligenceEntries.Add(
+            new ToggleEntry
+            {
+                Key = "reveal-agents",
+                Label = "Reveal agents",
+                Description =
+                    "Reveals foreign officers and special forces on initially explored Core worlds. Passengers of hidden fleets stay hidden. Scenario visibility exceptions always apply.",
+                Read = () => profile.RevealAgents,
+                Write = value => profile.RevealAgents = value,
+            }
+        );
+        startingIntelligenceEntries.Add(
+            new ToggleEntry
+            {
+                Key = "reveal-fleets",
+                Label = "Reveal fleets",
+                Description =
+                    "Reveals foreign fleets on initially explored Core worlds. Scenario visibility exceptions always apply.",
+                Read = () => profile.RevealFleets,
+                Write = value => profile.RevealFleets = value,
+            }
+        );
+        startingIntelligenceEntries.Add(
+            new ToggleEntry
+            {
+                Key = "reveal-buildings",
+                Label = "Reveal buildings",
+                Description =
+                    "Reveals foreign buildings on initially explored Core worlds. Scenario visibility exceptions always apply.",
+                Read = () => profile.RevealBuildings,
+                Write = value => profile.RevealBuildings = value,
+            }
+        );
     }
 
     /// <summary>

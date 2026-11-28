@@ -486,7 +486,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                 ((RectTransform)SeedResetButton().transform).anchoredPosition.y
             );
             CollectionAssert.AreEqual(
-                new[] { "CAMPAIGN", "EVENTS" },
+                new[] { "CAMPAIGN", "EVENTS", "STARTING INTELLIGENCE" },
                 instance
                     .GetComponentsInChildren<TMP_Text>()
                     .Where(text => text.name.StartsWith("Section-", StringComparison.Ordinal))
@@ -663,6 +663,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
 
             OptionsToggleRowView[] toggles = instance
                 .GetComponentsInChildren<OptionsToggleRowView>()
+                .Where(toggle => toggle.name.StartsWith("EventToggle-"))
                 .OrderBy(toggle => toggle.OptionIndex)
                 .ToArray();
             CollectionAssert.AreEqual(
@@ -698,6 +699,81 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
                     .ToArray()
             );
             Assert.IsTrue(toggles.All(toggle => ToggleState(toggle) == "ON"));
+        }
+
+        [Test]
+        public void Apply_StartingIntelligence_PreservesSeparateDifficultySelections()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+
+            instance
+                .GetComponentsInChildren<OptionsToggleRowView>()
+                .Single(toggle => toggle.name == "IntelligenceToggle-reveal-agents")
+                .GetComponentInChildren<Button>()
+                .onClick.Invoke();
+            StepSetupChoice("difficulty", 1);
+            Assert.AreEqual(
+                "ON",
+                ToggleState(
+                    instance
+                        .GetComponentsInChildren<OptionsToggleRowView>()
+                        .Single(toggle => toggle.name == "IntelligenceToggle-reveal-agents")
+                )
+            );
+            instance
+                .GetComponentsInChildren<OptionsToggleRowView>()
+                .Single(toggle => toggle.name == "IntelligenceToggle-unexplored-planets")
+                .GetComponentInChildren<Button>()
+                .onClick.Invoke();
+            ApplyButton().onClick.Invoke();
+
+            GameSummary restored = SerializationHelper.Deserialize<GameSummary>(
+                SerializationHelper.Serialize(launched)
+            );
+            GameGenerationConfig config = restored.CustomSettings.GenerationConfig;
+            Assert.IsFalse(config.GetStartingIntelligence(GameDifficulty.Easy).RevealAgents);
+            Assert.IsFalse(
+                config.GetStartingIntelligence(GameDifficulty.Easy).StartWithUnexploredPlanets
+            );
+            Assert.IsTrue(config.GetStartingIntelligence(GameDifficulty.Medium).RevealAgents);
+            Assert.IsTrue(
+                config.GetStartingIntelligence(GameDifficulty.Medium).StartWithUnexploredPlanets
+            );
+            Assert.IsFalse(
+                config.GetStartingIntelligence(GameDifficulty.Hard).StartWithUnexploredPlanets
+            );
+            Assert.IsNull(summary.CustomSettings);
+        }
+
+        [Test]
+        public void RestoreDefaults_StartingIntelligence_RestoresPackSettings()
+        {
+            GameSummary launched = null;
+            view.StartRequested += (_, configured) => launched = configured;
+            view.Initialize(TestContent.Pack, summary, optionsPrefab, null);
+            view.SelectCategory(NewGameSettingsCategory.GameSetup);
+            instance
+                .GetComponentsInChildren<OptionsToggleRowView>()
+                .Single(toggle => toggle.name == "IntelligenceToggle-unexplored-planets")
+                .GetComponentInChildren<Button>()
+                .onClick.Invoke();
+
+            view.RestoreDefaults();
+            ApplyButton().onClick.Invoke();
+
+            StartingIntelligenceProfile profile =
+                launched.CustomSettings.GenerationConfig.GetStartingIntelligence(
+                    launched.Difficulty
+                );
+            Assert.AreEqual(
+                TestContent
+                    .Data.GenerationConfig.GetStartingIntelligence(launched.Difficulty)
+                    .StartWithUnexploredPlanets,
+                profile.StartWithUnexploredPlanets
+            );
         }
 
         [TestCase(GameEventCategory.Story)]
@@ -2300,7 +2376,7 @@ namespace Rebellion.Tests.UI.SceneUI.MainMenu
         private OptionsToggleRowView EventToggle(GameEventCategory category) =>
             instance
                 .GetComponentsInChildren<OptionsToggleRowView>()
-                .Single(toggle => toggle.OptionIndex == (int)category);
+                .Single(toggle => toggle.name == "EventToggle-" + category);
 
         /// <summary>
         /// Reads the state label displayed by an event-category toggle.
