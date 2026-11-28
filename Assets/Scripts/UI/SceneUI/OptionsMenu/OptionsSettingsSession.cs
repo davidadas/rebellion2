@@ -76,7 +76,7 @@ internal sealed class OptionsSettingsSession
     /// <param name="displayManager">The display manager.</param>
     /// <param name="audioManager">The audio manager.</param>
     /// <param name="inputManager">The input manager.</param>
-    /// <param name="graphicsManager">The optional HDRP graphics manager.</param>
+    /// <param name="graphicsManager">The optional URP graphics manager.</param>
     internal OptionsSettingsSession(
         UserSettingsManager userSettings,
         DisplayManager displayManager,
@@ -375,7 +375,7 @@ internal sealed class OptionsSettingsSession
     }
 
     /// <summary>
-    /// Stages an adjacent supported value for one HDRP graphics setting.
+    /// Stages an adjacent supported value for one URP graphics setting.
     /// </summary>
     /// <param name="setting">The graphics setting to change.</param>
     /// <param name="delta">The requested direction.</param>
@@ -407,11 +407,6 @@ internal sealed class OptionsSettingsSession
                 break;
             case UserGraphicsSetting.FrameRateLimit:
                 Video.FrameRateLimit = StepValue(_frameRateLimits, Video.FrameRateLimit, delta);
-                break;
-            case UserGraphicsSetting.RayTracing:
-                Video.RayTracing = !Video.RayTracing;
-                if (Video.RayTracing)
-                    Video.AmbientOcclusion = true;
                 break;
             case UserGraphicsSetting.AmbientOcclusion:
                 Video.AmbientOcclusion = !Video.AmbientOcclusion;
@@ -736,7 +731,6 @@ internal sealed class OptionsSettingsSession
             UserGraphicsSetting.FrameRateLimit => Video.FrameRateLimit == 0
                 ? "Unlimited"
                 : $"{Video.FrameRateLimit} FPS",
-            UserGraphicsSetting.RayTracing => GetToggleLabel(Video.RayTracing),
             UserGraphicsSetting.AmbientOcclusion => GetToggleLabel(Video.AmbientOcclusion),
             UserGraphicsSetting.Bloom => GetToggleLabel(Video.Bloom),
             UserGraphicsSetting.MotionBlur => GetToggleLabel(Video.MotionBlur),
@@ -755,7 +749,6 @@ internal sealed class OptionsSettingsSession
         return setting switch
         {
             UserGraphicsSetting.FrameRateLimit => !Video.VerticalSync,
-            UserGraphicsSetting.RayTracing => _graphicsManager?.RayTracingAvailable == true,
             UserGraphicsSetting.HdrOutput => _graphicsManager?.HdrOutputAvailable == true,
             _ => true,
         };

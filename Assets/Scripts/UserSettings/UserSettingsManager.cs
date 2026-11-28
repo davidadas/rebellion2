@@ -44,7 +44,7 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
     /// <param name="displayManager">The display manager that receives display settings.</param>
-    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives URP settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     public UserSettingsManager(
         AudioManager audioManager,
@@ -59,7 +59,7 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
     /// <param name="displayManager">The display manager that receives display settings.</param>
-    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives URP settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     /// <param name="analyticsConsentRuntime">The analytics consent runtime.</param>
     internal UserSettingsManager(
@@ -98,7 +98,7 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
     /// <param name="displayManager">The display manager that receives display settings.</param>
-    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives URP settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     /// <param name="settingsFilePath">The exact settings file path.</param>
     internal UserSettingsManager(
@@ -116,7 +116,7 @@ public sealed class UserSettingsManager
     /// </summary>
     /// <param name="audioManager">The audio manager that receives audio settings.</param>
     /// <param name="displayManager">The display manager that receives display settings.</param>
-    /// <param name="graphicsManager">The graphics manager that receives HDRP settings.</param>
+    /// <param name="graphicsManager">The graphics manager that receives URP settings.</param>
     /// <param name="inputManager">The input manager that receives binding overrides.</param>
     /// <param name="analyticsConsentRuntime">The analytics consent runtime.</param>
     /// <param name="settingsFilePath">The exact settings file path.</param>

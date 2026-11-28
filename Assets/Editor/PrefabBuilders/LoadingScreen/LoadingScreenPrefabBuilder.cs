@@ -12,8 +12,7 @@ public static class LoadingScreenPrefabBuilder
 {
     private const string _prefabPath = "Assets/Resources/UI/LoadingScreen.prefab";
     private const int _presentationLayer = PresentationLayers.LoadingScreen;
-    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
-    private const float _builtInPunctualLightIntensityToHdrp = 600f / (4f * Mathf.PI);
+    private const float _punctualLightIntensityScale = 600f / (4f * Mathf.PI);
     private static readonly Color _shuttleAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
 
     /// <summary>
@@ -22,8 +21,6 @@ public static class LoadingScreenPrefabBuilder
     public static void Rebuild()
     {
         GameObject root = new GameObject("LoadingScreen", typeof(LoadingScreenView));
-        HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
-        HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _shuttleAmbientColor);
 
         // Keep the world-space camera, model, and lights outside the scaled UI canvas.
         GameObject canvasObject = new GameObject(
@@ -131,10 +128,7 @@ public static class LoadingScreenPrefabBuilder
         keyLightObject.transform.localRotation = Quaternion.Euler(28f, -32f, 0f);
         Light keyLight = keyLightObject.GetComponent<Light>();
         keyLight.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(
-            keyLight,
-            0.58f * _builtInDirectionalLightIntensityToHdrp
-        );
+        UrpRenderTargetBuilder.ConfigureLight(keyLight, 0.58f);
         keyLight.color = Color.white;
         keyLight.cullingMask = 1 << _presentationLayer;
         keyLight.shadows = LightShadows.None;
@@ -144,10 +138,7 @@ public static class LoadingScreenPrefabBuilder
         fillLightObject.transform.localPosition = new Vector3(-2.5f, -1f, -2.5f);
         Light fillLight = fillLightObject.GetComponent<Light>();
         fillLight.type = LightType.Point;
-        HdrpRenderTargetBuilder.ConfigureLight(
-            fillLight,
-            0.3f * _builtInPunctualLightIntensityToHdrp
-        );
+        UrpRenderTargetBuilder.ConfigureLight(fillLight, 0.3f * _punctualLightIntensityScale);
         fillLight.color = new Color(0.82f, 0.87f, 0.95f, 1f);
         fillLight.range = 12f;
         fillLight.cullingMask = 1 << _presentationLayer;
@@ -158,10 +149,7 @@ public static class LoadingScreenPrefabBuilder
         rimLightObject.transform.localRotation = Quaternion.Euler(-18f, 154f, 0f);
         Light rimLight = rimLightObject.GetComponent<Light>();
         rimLight.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(
-            rimLight,
-            0.25f * _builtInDirectionalLightIntensityToHdrp
-        );
+        UrpRenderTargetBuilder.ConfigureLight(rimLight, 0.25f);
         rimLight.color = new Color(0.45f, 0.62f, 0.85f, 1f);
         rimLight.cullingMask = 1 << _presentationLayer;
         rimLight.shadows = LightShadows.None;
@@ -181,7 +169,7 @@ public static class LoadingScreenPrefabBuilder
         shuttleCamera.cullingMask = 1 << _presentationLayer;
         shuttleCamera.allowHDR = false;
         shuttleCamera.allowMSAA = false;
-        HdrpRenderTargetBuilder.ConfigureCamera(shuttleCamera, includeFlatAmbientLighting: true);
+        UrpRenderTargetBuilder.ConfigureCamera(shuttleCamera, ambientColor: _shuttleAmbientColor);
 
         GameObject fadeOverlayObject = CreateRectObject("FadeOverlay", canvasObject.transform);
         Image fadeOverlay = fadeOverlayObject.AddComponent<Image>();

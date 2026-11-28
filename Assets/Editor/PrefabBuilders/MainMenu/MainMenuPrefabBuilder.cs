@@ -11,7 +11,7 @@ using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.EventSystems;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
 
@@ -90,7 +90,6 @@ public static class MainMenuPrefabBuilder
     private const float _rigSpacing = 1000f;
     private const string _lightsName = "SharedLights";
     private static readonly Color _iconAmbientColor = new Color(0.212f, 0.227f, 0.259f).linear;
-    private const float _builtInDirectionalLightIntensityToHdrp = Mathf.PI;
     private const float _hqUnderLightIntensity = 60f;
     private const string _iconAtlasPath = "Assets/Art/Models/MainMenu/IconAtlas.renderTexture";
     private const int _iconAtlasWidth = 4096;
@@ -223,9 +222,7 @@ public static class MainMenuPrefabBuilder
         GameObject root = new GameObject("MainMenuRoot");
         try
         {
-            HdrpRenderTargetBuilder.AddIsolatedVolume(root.transform);
-            HdrpRenderTargetBuilder.AddFlatAmbientVolume(root.transform, _iconAmbientColor);
-            HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(root.transform);
+            UrpRenderTargetBuilder.AddPlanetPostProcessingVolume(root.transform);
             RectTransform viewport = BuildBaseHierarchy(root);
             RebuildViewBindings(root);
             InstallPlanet(root, viewport);
@@ -261,9 +258,7 @@ public static class MainMenuPrefabBuilder
         root.GetComponent<RawImage>().color = Color.clear;
         GameObject world = new("MainMenuPreviewWorld");
         world.transform.SetParent(root.transform, false);
-        HdrpRenderTargetBuilder.AddIsolatedVolume(world.transform);
-        HdrpRenderTargetBuilder.AddFlatAmbientVolume(world.transform, _iconAmbientColor);
-        HdrpRenderTargetBuilder.AddPlanetPostProcessingVolume(world.transform);
+        UrpRenderTargetBuilder.AddPlanetPostProcessingVolume(world.transform);
         RectTransform viewport = BuildViewport(root.transform);
         InstallPlanet(world, viewport);
         Dictionary<string, ContentModelBinding> models = InstallSpinning3DIcons(
@@ -2727,10 +2722,10 @@ public static class MainMenuPrefabBuilder
         camera.cullingMask = 1 << planetLayer;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(
+        UrpRenderTargetBuilder.ConfigureCamera(
             camera,
             includePlanetPostProcessing: true,
-            antialiasing: HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing
+            antialiasing: AntialiasingMode.SubpixelMorphologicalAntiAliasing
         );
     }
 
@@ -2823,7 +2818,7 @@ public static class MainMenuPrefabBuilder
         );
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(light, 1f);
+        UrpRenderTargetBuilder.ConfigureLight(light, 1f);
         light.color = Color.white;
         light.cullingMask = 1 << layer;
         light.shadows = LightShadows.Soft;
@@ -3320,14 +3315,14 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 20f;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
+        UrpRenderTargetBuilder.ConfigureCamera(camera, ambientColor: _iconAmbientColor);
 
         GameObject underLightObject = new GameObject("UnderLight", typeof(Light));
         underLightObject.transform.SetParent(rig.transform, false);
         underLightObject.transform.localPosition = new Vector3(0f, -0.55f, -2.5f);
         Light underLight = underLightObject.GetComponent<Light>();
         underLight.type = LightType.Spot;
-        HdrpRenderTargetBuilder.ConfigureLight(underLight, _hqUnderLightIntensity);
+        UrpRenderTargetBuilder.ConfigureLight(underLight, _hqUnderLightIntensity);
         underLight.range = 6f;
         underLight.spotAngle = 18f;
         underLight.innerSpotAngle = 12f;
@@ -3454,7 +3449,7 @@ public static class MainMenuPrefabBuilder
         camera.farClipPlane = 20f;
         camera.allowMSAA = false;
         camera.targetTexture = renderTexture;
-        HdrpRenderTargetBuilder.ConfigureCamera(camera, includeFlatAmbientLighting: true);
+        UrpRenderTargetBuilder.ConfigureCamera(camera, ambientColor: _iconAmbientColor);
 
         if (face.UnderLightIntensity > 0f)
         {
@@ -3571,10 +3566,7 @@ public static class MainMenuPrefabBuilder
         lightObject.transform.localRotation = rotation;
         Light light = lightObject.GetComponent<Light>();
         light.type = LightType.Directional;
-        HdrpRenderTargetBuilder.ConfigureLight(
-            light,
-            intensity * _builtInDirectionalLightIntensityToHdrp
-        );
+        UrpRenderTargetBuilder.ConfigureLight(light, intensity);
         light.color = color;
         light.shadows = shadows;
         light.cullingMask = ~(

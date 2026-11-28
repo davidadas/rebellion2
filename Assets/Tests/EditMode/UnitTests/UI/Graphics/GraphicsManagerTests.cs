@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.Rendering;
-using UnityEngine.Rendering.HighDefinition;
+using UnityEngine.Rendering.Universal;
 
 namespace Rebellion.Tests.Managers
 {
@@ -60,14 +60,14 @@ namespace Rebellion.Tests.Managers
 
             _manager.Apply(settings);
 
-            HDAdditionalCameraData cameraData =
-                _cameraObject.GetComponent<HDAdditionalCameraData>();
+            UniversalAdditionalCameraData cameraData =
+                _cameraObject.GetComponent<UniversalAdditionalCameraData>();
             Assert.AreEqual(_originalQualityLevel, QualitySettings.GetQualityLevel());
             Assert.AreEqual(0, QualitySettings.vSyncCount);
             Assert.AreEqual(120, Application.targetFrameRate);
-            Assert.IsFalse(cameraData.allowDynamicResolution);
+            Assert.IsFalse(_cameraObject.GetComponent<Camera>().allowDynamicResolution);
             Assert.AreEqual(
-                HDAdditionalCameraData.AntialiasingMode.SubpixelMorphologicalAntiAliasing,
+                AntialiasingMode.SubpixelMorphologicalAntiAliasing,
                 cameraData.antialiasing
             );
         }
@@ -93,7 +93,7 @@ namespace Rebellion.Tests.Managers
         }
 
         /// <summary>
-        /// Verifies that adding HDRP camera data retains an authored solid-color clear rather than
+        /// Verifies that adding URP camera data retains an authored solid-color clear rather than
         /// exposing the pipeline sky.
         /// </summary>
         [Test]
@@ -105,27 +105,28 @@ namespace Rebellion.Tests.Managers
 
             _manager.Apply(new UserVideoSettings());
 
-            HDAdditionalCameraData cameraData =
-                _cameraObject.GetComponent<HDAdditionalCameraData>();
-            Assert.AreEqual(HDAdditionalCameraData.ClearColorMode.Color, cameraData.clearColorMode);
-            Assert.AreEqual(camera.backgroundColor.linear, cameraData.backgroundColorHDR);
+            UniversalAdditionalCameraData cameraData =
+                _cameraObject.GetComponent<UniversalAdditionalCameraData>();
+            Assert.AreEqual(CameraClearFlags.SolidColor, camera.clearFlags);
+            Assert.AreEqual(new Color(0.1f, 0.2f, 0.3f, 1f), camera.backgroundColor);
+            Assert.IsNotNull(cameraData);
         }
 
         /// <summary>
         /// Verifies that auxiliary display cameras are outside the global graphics-camera policy.
         /// </summary>
         [Test]
-        public void Apply_UntaggedDisplayCamera_DoesNotAddHdrpCameraData()
+        public void Apply_UntaggedDisplayCamera_DoesNotAddUrpCameraData()
         {
             _cameraObject.tag = "Untagged";
 
             _manager.Apply(new UserVideoSettings());
 
-            Assert.IsNull(_cameraObject.GetComponent<HDAdditionalCameraData>());
+            Assert.IsNull(_cameraObject.GetComponent<UniversalAdditionalCameraData>());
         }
 
         /// <summary>
-        /// Verifies that effect toggles update the owned HDRP volume components.
+        /// Verifies that effect toggles update the owned URP volume components.
         /// </summary>
         [Test]
         public void Apply_EffectSettings_UpdatesRuntimeVolumeOverrides()
@@ -135,36 +136,82 @@ namespace Rebellion.Tests.Managers
                 AmbientOcclusion = true,
                 Bloom = false,
                 MotionBlur = false,
-                RayTracing = true,
             };
 
             _manager.Apply(settings);
 
             Volume volume = _owner.GetComponentInChildren<Volume>();
-            Assert.IsTrue(
-                volume.sharedProfile.TryGet(out ScreenSpaceAmbientOcclusion ambientOcclusion)
-            );
             Assert.IsTrue(volume.sharedProfile.TryGet(out Bloom bloom));
             Assert.IsTrue(volume.sharedProfile.TryGet(out MotionBlur motionBlur));
-            Assert.IsTrue(ambientOcclusion.active);
-            Assert.AreEqual(_manager.RayTracingAvailable, ambientOcclusion.rayTracing.value);
             Assert.IsFalse(bloom.active);
             Assert.IsFalse(motionBlur.active);
 
-            HDAdditionalCameraData cameraData =
-                _cameraObject.GetComponent<HDAdditionalCameraData>();
-            Assert.IsTrue(
-                cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.SSAO)
-            );
-            Assert.IsFalse(
-                cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.Bloom)
-            );
-            Assert.IsFalse(
-                cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.MotionBlur)
+            UniversalAdditionalCameraData cameraData =
+                _cameraObject.GetComponent<UniversalAdditionalCameraData>();
+            Assert.IsTrue(cameraData.renderPostProcessing);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Apply_TemporalAntialiasing_PreservesSelectedMode(bool orthographic)
+        {
+            _cameraObject.GetComponent<Camera>().orthographic = orthographic;
+            _manager.Apply(
+                new UserVideoSettings { AntiAliasingMode = (int)UserAntiAliasingMode.Taa }
             );
             Assert.AreEqual(
-                _manager.RayTracingAvailable,
-                cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.RayTracing)
+                AntialiasingMode.TemporalAntiAliasing,
+                _cameraObject.GetComponent<UniversalAdditionalCameraData>().antialiasing
+            );
+        }
+
+        [Test]
+        public void Apply_MotionBlurEnabled_IncludesMovingObjects()
+        {
+            _manager.Apply(new UserVideoSettings { MotionBlur = true });
+            Volume volume = _owner.GetComponentInChildren<Volume>();
+            Assert.IsTrue(volume.sharedProfile.TryGet(out MotionBlur motionBlur));
+            Assert.IsTrue(motionBlur.active);
+            Assert.IsTrue(motionBlur.mode.overrideState);
+            Assert.AreEqual(MotionBlurMode.CameraAndObjects, motionBlur.mode.value);
+        }
+
+        [Test]
+        public void Apply_DisabledBloom_OverridesAuthoredVolumes()
+        {
+            _manager.Apply(new UserVideoSettings { Bloom = false });
+            Volume[] volumes = _owner.GetComponentsInChildren<Volume>();
+            Volume suppression = System.Array.Find(volumes, volume => volume.priority > 1002f);
+            Assert.IsNotNull(suppression);
+            Assert.IsTrue(suppression.sharedProfile.TryGet(out Bloom bloom));
+            Assert.IsTrue(bloom.active);
+            Assert.IsTrue(bloom.intensity.overrideState);
+            Assert.AreEqual(0f, bloom.intensity.value);
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Apply_AmbientOcclusion_SelectsMatchingRenderer(bool enabled)
+        {
+            _manager.Apply(new UserVideoSettings { AmbientOcclusion = enabled });
+            UniversalRenderPipelineAsset pipeline =
+                GraphicsSettings.defaultRenderPipeline as UniversalRenderPipelineAsset;
+            UniversalAdditionalCameraData cameraData =
+                _cameraObject.GetComponent<UniversalAdditionalCameraData>();
+            for (int index = 0; index < pipeline.rendererDataList.Length; index++)
+            {
+                ScriptableRendererData data = pipeline.rendererDataList[index];
+                bool hasAmbientOcclusion = data.rendererFeatures.Exists(feature =>
+                    feature is ScreenSpaceAmbientOcclusion && feature.isActive
+                );
+                if (hasAmbientOcclusion == enabled)
+                {
+                    Assert.AreSame(pipeline.GetRenderer(index), cameraData.scriptableRenderer);
+                    return;
+                }
+            }
+            Assert.Fail(
+                "The pipeline has no renderer for the requested ambient occlusion setting."
             );
         }
 
@@ -179,8 +226,8 @@ namespace Rebellion.Tests.Managers
             Camera camera = _cameraObject.GetComponent<Camera>();
             RenderTexture target = new RenderTexture(64, 64, 0);
             camera.targetTexture = target;
-            HDAdditionalCameraData cameraData =
-                _cameraObject.AddComponent<HDAdditionalCameraData>();
+            UniversalAdditionalCameraData cameraData =
+                _cameraObject.AddComponent<UniversalAdditionalCameraData>();
             cameraData.volumeLayerMask = 1 << GraphicsManager.RuntimeVolumeLayer;
 
             try
@@ -195,27 +242,12 @@ namespace Rebellion.Tests.Managers
                     }
                 );
 
-                Assert.IsFalse(cameraData.allowDynamicResolution);
+                Assert.IsFalse(_cameraObject.GetComponent<Camera>().allowDynamicResolution);
                 Assert.AreEqual(
-                    HDAdditionalCameraData.AntialiasingMode.FastApproximateAntialiasing,
+                    AntialiasingMode.FastApproximateAntialiasing,
                     cameraData.antialiasing
                 );
-                Assert.IsTrue(
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
-                        FrameSettingsField.Postprocess
-                    )
-                );
-                Assert.IsTrue(
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.SSAO)
-                );
-                Assert.IsTrue(
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(FrameSettingsField.Bloom)
-                );
-                Assert.IsTrue(
-                    cameraData.renderingPathCustomFrameSettings.IsEnabled(
-                        FrameSettingsField.MotionBlur
-                    )
-                );
+                Assert.IsTrue(cameraData.renderPostProcessing);
             }
             finally
             {

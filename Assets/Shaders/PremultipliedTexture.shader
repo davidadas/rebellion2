@@ -12,7 +12,7 @@ Shader "Custom/PremultipliedTexture"
         {
             "Queue" = "Transparent"
             "RenderType" = "Transparent"
-            "RenderPipeline" = "HDRenderPipeline"
+            "RenderPipeline" = "UniversalPipeline"
             "IgnoreProjector" = "True"
             "CanUseSpriteAtlas" = "True"
         }

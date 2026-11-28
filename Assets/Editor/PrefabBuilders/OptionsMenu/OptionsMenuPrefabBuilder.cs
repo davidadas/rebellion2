@@ -477,7 +477,7 @@ public static class OptionsMenuPrefabBuilder
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.FrameRateLimit,
-            "Frame Rate Limit",
+            "Frame rate limit",
             ref nextRowY,
             valueFields,
             previousButtons,
@@ -486,7 +486,7 @@ public static class OptionsMenuPrefabBuilder
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.HdrOutput,
-            "HDR Output",
+            "HDR output",
             ref nextRowY,
             valueFields,
             previousButtons,
@@ -496,14 +496,14 @@ public static class OptionsMenuPrefabBuilder
         AppendOptionsSectionHeader(
             graphicsContent,
             "RenderingHeader",
-            "RENDERING",
+            "Rendering",
             accent,
             ref nextRowY
         );
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.QualityPreset,
-            "Quality Preset",
+            "Quality preset",
             ref nextRowY,
             valueFields,
             previousButtons,
@@ -512,40 +512,23 @@ public static class OptionsMenuPrefabBuilder
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.AntiAliasing,
-            "Anti-Aliasing",
+            "Anti-aliasing",
             ref nextRowY,
             valueFields,
             previousButtons,
             nextButtons
         );
-        AppendOptionsSectionHeader(
-            graphicsContent,
-            "RayTracingHeader",
-            "RAY TRACING",
-            accent,
-            ref nextRowY
-        );
-        AppendGraphicsFieldRow(
-            graphicsContent,
-            UserGraphicsSetting.RayTracing,
-            "Ray-Traced AO (RTX)",
-            ref nextRowY,
-            valueFields,
-            previousButtons,
-            nextButtons
-        );
-
         AppendOptionsSectionHeader(
             graphicsContent,
             "EffectsHeader",
-            "EFFECTS",
+            "Effects",
             accent,
             ref nextRowY
         );
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.AmbientOcclusion,
-            "Ambient Occlusion",
+            "Ambient occlusion",
             ref nextRowY,
             valueFields,
             previousButtons,
@@ -563,7 +546,7 @@ public static class OptionsMenuPrefabBuilder
         AppendGraphicsFieldRow(
             graphicsContent,
             UserGraphicsSetting.MotionBlur,
-            "Motion Blur",
+            "Motion blur",
             ref nextRowY,
             valueFields,
             previousButtons,
