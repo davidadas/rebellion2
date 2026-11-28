@@ -20,8 +20,60 @@ public static class ContentModLoadOrder
         IReadOnlyList<string> preferredOrder
     )
     {
+        if (!enabled.Any(mod => mod.ClientOnly))
+            return ResolveOrder(enabled, issues, preferredOrder);
+        IReadOnlyList<ContentModDefinition> shared = ResolveOrder(
+            enabled.Where(mod => !mod.ClientOnly).ToArray(),
+            issues,
+            preferredOrder
+        );
+        var clients = new List<ContentModDefinition>();
+        foreach (ContentModDefinition client in enabled.Where(mod => mod.ClientOnly))
+        {
+            ContentModDefinition conflict = shared.FirstOrDefault(mod =>
+                client.IncompatibleWith.Contains(mod.ID) || mod.IncompatibleWith.Contains(client.ID)
+            );
+            if (conflict == null)
+                clients.Add(client);
+            else
+                issues.Add(
+                    new ContentModIssue(
+                        client.ID,
+                        client.DisplayName,
+                        $"Cannot load with {conflict.DisplayName}. Disable this client-only mod.",
+                        blocksSelection: true
+                    )
+                );
+        }
+        return shared
+            .Concat(
+                ResolveOrder(
+                    clients,
+                    issues,
+                    preferredOrder,
+                    shared.ToDictionary(mod => mod.ID, StringComparer.Ordinal)
+                )
+            )
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Resolves dependencies and ordering within one requested content selection.
+    /// </summary>
+    /// <param name="enabled">The requested mod definitions.</param>
+    /// <param name="issues">Receives explanations for excluded mods.</param>
+    /// <param name="preferredOrder">The preferred priority of the selected mods.</param>
+    /// <param name="externalRequirements">Shared requirements that must not be reordered or removed by local mods.</param>
+    /// <returns>The loadable definitions in dependency order.</returns>
+    private static IReadOnlyList<ContentModDefinition> ResolveOrder(
+        IReadOnlyList<ContentModDefinition> enabled,
+        ICollection<ContentModIssue> issues,
+        IReadOnlyList<string> preferredOrder,
+        IReadOnlyDictionary<string, ContentModDefinition> externalRequirements = null
+    )
+    {
         var selected = enabled.ToDictionary(mod => mod.ID, StringComparer.Ordinal);
-        RemoveMissingRequirements(selected, issues);
+        RemoveMissingRequirements(selected, issues, externalRequirements);
         var conflicts = new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (ContentModDefinition mod in selected.Values)
         foreach (string id in mod.IncompatibleWith)
@@ -43,7 +95,7 @@ public static class ContentModLoadOrder
             );
             selected.Remove(mod.ID);
         }
-        RemoveMissingRequirements(selected, issues);
+        RemoveMissingRequirements(selected, issues, externalRequirements);
 
         ContentModDefinition[] candidates =
             preferredOrder == null
@@ -157,6 +209,8 @@ public static class ContentModLoadOrder
         ContentModDefinition later
     )
     {
+        if (earlier.ClientOnly != later.ClientOnly)
+            return "Client-only mods load after shared gameplay mods.";
         if (later.Requires.Any(requirement => requirement.ID == earlier.ID))
             return $"{later.DisplayName} requires {earlier.DisplayName}.";
         if (later.LoadAfter.Contains(earlier.ID) || earlier.LoadBefore.Contains(later.ID))
@@ -292,9 +346,11 @@ public static class ContentModLoadOrder
     /// </summary>
     /// <param name="selected">The remaining candidates indexed by ID.</param>
     /// <param name="issues">Receives one reason per excluded mod.</param>
+    /// <param name="externalRequirements">Shared requirements available to local mods.</param>
     private static void RemoveMissingRequirements(
         Dictionary<string, ContentModDefinition> selected,
-        ICollection<ContentModIssue> issues
+        ICollection<ContentModIssue> issues,
+        IReadOnlyDictionary<string, ContentModDefinition> externalRequirements
     )
     {
         bool removed;
@@ -304,9 +360,13 @@ public static class ContentModLoadOrder
             foreach (ContentModDefinition mod in selected.Values.ToArray())
             {
                 ContentModRequirement missing = mod.Requires.FirstOrDefault(requirement =>
-                    !selected.TryGetValue(requirement.ID, out ContentModDefinition dependency)
-                    || !requirement.MatchesRelease(dependency.ID, dependency.Version)
-                );
+                {
+                    ContentModDefinition dependency =
+                        selected.GetValueOrDefault(requirement.ID)
+                        ?? externalRequirements?.GetValueOrDefault(requirement.ID);
+                    return dependency == null
+                        || !requirement.MatchesRelease(dependency.ID, dependency.Version);
+                });
                 if (missing == null)
                     continue;
 

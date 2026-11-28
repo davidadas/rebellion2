@@ -41,6 +41,9 @@ public sealed class ContentModDefinition
     [PersistableMember(Name = nameof(ExtendsPack))]
     private bool _extendsPack;
 
+    [PersistableMember(Name = nameof(ClientOnly))]
+    private bool _clientOnly;
+
     /// <summary>
     /// Gets the stable mod identifier.
     /// </summary>
@@ -76,6 +79,11 @@ public sealed class ContentModDefinition
     public IReadOnlyList<string> IncompatibleWith => _incompatibleWith ?? Array.Empty<string>();
 
     public bool ExtendsPack => _extendsPack;
+
+    /// <summary>
+    /// Gets whether this mod supplies only local presentation and is excluded from shared gameplay.
+    /// </summary>
+    public bool ClientOnly => _clientOnly;
 
     /// <summary>
     /// Creates the manifest for a mod authored against an installed pack.

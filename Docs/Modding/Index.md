@@ -62,6 +62,24 @@ pack release the mod supports.
 
 Existing mods with a `mod.xml` manifest continue to load.
 
+For a mod that changes only local presentation, add this to its manifest:
+
+```xml
+<ClientOnly>true</ClientOnly>
+```
+
+Client-only mods can replace PNG/JPEG images, WAV/OGG/MP3 audio, MP4/WebM videos, GLB models,
+artwork aliases, and UI theme XML files already declared by the game pack. Other files, including
+unit definitions, rules, scenarios, events, schemas, and pack-manifest overrides, are rejected.
+`ExtendsPack` must be omitted or `false`. Without `ClientOnly`, a mod remains shared gameplay content.
+
+Multiplayer requires matching shared mods, versions, load order, and gameplay data. Each player can
+use different client-only mods. Their enabled local mods remain selected when joining, loading,
+or reconnecting, and are not recorded as required mods in the shared save. Client-only layers apply
+after shared layers; their ordering rules cannot change shared gameplay priority. Shared mods cannot
+require client-only mods. A mod containing both gameplay and presentation changes remains shared;
+publish optional presentation changes as a separate client-only mod.
+
 Use `Requires` for dependencies. Give each required mod an `ID` and optionally a `Version`.
 `LoadAfter` and `LoadBefore` take mod IDs and set the order when those mods are enabled.
 `IncompatibleWith` lists mods that need to be turned off before this one can load.

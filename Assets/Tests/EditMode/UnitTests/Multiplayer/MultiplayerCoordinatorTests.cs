@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using NUnit.Framework;
@@ -125,6 +126,73 @@ namespace Rebellion.Tests.Multiplayer
                 contentFingerprint = EpicLobbyListing.HashContent("pack|2|scenario|"),
             };
             Assert.That(_coordinator.IsCompatible(game, CreateSummary()), Is.False);
+        }
+
+        [Test]
+        public void IsCompatible_ClientOnlyThemeDiffers_AcceptsSharedGameplay()
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "multiplayer-mods-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                ContentPack host = TestPackFixture.Install(Path.Combine(directory, "Content"));
+                string mod = Path.Combine(directory, "Mods", "local");
+                string theme = Path.Combine(
+                    mod,
+                    "Content",
+                    "Pack",
+                    "Factions",
+                    "Empire",
+                    "Strategy",
+                    "UI"
+                );
+                Directory.CreateDirectory(theme);
+                File.WriteAllText(
+                    Path.Combine(mod, "mod.xml"),
+                    $"<ContentModDefinition><ID>local</ID><Version>1.0.0</Version><DisplayName>Local UI</DisplayName><BasePackID>{host.Definition.ID}</BasePackID><BasePackVersion>{host.Definition.Version}</BasePackVersion><ClientOnly>true</ClientOnly></ContentModDefinition>"
+                );
+                File.WriteAllText(
+                    Path.Combine(theme, "theme.xml"),
+                    "<FactionThemes Inherit='true'><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>ABCDEF</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+                );
+                ContentPack guest = ContentPackLoader.OpenExact(
+                    host.ContentRootPath,
+                    host.Definition.ID,
+                    host.Scenario.ID,
+                    null
+                );
+                GameSummary summary = host.CreateDefaultGameSummary();
+                MultiplayerGameListing listing = new()
+                {
+                    transport = EpicLobbyListing.Transport,
+                    contentFingerprint = EpicLobbyListing.HashContent(
+                        $"{summary.PackID}|{summary.PackVersion}|{summary.ScenarioID}|"
+                    ),
+                };
+
+                Assert.That(
+                    _coordinator.IsCompatible(listing, guest.CreateDefaultGameSummary()),
+                    Is.True
+                );
+                Assert.DoesNotThrow(() =>
+                    MultiplayerCompatibility.ValidateContent(
+                        GameplayContentIdentity.Compute(host.GameData),
+                        GameplayContentIdentity.Compute(guest.GameData)
+                    )
+                );
+                Assert.That(
+                    guest
+                        .GameData.FactionThemes.Single(item => item.FactionInstanceID == "FNEMP1")
+                        .FactionPrimaryColorHex,
+                    Is.EqualTo("ABCDEF")
+                );
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
         }
 
         [Test]

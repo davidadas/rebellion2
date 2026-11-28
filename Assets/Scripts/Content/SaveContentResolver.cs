@@ -95,10 +95,13 @@ internal static class SaveContentResolver
 
         ContentPack requiredPack = ContentPackLoader.OpenSaved(
             activePack.ContentRootPath,
-            metadata
+            metadata,
+            activePack.FileResolver.Mods.Where(mod => mod.ClientOnly).ToArray()
         );
         string[] disabledModIDs = requiredPack
-            .FileResolver.AvailableMods.Where(mod => !requiredModIDSet.Contains(mod.ID))
+            .FileResolver.AvailableMods.Where(mod =>
+                !requiredPack.FileResolver.Mods.Any(active => active.ID == mod.ID)
+            )
             .Select(mod => mod.ID)
             .ToArray();
         if (!requiredPack.MatchesContentIdentity(metadata))

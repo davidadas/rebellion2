@@ -590,8 +590,13 @@ public static class ContentPackLoader
     /// </summary>
     /// <param name="contentRootPath">The installed content directory.</param>
     /// <param name="saved">The already validated save identity.</param>
+    /// <param name="clientMods">The local presentation mods to retain for this player.</param>
     /// <returns>The content required to load the save.</returns>
-    internal static ContentPack OpenSaved(string contentRootPath, GameMetadata saved)
+    internal static ContentPack OpenSaved(
+        string contentRootPath,
+        GameMetadata saved,
+        IReadOnlyList<ContentModDefinition> clientMods = null
+    )
     {
         if (
             string.IsNullOrWhiteSpace(saved.PackID)
@@ -606,7 +611,8 @@ public static class ContentPackLoader
             saved.PackID,
             saved.ScenarioID,
             null,
-            saved
+            saved,
+            clientMods: clientMods
         );
     }
 
@@ -650,6 +656,7 @@ public static class ContentPackLoader
     /// <param name="preferredModOrder">The saved or staged order for a new game.</param>
     /// <param name="requireValidSelection">Whether every requested mod must be loadable.</param>
     /// <param name="appliedModVersions">The exact releases when opening an applied stack.</param>
+    /// <param name="clientMods">The player's local presentation selection when restoring gameplay.</param>
     /// <returns>The loaded content pack.</returns>
     private static ContentPack OpenPack(
         string absoluteContentRoot,
@@ -660,7 +667,8 @@ public static class ContentPackLoader
         bool allowModDefault = false,
         IReadOnlyList<string> preferredModOrder = null,
         bool requireValidSelection = false,
-        IReadOnlyList<string> appliedModVersions = null
+        IReadOnlyList<string> appliedModVersions = null,
+        IReadOnlyList<ContentModDefinition> clientMods = null
     )
     {
         IReadOnlyList<string> packRoots = ResolvePackRoots(
@@ -689,7 +697,8 @@ public static class ContentPackLoader
             saved,
             preferredModOrder: preferredModOrder,
             appliedModIDs: requireValidSelection ? null : preferredModOrder,
-            appliedModVersions: appliedModVersions
+            appliedModVersions: appliedModVersions,
+            clientMods: clientMods
         );
         if (requireValidSelection)
         {
@@ -730,12 +739,13 @@ public static class ContentPackLoader
             throw new ArgumentNullException(nameof(fileResolver));
         if (pack == null)
             throw new ArgumentNullException(nameof(pack));
+        ContentFileResolver gameplayResolver = fileResolver.ForGameplay();
         List<ContentFactionDefinition> factions = LoadDefinitions<ContentFactionDefinition>(
-            fileResolver,
+            gameplayResolver,
             pack.FactionPaths
         );
         List<ContentScenarioDefinition> scenarios = LoadDefinitions<ContentScenarioDefinition>(
-            fileResolver,
+            gameplayResolver,
             pack.ScenarioPaths
         );
         string resolvedScenarioID = string.IsNullOrWhiteSpace(scenarioID)
@@ -750,7 +760,15 @@ public static class ContentPackLoader
             );
 
         ValidateDefinitions(pack, factions, scenarios, scenario);
-        GameDataCatalog gameData = LoadGameData(fileResolver, pack, factions, scenario);
+        if (fileResolver.GameplayMods.Count != fileResolver.Mods.Count)
+            fileResolver.ValidateClientOnlyContent(ReadThemePaths(gameplayResolver, pack));
+        GameDataCatalog gameData = LoadGameData(
+            gameplayResolver,
+            pack,
+            factions,
+            scenario,
+            fileResolver
+        );
         return new ContentPack(
             fileResolver.ContentRootPath,
             fileResolver.PackRootPath,
@@ -925,12 +943,14 @@ public static class ContentPackLoader
     /// <param name="pack">The selected pack definition.</param>
     /// <param name="factions">The pack's faction definitions.</param>
     /// <param name="scenario">The selected scenario definition.</param>
+    /// <param name="presentationResolver">The shared and local layers used only for UI themes.</param>
     /// <returns>The composed typed game-data catalog.</returns>
     private static GameDataCatalog LoadGameData(
         ContentFileResolver fileResolver,
         ContentPackDefinition pack,
         IReadOnlyList<ContentFactionDefinition> factions,
-        ContentScenarioDefinition scenario
+        ContentScenarioDefinition scenario,
+        ContentFileResolver presentationResolver
     )
     {
         GameConfig gameConfig = LoadGameConfig(fileResolver, pack.GameConfigPath);
@@ -983,7 +1003,11 @@ public static class ContentPackLoader
             )
         )
             themes.AddRange(
-                DeserializeGameData<FactionThemes>(fileResolver, path, nameof(FactionThemes))
+                DeserializeGameData<FactionThemes>(
+                    presentationResolver,
+                    path,
+                    nameof(FactionThemes)
+                )
             );
         if (themes.Count(theme => FactionThemes.IsNeutral(theme.FactionInstanceID)) != 1)
             throw new InvalidDataException("A game pack must define exactly one Neutral theme.");

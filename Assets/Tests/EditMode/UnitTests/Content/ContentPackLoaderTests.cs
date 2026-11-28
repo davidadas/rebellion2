@@ -976,6 +976,113 @@ namespace Rebellion.Tests.Content
             }
         }
 
+        [TestCase("Application/Rules/game.xml")]
+        [TestCase("Application/Schemas/game-config.xsd")]
+        [TestCase("Pack/Shared/Data/game-events.xml")]
+        [TestCase("Pack/Factions/Empire/Data/capital-ships.xml")]
+        [TestCase("Pack/Scenarios/Standard/scenario.xml")]
+        [TestCase("Pack/pack.xml")]
+        public void OpenExact_ClientOnlyGameplayOverride_RejectsContent(string address)
+        {
+            WithClientOnlyMod(
+                (pack, root) =>
+                {
+                    WriteFile(root, address, "forbidden");
+
+                    Assert.Throws<InvalidDataException>(() =>
+                        ContentPackLoader.OpenExact(
+                            pack.ContentRootPath,
+                            pack.Definition.ID,
+                            pack.Scenario.ID,
+                            null
+                        )
+                    );
+                }
+            );
+        }
+
+        [TestCase("Pack/image.png")]
+        [TestCase("Application/sound.ogg")]
+        [TestCase("Pack/movie.mp4")]
+        [TestCase("Pack/model.glb")]
+        public void OpenExact_ClientOnlyMedia_ResolvesLocalAsset(string address)
+        {
+            WithClientOnlyMod(
+                (pack, root) =>
+                {
+                    string localFile = WriteFile(root, address, "local");
+
+                    ContentPack local = ContentPackLoader.OpenExact(
+                        pack.ContentRootPath,
+                        pack.Definition.ID,
+                        pack.Scenario.ID,
+                        null
+                    );
+
+                    Assert.That(local.FileResolver.ResolveFile(address), Is.EqualTo(localFile));
+                    Assert.That(local.CreateDefaultGameSummary().ModIDs, Is.Empty);
+                }
+            );
+        }
+
+        [Test]
+        public void OpenExact_ClientOnlyTheme_AppliesLocalTheme()
+        {
+            WithClientOnlyMod(
+                (pack, root) =>
+                {
+                    WriteFile(
+                        root,
+                        "Pack/Factions/Empire/Strategy/UI/theme.xml",
+                        "<FactionThemes Inherit='true'><FactionTheme><FactionInstanceID>FNEMP1</FactionInstanceID><FactionPrimaryColorHex>ABCDEF</FactionPrimaryColorHex></FactionTheme></FactionThemes>"
+                    );
+
+                    ContentPack local = ContentPackLoader.OpenExact(
+                        pack.ContentRootPath,
+                        pack.Definition.ID,
+                        pack.Scenario.ID,
+                        null
+                    );
+
+                    Assert.That(
+                        local
+                            .GameData.FactionThemes.Single(theme =>
+                                theme.FactionInstanceID == "FNEMP1"
+                            )
+                            .FactionPrimaryColorHex,
+                        Is.EqualTo("ABCDEF")
+                    );
+                }
+            );
+        }
+
+        /// <summary>
+        /// Installs an isolated pack and an enabled local presentation mod for a loader assertion.
+        /// </summary>
+        /// <param name="assertion">The behavior to check against the pack and mod content root.</param>
+        private static void WithClientOnlyMod(Action<ContentPack, string> assertion)
+        {
+            string directory = Path.Combine(
+                Path.GetTempPath(),
+                "client-mod-" + Guid.NewGuid().ToString("N")
+            );
+            try
+            {
+                ContentPack pack = TestPackFixture.Install(Path.Combine(directory, "Content"));
+                string root = Path.Combine(directory, "Mods", "local");
+                WriteFile(
+                    root,
+                    "mod.xml",
+                    $"<ContentModDefinition><ID>local</ID><Version>1.0.0</Version><DisplayName>Local artwork</DisplayName><BasePackID>{pack.Definition.ID}</BasePackID><BasePackVersion>{pack.Definition.Version}</BasePackVersion><ClientOnly>true</ClientOnly></ContentModDefinition>"
+                );
+                assertion(pack, Path.Combine(root, "Content"));
+            }
+            finally
+            {
+                Directory.Delete(directory, true);
+            }
+        }
+
         /// <summary>
         /// Exercises discovery with an isolated installed pack and an unreadable authored draft.
         /// </summary>

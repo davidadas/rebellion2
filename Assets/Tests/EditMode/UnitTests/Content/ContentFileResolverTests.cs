@@ -196,6 +196,202 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void ReadValidatedMod_ClientOnlyOmitted_RemainsShared()
+        {
+            WriteMod("shared", "shared", "");
+
+            Assert.That(
+                ContentFileResolver
+                    .ReadValidatedMod(Path.Combine(_root, "Mods", "shared"))
+                    .ClientOnly,
+                Is.False
+            );
+        }
+
+        [Test]
+        public void ReadValidatedMod_ClientOnlyRoundTrip_PreservesDeclaration()
+        {
+            WriteMod("local", "local", "<ClientOnly>true</ClientOnly>");
+            ContentModDefinition definition = ContentFileResolver.ReadValidatedMod(
+                Path.Combine(_root, "Mods", "local")
+            );
+
+            ContentModDefinition restored = SerializationHelper.Deserialize<ContentModDefinition>(
+                SerializationHelper.Serialize(definition)
+            );
+
+            Assert.That(restored.ClientOnly, Is.True);
+        }
+
+        [Test]
+        public void ReadValidatedMod_ClientOnlyExtendsPack_RejectsManifest()
+        {
+            WriteMod(
+                "local",
+                "local",
+                "<ClientOnly>true</ClientOnly><ExtendsPack>true</ExtendsPack>"
+            );
+
+            Assert.Throws<InvalidDataException>(() =>
+                ContentFileResolver.ReadValidatedMod(Path.Combine(_root, "Mods", "local"))
+            );
+        }
+
+        [Test]
+        public void ForGameplay_ClientOnlyLayer_ExcludesLocalFiles()
+        {
+            WriteMod("shared", "shared", "");
+            WriteMod("local", "local", "<ClientOnly>true</ClientOnly>");
+            string shared = WriteFile(
+                Path.Combine(_root, "Mods", "shared", "Content"),
+                "Pack/image.png",
+                "shared"
+            );
+            string local = WriteFile(
+                Path.Combine(_root, "Mods", "local", "Content"),
+                "Pack/image.png",
+                "local"
+            );
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(resolver.ResolveFile("Pack/image.png"), Is.EqualTo(local));
+            Assert.That(resolver.ForGameplay().ResolveFile("Pack/image.png"), Is.EqualTo(shared));
+        }
+
+        [Test]
+        public void Discover_ClientOrderRules_PreserveSharedPriority()
+        {
+            WriteMod("first", "first", "");
+            WriteMod("second", "second", "");
+            WriteMod(
+                "local",
+                "local",
+                "<ClientOnly>true</ClientOnly><LoadAfter><ModID>second</ModID></LoadAfter><LoadBefore><ModID>first</ModID></LoadBefore>"
+            );
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                preferredModOrder: new[] { "first", "second", "local" }
+            );
+
+            Assert.That(
+                resolver.GameplayMods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "first", "second" })
+            );
+        }
+
+        [Test]
+        public void Discover_SharedRequiresClientOnly_BlocksSharedMod()
+        {
+            WriteMod("shared", "shared", "<Requires><Mod><ID>local</ID></Mod></Requires>");
+            WriteMod("local", "local", "<ClientOnly>true</ClientOnly>");
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(resolver.GameplayMods, Is.Empty);
+            Assert.That(
+                resolver.ModIssues.Any(issue => issue.ID == "shared" && issue.BlocksSelection),
+                Is.True
+            );
+        }
+
+        [Test]
+        public void Discover_ClientOrderingCrossesSharedDependency_PreservesSharedMods()
+        {
+            WriteMod("first", "first", "<LoadBefore><ModID>second</ModID></LoadBefore>");
+            WriteMod("second", "second", "");
+            WriteMod(
+                "local",
+                "local",
+                "<ClientOnly>true</ClientOnly><LoadAfter><ModID>second</ModID></LoadAfter><LoadBefore><ModID>first</ModID></LoadBefore>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "first", "second", "local" })
+            );
+        }
+
+        [TestCase(false)]
+        [TestCase(true)]
+        public void Discover_ClientConflictsWithShared_PreservesSharedMod(bool applied)
+        {
+            WriteMod("shared", "shared", "");
+            WriteMod(
+                "local",
+                "local",
+                "<ClientOnly>true</ClientOnly><IncompatibleWith><ModID>shared</ModID></IncompatibleWith>"
+            );
+
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0",
+                appliedModIDs: applied ? new[] { "shared", "local" } : null,
+                appliedModVersions: applied ? new[] { "1.0.0", "1.0.0" } : null
+            );
+
+            Assert.That(resolver.Mods.Select(mod => mod.ID), Is.EqualTo(new[] { "shared" }));
+            Assert.That(resolver.ModIssues.Single().ID, Is.EqualTo("local"));
+        }
+
+        [Test]
+        public void Discover_ClientOnlyRequiresShared_LoadsBoth()
+        {
+            WriteMod("shared", "shared", "");
+            WriteMod(
+                "local",
+                "local",
+                "<ClientOnly>true</ClientOnly><Requires><Mod><ID>shared</ID></Mod></Requires>"
+            );
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(
+                resolver.Mods.Select(mod => mod.ID),
+                Is.EqualTo(new[] { "shared", "local" })
+            );
+        }
+
+        [Test]
+        public void GetMoveRestriction_ClientCrossesSharedLayer_RejectsMove()
+        {
+            WriteMod("shared", "shared", "");
+            WriteMod("local", "local", "<ClientOnly>true</ClientOnly>");
+            ContentFileResolver resolver = ContentFileResolver.Discover(
+                _contentRoot,
+                _packRoot,
+                "base-pack",
+                "1.0.0"
+            );
+
+            Assert.That(ContentModLoadOrder.GetMoveRestriction(resolver.Mods, 1, 0), Is.Not.Empty);
+        }
+
+        [Test]
         public void Discover_NewModHasEarlierID_AppendsWithoutChangingAppliedOrder()
         {
             WriteMod("01-alpha", "alpha", "");
