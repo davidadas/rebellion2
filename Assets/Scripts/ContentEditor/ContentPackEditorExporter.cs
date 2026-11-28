@@ -5,12 +5,166 @@ using System.IO.Compression;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 /// <summary>
 /// Writes frozen project snapshots and installable archives without changing the working project.
 /// </summary>
 internal static class ContentPackEditorExporter
 {
+    /// <summary>
+    /// Stages a derived game pack as a separate stackable mod and publishes the validated copy.
+    /// </summary>
+    /// <param name="project">The source project, including its current draft.</param>
+    /// <param name="destination">The new mod's folder.</param>
+    /// <param name="progress">Optional status reporting.</param>
+    /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <returns>Non-blocking validation warnings for the converted project.</returns>
+    internal static async Task<IReadOnlyList<string>> ConvertToModAsync(
+        ContentPackEditorProject project,
+        string destination,
+        Action<string> progress = null,
+        CancellationToken cancellationToken = default
+    )
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (
+            project.Mod != null
+            || project.IsInstalled
+            || string.IsNullOrWhiteSpace(project.Definition.BasePackID)
+        )
+            throw new InvalidOperationException(
+                "Open an editable game pack with a base pack to convert it."
+            );
+        destination = Path.GetFullPath(destination);
+        RejectNestedDestination(project, destination);
+        if (File.Exists(destination) || Directory.Exists(destination))
+            throw new IOException(
+                "Choose a location where the converted mod folder does not exist."
+            );
+
+        string staging = CreateStagingDirectory(Path.GetDirectoryName(destination));
+        try
+        {
+            string modRoot = Path.Combine(staging, "project");
+            string packSnapshot = Path.Combine(staging, "pack");
+            Directory.CreateDirectory(packSnapshot);
+            progress?.Invoke("Copying project files");
+            await WriteSnapshotAsync(
+                project,
+                packSnapshot,
+                cancellationToken,
+                EnumerateConversionFiles(project.ProjectRootPath)
+            );
+            string campaignPath = Path.Combine(packSnapshot, ContentPackageManifest.FileName);
+            ContentPackDefinition campaign =
+                ContentDefinitionSerializer.Deserialize<ContentPackDefinition>(campaignPath);
+            ContentFileResolver original = project.CreateResolver(campaign);
+            ContentFileResolver baseline = ContentPackLoader.CreatePackResolver(
+                project.ContentRootPath,
+                campaign.BasePackID
+            );
+            if (!original.PackRootPaths.Skip(1).SequenceEqual(baseline.PackRootPaths))
+                throw new InvalidDataException(
+                    "Install the game pack releases this project inherits before converting it."
+                );
+
+            using (
+                ContentPackEditorStorage.CreateInFolder(
+                    project.ContentRootPath,
+                    campaign.BasePackID,
+                    modRoot,
+                    campaign.ID + "-mod",
+                    campaign.DisplayName,
+                    campaign.Version,
+                    asMod: true
+                )
+            ) { }
+
+            WriteConvertedCampaign(campaignPath, ContentPackLoader.ReadModPackManifest(baseline));
+            string content = Path.Combine(modRoot, "Content");
+            Directory.CreateDirectory(content);
+            Directory.Move(packSnapshot, Path.Combine(content, "Pack"));
+            using ContentPackEditorProject converted = ContentPackEditorStorage.OpenFolder(
+                project.ContentRootPath,
+                modRoot
+            );
+            IReadOnlyList<string> warnings = await ContentEditorPackValidator.ValidateAsync(
+                converted,
+                progress,
+                cancellationToken
+            );
+            cancellationToken.ThrowIfCancellationRequested();
+            Directory.Move(modRoot, destination);
+            return warnings;
+        }
+        finally
+        {
+            Directory.Delete(staging, true);
+        }
+    }
+
+    /// <summary>
+    /// Selects local files without importing source control metadata or following directory links.
+    /// </summary>
+    /// <param name="directory">The current project directory.</param>
+    /// <returns>The files in the authored project tree.</returns>
+    private static IEnumerable<string> EnumerateConversionFiles(string directory)
+    {
+        foreach (string entry in Directory.EnumerateFileSystemEntries(directory))
+        {
+            if (string.Equals(Path.GetFileName(entry), ".git", StringComparison.OrdinalIgnoreCase))
+                continue;
+            FileAttributes attributes = File.GetAttributes(entry);
+            if ((attributes & FileAttributes.ReparsePoint) != 0)
+                throw new IOException(
+                    "Copy linked project files into the project before converting it."
+                );
+            if ((attributes & FileAttributes.Directory) != 0)
+            {
+                foreach (string path in EnumerateConversionFiles(entry))
+                    yield return path;
+            }
+            else
+                yield return entry;
+        }
+    }
+
+    /// <summary>
+    /// Writes campaign settings as an overlay while keeping the selected base pack's identity.
+    /// </summary>
+    /// <param name="path">The staged copy of the original campaign manifest.</param>
+    /// <param name="baseManifest">The resolved base campaign manifest.</param>
+    private static void WriteConvertedCampaign(string path, string baseManifest)
+    {
+        XElement baseline = XElement.Parse(baseManifest);
+        XElement authored = XElement.Load(path);
+        authored.Name = baseline.Name;
+        authored.Attribute("Type")?.Remove();
+        foreach (
+            XName name in new XName[]
+            {
+                "ID",
+                "Version",
+                "BasePackID",
+                "DisplayName",
+                "InheritedPacks",
+            }
+        )
+        {
+            authored.Elements(name).Remove();
+            if (baseline.Element(name) is XElement value)
+                authored.Add(new XElement(value));
+        }
+
+        string overlay = ContentXmlOverrides.Update(baseManifest, authored.ToString(), null);
+        ContentPackLoader.ValidateModPackOverlay(overlay);
+        if (ContentXmlOverrides.IsEmpty(overlay))
+            File.Delete(path);
+        else
+            File.WriteAllText(path, overlay);
+    }
+
     /// <summary>
     /// Validates a staged snapshot and writes its archive with cancellation between checks and file copies.
     /// </summary>
@@ -230,11 +384,13 @@ internal static class ContentPackEditorExporter
     /// <param name="project">The source authoring project.</param>
     /// <param name="staging">The owned staging directory.</param>
     /// <param name="cancellationToken">The requested cancellation.</param>
+    /// <param name="localFiles">An optional prefiltered set of authored files.</param>
     /// <returns>The completion of the snapshot copy.</returns>
     internal static async Task WriteSnapshotAsync(
         ContentPackEditorProject project,
         string staging,
-        CancellationToken cancellationToken
+        CancellationToken cancellationToken,
+        IEnumerable<string> localFiles = null
     )
     {
         foreach (ContentPackEditorDocument document in project.Documents)
@@ -264,8 +420,9 @@ internal static class ContentPackEditorExporter
                     .Select(document => document.TargetPath)
             )
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        string[] sources = Directory
-            .EnumerateFiles(root, "*", SearchOption.AllDirectories)
+        string[] sources = (
+            localFiles ?? Directory.EnumerateFiles(root, "*", SearchOption.AllDirectories)
+        )
             .Where(source =>
                 !source.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
                 && !source.EndsWith(".tmp", StringComparison.OrdinalIgnoreCase)

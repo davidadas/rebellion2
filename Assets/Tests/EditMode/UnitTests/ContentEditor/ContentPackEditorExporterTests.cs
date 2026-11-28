@@ -15,6 +15,42 @@ namespace Rebellion.Tests.ContentEditor
     public sealed class ContentPackEditorExporterTests : ContentPackEditorTestBase
     {
         [Test]
+        public async Task ConvertToModAsync_DerivedPack_CopiesAssetsAndCampaignEditsAsync()
+        {
+            using ContentPackEditorProject source = CreateLoadableProject();
+            string originalPath = Path.Combine(source.ProjectRootPath, "pack.xml");
+            string originalManifest = File.ReadAllText(originalPath);
+            string assets = Path.Combine(source.ProjectRootPath, "Assets");
+            Directory.CreateDirectory(assets);
+            File.Copy(
+                Path.Combine(contentRoot, "Application", "Audio", "tone.wav"),
+                Path.Combine(assets, "tone.wav")
+            );
+            ContentPackEditorDocument document = source.Documents.Single(item =>
+                item.Address == "Pack/pack.xml"
+            );
+            XElement draft = XElement.Parse(document.Text);
+            draft.SetElementValue("MainMenuMusicPath", "Pack/Assets/tone");
+            source.SetDocumentText(document, draft.ToString());
+            string destination = Path.Combine(contentRoot, "converted");
+
+            await ContentPackEditorExporter.ConvertToModAsync(source, destination);
+
+            using ContentPackEditorProject mod = ContentPackEditorStorage.OpenFolder(
+                contentRoot,
+                destination
+            );
+            Assert.That(mod.Mod.BasePackID, Is.EqualTo("base-pack"));
+            Assert.That(mod.Mod.BasePackVersion, Is.EqualTo("1.0.0"));
+            Assert.That(mod.Definition.MainMenuMusicPath, Is.EqualTo("Pack/Assets/tone"));
+            Assert.That(
+                File.Exists(Path.Combine(destination, "Content", "Pack", "Assets", "tone.wav")),
+                Is.True
+            );
+            Assert.That(File.ReadAllText(originalPath), Is.EqualTo(originalManifest));
+        }
+
+        [Test]
         public async Task WriteArchiveAsync_InvalidRawCost_DoesNotReplaceAnExistingArchiveAsync()
         {
             ContentPackEditorProject project = CreateLoadableProject();
