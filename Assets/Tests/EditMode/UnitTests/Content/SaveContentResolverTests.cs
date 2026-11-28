@@ -228,6 +228,93 @@ namespace Rebellion.Tests.Content
         }
 
         [Test]
+        public void Open_SharedSelectionChanges_PreservesLocalArtwork()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            try
+            {
+                WriteMod(mods, "local", clientOnly: true);
+                ContentPack local = ContentPackLoader.OpenExact(
+                    _fixturePack.ContentRootPath,
+                    _fixturePack.Definition.ID,
+                    _fixturePack.Scenario.ID,
+                    null
+                );
+                WriteMod(mods, "shared");
+                GameSummary host = _fixturePack.CreateDefaultGameSummary();
+                host.ModIDs = new[] { "shared" };
+                host.ModVersions = new[] { "1.0.0" };
+
+                ContentPack joined = SaveContentResolver.Open(local, host);
+
+                Assert.That(joined.MatchesContentIdentity(host), Is.True);
+                Assert.That(
+                    File.ReadAllText(joined.FileResolver.ResolveFile("Pack/overlap.png")),
+                    Is.EqualTo("local")
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
+        public void Resolve_ClientOnlyMods_PreservesLocalSelectionWithoutSharingIt()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            try
+            {
+                WriteMod(mods, "enabled", clientOnly: true);
+                WriteMod(mods, "disabled", clientOnly: true);
+                ContentPack local = ContentPackLoader.OpenExact(
+                    _fixturePack.ContentRootPath,
+                    _fixturePack.Definition.ID,
+                    _fixturePack.Scenario.ID,
+                    new[] { "disabled" }
+                );
+                GameMetadata metadata = CreateMetadata(_fixturePack);
+
+                SaveContentSelection restored = SaveContentResolver.Resolve(local, metadata);
+
+                Assert.That(restored.Pack.CreateDefaultGameSummary().ModIDs, Is.Empty);
+                Assert.That(
+                    restored.Pack.FileResolver.Mods.Select(mod => mod.ID),
+                    Is.EqualTo(new[] { "enabled" })
+                );
+                Assert.That(
+                    restored.DisabledModIDs,
+                    Does.Contain("disabled").And.Not.Contain("enabled")
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
+        public void Resolve_ClientOnlyReplacesSavedSharedMod_RejectsSelection()
+        {
+            string mods = Path.Combine(_directory, "Mods");
+            try
+            {
+                WriteMod(mods, "required", clientOnly: true);
+                GameMetadata metadata = CreateMetadata(_fixturePack);
+                metadata.ModIDs = new[] { "required" };
+                metadata.ModVersions = new[] { "1.0.0" };
+
+                Assert.Throws<InvalidDataException>(() =>
+                    SaveContentResolver.Resolve(_fixturePack, metadata)
+                );
+            }
+            finally
+            {
+                Directory.Delete(mods, true);
+            }
+        }
+
+        [Test]
         public void Resolve_MismatchedModIdentityArrays_ThrowsInvalidOperationException()
         {
             ContentPack activePack = _fixturePack;
@@ -247,11 +334,13 @@ namespace Rebellion.Tests.Content
         /// <param name="id">The saved mod identity.</param>
         /// <param name="version">The installed version.</param>
         /// <param name="folderName">An optional directory name distinct from the mod ID.</param>
+        /// <param name="clientOnly">Whether the replacement is local artwork.</param>
         private void WriteMod(
             string mods,
             string id,
             string version = "1.0.0",
-            string folderName = null
+            string folderName = null,
+            bool clientOnly = false
         )
         {
             string folder = Path.Combine(mods, folderName ?? id);
@@ -261,10 +350,10 @@ namespace Rebellion.Tests.Content
                 Path.Combine(folder, "mod.xml"),
                 $"<ContentModDefinition><ID>{id}</ID><DisplayName>{id}</DisplayName><Version>{version}</Version>"
                     + $"<BasePackID>{_fixturePack.Definition.ID}</BasePackID>"
-                    + $"<BasePackVersion>{_fixturePack.Definition.Version}</BasePackVersion></ContentModDefinition>"
+                    + $"<BasePackVersion>{_fixturePack.Definition.Version}</BasePackVersion><ClientOnly>{clientOnly.ToString().ToLowerInvariant()}</ClientOnly></ContentModDefinition>"
             );
             File.WriteAllText(
-                Path.Combine(files, "overlap.txt"),
+                Path.Combine(files, clientOnly ? "overlap.png" : "overlap.txt"),
                 version == "1.0.0" ? id : version
             );
         }

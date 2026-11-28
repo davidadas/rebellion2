@@ -38,6 +38,11 @@ public sealed class ContentFileResolver
     public IReadOnlyList<ContentModDefinition> Mods { get; }
 
     /// <summary>
+    /// Gets the ordered mods required to reproduce the shared gameplay content.
+    /// </summary>
+    public IReadOnlyList<ContentModDefinition> GameplayMods { get; }
+
+    /// <summary>
     /// Gets every compatible discovered mod, including disabled mods.
     /// </summary>
     public IReadOnlyList<ContentModDefinition> AvailableMods { get; }
@@ -130,12 +135,90 @@ public sealed class ContentFileResolver
             .Select(Path.GetFullPath)
             .ToArray();
         Mods = (mods ?? Enumerable.Empty<ContentModDefinition>()).ToArray();
+        GameplayMods = Mods.Where(mod => !mod.ClientOnly).ToArray();
         AvailableMods = (availableMods ?? Mods).ToArray();
         ModIssues = (modIssues ?? Enumerable.Empty<ContentModIssue>()).ToArray();
         artworkAliases = packRoots
             .Concat(modContentRoots.Select(root => Path.Combine(root, _packScopeName)))
             .Distinct(StringComparer.Ordinal)
             .ToDictionary(root => root, ContentArtworkAliases.Load, StringComparer.Ordinal);
+    }
+
+    /// <summary>
+    /// Creates a view that excludes local presentation layers from gameplay reads.
+    /// </summary>
+    /// <returns>The shared gameplay resolver, or this resolver when every layer is shared.</returns>
+    internal ContentFileResolver ForGameplay()
+    {
+        if (GameplayMods.Count == Mods.Count)
+            return this;
+        return new ContentFileResolver(
+            ContentRootPath,
+            PackRootPath,
+            modContentRoots.Where((_, index) => !Mods[index].ClientOnly),
+            GameplayMods,
+            AvailableMods,
+            ModIssues,
+            packRoots.Skip(1)
+        );
+    }
+
+    /// <summary>
+    /// Rejects local presentation layers that contain files outside the supported asset and theme contract.
+    /// </summary>
+    /// <param name="themePaths">The pack-relative theme addresses declared by shared content.</param>
+    internal void ValidateClientOnlyContent(IEnumerable<string> themePaths)
+    {
+        HashSet<string> themes = themePaths
+            .Select(path => _packAddressPrefix + path.Replace('\\', '/'))
+            .Append(_packAddressPrefix + ContentArtworkAliases.FileName)
+            .ToHashSet(StringComparer.Ordinal);
+        HashSet<string> extensions = new(StringComparer.OrdinalIgnoreCase)
+        {
+            ".png",
+            ".jpg",
+            ".jpeg",
+            ".wav",
+            ".ogg",
+            ".mp3",
+            ".mp4",
+            ".webm",
+            ".glb",
+        };
+        for (int index = 0; index < Mods.Count; index++)
+        {
+            if (!Mods[index].ClientOnly || !Directory.Exists(modContentRoots[index]))
+                continue;
+            foreach (
+                string file in Directory.EnumerateFiles(
+                    modContentRoots[index],
+                    "*",
+                    SearchOption.AllDirectories
+                )
+            )
+            {
+                string address = Path.GetRelativePath(modContentRoots[index], file)
+                    .Replace('\\', '/');
+                if (
+                    address.EndsWith(".meta", StringComparison.OrdinalIgnoreCase)
+                    || Path.GetFileName(file) == ".DS_Store"
+                )
+                    continue;
+                bool scoped =
+                    address.StartsWith(_packAddressPrefix, StringComparison.Ordinal)
+                    || address.StartsWith(_applicationAddressPrefix, StringComparison.Ordinal);
+                if (
+                    !scoped
+                    || (
+                        !themes.Contains(address)
+                        && !extensions.Contains(Path.GetExtension(address))
+                    )
+                )
+                    throw new InvalidDataException(
+                        $"Client-only mod '{Mods[index].ID}' cannot override '{address}'. Only media assets, artwork aliases, and declared UI themes are allowed."
+                    );
+            }
+        }
     }
 
     /// <summary>
@@ -153,6 +236,7 @@ public sealed class ContentFileResolver
     /// <param name="appliedModIDs">The active IDs when opening an already applied selection.</param>
     /// <param name="appliedModVersions">The recorded versions in applied order, if available.</param>
     /// <param name="workingModOverride">A proposed manifest to validate in the working folder.</param>
+    /// <param name="clientMods">The local presentation selection to retain when opening saved gameplay.</param>
     /// <returns>A resolver containing the compatible discovered mods.</returns>
     internal static ContentFileResolver Discover(
         string contentRootPath,
@@ -166,7 +250,8 @@ public sealed class ContentFileResolver
         IReadOnlyList<string> preferredModOrder = null,
         IReadOnlyList<string> appliedModIDs = null,
         IReadOnlyList<string> appliedModVersions = null,
-        ContentModDefinition workingModOverride = null
+        ContentModDefinition workingModOverride = null,
+        IReadOnlyList<ContentModDefinition> clientMods = null
     )
     {
         string modsRoot = ResolveModsRootPath(contentRootPath);
@@ -317,6 +402,60 @@ public sealed class ContentFileResolver
                 installations,
                 rootsByID
             );
+            if (saved != null)
+            {
+                if (active.Any(mod => mod.ClientOnly))
+                    throw new InvalidDataException(
+                        "A saved gameplay requirement cannot be replaced by a client-only mod."
+                    );
+                ContentModDefinition[] requestedClients = (
+                    clientMods ?? Array.Empty<ContentModDefinition>()
+                )
+                    .Where(mod =>
+                        mod.ClientOnly
+                        && mod.BasePackID == basePackID
+                        && mod.BasePackVersion == basePackVersion
+                    )
+                    .ToArray();
+                IReadOnlyList<ContentModDefinition> local = SelectExactMods(
+                    contentRootPath,
+                    basePackID,
+                    basePackVersion,
+                    requestedClients.Select(mod => mod.ID).ToArray(),
+                    requestedClients.Select(mod => mod.Version).ToArray(),
+                    installations,
+                    rootsByID
+                );
+                if (local.Any(mod => !mod.ClientOnly))
+                    throw new InvalidDataException(
+                        "A local presentation selection cannot load a shared gameplay mod."
+                    );
+                string[] required = active.Select(mod => mod.ID).ToArray();
+                active = ContentModLoadOrder.Resolve(
+                    active.Concat(local).ToArray(),
+                    issues,
+                    required.Concat(local.Select(mod => mod.ID)).ToArray()
+                );
+                if (
+                    !active
+                        .Where(mod => !mod.ClientOnly)
+                        .Select(mod => mod.ID)
+                        .SequenceEqual(required)
+                    || !active
+                        .Where(mod => mod.ClientOnly)
+                        .Select(mod => mod.ID)
+                        .SequenceEqual(local.Select(mod => mod.ID))
+                )
+                    throw new InvalidDataException(
+                        "Local mods conflict with the required gameplay mods."
+                    );
+            }
+            else if (active.Any(mod => mod.ClientOnly))
+                active = ContentModLoadOrder.Resolve(
+                    active,
+                    issues,
+                    active.Select(mod => mod.ID).ToArray()
+                );
         }
 
         return new ContentFileResolver(
@@ -829,6 +968,10 @@ public sealed class ContentFileResolver
             definition.BasePackVersion,
             nameof(definition.BasePackVersion)
         );
+        if (definition.ClientOnly && definition.ExtendsPack)
+            throw new InvalidDataException(
+                "Client-only mods cannot extend the game pack manifest."
+            );
         foreach (ContentModRequirement requirement in definition.Requires)
             ValidateRequiredDefinitionField(requirement?.ID, "Requires/Mod/ID");
         foreach (

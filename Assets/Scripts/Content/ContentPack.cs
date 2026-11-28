@@ -169,8 +169,8 @@ public sealed class ContentPack
         IReadOnlyList<string> modVersions
     )
     {
-        string[] activeModIDs = FileResolver.Mods.Select(mod => mod.ID).ToArray();
-        string[] activeModVersions = FileResolver.Mods.Select(mod => mod.Version).ToArray();
+        string[] activeModIDs = FileResolver.GameplayMods.Select(mod => mod.ID).ToArray();
+        string[] activeModVersions = FileResolver.GameplayMods.Select(mod => mod.Version).ToArray();
         return string.Equals(packID, Definition.ID, StringComparison.Ordinal)
             && string.Equals(packVersion, Definition.Version, StringComparison.Ordinal)
             && string.Equals(scenarioID, Scenario.ID, StringComparison.Ordinal)
@@ -196,8 +196,8 @@ public sealed class ContentPack
             PackID = Definition.ID,
             PackVersion = Definition.Version,
             ScenarioID = Scenario.ID,
-            ModIDs = FileResolver.Mods.Select(mod => mod.ID).ToArray(),
-            ModVersions = FileResolver.Mods.Select(mod => mod.Version).ToArray(),
+            ModIDs = FileResolver.GameplayMods.Select(mod => mod.ID).ToArray(),
+            ModVersions = FileResolver.GameplayMods.Select(mod => mod.Version).ToArray(),
         };
     }
 }

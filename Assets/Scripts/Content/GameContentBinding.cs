@@ -45,8 +45,8 @@ internal sealed class GameContentBinding
         {
             string requiredMods = FormatModIdentity(summary.ModIDs, summary.ModVersions);
             string activeMods = FormatModIdentity(
-                _contentPack.FileResolver.Mods.Select(mod => mod.ID).ToArray(),
-                _contentPack.FileResolver.Mods.Select(mod => mod.Version).ToArray()
+                _contentPack.FileResolver.GameplayMods.Select(mod => mod.ID).ToArray(),
+                _contentPack.FileResolver.GameplayMods.Select(mod => mod.Version).ToArray()
             );
             throw new InvalidOperationException(
                 $"Save requires game pack '{summary.PackID}' version '{summary.PackVersion}' "
