@@ -112,6 +112,51 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
         }
 
         [Test]
+        public void Render_StopConstructionPrompt_WrapsWithoutLosingText()
+        {
+            const string prompt = "Are you sure you want to stop construction of the following?";
+            const string ship = "Super Star Destroyer";
+
+            _view.Render(CreateData(prompt, ship));
+
+            List<TextMeshProUGUI> lines = GetField<List<TextMeshProUGUI>>(_view, "lineTextFields");
+            TextMeshProUGUI template = GetField<TextMeshProUGUI>(_view, "lineTemplate");
+            RectInt bounds = UILayout.GetSourceRect(template.rectTransform);
+            List<string> displayed = new List<string>();
+            Assert.Greater(lines.Count, 2);
+            foreach (TextMeshProUGUI line in lines)
+            {
+                displayed.Add(line.text);
+                Assert.LessOrEqual(line.GetPreferredValues(line.text).x, bounds.width);
+                Assert.AreEqual(template.fontSize, line.fontSize);
+            }
+            Assert.AreEqual(prompt + " " + ship, string.Join(" ", displayed));
+            Assert.AreEqual(ship, lines[lines.Count - 1].text);
+            Assert.AreEqual(
+                bounds.y + (lines.Count - 1) * bounds.height,
+                UILayout.GetSourceRect(lines[lines.Count - 1].rectTransform).y
+            );
+        }
+
+        [Test]
+        public void Render_WrappedSelection_PreservesScrollOnUnchangedPresentation()
+        {
+            string[] selection = new string[20];
+            Array.Fill(selection, "Are you sure you want to stop construction of the following?");
+            ConfirmDialogWindowRenderData data = CreateData(selection);
+            _view.Render(data);
+            ScrollAreaView scroll = GetField<ScrollAreaView>(_view, "linesScrollArea");
+            List<TextMeshProUGUI> lines = GetField<List<TextMeshProUGUI>>(_view, "lineTextFields");
+            RectInt lastLine = UILayout.GetSourceRect(lines[lines.Count - 1].rectTransform);
+            Assert.GreaterOrEqual(scroll.ContentRoot.rect.height, lastLine.yMax);
+            scroll.VerticalNormalizedPosition = 0.5f;
+
+            _view.Render(data);
+
+            Assert.AreEqual(0.5f, scroll.VerticalNormalizedPosition, 0.001f);
+        }
+
+        [Test]
         public void Render_NullLineCollection_IsRejectedByRenderData()
         {
             Assert.Throws<ArgumentNullException>(() =>
