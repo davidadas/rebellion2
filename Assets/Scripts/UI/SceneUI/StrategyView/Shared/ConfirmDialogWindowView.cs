@@ -157,9 +157,20 @@ public sealed class ConfirmDialogWindowView : MonoBehaviour, IContentInitializab
     /// <param name="lines">The projected dialog lines.</param>
     private void RenderLines(IReadOnlyList<string> lines)
     {
-        IReadOnlyList<string> safeLines = lines ?? Array.Empty<string>();
-        bool resetScroll = LinesChanged(safeLines);
         RectInt template = UILayout.GetSourceRect(lineTemplate.rectTransform);
+        List<string> safeLines = new List<string>();
+        foreach (string line in lines ?? Array.Empty<string>())
+        {
+            if (
+                string.IsNullOrEmpty(line)
+                || lineTemplate.GetPreferredValues(line).x <= template.width
+            )
+                safeLines.Add(line ?? string.Empty);
+            else
+                safeLines.AddRange(UILayout.WrapText(lineTemplate, line, template.width));
+        }
+
+        bool resetScroll = LinesChanged(safeLines);
         float contentHeight = template.y + safeLines.Count * template.height;
         linesScrollArea.SetContentHeight(contentHeight, template.height, resetScroll);
 
