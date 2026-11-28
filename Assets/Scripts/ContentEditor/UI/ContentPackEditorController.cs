@@ -62,6 +62,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
         view.GameplayArtworkRequested += PreviewGameplayArtwork;
         view.SaveRequested += SavePack;
         view.ExportRequested += ExportPack;
+        view.ConvertToModRequested += ConfirmConvertPack;
         packageStore = new ModPackageStore(contentRootPath, new ThunderstoreClient());
         modManager = new ContentEditorModManagerController(
             view.ModManager,
@@ -259,6 +260,7 @@ public sealed class ContentPackEditorController : MonoBehaviour
             view.GameplayArtworkRequested -= PreviewGameplayArtwork;
             view.SaveRequested -= SavePack;
             view.ExportRequested -= ExportPack;
+            view.ConvertToModRequested -= ConfirmConvertPack;
             view.ModManagerRequested -= ShowModManager;
             modManager.OperationChanged -= view.RenderPackageOperation;
             view.CancelPackageOperationRequested -= modManager.Cancel;
@@ -2897,6 +2899,49 @@ public sealed class ContentPackEditorController : MonoBehaviour
                 cancellationToken
             );
             view.RenderValidationResult("Exported to " + filePath, warnings);
+        });
+    }
+
+    /// <summary>
+    /// Confirms converting the current editable game pack into a separate mod.
+    /// </summary>
+    private void ConfirmConvertPack()
+    {
+        RunOperation(() =>
+        {
+            if (project == null || !view.CommitFields())
+                return;
+            ContentPackEditorProject source = project;
+            view.ConfirmConvertToMod(() => ConvertPack(source));
+        });
+    }
+
+    /// <summary>
+    /// Writes the converted mod to a new folder chosen by the author.
+    /// </summary>
+    /// <param name="source">The editable game pack to convert.</param>
+    private async void ConvertPack(ContentPackEditorProject source)
+    {
+        await RunOperationAsync(async cancellationToken =>
+        {
+            string folder = ContentEditorFileDialog.OpenFolder(
+                Path.GetDirectoryName(source.ProjectRootPath)
+            );
+            if (string.IsNullOrEmpty(folder))
+                return;
+            string destination = Path.Combine(
+                folder,
+                new DirectoryInfo(source.ProjectRootPath).Name + "-mod"
+            );
+            IReadOnlyList<string> warnings = await ContentPackEditorExporter.ConvertToModAsync(
+                source,
+                destination,
+                ReportValidationProgress,
+                cancellationToken
+            );
+            settingsManager.RememberProject(destination);
+            projects?.RefreshLocal();
+            view.RenderValidationResult("Converted mod saved to " + destination, warnings);
         });
     }
 

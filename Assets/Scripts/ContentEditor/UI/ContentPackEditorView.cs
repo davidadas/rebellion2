@@ -313,6 +313,7 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     public event Action UndoRequested;
     public event Action RedoRequested;
     public event Action ExportRequested;
+    public event Action ConvertToModRequested;
     internal event Action PublishingRequested;
     internal event Action ProjectsRequested;
     internal ContentEditorProjectsView Projects => projects;
@@ -1237,6 +1238,17 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
                 isApplicationCommand: true
             ),
         };
+        if (
+            project is { IsInstalled: false, Mod: null }
+            && !string.IsNullOrWhiteSpace(project.Definition.BasePackID)
+        )
+            commands.Insert(
+                5,
+                new ContentEditorMenuCommand(
+                    "Convert to Mod...",
+                    () => ConvertToModRequested?.Invoke()
+                )
+            );
         if (project?.Mod != null)
             commands.Insert(
                 4,
@@ -1364,6 +1376,18 @@ public sealed class ContentPackEditorView : MonoBehaviour, ICancelable
     {
         confirmation.Show("Discard unsaved changes?", "Discard", discard);
     }
+
+    /// <summary>
+    /// Confirms the one-way conversion before creating the separate mod project.
+    /// </summary>
+    /// <param name="convert">The operation to start after confirmation.</param>
+    internal void ConfirmConvertToMod(Action convert) =>
+        confirmation.Show(
+            "This creates a separate mod and keeps your original game pack. The converted mod cannot be converted back to a game pack.",
+            "Convert to Mod",
+            convert,
+            title: "Convert to Mod"
+        );
 
     /// <summary>
     /// Asks the author to identify a project whose manifest has no recognized type.
