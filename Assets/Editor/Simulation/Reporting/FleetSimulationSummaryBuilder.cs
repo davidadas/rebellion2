@@ -252,7 +252,7 @@ public static partial class HeadlessSimulationRunner
     )
     {
         return game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
-            .Where(IsProductionEligiblePlanet)
+            .Where(planet => !ResourceProductionQueries.IsProductionSuspended(game, planet))
             .Select(planet => new CurrentIdlePlanetSummary
             {
                 PlanetId = planet.InstanceID,
@@ -313,16 +313,6 @@ public static partial class HeadlessSimulationRunner
             )
             .OrderBy(summary => summary.PlanetId, StringComparer.Ordinal)
             .ToArray();
-    }
-
-    /// <summary>
-    /// Determines whether a planet can use production capacity.
-    /// </summary>
-    /// <param name="planet">The planet to inspect.</param>
-    /// <returns>True if the planet can use production capacity.</returns>
-    private static bool IsProductionEligiblePlanet(Planet planet)
-    {
-        return planet != null && !ResourceProductionQueries.IsProductionSuspended(null, planet);
     }
 
     /// <summary>
@@ -400,7 +390,7 @@ public static partial class HeadlessSimulationRunner
                     Planet planet in game.GetSceneNodesByOwnerInstanceID<Planet>(faction.InstanceID)
                 )
                 {
-                    if (!IsProductionEligiblePlanet(planet))
+                    if (ResourceProductionQueries.IsProductionSuspended(game, planet))
                         continue;
 
                     RecordPlanetType(

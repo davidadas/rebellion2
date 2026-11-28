@@ -1,5 +1,6 @@
 using System;
 using Rebellion.AI;
+using Rebellion.AI.Tactical;
 using Rebellion.Game;
 using Rebellion.Game.FogOfWar;
 using Rebellion.Game.Units;
@@ -144,12 +145,25 @@ namespace Rebellion.Gameplay
                 locator.GetService<PersonnelCommands>()
             ));
             services.AddSingleton<SpaceCombatQueries>();
+            services.AddSingleton<TacticalCombatFactory>(locator => new TacticalCombatFactory(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>().TacticalCombat,
+                locator.GetService<SpaceCombatQueries>(),
+                TacticalCombatPlanner.Attach
+            ));
+            services.AddSingleton<SpaceCombatAftermath>(locator => new SpaceCombatAftermath(
+                locator.GetService<GameRoot>(),
+                locator.GetService<GameDataCatalog>().TacticalCombat,
+                locator.GetService<PersonnelCommands>()
+            ));
             services.AddSingleton<SpaceCombatCommands>(locator => new SpaceCombatCommands(
                 locator.GetService<GameRoot>(),
                 locator.GetService<MovementCommands>(),
                 locator.GetService<SpaceCombatQueries>(),
                 locator.GetService<BlockadeTransitionResolver>(),
-                locator.GetService<GameDataCatalog>().Starfighters
+                locator.GetService<TacticalCombatFactory>(),
+                locator.GetService<GameDataCatalog>().Starfighters,
+                locator.GetService<SpaceCombatAftermath>()
             ));
             services.AddSingleton<BombardmentQueries>();
             services.AddSingleton<BombardmentCommands>();

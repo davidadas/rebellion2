@@ -1105,8 +1105,7 @@ namespace Rebellion.Tests.Gameplay
                 Weapons = 1,
                 TractorBeam = 1,
                 Engines = 1,
-                PrimaryHyperdrive = 1,
-                BackupHyperdrive = 1,
+                HyperdriveDamage = new[] { 1, 1 },
             };
             game.Random = new FixedRandomProvider(new[] { 0.0, (selected + 0.5) / 6 });
             game.CurrentTick = 10;
@@ -1120,8 +1119,8 @@ namespace Rebellion.Tests.Gameplay
                 ship.SystemDamage.Weapons,
                 ship.SystemDamage.TractorBeam,
                 ship.SystemDamage.Engines,
-                ship.SystemDamage.PrimaryHyperdrive,
-                ship.SystemDamage.BackupHyperdrive,
+                ship.SystemDamage.GetHyperdriveDamage(0),
+                ship.SystemDamage.GetHyperdriveDamage(1),
             };
             Assert.AreEqual(0, damage[selected]);
             Assert.AreEqual(5, ship.SystemDamage.Total);

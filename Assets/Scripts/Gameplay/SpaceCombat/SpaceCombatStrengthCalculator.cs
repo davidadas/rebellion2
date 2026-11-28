@@ -244,10 +244,10 @@ namespace Rebellion.Gameplay
             SpaceCombatCommandModifiers command
         )
         {
-            double attackStrength = ship.PrimaryWeapons.Sum(weaponEntry =>
-                GetPrimaryWeaponStrength(weaponEntry.Value)
+            double attackStrength = CapitalShip.PrimaryWeaponTypes.Sum(weapon =>
+                ship.GetPrimaryWeaponStrength(weapon)
                 * GetPrimaryWeaponTargetMultiplier(
-                    weaponEntry.Key,
+                    weapon,
                     targetsFighters: false,
                     config.LaserCannonCapitalDamageMultiplier,
                     config.TurbolaserFighterDamageMultiplier
@@ -265,27 +265,6 @@ namespace Rebellion.Gameplay
 
             double combatValue = Math.Sqrt(attackStrength * durability);
             return combatValue >= int.MaxValue ? int.MaxValue : (int)combatValue;
-        }
-
-        /// <summary>
-        /// Returns primary weapon strength without including the range value.
-        /// </summary>
-        /// <param name="weaponValues">The weapon arc and range values.</param>
-        /// <returns>The summed weapon strength.</returns>
-        private static int GetPrimaryWeaponStrength(int[] weaponValues)
-        {
-            if (weaponValues == null)
-                return 0;
-
-            int strength = 0;
-            foreach (PrimaryWeaponArc weaponArc in CapitalShip.PrimaryWeaponArcs)
-            {
-                int weaponArcIndex = (int)weaponArc;
-                if (weaponArcIndex < weaponValues.Length)
-                    strength += weaponValues[weaponArcIndex];
-            }
-
-            return strength;
         }
 
         /// <summary>
@@ -487,16 +466,7 @@ namespace Rebellion.Gameplay
             CapitalShip ship,
             PrimaryWeaponType weaponType,
             int arcIndex
-        )
-        {
-            return
-                ship.PrimaryWeapons.TryGetValue(weaponType, out int[] values)
-                && values != null
-                && arcIndex >= 0
-                && arcIndex < values.Length
-                ? Math.Max(0, values[arcIndex])
-                : 0;
-        }
+        ) => Math.Max(0, ship.GetPrimaryWeaponStrength(weaponType, (PrimaryWeaponArc)arcIndex));
 
         /// <summary>
         /// Returns the ready strength of a carried fighter squadron.

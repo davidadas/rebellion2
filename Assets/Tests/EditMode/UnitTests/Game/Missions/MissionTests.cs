@@ -8,6 +8,7 @@ using Rebellion.Game.Results;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
+using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.Game.Missions
 {
@@ -61,8 +62,8 @@ namespace Rebellion.Tests.Game.Missions
             Mission loaded = SerializationHelper.Deserialize<Mission>(xml);
 
             Assert.That(loaded.GetAbortReason(game), Is.EqualTo(MissionCompletionReason.Failure));
-            System.Xml.Linq.XElement baseline = System
-                .Xml.Linq.XElement.Parse(xml)
+            XElement baseline = XElement
+                .Parse(xml)
                 .Elements()
                 .Single(element => element.Name.LocalName == "InitialMainParticipantIDs");
             Assert.That(baseline.Elements().All(element => !element.HasElements), Is.True);

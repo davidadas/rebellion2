@@ -142,15 +142,54 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Weighs the opposing losses twice and the favored losses once, retaining the
+        /// separate truncated divisions and wrapping the difference and final sum.
+        /// </summary>
+        /// <param name="favoredLoss">The favored faction's accepted lost unit value.</param>
+        /// <param name="opposingLoss">The opposing faction's accepted lost unit value.</param>
+        /// <param name="divisor">The favored faction's authored loyalty divisor.</param>
+        /// <returns>The signed loyalty change relative to the favored faction.</returns>
+        /// <exception cref="OverflowException">A quotient cannot be represented as an integer.</exception>
+        internal static int CalculateBattleLossLoyalty(
+            int favoredLoss,
+            int opposingLoss,
+            int divisor
+        )
+        {
+            int difference = unchecked(opposingLoss - favoredLoss);
+            if (divisor == -1 && (difference == int.MinValue || opposingLoss == int.MinValue))
+                throw new OverflowException(
+                    "The loyalty quotient exceeds the signed integer range."
+                );
+
+            return unchecked(difference / divisor + opposingLoss / divisor);
+        }
+
+        /// <summary>
         /// Applies one signed global loyalty shift relative to the favored faction.
         /// </summary>
         /// <param name="favoredFaction">The faction for which the shift is positive.</param>
         /// <param name="shift">The signed shift relative to the favored faction.</param>
-        public void ApplyGlobalLoyaltyShift(Faction favoredFaction, int shift)
+        /// <param name="opposingFaction">The other combatant when eligibility flags determine battle allegiance, or null for an ownership-relative shift.</param>
+        public void ApplyGlobalLoyaltyShift(
+            Faction favoredFaction,
+            int shift,
+            Faction opposingFaction = null
+        )
         {
             if (favoredFaction == null)
                 throw new ArgumentNullException(nameof(favoredFaction));
-            if (shift == 0)
+            string favoredFactionID = favoredFaction.InstanceID;
+            string opposingFactionID = opposingFaction?.InstanceID;
+            if (
+                shift == 0
+                || opposingFaction != null
+                    && (
+                        string.IsNullOrEmpty(favoredFactionID)
+                        || string.IsNullOrEmpty(opposingFactionID)
+                        || favoredFactionID == opposingFactionID
+                    )
+            )
                 return;
 
             foreach (
@@ -159,9 +198,23 @@ namespace Rebellion.Gameplay
                 )
             )
             {
-                int officerShift =
-                    officer.GetOwnerInstanceID() == favoredFaction.InstanceID ? shift : -shift;
-                officer.TryAdjustLoyalty(officerShift);
+                if (!officer.CanBetray)
+                    continue;
+                if (opposingFaction == null)
+                {
+                    int officerShift =
+                        officer.GetOwnerInstanceID() == favoredFactionID ? shift : -shift;
+                    officer.TryAdjustLoyalty(officerShift);
+                    continue;
+                }
+
+                bool favorsFaction =
+                    officer.RecruitingFactionInstanceIDs.Contains(favoredFactionID)
+                    && !officer.RecruitingFactionInstanceIDs.Contains(opposingFactionID);
+                // The original battle result reads signed 16-bit loyalty and wraps the change
+                // and sum as signed 32-bit integers before applying the normal loyalty bounds.
+                int adjustment = favorsFaction ? shift : unchecked(-shift);
+                officer.TrySetLoyalty(unchecked((short)officer.Loyalty + adjustment));
             }
         }
 

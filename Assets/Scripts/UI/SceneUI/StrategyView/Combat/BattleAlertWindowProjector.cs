@@ -814,26 +814,19 @@ internal sealed class BattleAlertWindowProjector
         string playerFactionId
     )
     {
-        if (result == null || result.Winner == CombatSide.Draw)
+        if (result?.WinningSide is not CombatSide winner)
             return $"The battle at {GetPlanetName(result?.Planet)} is indecisive.\n\nThere has been no victor.";
 
         string planetName = GetPlanetName(result.Planet);
-        CombatSide? playerSide = BattleResultPresentation.GetSideForOwner(result, playerFactionId);
-        CombatSide? losingSide = BattleResultPresentation.GetOpposingSide(result.Winner);
-        string winnerName = GetSideLabel(uiContext, result, result.Winner, "Victorious");
-        string winnerOwnerInstanceId = result.Winner switch
-        {
-            CombatSide.Attacker => result.AttackerOwnerInstanceID,
-            CombatSide.Defender => result.DefenderOwnerInstanceID,
-            _ => null,
-        };
+        CombatSide? playerSide = result.GetSideForOwner(playerFactionId);
+        CombatSide? losingSide = SpaceCombatResult.OpposingSide(winner);
+        string winnerName = GetSideLabel(uiContext, result, winner, "Victorious");
+        string winnerOwnerInstanceId = result.GetOwner(winner);
 
-        if (playerSide.HasValue && result.Winner != playerSide.Value)
+        if (playerSide.HasValue && winner != playerSide.Value)
         {
             string playerName = GetSideLabel(uiContext, result, playerSide.Value, "Your");
-            return
-                BattleResultPresentation.GetOutcome(result, playerSide.Value)
-                == SpaceCombatSideOutcome.Destroyed
+            return result.GetOutcome(playerSide.Value) == SpaceCombatResult.SideOutcome.Destroyed
                 ? $"The {playerName} fleet was defeated at {planetName}. Your fleet has been destroyed."
                 : $"The {playerName} fleet was defeated at {planetName}. Your fleet has withdrawn.";
         }
@@ -843,8 +836,7 @@ internal sealed class BattleAlertWindowProjector
         {
             string loserName = GetSideLabel(uiContext, result, losingSide.Value, "opposing");
             losingFleetText =
-                BattleResultPresentation.GetOutcome(result, losingSide.Value)
-                == SpaceCombatSideOutcome.Destroyed
+                result.GetOutcome(losingSide.Value) == SpaceCombatResult.SideOutcome.Destroyed
                     ? $"The {loserName} fleet has been completely destroyed."
                     : $"The {loserName} fleet has withdrawn.";
         }
@@ -1202,13 +1194,7 @@ internal sealed class BattleAlertWindowProjector
         string fallback
     )
     {
-        string ownerInstanceId = side switch
-        {
-            CombatSide.Attacker => result?.AttackerOwnerInstanceID,
-            CombatSide.Defender => result?.DefenderOwnerInstanceID,
-            _ => null,
-        };
-        return GetOwnerLabel(uiContext, ownerInstanceId, fallback);
+        return GetOwnerLabel(uiContext, result?.GetOwner(side), fallback);
     }
 
     /// <summary>

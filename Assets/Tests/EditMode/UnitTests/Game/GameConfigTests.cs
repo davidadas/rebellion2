@@ -9,6 +9,77 @@ namespace Rebellion.Tests.Game
     [TestFixture]
     public class GameConfigTests
     {
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionEasy, 400, 200)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionMedium, 400, 150)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.FirstFactionHard, 400, 100)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionEasy, 200, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionMedium, 150, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.SecondFactionHard, 100, 400)]
+        [TestCase(GameConfig.SpaceCombatSupportContext.Multiplayer, 400, 400)]
+        [Category("RequiresMedia")]
+        public void BattleSupport_AuthoredContext_RetainsCompleteSideParameters(
+            GameConfig.SpaceCombatSupportContext context,
+            int firstGapScale,
+            int secondGapScale
+        )
+        {
+            GameConfig.SpaceCombatSupportConfig config = TestContent
+                .Data
+                .GameConfig
+                .SupportShift
+                .BattleSupport;
+            GameConfig.SpaceCombatSupportProfile profile = config.Profiles[context];
+
+            Assert.AreEqual(7, config.Profiles.Count);
+            Assert.AreEqual(10, profile.Divisor);
+            Assert.AreEqual(firstGapScale, profile.FirstSide.LeadingGapScale);
+            Assert.AreEqual(secondGapScale, profile.SecondSide.LeadingGapScale);
+            foreach (
+                GameConfig.SpaceCombatSupportSideConfig side in new[]
+                {
+                    profile.FirstSide,
+                    profile.SecondSide,
+                }
+            )
+            {
+                Assert.AreEqual(100, side.LeadingFlat);
+                Assert.AreEqual(0, side.TrailingFlat);
+                Assert.AreEqual(100, side.TrailingGapScale);
+                Assert.AreEqual(20, side.MagnitudeCap);
+                Assert.AreEqual(101u, side.SupportThreshold);
+            }
+        }
+
+        [Test]
+        public void CreateCopy_EditingBattleSupportProfile_DoesNotChangeSource()
+        {
+            GameConfig source = TestConfig.Create();
+            source.SupportShift.BattleSupport = new GameConfig.SpaceCombatSupportConfig
+            {
+                Profiles =
+                {
+                    [GameConfig.SpaceCombatSupportContext.FirstFactionEasy] =
+                        new GameConfig.SpaceCombatSupportProfile
+                        {
+                            FirstSide = new GameConfig.SpaceCombatSupportSideConfig
+                            {
+                                LeadingGapScale = 100,
+                            },
+                        },
+                },
+            };
+            string before = SerializationHelper.Serialize(source);
+
+            GameConfig copy = source.CreateCopy();
+            copy.SupportShift
+                .BattleSupport
+                .Profiles[GameConfig.SpaceCombatSupportContext.FirstFactionEasy]
+                .FirstSide
+                .LeadingGapScale = 999;
+
+            Assert.AreEqual(before, SerializationHelper.Serialize(source));
+        }
+
         [Test]
         public void CreateCopy_ConfiguredRules_PreservesAllValues()
         {

@@ -27,6 +27,7 @@ namespace Rebellion.Gameplay
             SpaceCombatDecision decision = _pendingDecision;
             if (
                 decision == null
+                || _tacticalEncounter.HasValue
                 || (
                     factionID != decision.AttackerOwnerInstanceID
                     && factionID != decision.DefenderOwnerInstanceID
@@ -131,7 +132,7 @@ namespace Rebellion.Gameplay
             );
             if (attackerPlan == null || defenderPlan == null)
                 return null;
-            result.Winner = CombatSide.Draw;
+            result.Winner = SpaceCombatResult.BattleOutcome.Draw;
             result.AttackerRetreatPlanetInstanceID = attackerPlan.GetRetreatPlanetInstanceID();
             result.DefenderRetreatPlanetInstanceID = defenderPlan.GetRetreatPlanetInstanceID();
             result.Events = ApplyCombatResult(

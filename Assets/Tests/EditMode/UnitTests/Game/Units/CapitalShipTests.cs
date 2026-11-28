@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.SceneGraph;
+using XmlDocument = global::System.Xml.XmlDocument;
+using XmlNode = global::System.Xml.XmlNode;
 
 namespace Rebellion.Tests.Game.Units
 {
@@ -40,6 +43,160 @@ namespace Rebellion.Tests.Game.Units
                 UprisingDefense = 19,
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
+        }
+
+        [Test]
+        public void Deserialize_SystemDamageWithLegacyTimer_PreservesDamageAndHullRepairSchedule()
+        {
+            _capitalShip.SystemDamage = new CapitalShipSystemDamage
+            {
+                Shields = 2,
+                Weapons = 3,
+                TractorBeam = 4,
+                Engines = 1,
+                HyperdriveDamage = new[] { 1, 1 },
+            };
+            _capitalShip.NextRepairTick = 120;
+            _capitalShip.RepairIntervalTicks = 30;
+            string xml = SerializationHelper.Serialize(_capitalShip);
+            StringAssert.DoesNotContain("<RepairDueTick>", xml);
+            string legacyXml = xml.Replace(
+                "</SystemDamage>",
+                "<RepairDueTick>99</RepairDueTick><RepairInterval>5</RepairInterval></SystemDamage>"
+            );
+            Assert.AreNotEqual(xml, legacyXml);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(legacyXml);
+            Assert.AreEqual(120, restored.NextRepairTick);
+            Assert.AreEqual(30, restored.RepairIntervalTicks);
+            Assert.AreEqual(12, restored.SystemDamage.Total);
+        }
+
+        [Test]
+        public void SerializeAndDeserialize_LegacyShipWithoutSystemDamage_LoadsUndamagedSystems()
+        {
+            string xml = SerializationHelper.Serialize(_capitalShip);
+            XmlDocument document = new();
+            document.LoadXml(xml);
+            XmlNode damage = document.DocumentElement.SelectSingleNode("SystemDamage");
+            Assert.IsNotNull(damage);
+            damage.ParentNode.RemoveChild(damage);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(document.OuterXml);
+            Assert.AreEqual(0, restored.SystemDamage.Total);
+        }
+
+        [Test]
+        public void CreateCopy_SystemDamage_OwnsIndependentDamageRecord()
+        {
+            _capitalShip.SystemDamage.Engines = 2;
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+            copy.SystemDamage.Engines = 0;
+            Assert.AreEqual(2, _capitalShip.SystemDamage.Engines);
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_DamagedPrimary_UsesInstalledBackup()
+        {
+            UnitFactory factory = TacticalTestData.CreateUnitFactory(TestConfig.Create());
+            CapitalShip ship = factory.Create<CapitalShip>("ALCS008", "owner");
+            ship.SystemDamage.SetHyperdriveDamage(0, 1);
+            Assert.AreEqual(2, ship.GetOperationalHyperdrive());
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_BothDrivesDamaged_ReturnsZero()
+        {
+            _capitalShip.Hyperdrive = 1;
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+            _capitalShip.SystemDamage.SetHyperdriveDamage(1, 1);
+            Assert.AreEqual(0, _capitalShip.GetOperationalHyperdrive());
+        }
+
+        [TestCase("<BackupHyperdrive>6</BackupHyperdrive>")]
+        [TestCase("<BackupDrive><Rating>6</Rating></BackupDrive>")]
+        public void Deserialize_LegacyDriveFields_PreservesEquipmentOrderAndDamage(
+            string reserveDrive
+        )
+        {
+            string xml =
+                "<CapitalShip>"
+                + "<PrimaryDrive><Rating>4</Rating></PrimaryDrive>"
+                + "<Hyperdrive>9</Hyperdrive>"
+                + reserveDrive
+                + "<SystemDamage><PrimaryHyperdrive>1</PrimaryHyperdrive><BackupHyperdrive>0</BackupHyperdrive></SystemDamage>"
+                + "</CapitalShip>";
+
+            CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(xml);
+
+            CollectionAssert.AreEqual(
+                new[] { 4, 6 },
+                ship.Hyperdrives.Select(drive => drive.Rating)
+            );
+            Assert.AreEqual(6, ship.GetOperationalHyperdrive());
+            string saved = SerializationHelper.Serialize(ship);
+            StringAssert.Contains("<Hyperdrives>", saved);
+            StringAssert.Contains("<HyperdriveDamage>", saved);
+            StringAssert.DoesNotContain("<PrimaryDrive>", saved);
+            StringAssert.DoesNotContain("<BackupHyperdrive>", saved);
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(saved);
+            Assert.AreEqual(6, restored.GetOperationalHyperdrive());
+        }
+
+        [Test]
+        public void Serialize_EmptyDriveSlot_PreservesTheLaterDriveAndItsDamage()
+        {
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+                new Hyperdrive { Rating = 10 },
+            };
+            _capitalShip.Hyperdrives[1] = null;
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+
+            CapitalShip restored = SerializationHelper.Deserialize<CapitalShip>(
+                SerializationHelper.Serialize(_capitalShip)
+            );
+
+            Assert.AreEqual(3, restored.Hyperdrives.Length);
+            Assert.AreEqual(0, restored.GetHyperdriveRating(1));
+            Assert.AreEqual(10, restored.GetOperationalHyperdrive());
+        }
+
+        [Test]
+        public void GetOperationalHyperdriveCount_LegacyLimit_CountsWorkingBackup()
+        {
+            _capitalShip.HyperdriveCount = 1;
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+            };
+            _capitalShip.SystemDamage.SetHyperdriveDamage(0, 1);
+
+            Assert.AreEqual(8, _capitalShip.GetOperationalHyperdrive());
+            Assert.AreEqual(1, _capitalShip.GetOperationalHyperdriveCount());
+            _capitalShip.SystemDamage.SetHyperdriveDamage(1, 1);
+            Assert.AreEqual(0, _capitalShip.GetOperationalHyperdriveCount());
+        }
+
+        [Test]
+        public void GetOperationalHyperdrive_WithThreeDrives_UsesFirstWorkingDrive()
+        {
+            _capitalShip.Hyperdrives = new[]
+            {
+                new Hyperdrive { Rating = 4 },
+                new Hyperdrive { Rating = 8 },
+                new Hyperdrive { Rating = 2 },
+            };
+            _capitalShip.SystemDamage.HyperdriveDamage = new[] { 1, 1 };
+
+            Assert.AreEqual(2, _capitalShip.GetOperationalHyperdrive());
+
+            CapitalShip copy = (CapitalShip)_capitalShip.CreateCopy();
+            copy.SystemDamage.RepairComponent(1);
+            copy.Hyperdrives[2].Rating = 3;
+            Assert.AreEqual(8, copy.GetOperationalHyperdrive());
+            Assert.AreEqual(2, _capitalShip.GetOperationalHyperdrive());
         }
 
         [Test]
@@ -554,49 +711,57 @@ namespace Rebellion.Tests.Game.Units
             Assert.AreEqual(2, count);
         }
 
-        [Test]
-        public void PrimaryWeapons_DefaultCapitalShip_HasCorrectTypes()
+        [TestCase("", "")]
+        [TestCase("<HardpointGroups />", "")]
+        [TestCase("", "<HardpointGroups />")]
+        public void Deserialize_LegacyPrimaryWeapons_InstallsHardpointsAndPreservesRange(
+            string before,
+            string after
+        )
         {
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.Turbolaser));
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.IonCannon));
-            Assert.IsTrue(_capitalShip.PrimaryWeapons.ContainsKey(PrimaryWeaponType.LaserCannon));
-        }
+            string legacy =
+                "<CapitalShip>"
+                + before
+                + "<PrimaryWeapons><Entry>"
+                + "<Key><PrimaryWeaponType>Turbolaser</PrimaryWeaponType></Key>"
+                + "<Value><ArrayOfInt><int>10</int><int>20</int><int>30</int><int>40</int>"
+                + "<int>16777217</int></ArrayOfInt></Value></Entry></PrimaryWeapons>"
+                + after
+                + "</CapitalShip>";
 
-        [Test]
-        public void PrimaryWeapons_DefaultCapitalShip_HasCorrectArraySizes()
-        {
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser].Length);
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon].Length);
-            Assert.AreEqual(5, _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon].Length);
+            CapitalShip ship = SerializationHelper.Deserialize<CapitalShip>(legacy);
+
+            Assert.AreEqual(
+                10,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore)
+            );
+            Assert.AreEqual(
+                20,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Aft)
+            );
+            Assert.AreEqual(
+                30,
+                ship.GetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Port)
+            );
+            Assert.AreEqual(
+                40,
+                ship.GetPrimaryWeaponStrength(
+                    PrimaryWeaponType.Turbolaser,
+                    PrimaryWeaponArc.Starboard
+                )
+            );
+            Assert.AreEqual(16777217, ship.GetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser));
+            string saved = SerializationHelper.Serialize(ship);
+            StringAssert.Contains("<HardpointGroups>", saved);
+            StringAssert.DoesNotContain("<PrimaryWeapons>", saved);
         }
 
         [Test]
         public void GetPrimaryWeaponStrength_WeaponRangeValues_IgnoresRange()
         {
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-            {
-                10,
-                20,
-                30,
-                40,
-                900,
-            };
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new int[]
-            {
-                1,
-                2,
-                3,
-                4,
-                900,
-            };
-            _capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new int[]
-            {
-                5,
-                0,
-                0,
-                0,
-                900,
-            };
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, 10, 20, 30, 40, 900);
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, 1, 2, 3, 4, 900);
+            _capitalShip.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, 5, 0, 0, 0, 900);
 
             int strength = _capitalShip.GetPrimaryWeaponStrength();
 
@@ -714,7 +879,11 @@ namespace Rebellion.Tests.Game.Units
                 CurrentHullStrength = hullStrength,
                 MaxShieldStrength = shieldStrength,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = attackStrength;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                attackStrength
+            );
             return ship;
         }
     }

@@ -1185,8 +1185,8 @@ namespace Rebellion.Tests.Gameplay
                 {
                     AttackerOwnerInstanceID = _faction.InstanceID,
                     DefenderOwnerInstanceID = opponent.InstanceID,
-                    AttackerOutcome = SpaceCombatSideOutcome.Active,
-                    DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                    AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                    DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
                     DefendingUnits = new List<CombatUnitSnapshot> { destroyedShip },
                 }
             );
@@ -4061,18 +4061,19 @@ namespace Rebellion.Tests.Gameplay
                 ShieldRechargeRate = 0,
                 WeaponRecharge = Math.Max(weaponPower, 0),
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
             };
 
             if (weaponPower > 0)
             {
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new int[]
-                {
+                ship.SetPrimaryWeapon(
+                    PrimaryWeaponType.Turbolaser,
                     weaponPower,
                     weaponPower,
                     weaponPower,
                     weaponPower,
-                    100,
-                };
+                    100
+                );
             }
 
             game.AttachNode(fleet, planet);

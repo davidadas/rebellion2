@@ -123,6 +123,9 @@ namespace Rebellion.Game.Units
         [PersistableMember(Name = nameof(HyperdriveCount))]
         private int? _hyperdriveCount;
 
+        [PersistableMember(Name = nameof(BackupHyperdrive))]
+        private int? _backupHyperdrive;
+
         [PersistableMember(Name = nameof(SublightSpeed))]
         private int _sublightSpeed;
 
@@ -205,6 +208,15 @@ namespace Rebellion.Game.Units
             set => _hyperdrive = value;
         }
 
+        internal bool HasBackupHyperdriveRating => _backupHyperdrive.HasValue;
+
+        [PersistableIgnore]
+        public int BackupHyperdrive
+        {
+            get => _backupHyperdrive ?? 0;
+            set => _backupHyperdrive = value;
+        }
+
         /// <summary>
         /// Gets or sets the number of hyperdrive systems that can be disabled in combat.
         /// An omitted count provides one system when the travel rating is positive.
@@ -283,6 +295,12 @@ namespace Rebellion.Game.Units
         public MovementState Movement { get; set; }
 
         /// <summary>
+        /// Supplies a fighter's backup travel rating when an older record omitted it.
+        /// </summary>
+        /// <param name="rating">The fallback rating from the legacy tactical catalog.</param>
+        internal void MigrateBackupHyperdrive(int rating) => _backupHyperdrive ??= rating;
+
+        /// <summary>
         /// Default constructor used for deserialization.
         /// </summary>
         public Starfighter() { }
@@ -327,6 +345,7 @@ namespace Rebellion.Game.Units
             copy.ShieldStrength = ShieldStrength;
             copy.Hyperdrive = Hyperdrive;
             copy._hyperdriveCount = _hyperdriveCount;
+            copy._backupHyperdrive = _backupHyperdrive;
             copy.SublightSpeed = SublightSpeed;
             copy.Agility = Agility;
             copy.LaserCannon = LaserCannon;

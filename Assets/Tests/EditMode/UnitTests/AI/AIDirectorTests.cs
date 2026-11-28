@@ -16,7 +16,7 @@ using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
 
-namespace Rebellion.Tests.Systems
+namespace Rebellion.Tests.AI
 {
     [TestFixture]
     [Category("RequiresMedia")]

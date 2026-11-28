@@ -841,7 +841,11 @@ namespace Rebellion.Gameplay.Scripting
                 result => result.DefenderFleet
             );
             Add<SpaceCombatResult, Planet>(arguments, "Planet", result => result.Planet);
-            Add<SpaceCombatResult, CombatSide>(arguments, "Winner", result => result.Winner);
+            Add<SpaceCombatResult, SpaceCombatResult.BattleOutcome>(
+                arguments,
+                "Winner",
+                result => result.Winner
+            );
             Add<BombardmentResult, Planet>(arguments, "Planet", result => result.Planet);
             Add<BombardmentResult, Faction>(
                 arguments,

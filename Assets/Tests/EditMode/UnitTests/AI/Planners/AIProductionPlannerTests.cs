@@ -775,7 +775,11 @@ namespace Rebellion.Tests.AI.Planners
             AITurnContext context = CreateYardAllocationContext(out Planet _, out Planet small);
             CapitalShip smallHull = (CapitalShip)
                 context.Faction.ResearchQueue[ManufacturingType.Ship][1].GetReference();
-            smallHull.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
+            smallHull.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                0
+            );
 
             AIManufactureProposal proposal = new AIProductionPlanner()
                 .Plan(context)
@@ -2252,8 +2256,16 @@ namespace Rebellion.Tests.AI.Planners
             weakShip.TypeID = "weak";
             weakShip.ConstructionCost = 30;
             weakShip.MaintenanceCost = 0;
-            weakShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
-            weakShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 75;
+            weakShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                0
+            );
+            weakShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                75
+            );
             weakShip.WeaponRecharge = 10;
             CapitalShip battleShip = AITestSceneBuilder.CreateCapitalShip(
                 "battle-template",
@@ -2310,8 +2322,16 @@ namespace Rebellion.Tests.AI.Planners
             );
             laserShip.TypeID = "laser";
             laserShip.MaintenanceCost = 0;
-            laserShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 0;
-            laserShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 300;
+            laserShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                0
+            );
+            laserShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                300
+            );
             laserShip.WeaponRecharge = 20;
             CapitalShip turbolaserShip = AITestSceneBuilder.CreateCapitalShip(
                 "turbolaser-template",

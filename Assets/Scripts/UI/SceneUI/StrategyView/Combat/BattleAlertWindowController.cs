@@ -253,7 +253,7 @@ public sealed class BattleAlertWindowController
                 continue;
             playerFactionID ??= GetPlayerFactionID();
             if (
-                BattleResultPresentation.GetSideForOwner(combat, playerFactionID) == null
+                combat.GetSideForOwner(playerFactionID) == null
                 || observedCombats.TryGetValue(combat, out _)
             )
                 continue;
@@ -290,8 +290,8 @@ public sealed class BattleAlertWindowController
         SetCombatResult(view, presentation);
         if (
             result.ManualRetreatingFactionID == GetPlayerFactionID()
-            || result.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
-                && result.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+            || result.AttackerOutcome == SpaceCombatResult.SideOutcome.Withdrawn
+                && result.DefenderOutcome == SpaceCombatResult.SideOutcome.Withdrawn
         )
             stopMusic();
         else

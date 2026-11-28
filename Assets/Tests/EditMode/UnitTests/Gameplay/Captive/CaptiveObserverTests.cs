@@ -731,6 +731,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "ship",
                 OwnerInstanceID = "rebels",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
                 RegimentCapacity = 10,
             };
             game.AttachNode(fleet, planet);

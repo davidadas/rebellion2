@@ -32,6 +32,7 @@ jobs:
     uses: ./.github/workflows/resolve-media.yml
     with:
       branch: ${{ github.head_ref }}
+      checkout_ref: ${{ github.sha }}
     secrets: inherit
     permissions:
       contents: read

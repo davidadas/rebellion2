@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using Rebellion.Game.Combat;
 using Rebellion.Game.Results;
 
 namespace Rebellion.Gameplay
@@ -50,10 +51,28 @@ namespace Rebellion.Gameplay
             bool processMessages = true
         )
         {
+            return ProcessResults(results, processMessages, null);
+        }
+
+        /// <summary>
+        /// Processes results while allowing the encounter to supply pending command results.
+        /// </summary>
+        /// <param name="results">The result batch entering this operation.</param>
+        /// <param name="processMessages">Whether to create faction messages for this batch.</param>
+        /// <param name="collectPending">Drains command-owned facts into the next ordinary reaction wave.</param>
+        /// <param name="afterReactions">Applies the producing operation's follow-up effects once its reactions have settled.</param>
+        /// <returns>All initial results and reactions in settlement order.</returns>
+        internal List<GameResult> ProcessResults(
+            IEnumerable<GameResult> results,
+            bool processMessages,
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> afterReactions = null
+        )
+        {
             _processingDepth++;
             try
             {
-                return ProcessResultsCore(results, processMessages);
+                return ProcessResultsCore(results, processMessages, collectPending, afterReactions);
             }
             finally
             {
@@ -66,13 +85,18 @@ namespace Rebellion.Gameplay
         /// </summary>
         /// <param name="results">The completed facts.</param>
         /// <param name="processMessages">Whether to release message reactions.</param>
+        /// <param name="collectPending">Drains commands caused by the current combat encounter.</param>
+        /// <param name="afterReactions">Applies the producing operation's follow-up effects.</param>
         /// <returns>The settled results.</returns>
         private List<GameResult> ProcessResultsCore(
             IEnumerable<GameResult> results,
-            bool processMessages
+            bool processMessages,
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> afterReactions
         )
         {
-            List<GameResult> resolvedResults = _getResults().Publish(results);
+            List<GameResult> resolvedResults = _getResults()
+                .Publish(results, collectPending, afterReactions);
             if (resolvedResults.Count > 0)
                 ResultsResolved?.Invoke(resolvedResults);
             List<PlanetaryAssaultResult> assaultResults = resolvedResults
@@ -102,12 +126,23 @@ namespace Rebellion.Gameplay
         /// Delivers messages and drains any result reactions that request additional messages.
         /// </summary>
         /// <param name="resolvedResults">The already-processed results to extend in place.</param>
-        public void ProcessMessageReactions(List<GameResult> resolvedResults)
+        public void ProcessMessageReactions(List<GameResult> resolvedResults) =>
+            ProcessMessageReactions(resolvedResults, null);
+
+        /// <summary>
+        /// Releases the messages restored with a battle and the newly settled consequences.
+        /// </summary>
+        /// <param name="resolvedResults">The settled facts to extend with delivery reactions.</param>
+        /// <param name="deferred">The deliveries that were waiting when the battle was saved.</param>
+        internal void ProcessMessageReactions(
+            List<GameResult> resolvedResults,
+            IReadOnlyList<ActiveBattle.DeferredMessage> deferred
+        )
         {
             _processingDepth++;
             try
             {
-                ProcessMessageReactionsCore(resolvedResults);
+                ProcessMessageReactionsCore(resolvedResults, deferred);
             }
             finally
             {
@@ -119,15 +154,20 @@ namespace Rebellion.Gameplay
         /// Delivers callbacks inside the active publication boundary.
         /// </summary>
         /// <param name="resolvedResults">The completed facts to deliver.</param>
-        private void ProcessMessageReactionsCore(List<GameResult> resolvedResults)
+        /// <param name="deferred">The deliveries that were waiting when the battle was saved.</param>
+        private void ProcessMessageReactionsCore(
+            List<GameResult> resolvedResults,
+            IReadOnlyList<ActiveBattle.DeferredMessage> deferred
+        )
         {
             HashSet<MessageDeliveredResult> notifiedDeliveries = new();
             List<GameResult> pendingMessageResults = new List<GameResult>(resolvedResults);
-            while (pendingMessageResults.Count > 0)
+            while (pendingMessageResults.Count > 0 || deferred?.Count > 0)
             {
                 NotifyMessageDeliveries(pendingMessageResults, notifiedDeliveries);
                 List<GameResult> deliveredResults = _getMessageObserver()
-                    .ProcessResults(pendingMessageResults);
+                    .ProcessResults(pendingMessageResults, deferred);
+                deferred = null;
                 if (deliveredResults.Count == 0)
                     return;
                 List<GameResult> deliveryReactions = _getResults().Publish(deliveredResults);

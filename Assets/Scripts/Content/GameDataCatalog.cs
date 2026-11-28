@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -47,6 +48,8 @@ public sealed class GameDataCatalog
 
     public FactionThemes FactionThemes { get; }
 
+    public TacticalCombatDefinition TacticalCombat { get; }
+
     /// <summary>
     /// Creates a complete typed game-data catalog.
     /// </summary>
@@ -65,6 +68,7 @@ public sealed class GameDataCatalog
     /// <param name="encyclopediaEntries">The authored encyclopedia entries.</param>
     /// <param name="factionThemes">The neutral and faction presentation themes.</param>
     /// <param name="officerTraits">The content-authored officer trait definitions.</param>
+    /// <param name="tacticalCombat">The shared tactical deployment and geometry definitions.</param>
     public GameDataCatalog(
         GameConfig gameConfig,
         GameGenerationConfig generationConfig,
@@ -80,7 +84,8 @@ public sealed class GameDataCatalog
         MessageDefinition[] messageDefinitions,
         EncyclopediaEntries encyclopediaEntries,
         FactionThemes factionThemes,
-        OfficerTraitDefinition[] officerTraits = null
+        OfficerTraitDefinition[] officerTraits = null,
+        TacticalCombatDefinition tacticalCombat = null
     )
     {
         GameConfig = gameConfig ?? throw new ArgumentNullException(nameof(gameConfig));
@@ -91,8 +96,12 @@ public sealed class GameDataCatalog
         Buildings = buildings ?? throw new ArgumentNullException(nameof(buildings));
         ValidateBuildingCapabilities(Buildings);
         ValidateBuildingUpgrades(Buildings);
-        CapitalShips = capitalShips ?? throw new ArgumentNullException(nameof(capitalShips));
-        Starfighters = starfighters ?? throw new ArgumentNullException(nameof(starfighters));
+        CapitalShips = (
+            capitalShips ?? throw new ArgumentNullException(nameof(capitalShips))
+        ).ToArray();
+        Starfighters = (
+            starfighters ?? throw new ArgumentNullException(nameof(starfighters))
+        ).ToArray();
         Regiments = regiments ?? throw new ArgumentNullException(nameof(regiments));
         SpecialForces = specialForces ?? throw new ArgumentNullException(nameof(specialForces));
         Officers = officers ?? throw new ArgumentNullException(nameof(officers));
@@ -106,6 +115,60 @@ public sealed class GameDataCatalog
         EncyclopediaEntries =
             encyclopediaEntries ?? throw new ArgumentNullException(nameof(encyclopediaEntries));
         FactionThemes = factionThemes ?? throw new ArgumentNullException(nameof(factionThemes));
+        TacticalCombat = tacticalCombat ?? new TacticalCombatDefinition();
+        MigrateShipTemplates();
+    }
+
+    /// <summary>
+    /// Installs catalog defaults on detached legacy templates without modifying the supplied templates.
+    /// </summary>
+    private void MigrateShipTemplates()
+    {
+        Dictionary<string, TacticalCombatUnitDefinition> definitions =
+            TacticalCombat.Units.ToDictionary(unit => unit.UnitTypeID, StringComparer.Ordinal);
+        for (int index = 0; index < CapitalShips.Length; index++)
+        {
+            CapitalShip ship = CapitalShips[index];
+            if (
+                ship.PhysicalGeometry != null && ship.HasAuthoredHyperdrives
+                || !definitions.TryGetValue(ship.TypeID ?? string.Empty, out var definition)
+            )
+                continue;
+
+            CapitalShip template = (CapitalShip)
+                ship.CreateCopy(recursive: true, includeDisabled: true);
+            definition.MigrateCapitalShip(template);
+            CapitalShips[index] = template;
+        }
+        for (int index = 0; index < Starfighters.Length; index++)
+        {
+            Starfighter fighter = Starfighters[index];
+            if (fighter.HasBackupHyperdriveRating)
+                continue;
+
+            definitions.TryGetValue(fighter.TypeID ?? string.Empty, out var definition);
+            Starfighter template = (Starfighter)fighter.CreateCopy();
+            template.MigrateBackupHyperdrive(definition?.BackupHyperdrive ?? 0);
+            Starfighters[index] = template;
+        }
+    }
+
+    /// <summary>
+    /// Supplies ship-owned ratings for older packs and saves that authored them in tactical XML.
+    /// </summary>
+    /// <param name="ships">The newly created or loaded ships.</param>
+    internal void MigrateCapitalShipEquipment(IEnumerable<CapitalShip> ships)
+    {
+        Dictionary<string, TacticalCombatUnitDefinition> definitions =
+            TacticalCombat.Units.ToDictionary(unit => unit.UnitTypeID, StringComparer.Ordinal);
+        foreach (CapitalShip ship in ships)
+        {
+            definitions.TryGetValue(
+                ship.TypeID ?? string.Empty,
+                out TacticalCombatUnitDefinition definition
+            );
+            definition?.MigrateCapitalShip(ship);
+        }
     }
 
     /// <summary>

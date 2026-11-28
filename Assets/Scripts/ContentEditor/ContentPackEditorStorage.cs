@@ -653,6 +653,7 @@ public static class ContentPackEditorStorage
             PlanetSectorsPath = source.PlanetSectorsPath,
             BuildingsPath = source.BuildingsPath,
             OfficerTraitsPath = source.OfficerTraitsPath,
+            TacticalCombatPath = source.TacticalCombatPath,
             GameEventsPath = source.GameEventsPath,
             MessageDefinitionsPath = source.MessageDefinitionsPath,
             EncyclopediaEntriesPath = source.EncyclopediaEntriesPath,

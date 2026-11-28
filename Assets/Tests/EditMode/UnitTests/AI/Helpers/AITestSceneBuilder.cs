@@ -574,6 +574,7 @@ namespace Rebellion.Tests.AI.Helpers
                 ManufacturingFactionInstanceIDs = new List<string> { ownerInstanceId },
                 OwnerInstanceID = ownerInstanceId,
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
                 MaxHullStrength = durabilityStrength,
                 CurrentHullStrength = durabilityStrength,
                 RegimentCapacity = regimentCapacity,
@@ -581,7 +582,11 @@ namespace Rebellion.Tests.AI.Helpers
                 Maneuverability = 1,
                 WeaponRecharge = 1,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = combatStrength;
+            ship.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                combatStrength
+            );
             return ship;
         }
 

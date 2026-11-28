@@ -24,30 +24,30 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderOwnerInstanceID = _defenderId,
             };
 
-            CombatSide? attacker = BattleResultPresentation.GetSideForOwner(result, _attackerId);
-            CombatSide? defender = BattleResultPresentation.GetSideForOwner(result, _defenderId);
-            CombatSide? unknown = BattleResultPresentation.GetSideForOwner(result, "unknown");
+            CombatSide? attacker = result.GetSideForOwner(_attackerId);
+            CombatSide? defender = result.GetSideForOwner(_defenderId);
+            CombatSide? unknown = result.GetSideForOwner("unknown");
 
             Assert.AreEqual(CombatSide.Attacker, attacker);
             Assert.AreEqual(CombatSide.Defender, defender);
             Assert.IsNull(unknown);
         }
 
-        [TestCase(CombatSide.Attacker, SpaceCombatSideOutcome.Withdrawn)]
-        [TestCase(CombatSide.Defender, SpaceCombatSideOutcome.Destroyed)]
-        [TestCase(CombatSide.Draw, SpaceCombatSideOutcome.Unknown)]
+        [TestCase(CombatSide.Attacker, SpaceCombatResult.SideOutcome.Withdrawn)]
+        [TestCase(CombatSide.Defender, SpaceCombatResult.SideOutcome.Destroyed)]
+        [TestCase(null, SpaceCombatResult.SideOutcome.Unknown)]
         public void GetOutcome_CombatSide_ReturnsConfiguredOutcome(
-            CombatSide side,
-            SpaceCombatSideOutcome expected
+            CombatSide? side,
+            SpaceCombatResult.SideOutcome expected
         )
         {
             SpaceCombatResult result = new SpaceCombatResult
             {
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
             };
 
-            SpaceCombatSideOutcome outcome = BattleResultPresentation.GetOutcome(result, side);
+            SpaceCombatResult.SideOutcome outcome = result.GetOutcome(side);
 
             Assert.AreEqual(expected, outcome);
         }
@@ -59,7 +59,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             CombatSide expected
         )
         {
-            CombatSide? opposingSide = BattleResultPresentation.GetOpposingSide(side);
+            CombatSide? opposingSide = SpaceCombatResult.OpposingSide(side);
 
             Assert.AreEqual(expected, opposingSide);
         }
@@ -67,7 +67,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         [Test]
         public void GetOpposingSide_Draw_ReturnsNull()
         {
-            CombatSide? opposingSide = BattleResultPresentation.GetOpposingSide(CombatSide.Draw);
+            CombatSide? opposingSide = SpaceCombatResult.OpposingSide(null);
 
             Assert.IsNull(opposingSide);
         }
@@ -80,7 +80,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Planet = new Planet { InstanceID = "battle-planet" },
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
                 AttackerRetreatPlanetInstanceID = "retreat-planet",
             };
 
@@ -101,7 +101,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 PlanetInstanceID = "battle-planet",
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
-                DefenderOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
                 DefenderRetreatPlanetInstanceID = "retreat-planet",
             };
 
@@ -120,7 +120,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 Planet = new Planet { InstanceID = "battle-planet" },
                 AttackerOwnerInstanceID = _attackerId,
                 DefenderOwnerInstanceID = _defenderId,
-                AttackerOutcome = SpaceCombatSideOutcome.Destroyed,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Destroyed,
             };
 
             string planetInstanceId = BattleResultPresentation
@@ -135,9 +135,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             BattleAlertWindowTheme theme = CreateTheme();
             SpaceCombatResult result = CreateResult(
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Destroyed
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Destroyed
             );
 
             string path = BattleResultPresentation.GetSummaryImagePath(
@@ -154,9 +154,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             BattleAlertWindowTheme theme = CreateTheme();
             SpaceCombatResult result = CreateResult(
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Withdrawn
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Withdrawn
             );
 
             string path = BattleResultPresentation.GetSummaryImagePath(
@@ -173,9 +173,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         {
             BattleAlertWindowTheme theme = CreateTheme();
             SpaceCombatResult result = CreateResult(
-                CombatSide.Draw,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Active
+                SpaceCombatResult.BattleOutcome.Draw,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Active
             );
 
             string path = BattleResultPresentation.GetSummaryImagePath(
@@ -194,9 +194,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             UIContext context = CreateContext();
             context.GetTheme(_defenderId).BattleParticipant.DefeatedImagePath = null;
             SpaceCombatResult result = CreateResult(
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Withdrawn
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Withdrawn
             );
 
             string path = BattleResultPresentation.GetSummaryImagePath(context, theme, result);
@@ -273,9 +273,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
         /// <param name="defenderOutcome">The defender outcome.</param>
         /// <returns>The created result.</returns>
         private static SpaceCombatResult CreateResult(
-            CombatSide winner,
-            SpaceCombatSideOutcome attackerOutcome,
-            SpaceCombatSideOutcome defenderOutcome
+            SpaceCombatResult.BattleOutcome winner,
+            SpaceCombatResult.SideOutcome attackerOutcome,
+            SpaceCombatResult.SideOutcome defenderOutcome
         )
         {
             return new SpaceCombatResult

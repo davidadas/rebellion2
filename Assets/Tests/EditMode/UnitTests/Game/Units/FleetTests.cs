@@ -545,7 +545,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100 });
             fleet.AddChild(ship);
 
             Officer general = new Officer
@@ -571,7 +571,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100 });
             fleet.AddChild(ship);
 
             Officer admiral = new Officer
@@ -598,7 +598,7 @@ namespace Rebellion.Tests.Game.Units
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
             };
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100 });
             fleet.AddChild(ship);
 
             // (0 / 10 + 1) * 100 = 100

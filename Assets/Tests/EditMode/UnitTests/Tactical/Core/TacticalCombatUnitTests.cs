@@ -1,0 +1,176 @@
+using System.Numerics;
+using NUnit.Framework;
+using Rebellion.Content;
+using Rebellion.Game.Combat;
+using Rebellion.Game.Results;
+using Rebellion.Game.Units;
+using Rebellion.Tactical;
+
+namespace Rebellion.Tests.Tactical
+{
+    [TestFixture]
+    public sealed class TacticalCombatUnitTests
+    {
+        [Test]
+        public void Constructor_ReusedCampaignShip_CreatesIndependentCombatants()
+        {
+            CapitalShip ship = new()
+            {
+                InstanceID = "ship",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+            };
+            CombatUnit first = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+            CombatUnit second = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+
+            first.ApplyHullLoss(20);
+            TacticalCombatDamage.ApplyComponentEvent(first, TacticalShipSystem.Engines, false);
+
+            Assert.AreEqual(100, second.Hull);
+            Assert.AreEqual(0, second.GetDamage(TacticalShipSystem.Engines));
+            Assert.AreEqual(0, ship.SystemDamage.Engines);
+            Assert.AreNotSame(first.Batteries[0], second.Batteries[0]);
+        }
+
+        [TestCase(0, 1, 0, true)]
+        [TestCase(1, 1, 1, true)]
+        [TestCase(1, 1, 2, false)]
+        public void Constructor_FighterDriveDamage_RetainsBackupAvailability(
+            int primary,
+            int backup,
+            int damaged,
+            bool expected
+        )
+        {
+            Starfighter fighter = new()
+            {
+                InstanceID = "fighter",
+                MaxSquadronSize = 12,
+                CurrentSquadronSize = 12,
+                Hyperdrive = primary,
+            };
+            fighter.BackupHyperdrive = backup;
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(fighter, CombatSide.Attacker, 1);
+            for (int index = 0; index < damaged; index++)
+                TacticalCombatDamage.ApplyComponentEvent(
+                    unit,
+                    TacticalShipSystem.Hyperdrive,
+                    false
+                );
+
+            Assert.AreEqual(expected, unit.HasHyperdrive);
+        }
+
+        [TestCase("custom-ship", 0, 3.6f)]
+        [TestCase("custom-ship", 21, 3.6f)]
+        [TestCase("CSEM014", 21, 19f)]
+        [TestCase("CSEM014", 37, 19f)]
+        public void InitializeUnit_LegacyCapitalType_SelectsFixedCollisionBounds(
+            string typeID,
+            int presentationIndex,
+            float expectedRadius
+        )
+        {
+            TacticalCombatUnitDefinition definition = new()
+            {
+                PresentationIndex = presentationIndex,
+                HullWidth = 40,
+                HullHeight = 50,
+                HullDepth = 60,
+            };
+
+            CombatUnit unit = CreateWithLegacyGeometry(definition, typeID);
+
+            Assert.AreEqual(3, unit.HalfHeight);
+            Assert.AreEqual(expectedRadius, unit.CollisionRadius);
+            Assert.AreEqual(new Vector3(40, 50, 60), unit.HullDimensions);
+        }
+
+        [Test]
+        public void InitializeUnit_OrdinaryCapitalWithAuthoredTurnCap_UsesUncappedManeuverRate()
+        {
+            CombatUnit unit = CreateWithLegacyGeometry(
+                new TacticalCombatUnitDefinition
+                {
+                    PresentationIndex = 20,
+                    MaximumTurnRate = 0.001f,
+                }
+            );
+
+            Assert.That(unit.TurnRate, Is.GreaterThan(0.001f));
+            Assert.AreEqual(0, unit.MaximumTurnRate);
+        }
+
+        [Test]
+        public void InitializeUnit_LargeCapitalWithoutAuthoredTurnCap_UsesFixedTurnCap()
+        {
+            CombatUnit unit = CreateWithLegacyGeometry(
+                new TacticalCombatUnitDefinition { PresentationIndex = 21 },
+                "CSEM014"
+            );
+
+            Assert.AreEqual(0.0523598827f, unit.MaximumTurnRate);
+            Assert.AreEqual(0.0523598827f, unit.TurnRate);
+        }
+
+        /// <summary>
+        /// Initializes a ship from an older tactical geometry definition.
+        /// </summary>
+        /// <param name="definition">The old tactical definition supplying physical defaults.</param>
+        /// <param name="typeID">The campaign ship's stable content identity.</param>
+        /// <returns>The combatant with migrated ship dimensions.</returns>
+        private static CombatUnit CreateWithLegacyGeometry(
+            TacticalCombatUnitDefinition definition,
+            string typeID = "custom-ship"
+        )
+        {
+            CapitalShip ship = CreateShip();
+            ship.TypeID = typeID;
+            CombatUnit unit = CombatUnit.Create(ship);
+            TacticalCombatDeployment.InitializeUnit(unit, definition, CombatSide.Attacker, 1);
+            return unit;
+        }
+
+        [Test]
+        public void Constructor_IncompleteOrdinaryCapital_RemainsActive()
+        {
+            CapitalShip ship = CreateShip();
+            ship.ManufacturingStatus = ManufacturingStatus.Building;
+
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(ship, CombatSide.Attacker, 1);
+
+            Assert.AreEqual(CombatUnitStatus.Active, unit.Status);
+        }
+
+        [Test]
+        public void Proximity_MovementMagnitudeNearFloatMidpoint_RetainsMovementArithmeticPrecision()
+        {
+            CombatUnit unit = TacticalCombatDeployment.CreateUnit(
+                CreateShip(),
+                CombatSide.Attacker,
+                1
+            );
+            unit.CollisionRadius = 0;
+            unit.Velocity = new Vector3(
+                0.9999999403953552f,
+                0.00048828125f,
+                9.313225746154785e-10f
+            );
+
+            Assert.AreEqual(0.5f, TacticalCombatSpatialIndex.GetProximity(unit));
+        }
+
+        /// <summary>
+        /// Creates a complete capital ship with a maneuver rating above its baseline turn rate.
+        /// </summary>
+        /// <returns>The campaign ship used to capture tactical initialization.</returns>
+        private static CapitalShip CreateShip() =>
+            new()
+            {
+                InstanceID = "ship",
+                MaxHullStrength = 100,
+                CurrentHullStrength = 100,
+                Maneuverability = 5,
+            };
+    }
+}

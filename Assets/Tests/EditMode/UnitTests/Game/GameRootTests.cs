@@ -16,6 +16,8 @@ using Rebellion.Gameplay;
 using Rebellion.SceneGraph;
 using Rebellion.Util.Random;
 using Rebellion.Util.Serialization;
+using XDocument = global::System.Xml.Linq.XDocument;
+using XElement = global::System.Xml.Linq.XElement;
 
 namespace Rebellion.Tests.Game
 {
@@ -141,10 +143,8 @@ namespace Rebellion.Tests.Game
             game.GenerateRuntimeIdentifier();
             game.GenerateRuntimeIdentifier();
 
-            System.Xml.Linq.XElement document = System.Xml.Linq.XElement.Parse(
-                SerializationHelper.Serialize(game)
-            );
-            System.Xml.Linq.XElement counter = document.Element(nameof(GameRoot.IDCounter));
+            XElement document = XElement.Parse(SerializationHelper.Serialize(game));
+            XElement counter = document.Element(nameof(GameRoot.IDCounter));
             Assert.That(counter, Is.Not.Null);
             Assert.That(document.Element("RuntimeIdentifierIndex"), Is.Null);
             if (legacyName)
@@ -166,7 +166,7 @@ namespace Rebellion.Tests.Game
             GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
 
             Assert.That(restored.Summary.Seed, Is.EqualTo(456));
-            Assert.That(System.Xml.Linq.XElement.Parse(xml).Element("RandomSeed"), Is.Null);
+            Assert.That(XElement.Parse(xml).Element("RandomSeed"), Is.Null);
             Assert.That(((SystemRandomProvider)restored.Random).Seed, Is.EqualTo(456));
             Assert.That(restored.RandomIndex, Is.EqualTo(game.RandomIndex));
             Assert.That(
@@ -309,9 +309,7 @@ namespace Rebellion.Tests.Game
                 },
                 _planet
             );
-            System.Xml.Linq.XDocument document = System.Xml.Linq.XDocument.Parse(
-                SerializationHelper.Serialize(_game)
-            );
+            XDocument document = XDocument.Parse(SerializationHelper.Serialize(_game));
             Assert.AreEqual(
                 1,
                 document
@@ -740,6 +738,210 @@ namespace Rebellion.Tests.Game
             Assert.AreEqual(1, restored.RegisteredOfficers.Count);
             Assert.AreEqual(officer.InstanceID, restored.RegisteredOfficers[0].InstanceID);
             Assert.IsFalse(restored.RegisteredOfficers[0].IsEnabled);
+        }
+
+        [Test]
+        public void AddSceneNodeByInstanceID_DuplicateMilitaryKey_PreservesCurrentValue()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+            };
+            _game.AddSceneNodeByInstanceID(ship);
+
+            Assert.Throws<InvalidOperationException>(() =>
+                _game.AddSceneNodeByInstanceID(
+                    new Starfighter
+                    {
+                        InstanceID = ship.InstanceID,
+                        OwnerInstanceID = _faction2.InstanceID,
+                        ManufacturingStatus = ManufacturingStatus.Complete,
+                        UprisingDefense = 100,
+                    }
+                )
+            );
+
+            Assert.AreEqual(
+                (7, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void RemoveSceneNodeByInstanceID_MatchingRegistryKey_RemovesMilitaryValue()
+        {
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+            };
+            _game.AddSceneNodeByInstanceID(ship);
+
+            _game.RemoveSceneNodeByInstanceID(new CapitalShip { InstanceID = ship.InstanceID });
+
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void DeleteNode_CarrierSubtree_RemovesShipAndCargoMilitaryValues()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            _game.AttachNode(_fleet, _planet);
+            _fleet.IsEnabled = false;
+            CapitalShip ship = new CapitalShip
+            {
+                InstanceID = "military-carrier",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 7,
+                MaxHullStrength = 100,
+                CurrentHullStrength = 10,
+                RegimentCapacity = 1,
+            };
+            _game.AttachNode(ship, _fleet);
+            _game.AttachNode(
+                new Regiment
+                {
+                    InstanceID = "military-cargo",
+                    OwnerInstanceID = _faction1.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    UprisingDefense = 11,
+                },
+                ship
+            );
+            Assert.AreEqual(
+                (18, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+
+            _game.DeleteNode(ship);
+
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void CaptureSpaceCombatMilitaryValues_RegimentFinishesForDelivery_ReadsNewAdmission()
+        {
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Building,
+                UprisingDefense = 17,
+            };
+            _game.AddSceneNodeByInstanceID(regiment);
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+
+            regiment.ManufacturingStatus = ManufacturingStatus.Delivering;
+            regiment.Movement = new MovementState();
+
+            Assert.AreEqual(
+                (17, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void Galaxy_ReplacingRoot_DropsOutgoingMilitaryValues()
+        {
+            _game.AddSceneNodeByInstanceID(
+                new Regiment
+                {
+                    InstanceID = "outgoing-military-unit",
+                    OwnerInstanceID = _faction1.InstanceID,
+                    ManufacturingStatus = ManufacturingStatus.Complete,
+                    UprisingDefense = 17,
+                }
+            );
+
+            _game.Galaxy = new GalaxyMap { InstanceID = "replacement-military-galaxy" };
+
+            Assert.AreEqual(
+                (0, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+        }
+
+        [Test]
+        public void RebuildSceneState_SerializedMilitary_RestoresIndependentRosterOnce()
+        {
+            _game.AttachNode(_planetSector, _game.Galaxy);
+            _game.AttachNode(_planet, _planetSector);
+            Regiment regiment = new Regiment
+            {
+                InstanceID = "persisted-military-unit",
+                OwnerInstanceID = _faction1.InstanceID,
+                ManufacturingStatus = ManufacturingStatus.Complete,
+                UprisingDefense = 17,
+            };
+            _game.AttachNode(regiment, _planet);
+            string xml = SerializationHelper.Serialize(_game);
+            GameRoot restored = SerializationHelper.Deserialize<GameRoot>(xml);
+
+            restored.RebuildSceneState();
+            restored.RebuildSceneState();
+            restored.GetSceneNodeByInstanceID<Regiment>(regiment.InstanceID).UprisingDefense = 23;
+
+            Assert.AreEqual(
+                (23, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    restored,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+            Assert.AreEqual(
+                (17, 0),
+                SpaceCombatAftermath.CaptureMilitaryValues(
+                    _game,
+                    _faction1.InstanceID,
+                    _faction2.InstanceID
+                )
+            );
+            StringAssert.DoesNotContain("SpaceCombatMilitaryRoster", xml);
         }
 
         [Test]

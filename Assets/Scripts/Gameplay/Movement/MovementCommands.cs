@@ -91,6 +91,146 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Moves surviving squadrons to their recovery destinations after battle losses are applied.
+        /// </summary>
+        /// <param name="battlePlanet">The landing site for squadrons without a carrier.</param>
+        /// <param name="recoveries">The landing decisions from the battle result.</param>
+        /// <returns>The completed squadron placements.</returns>
+        internal List<GameResult> RecoverStarfighters(
+            Planet battlePlanet,
+            IReadOnlyList<FighterRecoveryResult> recoveries
+        ) => RecoverStarfighters(PlanStarfighterRecovery(battlePlanet, recoveries));
+
+        /// <summary>
+        /// Validates final hangar assignments against the campaign and the pending combat losses.
+        /// </summary>
+        /// <param name="battlePlanet">The landing site for squadrons without a carrier.</param>
+        /// <param name="recoveries">The landing decisions from the battle result.</param>
+        /// <param name="losses">Squadron changes that will be applied before landing.</param>
+        /// <param name="shipDamage">Ship damage that will be committed with these landings.</param>
+        /// <returns>The ordered parent changes for surviving squadrons.</returns>
+        internal IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> PlanStarfighterRecovery(
+            Planet battlePlanet,
+            IReadOnlyList<FighterRecoveryResult> recoveries,
+            IReadOnlyList<FighterLossResult> losses = null,
+            IReadOnlyList<ShipDamageResult> shipDamage = null
+        )
+        {
+            if (recoveries == null)
+                throw new ArgumentNullException(nameof(recoveries));
+            if (recoveries.Count == 0)
+                return Array.Empty<(ISceneNode, ContainerNode)>();
+
+            Dictionary<Starfighter, int> remainingSquads =
+                losses
+                    ?.Where(loss => loss.Fighter != null)
+                    .ToDictionary(loss => loss.Fighter, loss => loss.SquadsAfter)
+                ?? new();
+            HashSet<CapitalShip> lostCarriers =
+                shipDamage
+                    ?.Where(damage => damage.HullAfter <= 0)
+                    .Select(damage => damage.Ship)
+                    .ToHashSet()
+                ?? new();
+            List<(ISceneNode Node, ContainerNode Parent)> moves = new(recoveries.Count);
+            HashSet<Starfighter> fighters = new();
+            Dictionary<CapitalShip, (int Arrivals, int Departures)> berthChanges = new();
+            foreach (var loss in remainingSquads)
+                if (loss.Value <= 0 && loss.Key.GetParent() is CapitalShip carrier)
+                {
+                    berthChanges.TryGetValue(carrier, out var counts);
+                    berthChanges[carrier] = (counts.Arrivals, counts.Departures + 1);
+                }
+
+            foreach (FighterRecoveryResult recovery in recoveries)
+            {
+                Starfighter fighter =
+                    recovery?.Fighter
+                    ?? throw new ArgumentException(
+                        "A recovery requires a squadron.",
+                        nameof(recoveries)
+                    );
+                if (remainingSquads.GetValueOrDefault(fighter, fighter.CurrentSquadronSize) <= 0)
+                    continue;
+
+                if (recovery.Carrier != null && lostCarriers.Contains(recovery.Carrier))
+                    throw new InvalidOperationException(
+                        "A destroyed ship cannot receive a squadron."
+                    );
+
+                ContainerNode destination = recovery.Carrier ?? (ContainerNode)battlePlanet;
+                if (destination == null || !fighters.Add(fighter))
+                    throw new ArgumentException(
+                        "Each surviving squadron requires one landing destination.",
+                        nameof(recoveries)
+                    );
+
+                ISceneNode origin = fighter.GetParent();
+                if (ReferenceEquals(origin, destination))
+                    continue;
+                if (
+                    origin is not (Planet or CapitalShip)
+                    || !origin.GetChildren<Starfighter>(includeDisabled: true).Contains(fighter)
+                )
+                    throw new InvalidOperationException(
+                        "The squadron must belong to its current host."
+                    );
+
+                if (origin is CapitalShip source)
+                {
+                    berthChanges.TryGetValue(source, out var counts);
+                    berthChanges[source] = (counts.Arrivals, counts.Departures + 1);
+                }
+
+                if (destination is CapitalShip carrier)
+                {
+                    berthChanges.TryGetValue(carrier, out var counts);
+                    berthChanges[carrier] = (counts.Arrivals + 1, counts.Departures);
+                }
+                else if (!destination.CanAcceptChild(fighter))
+                    throw new InvalidOperationException(
+                        "The landing planet cannot accept the squadron."
+                    );
+
+                moves.Add((fighter, destination));
+            }
+
+            foreach (var (carrier, counts) in berthChanges)
+                if (
+                    counts.Arrivals > 0
+                    && !carrier.CanAcceptStarfighters(counts.Arrivals, counts.Departures)
+                )
+                    throw new InvalidOperationException(
+                        "The carrier cannot accept the arriving squadrons."
+                    );
+
+            return moves;
+        }
+
+        /// <summary>
+        /// Applies the preflighted battle landings after losses have released their berths.
+        /// </summary>
+        /// <param name="moves">The validated parent changes.</param>
+        /// <returns>The placements after every squadron has reached its host.</returns>
+        internal List<GameResult> RecoverStarfighters(
+            IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves
+        )
+        {
+            List<GameResult> placements = new(moves.Count);
+            foreach (var (node, _) in moves)
+                placements.Add(
+                    new UnitPlacedResult
+                    {
+                        Unit = (IMovable)node,
+                        PreviousPlanet = node.GetParentOfType<Planet>(),
+                        Tick = _game.CurrentTick,
+                    }
+                );
+            _game.ApplyNodeMoves(moves);
+            return placements;
+        }
+
+        /// <summary>
         /// Returns and clears results queued by immediate movement operations.
         /// </summary>
         /// <returns>The pending movement results.</returns>
@@ -300,6 +440,16 @@ namespace Rebellion.Gameplay
             }
 
             Planet requestedPlanet = MovementQueries.RequireDestinationPlanet(destination);
+            if (
+                !MovementQueries.CanStartCapitalShipTravel(
+                    unit,
+                    unit.GetParentOfType<Planet>(),
+                    requestedPlanet,
+                    out rejectionReason
+                )
+            )
+                return false;
+
             if (MovementQueries.IsBlockedFromDestinationByBlockade(unit, requestedPlanet, _game))
             {
                 rejectionReason =

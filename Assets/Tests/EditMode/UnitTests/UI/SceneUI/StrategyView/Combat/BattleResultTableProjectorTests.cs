@@ -39,7 +39,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 AttackerFleet = fleet,
                 AttackerOwnerInstanceID = _playerFactionId,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
                 AttackingUnits =
                 {
                     Capture(intact),
@@ -97,7 +97,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 AttackerFleet = fleet,
                 AttackerOwnerInstanceID = _playerFactionId,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
                 AttackingUnits = { Capture(ship, damaged: true) },
                 ShipDamage =
                 {
@@ -144,7 +144,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
-                DefenderOutcome = SpaceCombatSideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
                 DefendingUnits =
                 {
                     Capture(damaged, damaged: true),
@@ -203,7 +203,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 Planet = planet,
                 DefenderOwnerInstanceID = _opponentFactionId,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                 DefendingUnits = { Capture(fighter) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
@@ -234,7 +234,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 AttackerFleet = fleet,
                 AttackerOwnerInstanceID = _playerFactionId,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
                 AttackingUnits = { Capture(first), Capture(second) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
@@ -272,7 +272,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                 DefendingUnits = { Capture(officer), Capture(specialForces) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
@@ -304,7 +304,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             {
                 DefenderFleet = fleet,
                 DefenderOwnerInstanceID = _playerFactionId,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
                 DefendingUnits = { Capture(officer) },
             };
             BattleResultTableProjector projector = new BattleResultTableProjector();
@@ -433,7 +433,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             SpaceCombatResult result = new SpaceCombatResult
             {
                 AttackerOwnerInstanceID = _playerFactionId,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
                 AttackingUnits = { Capture(officer) },
             };
             officer.DisplayName = "Renamed Officer";

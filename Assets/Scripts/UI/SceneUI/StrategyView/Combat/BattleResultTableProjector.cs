@@ -46,13 +46,11 @@ internal sealed class BattleResultTableProjector
         BattleResultCategory category
     )
     {
-        CombatSide? side = BattleResultPresentation.GetSideForOwner(result, ownerInstanceId);
+        CombatSide? side = result?.GetSideForOwner(ownerInstanceId);
         if (!side.HasValue)
             return CreateEmptyTable();
 
-        bool withdrawing =
-            BattleResultPresentation.GetOutcome(result, side.Value)
-            == SpaceCombatSideOutcome.Withdrawn;
+        bool withdrawing = result.GetOutcome(side.Value) == SpaceCombatResult.SideOutcome.Withdrawn;
         return ProjectUnits(
             uiContext,
             side == CombatSide.Attacker ? result.AttackingUnits : result.DefendingUnits,
@@ -141,8 +139,8 @@ internal sealed class BattleResultTableProjector
             report.CombatType == CombatReportType.SpaceBattle
             && (
                 attacker
-                    ? report.AttackerOutcome == SpaceCombatSideOutcome.Withdrawn
-                    : report.DefenderOutcome == SpaceCombatSideOutcome.Withdrawn
+                    ? report.AttackerOutcome == SpaceCombatResult.SideOutcome.Withdrawn
+                    : report.DefenderOutcome == SpaceCombatResult.SideOutcome.Withdrawn
             );
         return ProjectReportUnits(
             uiContext,

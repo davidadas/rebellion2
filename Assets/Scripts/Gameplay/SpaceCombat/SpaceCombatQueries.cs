@@ -29,6 +29,20 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Reads the military value of a ship, squadron, or regiment.
+        /// </summary>
+        /// <param name="unit">The battle participant being evaluated or updated.</param>
+        /// <returns>The unit's military value, or zero for other entities.</returns>
+        internal static int GetMilitaryValue(ISceneNode unit) =>
+            unit switch
+            {
+                Regiment regiment => regiment.UprisingDefense,
+                CapitalShip ship => ship.UprisingDefense,
+                Starfighter fighter => fighter.UprisingDefense,
+                _ => 0,
+            };
+
+        /// <summary>
         /// Returns whether both sides belong to AI-controlled factions.
         /// </summary>
         /// <param name="decision">The combat decision to evaluate.</param>
@@ -212,6 +226,32 @@ namespace Rebellion.Gameplay
         )
         {
             return _withdrawalPlanner.CreatePlan(fleets, planet, ownerInstanceId, eligibleUnits);
+        }
+
+        /// <summary>
+        /// Reserves destinations for actual departures without replacing tactical recovery assignments.
+        /// </summary>
+        /// <param name="fleets">The participating fleets.</param>
+        /// <param name="planet">The encounter's planet.</param>
+        /// <param name="ownerInstanceId">The departing faction.</param>
+        /// <param name="departures">The units that escaped.</param>
+        /// <param name="recoveries">The completed battle's fighter assignments.</param>
+        /// <returns>The reserved departure plan.</returns>
+        internal SpaceCombatWithdrawalPlan GetTacticalWithdrawalPlan(
+            IReadOnlyList<Fleet> fleets,
+            Planet planet,
+            string ownerInstanceId,
+            ISet<ISceneNode> departures,
+            IReadOnlyList<FighterRecoveryResult> recoveries
+        )
+        {
+            return _withdrawalPlanner.CreateTacticalPlan(
+                fleets,
+                planet,
+                ownerInstanceId,
+                departures,
+                recoveries
+            );
         }
 
         /// <summary>

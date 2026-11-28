@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
+using Rebellion.Content;
 using Rebellion.Game.Units;
 
 namespace Rebellion.Tests.Content
@@ -260,6 +261,97 @@ namespace Rebellion.Tests.Content
             );
 
             StringAssert.Contains("travel-time percentage", exception.Message);
+        }
+
+        [Test]
+        public void Constructor_SharedShipTemplates_DoesNotMutateRuntimeEquipmentBindings()
+        {
+            GameDataCatalog source = TacticalTestData.CreateCatalog(TestConfig.Create());
+            CapitalShip template = source.CapitalShips.First(ship =>
+                source.TacticalCombat.Units.Any(unit =>
+                    unit.UnitTypeID == ship.TypeID && unit.BackupHyperdrive > 0
+                )
+            );
+            CapitalShip[] supplied = { template };
+            GameDataCatalog derived = new(
+                source.GameConfig,
+                source.GenerationConfig,
+                source.Factions,
+                source.PlanetSectors,
+                source.Buildings,
+                supplied,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces,
+                source.Officers,
+                source.GameEvents,
+                source.MessageDefinitions,
+                source.EncyclopediaEntries,
+                source.FactionThemes,
+                source.OfficerTraits
+            );
+            UnitFactory sourceFactory = new(
+                source.Buildings,
+                supplied,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces
+            );
+            UnitFactory derivedFactory = new(
+                source.Buildings,
+                derived.CapitalShips,
+                source.Starfighters,
+                source.Regiments,
+                source.SpecialForces
+            );
+            CapitalShip captured = sourceFactory.Create<CapitalShip>(template.TypeID, "owner");
+            derivedFactory.Create<CapitalShip>(template.TypeID, "owner");
+            captured.SystemDamage.SetHyperdriveDamage(0, 1);
+            Assert.Greater(captured.GetOperationalHyperdrive(), 0);
+            Assert.AreSame(template, derived.CapitalShips[0]);
+        }
+
+        [Test]
+        public void Constructor_SharedLegacyTemplates_KeepsEachCatalogsEquipmentDefaults()
+        {
+            CapitalShip ship = TacticalTestData.CreateCapital("capital");
+            Starfighter fighter = TacticalTestData.CreateFighter("fighter");
+            CapitalShip[] ships = { ship };
+            Starfighter[] fighters = { fighter };
+
+            GameDataCatalog first = CreateCatalog(2, 3, 12);
+            GameDataCatalog second = CreateCatalog(4, 5, 24);
+
+            Assert.AreEqual(2, first.CapitalShips.Single().GetHyperdriveRating(1));
+            Assert.AreEqual(4, second.CapitalShips.Single().GetHyperdriveRating(1));
+            Assert.AreEqual(12, first.CapitalShips.Single().PhysicalGeometry.HullWidth);
+            Assert.AreEqual(24, second.CapitalShips.Single().PhysicalGeometry.HullWidth);
+            Assert.AreEqual(3, first.Starfighters.Single().BackupHyperdrive);
+            Assert.AreEqual(5, second.Starfighters.Single().BackupHyperdrive);
+            Assert.AreSame(ship, ships.Single());
+            Assert.AreSame(fighter, fighters.Single());
+            Assert.Zero(ship.GetHyperdriveRating(1));
+            Assert.IsNull(ship.PhysicalGeometry);
+            Assert.Zero(fighter.BackupHyperdrive);
+
+            GameDataCatalog CreateCatalog(int shipDrive, int fighterDrive, float hullWidth) =>
+                TestGameData.Create(
+                    capitalShips: ships,
+                    starfighters: fighters,
+                    tacticalCombat: new TacticalCombatDefinition
+                    {
+                        Units =
+                        {
+                            new()
+                            {
+                                UnitTypeID = ship.TypeID,
+                                BackupHyperdrive = shipDrive,
+                                HullWidth = hullWidth,
+                            },
+                            new() { UnitTypeID = fighter.TypeID, BackupHyperdrive = fighterDrive },
+                        },
+                    }
+                );
         }
 
         /// <summary>

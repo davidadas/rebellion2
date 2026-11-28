@@ -96,6 +96,29 @@ namespace Rebellion.Gameplay
         /// <returns>The settled results, or an empty list when queued by an active delivery.</returns>
         public List<GameResult> Publish(IEnumerable<GameResult> results)
         {
+            return Publish(results, null, null);
+        }
+
+        // Pending command results and aftermath belong to this publication. They run after
+        // ordinary reactions drain and before observers see the settled batch.
+        /// <summary>
+        /// Settles ordinary reactions and command results before publishing one completed batch.
+        /// </summary>
+        /// <param name="results">The result batch entering this operation.</param>
+        /// <param name="collectPending">Drains command-owned facts into the next ordinary reaction wave.</param>
+        /// <param name="settle">Applies the operation's follow-up effects before observers are notified.</param>
+        /// <returns>The results in the order they settled.</returns>
+        internal List<GameResult> Publish(
+            IEnumerable<GameResult> results,
+            Func<IReadOnlyList<GameResult>> collectPending,
+            Func<IReadOnlyList<GameResult>, List<GameResult>> settle
+        )
+        {
+            if (_isPublishing && collectPending != null)
+                throw new InvalidOperationException(
+                    "A result operation cannot collect pending commands during another publication."
+                );
+
             List<GameResult> incomingResults =
                 results?.Where(result => result != null).ToList() ?? new List<GameResult>();
             _pendingResults.AddRange(incomingResults);
@@ -109,19 +132,39 @@ namespace Rebellion.Gameplay
                 do
                 {
                     List<GameResult> settledResults = new();
-                    while (_pendingResults.Count > 0)
+                    int completedReactionCount = 0;
+                    while (true)
                     {
-                        List<GameResult> currentResults = new(_pendingResults);
-                        _pendingResults.Clear();
-                        settledResults.AddRange(currentResults);
-                        foreach (Subscription subscriber in _subscribers.ToArray())
-                            subscriber.Deliver(currentResults);
+                        while (_pendingResults.Count > 0)
+                        {
+                            List<GameResult> currentResults = new(_pendingResults);
+                            _pendingResults.Clear();
+                            settledResults.AddRange(currentResults);
+                            foreach (Subscription subscriber in _subscribers.ToArray())
+                                subscriber.Deliver(currentResults);
+                        }
+
+                        if (CollectPending(collectPending))
+                            continue;
+
+                        if (settle == null || completedReactionCount == settledResults.Count)
+                            break;
+
+                        IReadOnlyList<GameResult> completedResults =
+                            completedReactionCount == 0
+                                ? settledResults
+                                : settledResults.GetRange(
+                                    completedReactionCount,
+                                    settledResults.Count - completedReactionCount
+                                );
+                        completedReactionCount = settledResults.Count;
+                        Publish(settle(completedResults));
                     }
 
                     resolvedResults.AddRange(settledResults);
                     foreach (Subscription observer in _observers.ToArray())
                         observer.Deliver(settledResults);
-                } while (_pendingResults.Count > 0);
+                } while (_pendingResults.Count > 0 || CollectPending(collectPending));
 
                 return resolvedResults;
             }
@@ -133,11 +176,26 @@ namespace Rebellion.Gameplay
         }
 
         /// <summary>
+        /// Moves command-owned results into the pending wave.
+        /// </summary>
+        /// <param name="collect">The callback that drains pending command results.</param>
+        /// <returns>Whether another result wave is ready.</returns>
+        private bool CollectPending(Func<IReadOnlyList<GameResult>> collect)
+        {
+            IReadOnlyList<GameResult> results = collect?.Invoke();
+            if (results != null)
+                foreach (GameResult result in results)
+                    if (result != null)
+                        _pendingResults.Add(result);
+            return _pendingResults.Count > 0;
+        }
+
+        /// <summary>
         /// Registers a type-filtered callback in the selected delivery phase.
         /// </summary>
         /// <typeparam name="T">The result type accepted by the callback.</typeparam>
         /// <param name="callback">The callback invoked for nonempty matching batches.</param>
-        /// <param name="subscriptions">The ordered reaction or observer subscriptions.</param>
+        /// <param name="subscriptions">The ordered subscriptions for the selected phase.</param>
         /// <returns>The disposable registration.</returns>
         private static IDisposable Register<T>(
             Action<IReadOnlyList<T>> callback,

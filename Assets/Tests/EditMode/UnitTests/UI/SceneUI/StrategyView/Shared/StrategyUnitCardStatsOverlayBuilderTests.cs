@@ -196,12 +196,21 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Shared
                 StarfighterCapacity = 12,
                 RegimentCapacity = 3,
             };
-            capitalShip.PrimaryWeapons[PrimaryWeaponType.LaserCannon][(int)PrimaryWeaponArc.Fore] =
-                310;
-            capitalShip.PrimaryWeapons[PrimaryWeaponType.IonCannon][(int)PrimaryWeaponArc.Fore] =
-                100;
-            capitalShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][(int)PrimaryWeaponArc.Fore] =
-                20;
+            capitalShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                310
+            );
+            capitalShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.IonCannon,
+                PrimaryWeaponArc.Fore,
+                100
+            );
+            capitalShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                20
+            );
 
             StrategyUnitCardStatsOverlayData overlay = StrategyUnitCardStatsOverlayBuilder.Build(
                 capitalShip

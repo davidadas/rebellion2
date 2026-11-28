@@ -178,6 +178,43 @@ test('fork pull_request jobs never receive repository or environment secrets', (
   assert.ok(ci.concurrency.group.includes('inputs.pull_request_number'));
 });
 
+test('media resolution reads the tested pin while executing only the workflow revision helper', () => {
+  assert.equal(mediaResolver.on.workflow_call.inputs.checkout_ref.required, true);
+  assert.equal(ci.jobs['resolve-media'].with.checkout_ref, '${{ github.sha }}');
+  const steps = mediaResolver.jobs.resolve.steps;
+  const trusted = steps.find(step => step.name === 'Checkout trusted media resolver');
+  const pin = steps.find(step => step.name === 'Checkout tested media pin');
+  assert.equal(trusted.with.ref, '${{ github.workflow_sha }}');
+  assert.equal(trusted.with.path, '.ci/workflow-tools');
+  assert.equal(trusted.with['persist-credentials'], false);
+  assert.equal(pin.with.ref, '${{ inputs.checkout_ref }}');
+  assert.equal(pin.with['sparse-checkout'], '.github/media-revision');
+  assert.equal(pin.with.path, '.ci/source-metadata');
+  assert.equal(pin.with['persist-credentials'], false);
+  const verify = steps.find(step => step.name === 'Verify tested merge revision');
+  assert.equal(verify.if, "inputs.expected_head_sha != ''");
+  assert.equal(verify.env.EXPECTED_BASE_SHA, '${{ inputs.expected_base_sha }}');
+  assert.equal(verify.env.EXPECTED_HEAD_SHA, '${{ inputs.expected_head_sha }}');
+  assert.match(verify.run, /git show --no-patch --format=%P HEAD/);
+  assert.match(verify.run, /approved pull request merge/);
+  const resolve = steps.find(step => step.id === 'resolve');
+  assert.match(resolve.run, /python3 \.ci\/workflow-tools\/Tools\/resolve_media_revision\.py/);
+  assert.match(resolve.run, /--source-root \.ci\/source-metadata/);
+  assert.match(resolve.run, /--branch "\$PULL_REQUEST_BRANCH"/);
+  assert.equal(resolve.env.PULL_REQUEST_BRANCH, '${{ inputs.branch }}');
+  assert.ok(steps.indexOf(trusted) < steps.indexOf(resolve));
+  assert.ok(steps.indexOf(pin) < steps.indexOf(resolve));
+  assert.ok(steps.indexOf(verify) < steps.indexOf(resolve));
+});
+
+test('trusted builds and shipped-pack tests consume the exact resolved media commit', () => {
+  const buildMedia = ci.jobs.build.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
+  const testMedia = runner.jobs.test.steps.find(step => step.with?.repository === 'adasgames/rebellion2-media');
+  assert.equal(buildMedia.with.ref, '${{ needs.resolve-media.outputs.sha }}');
+  assert.equal(testMedia.with.ref, '${{ inputs.media_sha }}');
+  assert.equal(ci.jobs.test.with.media_sha, '${{ needs.resolve-media.outputs.sha }}');
+});
+
 test('every CI secret-bearing job is restricted to a default-branch push or reviewed PR', () => {
   for (const [jobName, job] of Object.entries(ci.jobs)) {
     const definition = JSON.stringify(job);

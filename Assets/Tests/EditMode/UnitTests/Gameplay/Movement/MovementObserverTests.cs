@@ -661,6 +661,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "inbound-fleet-ship",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
                 StarfighterCapacity = 1,
             };
             Starfighter carriedStarfighter = EntityFactory.CreateStarfighter(
@@ -680,6 +681,7 @@ namespace Rebellion.Tests.Gameplay
                 InstanceID = "independent-capital-ship",
                 OwnerInstanceID = "empire",
                 ManufacturingStatus = ManufacturingStatus.Complete,
+                Hyperdrive = 1,
             };
             Fleet capitalShipDestination = EntityFactory.CreateFleet(
                 "capital-ship-destination",

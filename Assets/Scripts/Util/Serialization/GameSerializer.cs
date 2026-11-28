@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Numerics;
 using System.Reflection;
 using System.Xml;
 
@@ -496,6 +497,15 @@ namespace Rebellion.Util.Serialization
             {
                 WritePoint((Point)obj, writer, name);
             }
+            else if (objType == typeof(Vector3))
+            {
+                Vector3 vector = (Vector3)obj;
+                writer.WriteStartElement(name ?? nameof(Vector3));
+                writer.WriteAttributeString(nameof(Vector3.X), XmlConvert.ToString(vector.X));
+                writer.WriteAttributeString(nameof(Vector3.Y), XmlConvert.ToString(vector.Y));
+                writer.WriteAttributeString(nameof(Vector3.Z), XmlConvert.ToString(vector.Z));
+                writer.WriteEndElement();
+            }
             else if (obj is IDictionary dictionary)
             {
                 WriteDictionary(dictionary, writer, settings, name);
@@ -891,10 +901,21 @@ namespace Rebellion.Util.Serialization
             {
                 return ReadScalar(objType, reader);
             }
+            objType = Nullable.GetUnderlyingType(objType) ?? objType;
             reader.MoveToContent();
             if (objType == typeof(Point))
             {
                 return ReadPoint(reader);
+            }
+            if (objType == typeof(Vector3))
+            {
+                Vector3 vector = new(
+                    XmlConvert.ToSingle(reader.GetAttribute(nameof(Vector3.X))),
+                    XmlConvert.ToSingle(reader.GetAttribute(nameof(Vector3.Y))),
+                    XmlConvert.ToSingle(reader.GetAttribute(nameof(Vector3.Z)))
+                );
+                reader.Skip();
+                return vector;
             }
             if (reader.NodeType == XmlNodeType.Element)
             {

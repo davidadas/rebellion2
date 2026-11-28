@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml;
 using System.Xml.Schema;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -957,6 +958,13 @@ public static class ContentPackLoader
                 pack.OfficerTraitsPath,
                 "OfficerTraits"
             );
+        TacticalCombatDefinition tacticalCombat = string.IsNullOrWhiteSpace(pack.TacticalCombatPath)
+            ? null
+            : DeserializeGameData<TacticalCombatDefinition>(
+                fileResolver,
+                pack.TacticalCombatPath,
+                "TacticalCombatDefinition"
+            );
         GameEvent[] gameEvents = DeserializeGameData<GameEvent[]>(
             fileResolver,
             pack.GameEventsPath,
@@ -1051,7 +1059,8 @@ public static class ContentPackLoader
             messageDefinitions,
             encyclopediaEntries,
             themes,
-            officerTraits
+            officerTraits,
+            tacticalCombat
         );
     }
 

@@ -16,6 +16,7 @@ using Rebellion.Game.Scripting;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Tests.AI.Helpers;
+using ArgumentOutOfRangeException = global::System.ArgumentOutOfRangeException;
 
 namespace Rebellion.Tests.AI
 {
@@ -3417,7 +3418,11 @@ namespace Rebellion.Tests.AI
             game.AttachNode(inboundFleet, planet);
             game.AttachNode(inboundShip, inboundFleet);
             AITestSceneBuilder.RevealPlanet(game, empire, planet);
-            inboundShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 300;
+            inboundShip.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.Turbolaser,
+                PrimaryWeaponArc.Fore,
+                300
+            );
 
             AIAssessment assessment = AITestSceneBuilder.CreateContext(game, empire).Assessment;
 
@@ -3651,7 +3656,7 @@ namespace Rebellion.Tests.AI
                     assessment.GetReadyFleetRegimentAttackStrength(fleet),
                 nameof(AIAssessment.GetProjectedFleetRegimentAttackStrength) =>
                     assessment.GetProjectedFleetRegimentAttackStrength(fleet),
-                _ => throw new System.ArgumentOutOfRangeException(nameof(query)),
+                _ => throw new ArgumentOutOfRangeException(nameof(query)),
             };
     }
 }

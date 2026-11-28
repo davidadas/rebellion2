@@ -26,6 +26,31 @@ namespace Rebellion.Tests.Gameplay
             CollectionAssert.AreEqual(GetResolvedShipHulls(first), GetResolvedShipHulls(second));
         }
 
+        [Test]
+        public void Resolve_ExistingWeaponDamage_ReducesFireAndExportsNewSystemDamage()
+        {
+            CapitalShip attacker = CreateShip("attacker", 100, 100);
+            CapitalShip target = CreatePassiveTarget("target", 1000);
+            attacker.WeaponRecharge = 20;
+            attacker.SystemDamage.Weapons = 2;
+            target.SystemDamage.TractorBeam = 1;
+
+            SpaceCombatResult result = ResolveSingleStep(
+                CreateConfig(),
+                new[] { attacker },
+                Array.Empty<Starfighter>(),
+                new[] { target },
+                Array.Empty<Starfighter>(),
+                random: new FixedCombatRNG(75)
+            );
+
+            ShipDamageResult damage = result.ShipDamage.Single(item => item.Ship == target);
+            Assert.That(damage.HullAfter, Is.GreaterThan(980).And.LessThan(1000));
+            Assert.AreEqual(1, damage.SystemDamage.TractorBeam);
+            Assert.AreEqual(1, damage.SystemDamage.Weapons);
+            Assert.AreEqual(0, target.SystemDamage.Weapons);
+        }
+
         [TestCase(false, 0, false)]
         [TestCase(false, 1, true)]
         [TestCase(false, 2, true)]
@@ -100,7 +125,11 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -130,7 +159,11 @@ namespace Rebellion.Tests.Gameplay
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
             attacker.Maneuverability = 2;
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 80;
             Starfighter target = CreateFighter("target", 12, 0);
             target.Agility = 8;
@@ -161,7 +194,11 @@ namespace Rebellion.Tests.Gameplay
             if (!carrierSurvives)
                 flagship.CurrentHullStrength = 0;
             CapitalShip escort = CreateShip("escort", 100, 0);
-            escort.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            escort.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             escort.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -209,7 +246,11 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_CommanderCombat_DoesNotChangeFighterTurnRate(int combat)
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 8;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                8
+            );
             attacker.WeaponRecharge = 8;
             Starfighter target = CreateFighter("target", 100, 0);
             target.Agility = 3;
@@ -258,7 +299,11 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                60
+            );
             attacker.WeaponRecharge = 20;
             CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -284,7 +329,7 @@ namespace Rebellion.Tests.Gameplay
         )
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[weapon][0] = 20;
+            attacker.SetPrimaryWeaponStrength(weapon, PrimaryWeaponArc.Fore, 20);
             attacker.WeaponRecharge = 2;
             Starfighter target = CreateFighter("target", 10, 0);
             target.ShieldStrength = 0;
@@ -307,7 +352,11 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_CapitalLaserFormationWithMixedTargets_PrefersFighterCandidates()
         {
             CapitalShip attacker = CreateShip("attacker", 100, 0);
-            attacker.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 20;
+            attacker.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                20
+            );
             attacker.WeaponRecharge = 8;
             CapitalShip targetShip = CreatePassiveTarget("ship", 100);
             Starfighter targetFighter = CreateFighter("fighter", 12, 0);
@@ -427,7 +476,7 @@ namespace Rebellion.Tests.Gameplay
         public void Resolve_WeaponRange_DoesNotGateSustainedFire(int range)
         {
             CapitalShip attacker = CreateShip("attacker", 100, 10);
-            attacker.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = range;
+            attacker.SetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser, range);
             CapitalShip target = CreatePassiveTarget("target", 100);
             GameConfig.SpaceCombatConfig config = CreateConfig();
 
@@ -497,7 +546,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(1, result.IterationsCompleted);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.IsEmpty(result.FighterLosses);
         }
 
@@ -658,7 +707,7 @@ namespace Rebellion.Tests.Gameplay
             );
             Assert.AreEqual(
                 attackerHasInitiative ? CombatSide.Attacker : CombatSide.Defender,
-                result.Winner
+                result.WinningSide
             );
             Assert.AreEqual(1, result.IterationsCompleted);
         }
@@ -824,7 +873,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(expectedIterations, result.IterationsCompleted);
             Assert.AreEqual(100, GetShipOutcome(result, target).HullAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
         [Test]
@@ -851,7 +900,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(4, result.IterationsCompleted);
             Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(960, GetShipOutcome(result, defender).HullAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
         }
 
         [TestCase(120, 6)]
@@ -971,8 +1020,8 @@ namespace Rebellion.Tests.Gameplay
 
             SpaceCombatResult result = Resolve(escorts, new[] { lineShip });
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.DefenderOutcome);
             Assert.Greater(GetShipOutcome(result, lineShip).HullAfter, 0);
         }
 
@@ -1058,7 +1107,7 @@ namespace Rebellion.Tests.Gameplay
 
             SpaceCombatResult result = Resolve(new[] { attacker }, new[] { defender });
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
         }
 
@@ -1098,7 +1147,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(
                 reverseSides ? CombatSide.Defender : CombatSide.Attacker,
-                result.Winner
+                result.WinningSide
             );
         }
 
@@ -1128,8 +1177,8 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(1, result.IterationsCompleted);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.DefenderOutcome);
             Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
@@ -1153,7 +1202,7 @@ namespace Rebellion.Tests.Gameplay
             );
 
             Assert.AreEqual(1, result.IterationsCompleted);
-            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, result.Winner);
             Assert.AreEqual(100, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(100, GetShipOutcome(result, defender).HullAfter);
         }
@@ -1179,7 +1228,7 @@ namespace Rebellion.Tests.Gameplay
                 random: new FixedCombatRNG(0)
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(968, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(1, result.IterationsCompleted);
         }
@@ -1226,7 +1275,7 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(1000, GetShipOutcome(result, defender).HullAfter);
         }
 
@@ -1264,8 +1313,12 @@ namespace Rebellion.Tests.Gameplay
                 weaponStrength: 0
             );
             CapitalShip defender = CreateShip("defender", hull: 1000, weaponStrength: 0);
-            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 60;
-            defender.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            defender.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                60
+            );
+            defender.SetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon, 100);
             defender.WeaponRecharge = 60;
             defender.SublightSpeed = 10;
             GameConfig.SpaceCombatConfig config = CreateConfig();
@@ -1282,7 +1335,7 @@ namespace Rebellion.Tests.Gameplay
                 random: new FixedCombatRNG(0)
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(6, GetFighterOutcome(result, attackerFighter).SquadronSizeAfter);
         }
 
@@ -1311,8 +1364,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(
                 expectsWithdrawal
-                    ? SpaceCombatSideOutcome.Withdrawn
-                    : SpaceCombatSideOutcome.Destroyed,
+                    ? SpaceCombatResult.SideOutcome.Withdrawn
+                    : SpaceCombatResult.SideOutcome.Destroyed,
                 result.DefenderOutcome
             );
         }
@@ -1338,7 +1391,7 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.That(GetFighterOutcome(result, defender).SquadronSizeAfter, Is.InRange(1, 11));
         }
 
@@ -1363,8 +1416,8 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: false
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.DefenderOutcome);
         }
 
         [Test]
@@ -1404,7 +1457,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsFalse(GetShipOutcome(result, strandedShip).Withdrew);
             Assert.AreEqual(0, GetShipOutcome(result, strandedShip).HullAfter);
             Assert.AreEqual(997, GetShipOutcome(result, attacker).HullAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(1, result.IterationsCompleted);
         }
 
@@ -1440,8 +1493,8 @@ namespace Rebellion.Tests.Gameplay
                     defenderCanWithdraw: true
                 );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.DefenderOutcome);
             Assert.IsFalse(GetShipOutcome(result, fastFleetShip).Withdrew);
             Assert.IsFalse(GetShipOutcome(result, slowFleetShip).Withdrew);
             Assert.IsFalse(GetFighterOutcome(result, carriedFighter).Withdrew);
@@ -1467,7 +1520,7 @@ namespace Rebellion.Tests.Gameplay
                 attackerHasInitiative: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(95, GetShipOutcome(result, defender).HullAfter);
             Assert.AreEqual(99, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(1, result.IterationsCompleted);
@@ -1497,7 +1550,7 @@ namespace Rebellion.Tests.Gameplay
             Assert.IsTrue(GetShipOutcome(result, fastDefender).Withdrew);
             Assert.IsTrue(GetShipOutcome(result, slowDefender).Withdrew);
             Assert.AreEqual(100, GetShipOutcome(result, slowDefender).HullAfter);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.AreEqual(1, result.IterationsCompleted);
         }
 
@@ -1522,9 +1575,9 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.AttackerOutcome);
             Assert.IsFalse(GetShipOutcome(result, attacker).Withdrew);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
         }
 
         [Test]
@@ -1882,8 +1935,8 @@ namespace Rebellion.Tests.Gameplay
 
             SpaceCombatResult result = Resolve(new[] { attacker }, new[] { defender });
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
             Assert.AreEqual(1200, result.IterationsCompleted);
@@ -1911,8 +1964,8 @@ namespace Rebellion.Tests.Gameplay
                 new List<Starfighter>()
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(0, GetShipOutcome(result, attacker).HullAfter);
             Assert.AreEqual(0, GetShipOutcome(result, defender).HullAfter);
             Assert.AreEqual(2, result.IterationsCompleted);
@@ -1939,9 +1992,9 @@ namespace Rebellion.Tests.Gameplay
                 new List<Starfighter>()
             );
 
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
             Assert.IsTrue(targets.All(target => GetShipOutcome(result, target).HullAfter == 0));
             Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
             Assert.AreEqual(9, result.IterationsCompleted);
@@ -1982,8 +2035,8 @@ namespace Rebellion.Tests.Gameplay
                 random: new SequenceRNG(new[] { 1, 1 })
             );
 
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
             Assert.AreEqual(
                 0,
                 result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
@@ -2173,8 +2226,8 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(2, result.FighterLosses.Count);
             Assert.IsTrue(result.FighterLosses.All(loss => loss.SquadsAfter == 0));
             Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
-            Assert.AreEqual(CombatSide.Defender, result.Winner);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.AttackerOutcome);
             Assert.AreEqual(120, result.IterationsCompleted);
         }
 
@@ -2225,7 +2278,7 @@ namespace Rebellion.Tests.Gameplay
                 0,
                 result.ShipDamage.Single(damage => damage.Ship == planetDestroyer).HullAfter
             );
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
             Assert.AreEqual(120, result.IterationsCompleted);
         }
 
@@ -2248,8 +2301,8 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.IsFalse(result.FighterLosses.Any());
             Assert.IsFalse(result.ShipDamage.Any());
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
-            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Defender, result.Winner);
             Assert.Less(result.IterationsCompleted, 30);
         }
 
@@ -2269,9 +2322,9 @@ namespace Rebellion.Tests.Gameplay
                 new List<Starfighter>()
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.DefenderOutcome);
-            Assert.AreEqual(CombatSide.Draw, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Draw, result.Winner);
             Assert.IsFalse(result.FighterLosses.Any());
             Assert.IsFalse(result.ShipDamage.Any());
         }
@@ -2294,9 +2347,9 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
             Assert.IsTrue(result.WithdrawnUnits.Contains(planetDestroyer));
             Assert.AreEqual(4, result.IterationsCompleted);
         }
@@ -2322,7 +2375,7 @@ namespace Rebellion.Tests.Gameplay
                 defenderCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.DefenderOutcome);
             Assert.IsTrue(GetShipOutcome(result, planetDestroyer).Withdrew);
             Assert.AreEqual(
                 4,
@@ -2337,8 +2390,12 @@ namespace Rebellion.Tests.Gameplay
             GameConfig.SpaceCombatConfig config = CreateConfig();
             CapitalShip planetDestroyer = CreatePlanetDestroyer("planet-destroyer");
             CapitalShip picket = CreateShip("picket", hull: 1000, weaponStrength: 0);
-            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][0] = 500;
-            picket.PrimaryWeapons[PrimaryWeaponType.LaserCannon][4] = 100;
+            picket.SetPrimaryWeaponStrength(
+                PrimaryWeaponType.LaserCannon,
+                PrimaryWeaponArc.Fore,
+                500
+            );
+            picket.SetPrimaryWeaponRange(PrimaryWeaponType.LaserCannon, 100);
             picket.WeaponRecharge = 500;
             Starfighter torpedoFighter = CreateTorpedoFighter("y-wing", 12);
 
@@ -2353,7 +2410,7 @@ namespace Rebellion.Tests.Gameplay
 
             Assert.AreEqual(0, GetFighterOutcome(result, torpedoFighter).SquadronSizeAfter);
             Assert.AreEqual(0, GetShipOutcome(result, planetDestroyer).HullAfter);
-            Assert.AreEqual(CombatSide.Defender, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Defender, result.Winner);
             Assert.AreEqual(
                 config.PlanetDestroyerAttackRunIterations + 1,
                 result.IterationsCompleted
@@ -2379,7 +2436,7 @@ namespace Rebellion.Tests.Gameplay
                 attackerCanWithdraw: true
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Withdrawn, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Withdrawn, result.AttackerOutcome);
             Assert.AreEqual(0, fleet.Count(ship => GetShipOutcome(result, ship).HullAfter == 0));
             Assert.AreEqual(2, fleet.Count(ship => GetShipOutcome(result, ship).Withdrew));
             Assert.IsFalse(result.ShipDamage.Any(damage => damage.Ship == planetDestroyer));
@@ -2401,9 +2458,9 @@ namespace Rebellion.Tests.Gameplay
                 new List<Starfighter>()
             );
 
-            Assert.AreEqual(SpaceCombatSideOutcome.Active, result.AttackerOutcome);
-            Assert.AreEqual(SpaceCombatSideOutcome.Destroyed, result.DefenderOutcome);
-            Assert.AreEqual(CombatSide.Attacker, result.Winner);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Active, result.AttackerOutcome);
+            Assert.AreEqual(SpaceCombatResult.SideOutcome.Destroyed, result.DefenderOutcome);
+            Assert.AreEqual(SpaceCombatResult.BattleOutcome.Attacker, result.Winner);
             Assert.IsFalse(result.WithdrawnUnits.Contains(planetDestroyer));
             Assert.AreEqual(302, result.IterationsCompleted);
         }
@@ -2623,9 +2680,13 @@ namespace Rebellion.Tests.Gameplay
             };
             int armedArcCount = armEveryArc ? 4 : 1;
             for (int arc = 0; arc < armedArcCount; arc++)
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][arc] = weaponStrength;
+                ship.SetPrimaryWeaponStrength(
+                    PrimaryWeaponType.Turbolaser,
+                    (PrimaryWeaponArc)arc,
+                    weaponStrength
+                );
             if (weaponStrength > 0)
-                ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser][4] = 100;
+                ship.SetPrimaryWeaponRange(PrimaryWeaponType.Turbolaser, 100);
             return ship;
         }
 
@@ -2642,7 +2703,7 @@ namespace Rebellion.Tests.Gameplay
             ship.SublightSpeed = 6;
             ship.Maneuverability = 3;
             ship.WeaponRecharge = 8;
-            ship.PrimaryWeapons[PrimaryWeaponType.LaserCannon] = new[] { 120, 90, 120, 120, 17 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.LaserCannon, new[] { 120, 90, 120, 120, 17 });
             return ship;
         }
 
@@ -2659,8 +2720,8 @@ namespace Rebellion.Tests.Gameplay
             ship.SublightSpeed = 4;
             ship.Maneuverability = 1;
             ship.WeaponRecharge = 20;
-            ship.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 40, 60, 60, 50 };
-            ship.PrimaryWeapons[PrimaryWeaponType.IonCannon] = new[] { 100, 40, 40, 40, 35 };
+            ship.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100, 40, 60, 60, 50 });
+            ship.SetPrimaryWeapon(PrimaryWeaponType.IonCannon, new[] { 100, 40, 40, 40, 35 });
             return ship;
         }
 

@@ -14,16 +14,12 @@ namespace Rebellion.Tests.Game.Units
             {
                 Shields = 1,
                 Engines = 2,
-                RepairDueTick = 40,
-                RepairInterval = 5,
             };
 
             CapitalShipSystemDamage copy = source.CreateCopy();
             copy.Engines = 0;
 
             Assert.AreEqual(2, source.Engines);
-            Assert.AreEqual(40, copy.RepairDueTick);
-            Assert.AreEqual(5, copy.RepairInterval);
         }
 
         [Test]

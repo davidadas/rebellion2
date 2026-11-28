@@ -59,7 +59,9 @@ namespace Rebellion.Tests.AI.Fleets
             AITransferUnitProposal proposal = CreateDefenseTransfer(out AITurnContext context);
             Fleet donor = (Fleet)proposal.SourceContainer;
             Assert.IsTrue(proposal.CanSelect(context));
-            donor.GetChildren<CapitalShip>()[0].PrimaryWeapons[PrimaryWeaponType.Turbolaser][0] = 1;
+            donor
+                .GetChildren<CapitalShip>()[0]
+                .SetPrimaryWeaponStrength(PrimaryWeaponType.Turbolaser, PrimaryWeaponArc.Fore, 1);
 
             proposal.Execute(context);
 

@@ -118,42 +118,6 @@ internal abstract class BattleResultPresentation
     );
 
     /// <summary>
-    /// Returns the combat side represented by an owner identifier.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="ownerInstanceId">The requested owner identifier.</param>
-    /// <returns>The matching side, or null when the owner is not represented.</returns>
-    internal static CombatSide? GetSideForOwner(SpaceCombatResult result, string ownerInstanceId)
-    {
-        if (result == null || string.IsNullOrEmpty(ownerInstanceId))
-            return null;
-        if (ownerInstanceId == result.AttackerOwnerInstanceID)
-            return CombatSide.Attacker;
-        if (ownerInstanceId == result.DefenderOwnerInstanceID)
-            return CombatSide.Defender;
-        return null;
-    }
-
-    /// <summary>
-    /// Returns the completed outcome for one combat side.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="side">The requested combat side.</param>
-    /// <returns>The completed side outcome.</returns>
-    internal static SpaceCombatSideOutcome GetOutcome(SpaceCombatResult result, CombatSide side)
-    {
-        if (result == null)
-            return SpaceCombatSideOutcome.Unknown;
-
-        return side switch
-        {
-            CombatSide.Attacker => result.AttackerOutcome,
-            CombatSide.Defender => result.DefenderOutcome,
-            _ => SpaceCombatSideOutcome.Unknown,
-        };
-    }
-
-    /// <summary>
     /// Resolves the fleet-pane planet for one side of a completed space battle.
     /// </summary>
     /// <param name="ownerInstanceId">The owner whose fleet should be opened.</param>
@@ -170,8 +134,8 @@ internal abstract class BattleResultPresentation
         string battlePlanetInstanceId,
         string attackerOwnerInstanceId,
         string defenderOwnerInstanceId,
-        SpaceCombatSideOutcome attackerOutcome,
-        SpaceCombatSideOutcome defenderOutcome,
+        SpaceCombatResult.SideOutcome attackerOutcome,
+        SpaceCombatResult.SideOutcome defenderOutcome,
         string attackerRetreatPlanetInstanceId,
         string defenderRetreatPlanetInstanceId
     )
@@ -181,28 +145,13 @@ internal abstract class BattleResultPresentation
         if (!attacker && !defender)
             return null;
 
-        SpaceCombatSideOutcome outcome = attacker ? attackerOutcome : defenderOutcome;
-        if (outcome == SpaceCombatSideOutcome.Destroyed)
+        SpaceCombatResult.SideOutcome outcome = attacker ? attackerOutcome : defenderOutcome;
+        if (outcome == SpaceCombatResult.SideOutcome.Destroyed)
             return null;
-        if (outcome != SpaceCombatSideOutcome.Withdrawn)
+        if (outcome != SpaceCombatResult.SideOutcome.Withdrawn)
             return battlePlanetInstanceId;
 
         return attacker ? attackerRetreatPlanetInstanceId : defenderRetreatPlanetInstanceId;
-    }
-
-    /// <summary>
-    /// Returns the opposing side of an attacker or defender.
-    /// </summary>
-    /// <param name="side">The known combat side.</param>
-    /// <returns>The opposing side, or null for a draw.</returns>
-    internal static CombatSide? GetOpposingSide(CombatSide side)
-    {
-        return side switch
-        {
-            CombatSide.Attacker => CombatSide.Defender,
-            CombatSide.Defender => CombatSide.Attacker,
-            _ => null,
-        };
     }
 
     /// <summary>
@@ -218,24 +167,28 @@ internal abstract class BattleResultPresentation
         SpaceCombatResult result
     )
     {
-        if (theme == null || result == null || result.Winner == CombatSide.Draw)
+        if (
+            theme == null
+            || result == null
+            || result.Winner == SpaceCombatResult.BattleOutcome.Draw
+        )
             return theme?.ResultSummaryImagePath;
 
-        CombatSide? losingSide = GetOpposingSide(result.Winner);
+        CombatSide? losingSide = SpaceCombatResult.OpposingSide(result.WinningSide);
         if (
             losingSide.HasValue
-            && GetOutcome(result, losingSide.Value) == SpaceCombatSideOutcome.Withdrawn
+            && result.GetOutcome(losingSide.Value) == SpaceCombatResult.SideOutcome.Withdrawn
         )
         {
             return FirstNonBlank(
                 GetDefeatedImagePath(uiContext, result, losingSide.Value),
-                GetVictoryImagePath(uiContext, result, result.Winner),
+                GetVictoryImagePath(uiContext, result, result.WinningSide.GetValueOrDefault()),
                 theme.ResultSummaryImagePath
             );
         }
 
         return FirstNonBlank(
-            GetVictoryImagePath(uiContext, result, result.Winner),
+            GetVictoryImagePath(uiContext, result, result.WinningSide.GetValueOrDefault()),
             theme.ResultSummaryImagePath
         );
     }
@@ -269,7 +222,7 @@ internal abstract class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIDForSide(result, side);
+        string ownerInstanceId = result?.GetOwner(side);
         return string.IsNullOrEmpty(ownerInstanceId)
             ? null
             : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.VictoriousImagePath;
@@ -288,26 +241,10 @@ internal abstract class BattleResultPresentation
         CombatSide side
     )
     {
-        string ownerInstanceId = GetOwnerIDForSide(result, side);
+        string ownerInstanceId = result?.GetOwner(side);
         return string.IsNullOrEmpty(ownerInstanceId)
             ? null
             : uiContext?.GetTheme(ownerInstanceId)?.BattleParticipant?.DefeatedImagePath;
-    }
-
-    /// <summary>
-    /// Returns the owner identifier represented by one combat side.
-    /// </summary>
-    /// <param name="result">The completed combat result.</param>
-    /// <param name="side">The requested combat side.</param>
-    /// <returns>The represented owner identifier.</returns>
-    private static string GetOwnerIDForSide(SpaceCombatResult result, CombatSide side)
-    {
-        return side switch
-        {
-            CombatSide.Attacker => result?.AttackerOwnerInstanceID,
-            CombatSide.Defender => result?.DefenderOwnerInstanceID,
-            _ => null,
-        };
     }
 
     /// <summary>
@@ -369,11 +306,11 @@ internal abstract class BattleResultPresentation
             if (theme == null)
                 return null;
 
-            CombatSide? playerSide = GetSideForOwner(result, playerFactionId);
-            if (!playerSide.HasValue || result.Winner == CombatSide.Draw)
+            CombatSide? playerSide = result.GetSideForOwner(playerFactionId);
+            if (!playerSide.HasValue || result.Winner == SpaceCombatResult.BattleOutcome.Draw)
                 return FirstNonBlank(theme.ResultDrawMusicPath, theme.ResultMusicPath);
 
-            return result.Winner == playerSide.Value
+            return result.WinningSide == playerSide.Value
                 ? FirstNonBlank(theme.ResultVictoryMusicPath, theme.ResultMusicPath)
                 : FirstNonBlank(theme.ResultDefeatMusicPath, theme.ResultMusicPath);
         }
@@ -748,22 +685,32 @@ internal abstract class BattleResultPresentation
         /// <returns>The requested space summary image path.</returns>
         private string GetSpaceSummaryImagePath(UIContext uiContext, BattleAlertWindowTheme theme)
         {
-            if (report.Winner == CombatSide.Draw)
+            if (report.Winner == SpaceCombatResult.BattleOutcome.Draw)
                 return theme?.ResultSummaryImagePath;
 
             CombatSide losingSide =
-                report.Winner == CombatSide.Attacker ? CombatSide.Defender : CombatSide.Attacker;
-            if (GetOutcome(report, losingSide) == SpaceCombatSideOutcome.Withdrawn)
+                report.Winner == SpaceCombatResult.BattleOutcome.Attacker
+                    ? CombatSide.Defender
+                    : CombatSide.Attacker;
+            if (GetOutcome(report, losingSide) == SpaceCombatResult.SideOutcome.Withdrawn)
             {
                 return FirstNonBlank(
                     GetParticipantImagePath(uiContext, losingSide, victorious: false),
-                    GetParticipantImagePath(uiContext, report.Winner, victorious: true),
+                    GetParticipantImagePath(
+                        uiContext,
+                        SpaceCombatResult.GetWinningSide(report.Winner).GetValueOrDefault(),
+                        victorious: true
+                    ),
                     theme?.ResultSummaryImagePath
                 );
             }
 
             return FirstNonBlank(
-                GetParticipantImagePath(uiContext, report.Winner, victorious: true),
+                GetParticipantImagePath(
+                    uiContext,
+                    SpaceCombatResult.GetWinningSide(report.Winner).GetValueOrDefault(),
+                    victorious: true
+                ),
                 theme?.ResultSummaryImagePath
             );
         }
@@ -821,9 +768,16 @@ internal abstract class BattleResultPresentation
         /// <param name="report">The report.</param>
         /// <param name="side">The side.</param>
         /// <returns>The requested outcome.</returns>
-        private static SpaceCombatSideOutcome GetOutcome(CombatReport report, CombatSide side)
+        private static SpaceCombatResult.SideOutcome GetOutcome(
+            CombatReport report,
+            CombatSide side
+        )
         {
-            return side == CombatSide.Attacker ? report.AttackerOutcome : report.DefenderOutcome;
+            return SpaceCombatResult.SelectOutcome(
+                side,
+                report.AttackerOutcome,
+                report.DefenderOutcome
+            );
         }
     }
 }

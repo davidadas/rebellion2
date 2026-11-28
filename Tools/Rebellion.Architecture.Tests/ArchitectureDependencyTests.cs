@@ -29,6 +29,13 @@ namespace Rebellion.Architecture.Tests
                 ["Rebellion.Util"] = [],
                 ["Rebellion.SceneGraph"] = ["Rebellion.Util"],
                 ["Rebellion.Game"] = ["Rebellion.SceneGraph", "Rebellion.Util"],
+                ["Rebellion.Tactical.Core"] =
+                [
+                    "Rebellion.Content",
+                    "Rebellion.Game",
+                    "Rebellion.SceneGraph",
+                    "Rebellion.Util",
+                ],
                 ["Rebellion.UserSettings"] = [],
                 ["Rebellion.Content"] =
                 [
@@ -58,8 +65,10 @@ namespace Rebellion.Architecture.Tests
                 ],
                 ["Rebellion.Gameplay"] =
                 [
+                    "Rebellion.Content",
                     "Rebellion.Game",
                     "Rebellion.SceneGraph",
+                    "Rebellion.Tactical.Core",
                     "Rebellion.Util",
                 ],
                 ["Rebellion.AI"] =
@@ -67,6 +76,7 @@ namespace Rebellion.Architecture.Tests
                     "Rebellion.Game",
                     "Rebellion.Gameplay",
                     "Rebellion.SceneGraph",
+                    "Rebellion.Tactical.Core",
                     "Rebellion.Util",
                 ],
                 ["Rebellion.Sessions"] =
@@ -78,6 +88,7 @@ namespace Rebellion.Architecture.Tests
                     "Rebellion.Gameplay",
                     "Rebellion.Saves",
                     "Rebellion.SceneGraph",
+                    "Rebellion.Tactical.Core",
                     "Rebellion.UserSettings",
                     "Rebellion.Util",
                 ],

@@ -85,10 +85,15 @@ public sealed class GameSessionManager
         _sessionOwner != null ? !_operationsBlocked && _sessionOwner.CanRequestSave : CanSave;
 
     /// <summary>
-    /// Gets whether a complete settled snapshot can be captured immediately.
+    /// Gets whether this session can capture a complete save immediately.
     /// </summary>
     public bool CanSave =>
-        !_operationsBlocked && _activeGameSession?.CanCaptureSettledState == true;
+        !_operationsBlocked
+        && (
+            _sessionOwner == null
+                ? _activeGameSession?.CanCaptureSaveState == true
+                : _activeGameSession?.CanCaptureSettledState == true
+        );
 
     /// <summary>
     /// Creates a session manager backed by the active content pack.
@@ -516,6 +521,7 @@ public sealed class GameSessionManager
             await _presentSaveIndicator();
             if (generation != _saveGeneration || !CanWriteLocalSave(fileName))
                 return false;
+            _activeGameSession.PrepareSave();
             publication = _saveGameManager.SaveGameDataAsync(
                 GetActiveGame(),
                 fileName,

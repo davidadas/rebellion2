@@ -558,12 +558,20 @@ namespace Rebellion.Game.Units
         /// </summary>
         /// <param name="adjustment">The signed amount to apply.</param>
         /// <returns>True when the stored loyalty changed; otherwise false.</returns>
-        public bool TryAdjustLoyalty(int adjustment)
+        public bool TryAdjustLoyalty(int adjustment) =>
+            adjustment != 0 && TrySetLoyalty((long)_loyalty + adjustment);
+
+        /// <summary>
+        /// Stores a requested loyalty value within its allowed range when the officer can betray.
+        /// </summary>
+        /// <param name="loyalty">The requested loyalty before clamping.</param>
+        /// <returns>Whether the stored loyalty changed.</returns>
+        internal bool TrySetLoyalty(long loyalty)
         {
-            if (!CanBetray || adjustment == 0)
+            if (!CanBetray)
                 return false;
 
-            int adjustedLoyalty = (int)Math.Clamp((long)_loyalty + adjustment, 0L, 100L);
+            int adjustedLoyalty = (int)Math.Clamp(loyalty, 0L, 100L);
             if (adjustedLoyalty == _loyalty)
                 return false;
 

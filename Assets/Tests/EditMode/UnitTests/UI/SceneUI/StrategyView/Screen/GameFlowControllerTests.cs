@@ -358,7 +358,7 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Screen
         {
             return new GameManager(
                 () => game,
-                new GameTickProcessor((results, _) => new List<GameResult>(results), _ => { })
+                new GameTickProcessor((results, _, _, _) => new List<GameResult>(results), _ => { })
             );
         }
     }

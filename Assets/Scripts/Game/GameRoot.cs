@@ -705,6 +705,21 @@ namespace Rebellion.Game
         }
 
         /// <summary>
+        /// Applies a batch of validated parent changes after releasing every old slot.
+        /// </summary>
+        /// <param name="moves">Distinct nodes with existing parents and validated destinations.</param>
+        internal void ApplyNodeMoves(IReadOnlyList<(ISceneNode Node, ContainerNode Parent)> moves)
+        {
+            foreach (var (node, _) in moves)
+                node.GetParent().RemoveChild(node);
+
+            foreach ((ISceneNode node, ContainerNode parent) in moves)
+                parent.AddChild(node);
+            foreach ((ISceneNode node, ContainerNode parent) in moves)
+                node.SetParent(parent);
+        }
+
+        /// <summary>
         /// Retrieves a list of scene nodes by their Instance IDs.
         /// </summary>
         /// <typeparam name="T">The type of nodes to retrieve.</typeparam>

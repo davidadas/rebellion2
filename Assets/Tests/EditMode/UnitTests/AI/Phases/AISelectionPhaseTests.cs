@@ -3315,8 +3315,7 @@ namespace Rebellion.Tests.AI.Phases
             firstHull.ConstructionCost = firstCost;
             secondHull.ConstructionCost = secondCost;
             if (mixedRequirements)
-                foreach (int[] arc in firstHull.PrimaryWeapons.Values)
-                    Array.Clear(arc, 0, arc.Length);
+                firstHull.HardpointGroups.Clear();
             faction.ResearchQueue[ManufacturingType.Ship] = new List<Technology>
             {
                 new(firstHull),

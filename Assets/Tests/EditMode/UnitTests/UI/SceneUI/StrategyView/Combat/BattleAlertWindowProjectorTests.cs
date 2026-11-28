@@ -518,9 +518,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Defender,
-                SpaceCombatSideOutcome.Destroyed,
-                SpaceCombatSideOutcome.Active
+                SpaceCombatResult.BattleOutcome.Defender,
+                SpaceCombatResult.SideOutcome.Destroyed,
+                SpaceCombatResult.SideOutcome.Active
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -570,9 +570,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Defender,
-                SpaceCombatSideOutcome.Withdrawn,
-                SpaceCombatSideOutcome.Active
+                SpaceCombatResult.BattleOutcome.Defender,
+                SpaceCombatResult.SideOutcome.Withdrawn,
+                SpaceCombatResult.SideOutcome.Active
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -608,9 +608,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Draw,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Active
+                SpaceCombatResult.BattleOutcome.Draw,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Active
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -650,9 +650,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = scene.PlayerFleet,
                 AttackerOwnerInstanceID = _opponentFactionId,
                 DefenderOwnerInstanceID = _playerFactionId,
-                Winner = CombatSide.Defender,
-                AttackerOutcome = SpaceCombatSideOutcome.Withdrawn,
-                DefenderOutcome = SpaceCombatSideOutcome.Active,
+                Winner = SpaceCombatResult.BattleOutcome.Defender,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Withdrawn,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Active,
             };
             result.AttackingUnits.AddRange(
                 CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.OpponentFleet })
@@ -698,9 +698,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Withdrawn
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Withdrawn
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -739,9 +739,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Destroyed
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Destroyed
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -896,9 +896,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Destroyed
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Destroyed
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -946,9 +946,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 DefenderFleet = scene.PlayerFleet,
                 AttackerOwnerInstanceID = _opponentFactionId,
                 DefenderOwnerInstanceID = _playerFactionId,
-                Winner = CombatSide.Attacker,
-                AttackerOutcome = SpaceCombatSideOutcome.Active,
-                DefenderOutcome = SpaceCombatSideOutcome.Destroyed,
+                Winner = SpaceCombatResult.BattleOutcome.Attacker,
+                AttackerOutcome = SpaceCombatResult.SideOutcome.Active,
+                DefenderOutcome = SpaceCombatResult.SideOutcome.Destroyed,
             };
             result.AttackingUnits.AddRange(
                 CombatUnitSnapshot.CaptureFleetUnits(new[] { scene.OpponentFleet })
@@ -1006,9 +1006,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Attacker,
-                SpaceCombatSideOutcome.Active,
-                SpaceCombatSideOutcome.Destroyed
+                SpaceCombatResult.BattleOutcome.Attacker,
+                SpaceCombatResult.SideOutcome.Active,
+                SpaceCombatResult.SideOutcome.Destroyed
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -1047,9 +1047,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
                 scene.Planet,
                 scene.PlayerFleet,
                 scene.OpponentFleet,
-                CombatSide.Defender,
-                SpaceCombatSideOutcome.Destroyed,
-                SpaceCombatSideOutcome.Active
+                SpaceCombatResult.BattleOutcome.Defender,
+                SpaceCombatResult.SideOutcome.Destroyed,
+                SpaceCombatResult.SideOutcome.Active
             );
             BattleAlertWindowProjector projector = new BattleAlertWindowProjector();
 
@@ -1316,9 +1316,9 @@ namespace Rebellion.Tests.UI.SceneUI.StrategyView.Combat
             Planet planet,
             GameFleet playerFleet,
             GameFleet opponentFleet,
-            CombatSide winner,
-            SpaceCombatSideOutcome playerOutcome,
-            SpaceCombatSideOutcome opponentOutcome
+            SpaceCombatResult.BattleOutcome winner,
+            SpaceCombatResult.SideOutcome playerOutcome,
+            SpaceCombatResult.SideOutcome opponentOutcome
         )
         {
             SpaceCombatResult result = new SpaceCombatResult

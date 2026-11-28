@@ -422,6 +422,109 @@ namespace Rebellion.Tests.Gameplay
             Assert.AreEqual(0, garrisonCalls);
         }
 
+        [Test]
+        public void Publish_WithPendingCommandFacts_SettlesBeforeNotifyingObservers()
+        {
+            GameResultBus bus = new();
+            PlanetGarrisonChangedResult initial = new();
+            MissionCompletedResult reaction = new();
+            PlanetUprisingStartedResult command = new();
+            PlanetUprisingStartedResult aftermath = new();
+            GameResult[] pending = null;
+            List<GameResult> observed = new();
+            List<GameResult[]> settlementWaves = new();
+
+            bus.Subscribe<PlanetGarrisonChangedResult>(_ => bus.Publish(reaction));
+            bus.Subscribe<MissionCompletedResult>(_ => pending = new[] { command });
+            bus.ObserveAll(results => observed.AddRange(results));
+
+            List<GameResult> resolved = bus.Publish(
+                new[] { initial },
+                () =>
+                {
+                    GameResult[] drained = pending;
+                    pending = null;
+                    return drained;
+                },
+                results =>
+                {
+                    settlementWaves.Add(results.ToArray());
+                    return results.Contains(initial) ? new List<GameResult> { aftermath } : null;
+                }
+            );
+
+            CollectionAssert.AreEqual(
+                new GameResult[] { initial, reaction, command, aftermath },
+                resolved
+            );
+            CollectionAssert.AreEqual(resolved, observed);
+            Assert.AreEqual(2, settlementWaves.Count);
+            CollectionAssert.AreEqual(
+                new GameResult[] { initial, reaction, command },
+                settlementWaves[0]
+            );
+            CollectionAssert.AreEqual(new GameResult[] { aftermath }, settlementWaves[1]);
+        }
+
+        [Test]
+        public void Publish_ObserverQueuesCommandFacts_CollectsThemInANewBatch()
+        {
+            GameResultBus bus = new();
+            PlanetGarrisonChangedResult initial = new();
+            MissionCompletedResult followUp = new();
+            GameResult[] pending = null;
+            List<GameResult[]> observed = new();
+            bus.Observe<PlanetGarrisonChangedResult>(_ => pending = new[] { followUp });
+            bus.ObserveAll(results => observed.Add(results.ToArray()));
+
+            List<GameResult> resolved = bus.Publish(
+                new[] { initial },
+                () =>
+                {
+                    GameResult[] drained = pending;
+                    pending = null;
+                    return drained;
+                },
+                null
+            );
+
+            CollectionAssert.AreEqual(new GameResult[] { initial, followUp }, resolved);
+            Assert.AreEqual(2, observed.Count);
+            CollectionAssert.AreEqual(new GameResult[] { initial }, observed[0]);
+            CollectionAssert.AreEqual(new GameResult[] { followUp }, observed[1]);
+        }
+
+        [Test]
+        public void Publish_SettlementThrows_DiscardsQueuedResultsAndReleasesTheOperation()
+        {
+            GameResultBus bus = new();
+            MissionCompletedResult next = new();
+            InvalidOperationException expected = new("settlement failed");
+            bool operationExpired = false;
+
+            Assert.AreSame(
+                expected,
+                Assert.Throws<InvalidOperationException>(() =>
+                    bus.Publish(
+                        new[] { new PlanetGarrisonChangedResult() },
+                        () =>
+                        {
+                            Assert.IsFalse(operationExpired);
+                            return null;
+                        },
+                        _ =>
+                        {
+                            bus.Publish(new PlanetUprisingStartedResult());
+                            throw expected;
+                        }
+                    )
+                )
+            );
+            operationExpired = true;
+
+            CollectionAssert.AreEqual(new GameResult[] { next }, bus.Publish(next));
+        }
+
         /// <summary>
         /// Produces an input batch that fails after yielding its first fact.
         /// </summary>

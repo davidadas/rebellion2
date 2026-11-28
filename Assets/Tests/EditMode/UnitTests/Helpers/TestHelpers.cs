@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
+using Rebellion.Content;
 using Rebellion.Game;
 using Rebellion.Game.Encyclopedia;
 using Rebellion.Game.Factions;
@@ -13,6 +14,7 @@ using Rebellion.Game.Messages;
 using Rebellion.Game.Missions;
 using Rebellion.Game.Research;
 using Rebellion.Game.Results;
+using Rebellion.Game.ShipComponents;
 using Rebellion.Game.Units;
 using Rebellion.Gameplay;
 using Rebellion.Gameplay.GameEvents;
@@ -476,6 +478,102 @@ public static class DragPreviewTestFactory
 public static class TestGameData
 {
     /// <summary>
+    /// Sets a ship fixture's arc strengths and weapon range.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="ratings">The four legacy arc strengths followed by range.</param>
+    internal static void SetPrimaryWeapon(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        params int[] ratings
+    )
+    {
+        foreach (PrimaryWeaponArc arc in CapitalShip.PrimaryWeaponArcs)
+        {
+            WeaponData mount = GetOrAddWeapon(ship, weapon, arc);
+            mount.Damage = (int)arc < ratings.Length ? ratings[(int)arc] : 0;
+            int rangeIndex = CapitalShip.PrimaryWeaponRangeIndex;
+            mount.Range = rangeIndex < ratings.Length ? ratings[rangeIndex] : 0;
+        }
+    }
+
+    /// <summary>
+    /// Sets one weapon strength in a ship fixture.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="arc">The affected direction.</param>
+    /// <param name="strength">The strength to install.</param>
+    internal static void SetPrimaryWeaponStrength(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        PrimaryWeaponArc arc,
+        int strength
+    ) => GetOrAddWeapon(ship, weapon, arc).Damage = strength;
+
+    /// <summary>
+    /// Sets one weapon range across all arcs in a ship fixture.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="range">The range to install.</param>
+    internal static void SetPrimaryWeaponRange(
+        this CapitalShip ship,
+        PrimaryWeaponType weapon,
+        int range
+    )
+    {
+        foreach (PrimaryWeaponArc arc in CapitalShip.PrimaryWeaponArcs)
+            GetOrAddWeapon(ship, weapon, arc).Range = range;
+    }
+
+    /// <summary>
+    /// Sets the damage of all mounted weapons to zero.
+    /// </summary>
+    /// <param name="ship">The ship to disarm.</param>
+    internal static void ClearPrimaryWeaponDamage(this CapitalShip ship)
+    {
+        foreach (HardpointGroup group in ship.HardpointGroups)
+        foreach (Hardpoint mount in group.GetHardpoints())
+            if (mount.Weapon != null)
+                mount.Weapon.Damage = 0;
+    }
+
+    /// <summary>
+    /// Finds or creates a fixture's weapon mount in one arc.
+    /// </summary>
+    /// <param name="ship">The ship to outfit.</param>
+    /// <param name="weapon">The weapon category.</param>
+    /// <param name="arc">The affected direction.</param>
+    /// <returns>The fixture mount's weapon data.</returns>
+    private static WeaponData GetOrAddWeapon(
+        CapitalShip ship,
+        PrimaryWeaponType weapon,
+        PrimaryWeaponArc arc
+    )
+    {
+        TacticalWeaponArc batteryArc = CapitalShip.GetBatteryArc(arc);
+        HardpointGroup group = ship.HardpointGroups.Find(item => item.Arc == batteryArc);
+        if (group == null)
+        {
+            group = new HardpointGroup { Arc = batteryArc };
+            ship.HardpointGroups.Add(group);
+        }
+
+        HardpointWeaponType type = CapitalShip.GetHardpointWeaponType(weapon);
+        List<Hardpoint> mounts = group.GetHardpoints();
+        WeaponData weaponData = mounts.Find(item => item.Weapon?.WeaponType == type)?.Weapon;
+        if (weaponData == null)
+        {
+            weaponData = new WeaponData { WeaponType = type };
+            mounts.Add(new Hardpoint { Weapon = weaponData });
+        }
+
+        return weaponData;
+    }
+
+    /// <summary>
     /// Creates a synthetic catalog around the supplied configuration and message definitions.
     /// </summary>
     /// <param name="config">The config.</param>
@@ -484,6 +582,9 @@ public static class TestGameData
     /// <param name="officers">The content-authored officer templates.</param>
     /// <param name="gameEvents">The fixture's authored event definitions.</param>
     /// <param name="capitalShips">The fixture's ship templates.</param>
+    /// <param name="starfighters">The fixture's fighter templates.</param>
+    /// <param name="regiments">The fixture's troop templates.</param>
+    /// <param name="tacticalCombat">The fixture's tactical definitions.</param>
     /// <returns>The created value.</returns>
     public static GameDataCatalog Create(
         GameConfig config = null,
@@ -491,7 +592,10 @@ public static class TestGameData
         OfficerTraitDefinition[] officerTraits = null,
         Officer[] officers = null,
         GameEvent[] gameEvents = null,
-        CapitalShip[] capitalShips = null
+        CapitalShip[] capitalShips = null,
+        Starfighter[] starfighters = null,
+        Regiment[] regiments = null,
+        TacticalCombatDefinition tacticalCombat = null
     )
     {
         return new GameDataCatalog(
@@ -501,15 +605,16 @@ public static class TestGameData
             Array.Empty<PlanetSector>(),
             Array.Empty<Building>(),
             capitalShips ?? Array.Empty<CapitalShip>(),
-            Array.Empty<Starfighter>(),
-            Array.Empty<Regiment>(),
+            starfighters ?? Array.Empty<Starfighter>(),
+            regiments ?? Array.Empty<Regiment>(),
             Array.Empty<SpecialForces>(),
             officers ?? Array.Empty<Officer>(),
             gameEvents ?? Array.Empty<GameEvent>(),
             messageDefinitions ?? Array.Empty<MessageDefinition>(),
             new EncyclopediaEntries(),
             new FactionThemes(),
-            officerTraits
+            officerTraits,
+            tacticalCombat
         );
     }
 
@@ -560,7 +665,8 @@ public static class TestGameData
             source.MessageDefinitions,
             source.EncyclopediaEntries,
             source.FactionThemes,
-            source.OfficerTraits
+            source.OfficerTraits,
+            source.TacticalCombat
         );
     }
 }

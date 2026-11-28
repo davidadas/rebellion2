@@ -1735,7 +1735,7 @@ namespace Rebellion.Tests.AI.Fleets
                 TargetPlanetId = enemy.InstanceID,
             };
             CapitalShip targetShip = targetFleet.GetChildren<CapitalShip>().Single();
-            targetShip.PrimaryWeapons[PrimaryWeaponType.Turbolaser] = new[] { 100, 0, 0, 0 };
+            targetShip.SetPrimaryWeapon(PrimaryWeaponType.Turbolaser, new[] { 100, 0, 0, 0 });
             CapitalShip inboundShip = AITestSceneBuilder.CreateCapitalShip(
                 "inbound-ship",
                 empire.InstanceID,

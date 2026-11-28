@@ -261,7 +261,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.GameSpeed.TickWorkBudgetMilliseconds = 10000;
             var tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             var manager = new GameManager(() => game, tick);
@@ -283,7 +283,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
             var tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             var manager = new GameManager(() => game, tick);
@@ -305,7 +305,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.GameSpeed.TickWorkBudgetMilliseconds = double.Epsilon;
             var tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             long timestamp = 0;
@@ -326,7 +326,7 @@ namespace Rebellion.Tests.Managers
             GameRoot game = TestGame.Create(TestConfig.Create());
             game.Config.GameSpeed.TickWorkBudgetMilliseconds = 0;
             var tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             var manager = new GameManager(() => game, tick);
@@ -376,7 +376,7 @@ namespace Rebellion.Tests.Managers
             config.GameSpeed.MediumTickIntervalSeconds = 10f;
             GameRoot game = TestGame.Create(config);
             GameTickProcessor tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             GameManager manager = new GameManager(() => game, tick);
@@ -397,7 +397,7 @@ namespace Rebellion.Tests.Managers
             config.GameSpeed.MediumTickIntervalSeconds = 10f;
             GameRoot game = TestGame.Create(config);
             GameTickProcessor tick = new GameTickProcessor(
-                (results, _) => new List<GameResult>(results),
+                (results, _, _, _) => new List<GameResult>(results),
                 _ => { }
             );
             GameManager manager = new GameManager(() => game, tick);

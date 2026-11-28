@@ -166,7 +166,11 @@ namespace Rebellion.Util.Serialization
         {
             Type nullableType = Nullable.GetUnderlyingType(targetType);
             if (nullableType != null)
+            {
+                if (nullableType.IsEnum && content == string.Empty)
+                    return null;
                 return ConvertToScalar(content, nullableType);
+            }
 
             if (targetType.IsEnum)
                 return Enum.Parse(targetType, content);
@@ -238,6 +242,10 @@ namespace Rebellion.Util.Serialization
                 return ((TimeSpan)value).ToString("c");
             if (type == typeof(Guid))
                 return ((Guid)value).ToString("D");
+            if (value is float single)
+                return single.ToString("R", CultureInfo.InvariantCulture);
+            if (value is double real)
+                return real.ToString("R", CultureInfo.InvariantCulture);
             if (IsScalar(type) && value is IFormattable formattable)
                 return formattable.ToString(null, CultureInfo.InvariantCulture);
 
